@@ -1,0 +1,7 @@
+{
+  "name": "Club de Beneficios",
+  "description": "Plataforma SaaS de fidelización multi-tenant por QR para comercios. Gestiona puntos, recompensas y clientes de forma simple y móvil.",
+  "requestFramePermissions": [
+    "camera"
+  ]
+}
