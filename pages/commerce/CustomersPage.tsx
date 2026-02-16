@@ -41,14 +41,26 @@ const effectiveCommerceId =
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [user?.commerceId]);
 
-  const refreshCustomers = async () => {
-    if (!effectiveCommerceId) return;
+const refreshCustomers = async () => {
+  if (!effectiveCommerceId) return;
 
-    const { data, error } = await supabase
-      .from('customers')
-      .select('*')
-      .eq('commerce_id', user.commerceId)
-      .order('created_at', { ascending: false });
+  const { data, error } = await supabase
+    .from('customers')
+    .select('*')
+    .eq('commerce_id', effectiveCommerceId) // usar el ID efectivo
+    .order('created_at', { ascending: false });
+
+  console.log("CUSTOMERS DATA:", data);
+  console.log("CUSTOMERS ERROR:", error);
+  console.log("BUSCANDO commerce_id:", effectiveCommerceId);
+
+  if (error) {
+    console.error("Error cargando clientes:", error);
+    return;
+  }
+
+  setCustomers(data || []);
+};
 
     if (error) {
       console.log('Supabase refreshCustomers error:', error);
