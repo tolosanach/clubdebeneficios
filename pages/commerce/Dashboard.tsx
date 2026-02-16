@@ -1,215 +1,267 @@
-
+// pages/commerce/Dashboard.tsx
 import React, { useState, useEffect, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { 
-  Users, 
-  CreditCard, 
-  Gift, 
-  TrendingUp, 
-  QrCode, 
-  ArrowRight, 
-  UserX, 
-  Trophy, 
-  Zap, 
-  Info, 
-  Sparkles, 
-  Lightbulb, 
-  UserPlus, 
-  Key, 
-  Eye, 
-  Bell, 
-  Check, 
-  X,
-  Target,
+import {
+  Users,
+  CreditCard,
+  TrendingUp,
+  QrCode,
+  ArrowRight,
+  UserX,
+  Trophy,
+  Zap,
+  Lightbulb,
+  UserPlus,
+  Key,
+  Bell,
+  Check,
   ArrowUpRight,
   ArrowDownRight,
-  History
+  History,
+  Target,
 } from 'lucide-react';
+
 import { db, AdminNotification } from '../../services/db';
 import { useAuth } from '../../services/auth';
-import { Commerce, PlanType, UserRole } from '../../types';
+import { Commerce, PlanType, UserRole, Customer } from '../../types';
+import { supabase } from '../../services/supabase';
 
 const CommerceDashboard: React.FC = () => {
   const { user, changePassword } = useAuth();
   const navigate = useNavigate();
+
   const [showPassModal, setShowPassModal] = useState(user?.mustChangePassword || false);
   const [newPass, setNewPass] = useState('');
   const [notifications, setNotifications] = useState<AdminNotification[]>([]);
-  
-  const commerceId = user?.commerceId || '';
-  const commerce = db.getById<Commerce>('commerces', commerceId);
-  const customers = db.getCustomersByCommerce(commerceId);
-  const transactions = db.getTransactionsByCommerce(commerceId);
-  const rewards = db.getRewardsByCommerce(commerceId);
-  const planUsage = commerceId ? db.getCommerceUsage(commerceId) : null;
-  const analytics = commerceId ? db.getCommerceAnalytics(commerceId) : {
-    totalMembers: 0,
-    activeCount: 0,
-    inactiveCount: 0,
-    rewardsDelivered: 0,
-    returnRate: 0
+
+  // ✅ MISMO MAPEO QUE EN CustomersPage
+  const commerceId = useMemo(() => {
+    if (!user?.commerceId) return '';
+    return user.commerceId === 'commerce-cafe-id' ? 'commerce-1' : user.commerceId;
+  }, [user?.commerceId]);
+
+  // DB local (solo para cosas que todavía no migramos)
+  const commerce = useMemo(() => {
+    if (!commerceId) return null;
+    return db.getById<Commerce>('commerces', commerceId);
+  }, [commerceId]);
+
+  const rewards = useMemo(() => (commerceId ? db.getRewardsByCommerce(commerceId) : []), [commerceId]);
+  const transactions = useMemo(() => (commerceId ? db.getTransactionsByCommerce(commerceId) : []), [commerceId]);
+  const planUsage = useMemo(() => (commerceId ? db.getCommerceUsage(commerceId) : null), [commerceId]);
+
+  // ✅ Customers desde Supabase
+  const [customers, setCustomers] = useState<Customer[]>([]);
+  const [customersLoading, setCustomersLoading] = useState(false);
+
+  const refreshCustomers = async () => {
+    try {
+      if (!commerceId) {
+        setCustomers([]);
+        return;
+      }
+
+      setCustomersLoading(true);
+
+      const { data, error } = await supabase
+        .from('customers')
+        .select('*')
+        .eq('commerce_id', commerceId)
+        .order('created_at', { ascending: false });
+
+      if (error) {
+        console.error('Dashboard customers error:', error);
+        setCustomers([]);
+        return;
+      }
+
+      const mapped: Customer[] = (data ?? []).map((c: any) => ({
+        id: c.id,
+        commerceId: c.commerce_id,
+        name: c.name,
+        phone: c.phone,
+        email: c.email,
+        qrToken: c.qr_token,
+        totalPoints: c.total_points ?? 0,
+        currentStars: c.current_stars ?? 0,
+        totalStars: c.total_stars ?? 0,
+        createdAt: c.created_at,
+        discountAvailable: c.discount_available ?? false,
+        phoneNumber: c.phone_number ?? '',
+        countryCode: c.country_code ?? 'AR',
+      }));
+
+      setCustomers(mapped);
+    } catch (e) {
+      console.error('Dashboard refreshCustomers crash:', e);
+      setCustomers([]);
+    } finally {
+      setCustomersLoading(false);
+    }
   };
 
   useEffect(() => {
+    refreshCustomers();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [commerceId]);
+
+  // Notificaciones (local)
+  useEffect(() => {
     if (commerceId) {
-      setNotifications(db.getNotificationsByCommerce(commerceId).filter(n => !n.read));
+      setNotifications(db.getNotificationsByCommerce(commerceId).filter((n) => !n.read));
+    } else {
+      setNotifications([]);
     }
   }, [commerceId]);
 
   const markAsRead = (id: string) => {
     db.update<AdminNotification>('admin_notifications', id, { read: true });
-    setNotifications(prev => prev.filter(n => n.id !== id));
+    setNotifications((prev) => prev.filter((n) => n.id !== id));
   };
 
-  // Dynamic Opportunity Logic
+  // ✅ Analytics “mínimo consistente” con Supabase customers (para demo)
+  // Si querés después lo calculamos real con transactions en Supabase.
+  const totalMembers = customers.length;
+  const activeCount = 0;
+  const inactiveCount = totalMembers;
+  const rewardsDelivered = 0;
+  const returnRate = totalMembers > 0 ? (activeCount / totalMembers) * 100 : 0;
+
+  // Dynamic Opportunity Logic (sin depender de analytics de db local)
   const opportunity = useMemo(() => {
     const clientsCount = customers.length;
     const salesCount = transactions.length;
     const rewardsCount = rewards.length;
-    const inactiveCount = analytics.inactiveCount;
-    const nearRewardCount = db.getReminderCandidates(commerceId).filter(c => c.type === 'near_reward').length;
 
-    // 1. Negocio sin actividad
     if (clientsCount === 0 || salesCount === 0) {
       return {
         title: 'Todavía no registraste actividad.',
         desc: 'Probá registrar tu primera venta o invitar a tus primeros clientes para empezar a generar movimiento.',
         action: 'Registrar venta',
-        path: '/commerce/scan'
+        path: '/commerce/scan',
       };
     }
 
-    // 2. Tiene clientes pero sin beneficios creados
     if (rewardsCount === 0) {
       return {
         title: 'Ya tenés clientes registrados.',
         desc: 'Crear un beneficio puede ayudarte a aumentar la frecuencia de visitas de tus socios.',
         action: 'Crear beneficio',
-        path: '/commerce/rewards'
+        path: '/commerce/rewards',
       };
     }
 
-    // 3. Muchos cerca de premio
-    if (nearRewardCount > 0) {
-      return {
-        title: `${nearRewardCount} clientes están cerca de un premio.`,
-        desc: 'Es un buen momento para invitarlos a volver y que retiren su recompensa.',
-        action: 'Ver recordatorios',
-        path: '/commerce/reminders'
-      };
-    }
-
-    // 4. Inactivos si negocio es activo
-    if (inactiveCount > totalMembers * 0.4 && totalMembers > 5) {
-       return {
-          title: `Tenés ${inactiveCount} socios sin actividad reciente.`,
-          desc: 'Podés recuperar ventas perdidas enviándoles un recordatorio por WhatsApp.',
-          action: 'Reactivar socios',
-          path: '/commerce/reminders'
-       };
-    }
-
-    // 5. Pocos socios
     if (clientsCount < 10) {
       return {
         title: 'Invitá a tus clientes a sumarse.',
         desc: 'Mostrar el código QR en el mostrador ayuda a captar nuevos socios rápidamente.',
         action: 'Ver mis clientes',
-        path: '/commerce/customers'
+        path: '/commerce/customers',
       };
     }
 
-    // Default Good Work
     return {
       title: 'Excelente desempeño.',
       desc: 'Tu programa de fidelización está funcionando muy bien. ¡Seguí así!',
       action: 'Registrar venta',
-      path: '/commerce/scan'
+      path: '/commerce/scan',
     };
-  }, [customers.length, transactions.length, rewards.length, analytics, commerceId]);
+  }, [customers.length, transactions.length, rewards.length]);
 
-  const totalMembers = analytics.totalMembers;
-  const activeCount = analytics.activeCount;
-  const inactiveCount = analytics.inactiveCount;
-  const rewardsDelivered = analytics.rewardsDelivered;
-  const returnRate = analytics.returnRate;
-
-  const returnRateColor = returnRate > 40 ? 'text-emerald-500' : returnRate > 20 ? 'text-amber-500' : 'text-rose-500';
-  const returnRateBg = returnRate > 40 ? 'bg-emerald-50 border-emerald-100' : returnRate > 20 ? 'bg-amber-50 border-amber-100' : 'bg-rose-50 border-rose-100';
+  const returnRateColor =
+    returnRate > 40 ? 'text-emerald-500' : returnRate > 20 ? 'text-amber-500' : 'text-rose-500';
+  const returnRateBg =
+    returnRate > 40
+      ? 'bg-emerald-50 border-emerald-100'
+      : returnRate > 20
+      ? 'bg-amber-50 border-amber-100'
+      : 'bg-rose-50 border-rose-100';
 
   const stats = [
-    { 
-      label: 'Socios totales', 
-      value: totalMembers, 
-      icon: Users, 
-      color: 'text-blue-500', 
-      desc: 'Personas que ya participan en tu programa.' 
+    {
+      label: 'Socios totales',
+      value: totalMembers,
+      icon: Users,
+      color: 'text-blue-500',
+      desc: 'Personas que ya participan en tu programa.',
     },
-    { 
-      label: 'Clientes activos', 
-      value: activeCount, 
-      icon: TrendingUp, 
-      color: 'text-indigo-500', 
-      desc: 'Clientes que volvieron recientemente.' 
+    {
+      label: 'Clientes activos',
+      value: activeCount,
+      icon: TrendingUp,
+      color: 'text-indigo-500',
+      desc: 'Clientes que volvieron recientemente.',
     },
-    { 
-      label: 'Clientes inactivos', 
-      value: inactiveCount, 
-      icon: UserX, 
-      color: 'text-rose-500', 
-      desc: 'Podés reactivarlos desde Recordatorios.' 
+    {
+      label: 'Clientes inactivos',
+      value: inactiveCount,
+      icon: UserX,
+      color: 'text-rose-500',
+      desc: 'Podés reactivarlos desde Recordatorios.',
     },
-    { 
-      label: 'Premios entregados', 
-      value: rewardsDelivered, 
-      icon: Trophy, 
-      color: 'text-emerald-500', 
-      desc: 'Beneficios que ya generaron retorno.' 
+    {
+      label: 'Premios entregados',
+      value: rewardsDelivered,
+      icon: Trophy,
+      color: 'text-emerald-500',
+      desc: 'Beneficios que ya generaron retorno.',
     },
   ];
 
   const handlePassChange = async (e: React.FormEvent) => {
     e.preventDefault();
     if (newPass.length < 6) {
-      alert("La contraseña debe tener al menos 6 caracteres");
+      alert('La contraseña debe tener al menos 6 caracteres');
       return;
     }
     const success = await changePassword(newPass);
     if (success) {
       setShowPassModal(false);
-      alert("Contraseña actualizada con éxito");
+      alert('Contraseña actualizada con éxito');
     }
   };
 
   const canEdit = [UserRole.COMMERCE_OWNER, UserRole.STAFF_MANAGER].includes(user?.role || UserRole.VIEWER);
-  const canScan = [UserRole.COMMERCE_OWNER, UserRole.STAFF_MANAGER, UserRole.SCANNER].includes(user?.role || UserRole.VIEWER);
+  const canScan = [UserRole.COMMERCE_OWNER, UserRole.STAFF_MANAGER, UserRole.SCANNER].includes(
+    user?.role || UserRole.VIEWER
+  );
+
+  // ✅ “Actividad reciente” = últimas altas de socios (Supabase)
+  const recentCustomers = useMemo(() => {
+    return customers
+      .slice()
+      .sort((a, b) => new Date(b.createdAt || 0).getTime() - new Date(a.createdAt || 0).getTime())
+      .slice(0, 10);
+  }, [customers]);
 
   return (
     <div className="space-y-12 animate-in fade-in duration-700 pb-20">
-      
       {/* Admin Notices Section */}
       {notifications.length > 0 && (
         <div className="space-y-4 animate-in slide-in-from-top-4 duration-500">
-           {notifications.map(n => (
-             <div key={n.id} className="bg-slate-900 text-white p-6 rounded-[32px] shadow-2xl flex flex-col sm:flex-row items-start sm:items-center justify-between gap-6 border border-slate-800">
-                <div className="flex gap-4">
-                  <div className="w-12 h-12 bg-blue-600 rounded-2xl flex items-center justify-center shrink-0 border border-blue-500 shadow-lg shadow-blue-900/50">
-                    <Bell size={24} className="animate-bounce" />
-                  </div>
-                  <div className="space-y-1">
-                    <h4 className="font-black text-xs uppercase tracking-widest text-blue-400">Aviso Administrativo</h4>
-                    <p className="font-bold text-lg leading-tight">{n.title}</p>
-                    <p className="text-sm text-slate-400 leading-relaxed max-w-2xl">{n.message}</p>
-                  </div>
+          {notifications.map((n) => (
+            <div
+              key={n.id}
+              className="bg-slate-900 text-white p-6 rounded-[32px] shadow-2xl flex flex-col sm:flex-row items-start sm:items-center justify-between gap-6 border border-slate-800"
+            >
+              <div className="flex gap-4">
+                <div className="w-12 h-12 bg-blue-600 rounded-2xl flex items-center justify-center shrink-0 border border-blue-500 shadow-lg shadow-blue-900/50">
+                  <Bell size={24} className="animate-bounce" />
                 </div>
-                <button 
-                  onClick={() => markAsRead(n.id)}
-                  className="flex items-center gap-2 bg-white/10 hover:bg-white text-white hover:text-black px-5 py-2.5 rounded-2xl text-[10px] font-black uppercase tracking-widest transition-all"
-                >
-                  <Check size={14} /> Entendido
-                </button>
-             </div>
-           ))}
+                <div className="space-y-1">
+                  <h4 className="font-black text-xs uppercase tracking-widest text-blue-400">Aviso Administrativo</h4>
+                  <p className="font-bold text-lg leading-tight">{n.title}</p>
+                  <p className="text-sm text-slate-400 leading-relaxed max-w-2xl">{n.message}</p>
+                </div>
+              </div>
+              <button
+                onClick={() => markAsRead(n.id)}
+                className="flex items-center gap-2 bg-white/10 hover:bg-white text-white hover:text-black px-5 py-2.5 rounded-2xl text-[10px] font-black uppercase tracking-widest transition-all"
+              >
+                <Check size={14} /> Entendido
+              </button>
+            </div>
+          ))}
         </div>
       )}
 
@@ -220,14 +272,14 @@ const CommerceDashboard: React.FC = () => {
             <Target size={18} />
             <span className="text-[10px] font-black uppercase tracking-[0.2em]">Dashboard / Estadísticas</span>
           </div>
-          <h2 className="text-4xl font-black tracking-tight text-black leading-tight">
-            Hola, {user?.name.split(' ')[0]}
-          </h2>
-          <p className="text-sm text-slate-500 font-medium">
-            Resumen de fidelización de tu negocio.
+          <h2 className="text-4xl font-black tracking-tight text-black leading-tight">Hola, {user?.name.split(' ')[0]}</h2>
+          <p className="text-sm text-slate-500 font-medium">Resumen de fidelización de tu negocio.</p>
+
+          <p className="text-xs text-slate-400">
+            commerceId efectivo: <span className="font-mono">{commerceId || '(vacío)'}</span>
           </p>
         </div>
-        
+
         <div className="flex flex-col sm:flex-row gap-3">
           {canEdit && (
             <button
@@ -254,7 +306,10 @@ const CommerceDashboard: React.FC = () => {
       <div className="space-y-8">
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
           {stats.map((stat, idx) => (
-            <div key={idx} className="bg-white p-8 rounded-[32px] border border-slate-100 shadow-sm hover:shadow-md transition-shadow group">
+            <div
+              key={idx}
+              className="bg-white p-8 rounded-[32px] border border-slate-100 shadow-sm hover:shadow-md transition-shadow group"
+            >
               <div className="flex items-center justify-between mb-6">
                 <span className={`p-2.5 rounded-2xl bg-slate-50 ${stat.color} group-hover:scale-110 transition-transform`}>
                   <stat.icon size={20} />
@@ -262,9 +317,7 @@ const CommerceDashboard: React.FC = () => {
                 <span className="text-[10px] font-black text-slate-300 uppercase tracking-widest">{stat.label}</span>
               </div>
               <p className="text-3xl font-black text-black tracking-tight mb-2">{stat.value}</p>
-              <p className="text-[11px] font-medium text-slate-400 leading-relaxed italic">
-                {stat.desc}
-              </p>
+              <p className="text-[11px] font-medium text-slate-400 leading-relaxed italic">{stat.desc}</p>
             </div>
           ))}
         </div>
@@ -274,22 +327,23 @@ const CommerceDashboard: React.FC = () => {
           <div className="space-y-4 text-center sm:text-left max-w-lg">
             <div className="flex items-center justify-center sm:justify-start gap-3">
               <div className={`p-2 rounded-xl bg-white border shadow-sm ${returnRateColor}`}>
-                 <TrendingUp size={20} />
+                <TrendingUp size={20} />
               </div>
               <h3 className="font-black text-xs uppercase tracking-widest text-slate-400">Métrica Clave: Tasa de Retorno</h3>
             </div>
             <p className="text-sm font-medium text-slate-600 leading-relaxed">
-              Este porcentaje indica cuántos de tus socios registrados han vuelto a comprar en los últimos 30 días. Un retorno alto significa un programa exitoso.
+              Este porcentaje indica cuántos de tus socios registrados han vuelto a comprar en los últimos 30 días.
+              Un retorno alto significa un programa exitoso.
             </p>
           </div>
-          
+
           <div className="flex flex-col items-center">
             <div className="flex items-baseline gap-1">
               <span className={`text-7xl font-black tracking-tighter ${returnRateColor}`}>{Math.round(returnRate)}%</span>
             </div>
             <div className="mt-2 flex items-center gap-1.5">
-               {returnRate > 40 ? <ArrowUpRight className="text-emerald-500" size={16} /> : <ArrowDownRight className="text-amber-500" size={16} />}
-               <span className="text-[10px] font-black uppercase tracking-widest text-slate-400">Salud del programa</span>
+              {returnRate > 40 ? <ArrowUpRight className="text-emerald-500" size={16} /> : <ArrowDownRight className="text-amber-500" size={16} />}
+              <span className="text-[10px] font-black uppercase tracking-widest text-slate-400">Salud del programa</span>
             </div>
           </div>
         </div>
@@ -305,18 +359,14 @@ const CommerceDashboard: React.FC = () => {
               </div>
               <h3 className="font-black text-xs uppercase tracking-widest">Oportunidades</h3>
             </div>
-            
+
             <div className="space-y-6">
               <div className="space-y-2">
-                <p className="text-lg font-bold leading-tight">
-                  {opportunity.title}
-                </p>
-                <p className="text-[13px] font-medium opacity-80 leading-relaxed">
-                  {opportunity.desc}
-                </p>
+                <p className="text-lg font-bold leading-tight">{opportunity.title}</p>
+                <p className="text-[13px] font-medium opacity-80 leading-relaxed">{opportunity.desc}</p>
               </div>
-              
-              <button 
+
+              <button
                 onClick={() => navigate(opportunity.path)}
                 className="w-full py-4 bg-white text-blue-600 rounded-2xl font-black text-[11px] uppercase tracking-widest hover:bg-blue-50 transition-all flex items-center justify-center gap-2"
               >
@@ -331,14 +381,21 @@ const CommerceDashboard: React.FC = () => {
               <div className="flex justify-between items-center">
                 <div className="flex items-center gap-2">
                   <Zap className={planUsage.planType === PlanType.PRO ? 'text-blue-500' : 'text-slate-400'} size={16} />
-                  <p className={`text-[11px] font-black uppercase tracking-widest ${planUsage.planType === PlanType.PRO ? 'text-blue-600' : 'text-slate-400'}`}>
+                  <p
+                    className={`text-[11px] font-black uppercase tracking-widest ${
+                      planUsage.planType === PlanType.PRO ? 'text-blue-600' : 'text-slate-400'
+                    }`}
+                  >
                     Plan {planUsage.planType}
                   </p>
                 </div>
                 {planUsage.planType === PlanType.FREE && (
-                  <button onClick={() => navigate('/commerce/billing')} className="text-[10px] font-black text-blue-600 uppercase tracking-widest hover:underline">Mejorar</button>
+                  <button onClick={() => navigate('/commerce/billing')} className="text-[10px] font-black text-blue-600 uppercase tracking-widest hover:underline">
+                    Mejorar
+                  </button>
                 )}
               </div>
+
               <div className="space-y-4">
                 <div className="flex justify-between items-end">
                   <h4 className="font-bold text-slate-900 text-xs">Uso del mes</h4>
@@ -347,8 +404,8 @@ const CommerceDashboard: React.FC = () => {
                   </span>
                 </div>
                 <div className="w-full h-2.5 bg-slate-50 rounded-full overflow-hidden border border-slate-100">
-                  <div 
-                    className={`h-full transition-all duration-1000 ${planUsage.percentage > 85 ? 'bg-red-500' : 'bg-black'}`} 
+                  <div
+                    className={`h-full transition-all duration-1000 ${planUsage.percentage > 85 ? 'bg-red-500' : 'bg-black'}`}
                     style={{ width: `${planUsage.percentage}%` }}
                   />
                 </div>
@@ -363,37 +420,44 @@ const CommerceDashboard: React.FC = () => {
             <h3 className="font-black text-xs text-slate-400 uppercase tracking-widest flex items-center gap-2">
               <History size={16} /> Actividad Reciente
             </h3>
-            <button onClick={() => navigate('/commerce/customers')} className="text-[10px] text-blue-600 font-black uppercase tracking-widest hover:underline">Ver todos</button>
+            <button
+              onClick={() => navigate('/commerce/customers')}
+              className="text-[10px] text-blue-600 font-black uppercase tracking-widest hover:underline"
+            >
+              Ver todos
+            </button>
           </div>
+
           <div className="divide-y divide-slate-50 overflow-y-auto max-h-[500px] no-scrollbar">
-            {transactions.slice(-10).reverse().map((t) => {
-              const customer = customers.find(c => c.id === t.customerId);
-              return (
-                <div key={t.id} className="px-8 py-6 flex items-center justify-between hover:bg-slate-50/50 transition-colors group">
+            {customersLoading && (
+              <div className="py-10 text-center text-slate-300">
+                <p className="text-[10px] font-black uppercase tracking-[0.2em]">Cargando actividad…</p>
+              </div>
+            )}
+
+            {!customersLoading &&
+              recentCustomers.map((c) => (
+                <div key={c.id} className="px-8 py-6 flex items-center justify-between hover:bg-slate-50/50 transition-colors group">
                   <div className="flex items-center gap-5">
                     <div className="w-12 h-12 rounded-2xl bg-slate-50 flex items-center justify-center text-slate-300 font-black text-sm uppercase border border-slate-100 group-hover:bg-white group-hover:text-blue-500 transition-all">
-                      {customer?.name?.[0] || 'S'}
+                      {c.name?.[0] || 'S'}
                     </div>
                     <div>
-                      <p className="font-bold text-slate-900 text-[15px] leading-tight mb-1">
-                        {customer?.name || 'Socio'} 
-                        {t.redeemedRewardId && <span className="ml-2 text-[9px] bg-emerald-50 text-emerald-600 px-1.5 py-0.5 rounded border border-emerald-100">CANJEÓ PREMIO</span>}
-                      </p>
+                      <p className="font-bold text-slate-900 text-[15px] leading-tight mb-1">{c.name || 'Socio'}</p>
                       <p className="text-[10px] text-slate-400 font-black uppercase tracking-widest">
-                        {new Date(t.createdAt).toLocaleDateString()} • {t.method === 'SCAN' ? 'Escaneo QR' : 'Manual'}
+                        {c.createdAt ? new Date(c.createdAt).toLocaleDateString() : '—'} • Alta de socio
                       </p>
                     </div>
                   </div>
+
                   <div className="text-right">
-                    <p className="text-black font-black text-[16px] leading-none mb-1">
-                      {t.points >= 0 ? `+${t.points}` : t.points} pts
-                    </p>
-                    <p className="text-[11px] font-bold text-slate-300 tracking-tight">${t.amount.toLocaleString()}</p>
+                    <p className="text-black font-black text-[16px] leading-none mb-1">+0 pts</p>
+                    <p className="text-[11px] font-bold text-slate-300 tracking-tight">—</p>
                   </div>
                 </div>
-              );
-            })}
-            {transactions.length === 0 && (
+              ))}
+
+            {!customersLoading && customers.length === 0 && (
               <div className="py-24 text-center text-slate-300 space-y-4 flex flex-col items-center">
                 <div className="p-6 bg-slate-50 rounded-[32px]">
                   <CreditCard size={40} className="opacity-20" />
@@ -401,6 +465,12 @@ const CommerceDashboard: React.FC = () => {
                 <p className="text-[10px] font-black uppercase tracking-[0.2em]">Sin movimientos registrados</p>
               </div>
             )}
+          </div>
+
+          <div className="p-4 border-t border-slate-50 bg-white flex justify-end">
+            <button onClick={refreshCustomers} className="text-[10px] font-black uppercase tracking-widest text-slate-400 hover:text-black">
+              Refrescar
+            </button>
           </div>
         </div>
       </div>
@@ -410,25 +480,34 @@ const CommerceDashboard: React.FC = () => {
         <div className="fixed inset-0 z-[200] flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-md">
           <div className="bg-white w-full max-w-md rounded-[40px] shadow-2xl p-8 space-y-8 animate-in zoom-in-95 border border-slate-100">
             <div className="text-center space-y-3">
-              <div className="w-16 h-16 bg-blue-50 text-blue-600 rounded-3xl flex items-center justify-center mx-auto border border-blue-100"><Key size={32} /></div>
+              <div className="w-16 h-16 bg-blue-50 text-blue-600 rounded-3xl flex items-center justify-center mx-auto border border-blue-100">
+                <Key size={32} />
+              </div>
               <h2 className="text-2xl font-black text-slate-900">Seguridad Obligatoria</h2>
-              <p className="text-sm text-slate-500 font-medium">Por ser tu primer ingreso con clave temporal, debés elegir una nueva contraseña personal.</p>
+              <p className="text-sm text-slate-500 font-medium">
+                Por ser tu primer ingreso con clave temporal, debés elegir una nueva contraseña personal.
+              </p>
             </div>
-            
+
             <form onSubmit={handlePassChange} className="space-y-6">
-               <div className="space-y-2">
-                 <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Nueva Contraseña</label>
-                 <input 
-                  type="password" 
-                  required 
+              <div className="space-y-2">
+                <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Nueva Contraseña</label>
+                <input
+                  type="password"
+                  required
                   autoFocus
                   value={newPass}
-                  onChange={e => setNewPass(e.target.value)}
-                  className="w-full h-14 px-5 bg-slate-50 border rounded-2xl outline-none font-bold text-slate-800 focus:border-black transition-all" 
-                  placeholder="Mínimo 6 caracteres" 
-                 />
-               </div>
-               <button type="submit" className="w-full py-5 bg-black text-white font-black rounded-2xl text-[11px] uppercase tracking-widest shadow-xl hover:opacity-90 transition-all">Actualizar y Continuar</button>
+                  onChange={(e) => setNewPass(e.target.value)}
+                  className="w-full h-14 px-5 bg-slate-50 border rounded-2xl outline-none font-bold text-slate-800 focus:border-black transition-all"
+                  placeholder="Mínimo 6 caracteres"
+                />
+              </div>
+              <button
+                type="submit"
+                className="w-full py-5 bg-black text-white font-black rounded-2xl text-[11px] uppercase tracking-widest shadow-xl hover:opacity-90 transition-all"
+              >
+                Actualizar y Continuar
+              </button>
             </form>
           </div>
         </div>
