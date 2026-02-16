@@ -83,7 +83,7 @@ const RegisterPage: React.FC = () => {
       const nextMonth = new Date();
       nextMonth.setMonth(nextMonth.getMonth() + 1);
       db.insert<Subscription>('subscriptions', {
-        id: crypto.randomUUID(),
+        id: makeId(),
         commerceId,
         planName: 'Plan Free',
         status: SubscriptionStatus.ACTIVE,
@@ -96,7 +96,7 @@ const RegisterPage: React.FC = () => {
       // 3. Crear Usuario
       // FIX: Replaced UserRole.COMMERCE_ADMIN with UserRole.COMMERCE_OWNER and added missing isActive field
       db.insert<User>('users', {
-        id: crypto.randomUUID(),
+        id: makeId(),
         email: email,
         password: password,
         registrationMethod: 'email',
