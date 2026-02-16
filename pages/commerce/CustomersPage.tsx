@@ -1,5 +1,5 @@
 // pages/commerce/CustomersPage.tsx
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { Plus, Search, MessageCircle, QrCode, X, FileSpreadsheet } from 'lucide-react';
 import PhoneInput from '../../components/PhoneInput';
 import { db } from '../../services/db';
@@ -16,7 +16,7 @@ type UiCustomer = Customer & {
   };
 };
 
-const CustomersPage: React.FC = () => {
+export default function CustomersPage() {
   const { user } = useAuth();
 
   // Mapeo puntual para tu demo (ajustalo cuando migres todo a Supabase “bien”)
@@ -27,6 +27,7 @@ const CustomersPage: React.FC = () => {
 
   const [customers, setCustomers] = useState<UiCustomer[]>([]);
   const [searchTerm, setSearchTerm] = useState('');
+
   const [showDetailModal, setShowDetailModal] = useState(false);
   const [selectedCustomer, setSelectedCustomer] = useState<UiCustomer | null>(null);
 
@@ -45,7 +46,7 @@ const CustomersPage: React.FC = () => {
     return db.getById<Commerce>('commerces', effectiveCommerceId);
   }, [effectiveCommerceId]);
 
-  const refreshCustomers = async () => {
+  const refreshCustomers = useCallback(async () => {
     try {
       if (!effectiveCommerceId) return;
 
@@ -75,7 +76,6 @@ const CustomersPage: React.FC = () => {
         totalStars: c.total_stars ?? 0,
         createdAt: c.created_at,
         discountAvailable: c.discount_available ?? false,
-        // campos opcionales del type Customer (si existen en tu types.ts no molesta)
         phoneNumber: c.phone_number ?? '',
         countryCode: c.country_code ?? 'AR',
         summary: {
@@ -89,12 +89,11 @@ const CustomersPage: React.FC = () => {
     } catch (e: any) {
       console.error('refreshCustomers crash:', e);
     }
-  };
+  }, [effectiveCommerceId]);
 
   useEffect(() => {
     refreshCustomers();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [effectiveCommerceId]);
+  }, [refreshCustomers]);
 
   const handleCreate = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -138,6 +137,9 @@ const CustomersPage: React.FC = () => {
         current_stars: newCustomer.currentStars,
         total_stars: newCustomer.totalStars,
         discount_available: newCustomer.discountAvailable,
+        // Si tu tabla tiene estas columnas, dejalas. Si NO existen, borrá estas 2 líneas:
+        phone_number: newCustomer.phoneNumber,
+        country_code: newCustomer.countryCode,
         // created_at: dejalo que lo ponga Supabase (default now())
       },
     ]);
@@ -209,9 +211,7 @@ const CustomersPage: React.FC = () => {
   const filteredCustomers = useMemo(() => {
     const q = searchTerm.trim().toLowerCase();
     if (!q) return customers;
-    return customers.filter(
-      (c) => (c.name || '').toLowerCase().includes(q) || String(c.phone || '').includes(q)
-    );
+    return customers.filter((c) => (c.name || '').toLowerCase().includes(q) || String(c.phone || '').includes(q));
   }, [customers, searchTerm]);
 
   return (
@@ -275,7 +275,9 @@ const CustomersPage: React.FC = () => {
                 </div>
                 <div className="text-right">
                   <div className="text-sm font-semibold">{Math.floor(c.totalPoints ?? 0)} pts</div>
-                  <div className="text-xs opacity-60">{c.createdAt ? new Date(c.createdAt).toLocaleDateString('es-AR') : ''}</div>
+                  <div className="text-xs opacity-60">
+                    {c.createdAt ? new Date(c.createdAt).toLocaleDateString('es-AR') : ''}
+                  </div>
                 </div>
               </div>
             </button>
@@ -375,10 +377,7 @@ const CustomersPage: React.FC = () => {
               </button>
             </div>
 
-            <button
-              className="w-full px-3 py-2 rounded-lg bg-black text-white"
-              onClick={refreshCustomers}
-            >
+            <button className="w-full px-3 py-2 rounded-lg bg-black text-white" onClick={refreshCustomers}>
               Refrescar lista
             </button>
           </div>
@@ -386,6 +385,4 @@ const CustomersPage: React.FC = () => {
       )}
     </div>
   );
-};
-
-export default CustomersPage;
+}
