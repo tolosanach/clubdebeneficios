@@ -10,6 +10,8 @@ import { supabase } from '../../services/supabase';
 
 const CustomersPage: React.FC = () => {
   const { user } = useAuth();
+const effectiveCommerceId =
+  user?.commerceId === 'commerce-cafe-id' ? 'commerce-1' : user?.commerceId;
 
   useEffect(() => {
     console.log("USER:", user);
@@ -24,7 +26,7 @@ const CustomersPage: React.FC = () => {
 
   // OJO: esto sigue leyendo de db local. Si tu commerce también está en Supabase,
   // habría que migrarlo después. Por ahora lo dejo para que no rompa.
-  const commerce = db.getById<Commerce>('commerces', user?.commerceId || '');
+  const commerce = db.getById<Commerce>('commerces', effectiveCommerceId || '');
 
   const [formData, setFormData] = useState({
     name: '',
@@ -40,7 +42,7 @@ const CustomersPage: React.FC = () => {
   }, [user?.commerceId]);
 
   const refreshCustomers = async () => {
-    if (!user?.commerceId) return;
+    if (!effectiveCommerceId) return;
 
     const { data, error } = await supabase
       .from('customers')
@@ -77,11 +79,11 @@ const CustomersPage: React.FC = () => {
 
   const handleCreate = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!user?.commerceId || !formData.name || !formData.fullPhone || !formData.email) return;
+    if (!effectiveCommerceId || !formData.name || !formData.fullPhone || !formData.email) return;
 
     const newCustomer: Customer = {
       id: makeId(),
-      commerceId: user.commerceId,
+      commerceId: effectiveCommerceId,
       name: formData.name,
       phone: formData.fullPhone,
       phoneNumber: formData.phoneNumber,
