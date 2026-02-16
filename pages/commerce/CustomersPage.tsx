@@ -8,15 +8,44 @@ import PhoneInput from '../../components/PhoneInput';
 import { safeUUID as makeId, shortToken as makeToken } from '../../services/id';
 import { supabase } from '../../services/supabase';
 
+const refreshCustomers = async () => {
+  try {
+    console.log("refreshCustomers() called");
+    console.log("effectiveCommerceId:", effectiveCommerceId);
+    console.log("user.commerceId:", user?.commerceId);
+
+    if (!effectiveCommerceId) {
+      console.warn("No effectiveCommerceId, abort refreshCustomers");
+      return;
+    }
+
+    const { data, error } = await supabase
+      .from("customers")
+      .select("*")
+      .eq("commerce_id", effectiveCommerceId) // <-- CLAVE: usar effectiveCommerceId
+      .order("created_at", { ascending: false });
+
+    console.log("CUSTOMERS DATA:", data);
+    console.log("CUSTOMERS ERROR:", error);
+
+    if (error) throw error;
+
+    setCustomers(data ?? []);
+  } catch (e: any) {
+    console.error("refreshCustomers crash:", e);
+    // opcional: si tenés un estado uiError, setealo acá
+    // setUiError(e?.message ?? "Error cargando clientes");
+  }
+};
+
 const CustomersPage: React.FC = () => {
   const { user } = useAuth();
 const effectiveCommerceId =
   user?.commerceId === 'commerce-cafe-id' ? 'commerce-1' : user?.commerceId;
 
-  useEffect(() => {
-    console.log("USER:", user);
-    console.log("commerceId:", user?.commerceId);
-  }, [user]);
+useEffect(() => {
+  refreshCustomers();
+}, [effectiveCommerceId]);
 
   const [customers, setCustomers] = useState<any[]>([]);
   const [searchTerm, setSearchTerm] = useState('');
