@@ -1,7 +1,19 @@
-
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import { db } from './db';
-import { User, UserRole, PointsMode, Commerce, SubscriptionStatus, Subscription, PlanType, GlobalCustomer, Customer, CommerceCategory, ProgramType, Reward } from '../types';
+import {
+  User,
+  UserRole,
+  PointsMode,
+  Commerce,
+  SubscriptionStatus,
+  Subscription,
+  PlanType,
+  GlobalCustomer,
+  Customer,
+  CommerceCategory,
+  ProgramType,
+  Reward,
+} from '../types';
 
 interface AuthContextType {
   user: User | null;
@@ -19,13 +31,108 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const [user, setUser] = useState<User | null>(null);
   const [isLoading, setIsLoading] = useState(true);
 
+  /** ✅ FIX CLAVE: normaliza user y asegura commerceId válido */
+  const normalizeUser = (u: User | null): User | null => {
+    if (!u) return null;
+
+    // Si ya tiene commerceId, perfecto
+    if (u.commerceId) return u;
+
+    // Si es un rol que necesita commerceId, lo buscamos en la DB por id/email
+    const needsCommerce =
+      [UserRole.COMMERCE_OWNER, UserRole.STAFF_MANAGER, UserRole.SCANNER, UserRole.VIEWER].includes(u.role as any);
+
+    if (!needsCommerce) return u;
+
+    const users = db.getAll<User>('users');
+
+    // 1) Buscar por id
+    const byId = u.id ? users.find(x => x.id === u.id) : undefined;
+
+    // 2) Buscar por email
+    const byEmail = u.email ? users.find(x => (x.email || '').toLowerCase() === u.email!.toLowerCase()) : undefined;
+
+    const fixed = (byId || byEmail) ? ({ ...u, commerceId: (byId || byEmail)!.commerceId } as User) : ({ ...u } as User);
+
+    // Si sigue sin commerceId, asignamos uno válido
+    if (!fixed.commerceId) {
+      const commerces = db.getAll<Commerce>('commerces');
+      fixed.commerceId = commerces[0]?.id || 'commerce-cafe-id';
+    }
+
+    // Asegurar que exista el comercio en DB (por si quedó vacío)
+    const commerceExists = !!db.getById('commerces', fixed.commerceId);
+    if (!commerceExists) {
+      const fallbackCommerce: Commerce = {
+        id: fixed.commerceId,
+        name: 'Mi Comercio',
+        primaryColor: '#2563eb',
+        antiFraudMinutes: 1,
+        expirationMode: 'global_date' as any,
+        expirationDays: 30,
+        planType: PlanType.FREE,
+        customerLimit: 0,
+        monthlyScanLimit: 100,
+        scansCurrentMonth: 0,
+        scansResetDate: new Date().toISOString(),
+        planStartedAt: new Date().toISOString(),
+        createdAt: new Date().toISOString(),
+        waTone: 'friendly' as any,
+        waIncludeGained: true,
+        waIncludeTotal: true,
+        waIncludeProgress: true,
+        waClosingReceipt: '¡Gracias por elegirnos!',
+        waReminderGoal: 'return' as any,
+        waReminderIncludePoints: true,
+        waReminderIncludeMissing: true,
+        waClosingReminder: '¡Vuelve pronto!',
+        pointsMode: PointsMode.PERCENTAGE,
+        pointsValue: 10,
+        discountPercent: 10,
+        minPurchaseAmount: 0,
+        discountExpirationDays: 30,
+        cooldownHours: 0,
+        ruleText: 'Válido para tu próxima compra.',
+        starsGoal: 5,
+        configVersion: 1,
+        public_listed: false,
+        province: 'Buenos Aires',
+        city: 'CABA',
+        category: CommerceCategory.CAFE,
+        programType: ProgramType.STARS,
+        enable_stars: true,
+        enable_points: false,
+        enable_coupon: true,
+        pointsRewardId: '',
+        starsRewardId: '',
+        logoUrl: '',
+      } as any;
+
+      try {
+        db.insert<Commerce>('commerces', fallbackCommerce);
+      } catch {
+        // si ya existe por alguna razón, ignorar
+      }
+    }
+
+    return fixed;
+  };
+
+  /** ✅ Setter que siempre guarda la sesión normalizada */
+  const setUserAndPersist = (u: User | null) => {
+    const fixed = normalizeUser(u);
+    setUser(fixed);
+    if (fixed) localStorage.setItem('club_session', JSON.stringify(fixed));
+  };
+
   useEffect(() => {
     db.processSubscriptions();
     db.processMonthlyResets();
 
     const users = db.getAll<User>('users');
+
     // Inicializar solo si no hay usuarios (excepto el admin por defecto)
-    if (users.length <= 1) { 
+    if (users.length <= 1) {
       // --- 1. COMERCIOS DEMO ---
       const idCafe = 'commerce-cafe-id';
       const idGym = 'commerce-gym-id';
@@ -37,7 +144,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       const thirtyDaysAgo = new Date(new Date().setDate(now.getDate() - 30)).toISOString();
       const twoDaysAgo = new Date(new Date().setDate(now.getDate() - 2)).toISOString();
 
-      const commonConfig = {
+      const commonConfig: any = {
         primaryColor: '#2563eb',
         antiFraudMinutes: 1,
         expirationMode: 'global_date' as const,
@@ -69,21 +176,22 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         configVersion: 1,
         public_listed: true,
         province: 'Buenos Aires',
-        city: 'CABA'
+        city: 'CABA',
+        logoUrl: '',
       };
 
       // Registro de Comercios
-      db.insert<Commerce>('commerces', { ...commonConfig, id: idCafe, name: 'Café Delicias', category: CommerceCategory.CAFE, programType: ProgramType.STARS, enable_stars: true, enable_points: false, enable_coupon: true, starsGoal: 5, pointsRewardId: '', starsRewardId: 'reward-cafe-1' });
-      db.insert<Commerce>('commerces', { ...commonConfig, id: idGym, name: 'Fit Gym', category: CommerceCategory.HEALTH, programType: ProgramType.POINTS, enable_stars: false, enable_points: true, enable_coupon: false, pointsRewardId: 'reward-gym-1' });
-      db.insert<Commerce>('commerces', { ...commonConfig, id: idBarber, name: 'Barber Club', category: CommerceCategory.BARBER, programType: ProgramType.NEXT_PURCHASE_DISCOUNT, enable_stars: false, enable_points: false, enable_coupon: true, discountPercent: 20 });
-      db.insert<Commerce>('commerces', { ...commonConfig, id: idPizza, name: 'Pizza Nova', category: CommerceCategory.RESTAURANT, programType: ProgramType.STARS, enable_stars: true, enable_points: false, enable_coupon: true, starsGoal: 6, starsRewardId: 'reward-pizza-1' });
-      db.insert<Commerce>('commerces', { ...commonConfig, id: idFarma, name: 'Farmacia Centro', category: CommerceCategory.HEALTH, programType: ProgramType.POINTS, enable_stars: false, enable_points: true, enable_coupon: false, pointsRewardId: 'reward-farma-1' });
+      db.insert<Commerce>('commerces', { ...commonConfig, id: idCafe, name: 'Café Delicias', category: CommerceCategory.CAFE, programType: ProgramType.STARS, enable_stars: true, enable_points: false, enable_coupon: true, starsGoal: 5, pointsRewardId: '', starsRewardId: 'reward-cafe-1' } as any);
+      db.insert<Commerce>('commerces', { ...commonConfig, id: idGym, name: 'Fit Gym', category: CommerceCategory.HEALTH, programType: ProgramType.POINTS, enable_stars: false, enable_points: true, enable_coupon: false, pointsRewardId: 'reward-gym-1', starsRewardId: '' } as any);
+      db.insert<Commerce>('commerces', { ...commonConfig, id: idBarber, name: 'Barber Club', category: CommerceCategory.BARBER, programType: ProgramType.NEXT_PURCHASE_DISCOUNT, enable_stars: false, enable_points: false, enable_coupon: true, discountPercent: 20, pointsRewardId: '', starsRewardId: '' } as any);
+      db.insert<Commerce>('commerces', { ...commonConfig, id: idPizza, name: 'Pizza Nova', category: CommerceCategory.RESTAURANT, programType: ProgramType.STARS, enable_stars: true, enable_points: false, enable_coupon: true, starsGoal: 6, pointsRewardId: '', starsRewardId: 'reward-pizza-1' } as any);
+      db.insert<Commerce>('commerces', { ...commonConfig, id: idFarma, name: 'Farmacia Centro', category: CommerceCategory.HEALTH, programType: ProgramType.POINTS, enable_stars: false, enable_points: true, enable_coupon: false, pointsRewardId: 'reward-farma-1', starsRewardId: '' } as any);
 
       // --- 2. PREMIOS ---
-      db.insert<Reward>('rewards', { id: 'reward-cafe-1', commerceId: idCafe, name: 'Café Especialidad Gratis', description: 'Cualquier café de nuestra carta.', starsThreshold: 5, pointsCost: 0, active: true, rewardType: 'STARS' });
-      db.insert<Reward>('rewards', { id: 'reward-gym-1', commerceId: idGym, name: 'Pase Diario Gratis', description: 'Acceso total a máquinas y clases.', pointsThreshold: 1000, pointsCost: 1000, active: true, rewardType: 'POINTS' });
-      db.insert<Reward>('rewards', { id: 'reward-pizza-1', commerceId: idPizza, name: 'Pizza Chica Muzza', description: 'Retiro por local.', starsThreshold: 6, pointsCost: 0, active: true, rewardType: 'STARS' });
-      db.insert<Reward>('rewards', { id: 'reward-farma-1', commerceId: idFarma, name: '$3000 de Descuento', description: 'Aplicable en perfumería.', pointsThreshold: 5000, pointsCost: 5000, active: true, rewardType: 'POINTS' });
+      db.insert<Reward>('rewards', { id: 'reward-cafe-1', commerceId: idCafe, name: 'Café Especialidad Gratis', description: 'Cualquier café de nuestra carta.', starsThreshold: 5, pointsCost: 0, active: true, rewardType: 'STARS' } as any);
+      db.insert<Reward>('rewards', { id: 'reward-gym-1', commerceId: idGym, name: 'Pase Diario Gratis', description: 'Acceso total a máquinas y clases.', pointsThreshold: 1000, pointsCost: 1000, active: true, rewardType: 'POINTS' } as any);
+      db.insert<Reward>('rewards', { id: 'reward-pizza-1', commerceId: idPizza, name: 'Pizza Chica Muzza', description: 'Retiro por local.', starsThreshold: 6, pointsCost: 0, active: true, rewardType: 'STARS' } as any);
+      db.insert<Reward>('rewards', { id: 'reward-farma-1', commerceId: idFarma, name: '$3000 de Descuento', description: 'Aplicable en perfumería.', pointsThreshold: 5000, pointsCost: 5000, active: true, rewardType: 'POINTS' } as any);
 
       // --- 3. CLIENTES GLOBALES ---
       const customersData = [
@@ -93,36 +201,29 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         { id: 'global-lucia', name: 'Lucía Torres', phone: '5491155667788', email: 'lucia@test.com' },
         { id: 'global-diego', name: 'Diego Ramírez', phone: '5491199001122', email: 'diego@test.com' },
       ];
-      customersData.forEach(c => db.insert<GlobalCustomer>('global_customers', { ...c, createdAt: thirtyDaysAgo }));
+      customersData.forEach(c => db.insert<GlobalCustomer>('global_customers', { ...c, createdAt: thirtyDaysAgo } as any));
 
-      // --- 4. MEMBRESÍAS Y ESTADOS (ESCENARIOS REALES) ---
-      
-      // Juan: El explorador (Socio en todos)
-      db.insert<Customer>('customers', { id: 'm-juan-cafe', globalCustomerId: 'global-juan', commerceId: idCafe, name: 'Juan Pérez', phone: '5491198765432', qrToken: 'QR-JUAN-CAFE', totalPoints: 0, currentStars: 3, totalStars: 3, createdAt: thirtyDaysAgo, discountAvailable: false });
-      db.insert<Customer>('customers', { id: 'm-juan-gym', globalCustomerId: 'global-juan', commerceId: idGym, name: 'Juan Pérez', phone: '5491198765432', qrToken: 'QR-JUAN-GYM', totalPoints: 1200, currentStars: 0, totalStars: 0, createdAt: thirtyDaysAgo, discountAvailable: false });
-      db.insert<Customer>('customers', { id: 'm-juan-barber', globalCustomerId: 'global-juan', commerceId: idBarber, name: 'Juan Pérez', phone: '5491198765432', qrToken: 'QR-JUAN-BARBER', totalPoints: 0, currentStars: 0, totalStars: 0, createdAt: thirtyDaysAgo, discountAvailable: true, discountExpiresAt: new Date(Date.now() + 10 * 24 * 60 * 60 * 1000).toISOString() });
-      db.insert<Customer>('customers', { id: 'm-juan-pizza', globalCustomerId: 'global-juan', commerceId: idPizza, name: 'Juan Pérez', phone: '5491198765432', qrToken: 'QR-JUAN-PIZZA', totalPoints: 0, currentStars: 2, totalStars: 2, createdAt: thirtyDaysAgo, discountAvailable: false });
-      db.insert<Customer>('customers', { id: 'm-juan-farma', globalCustomerId: 'global-juan', commerceId: idFarma, name: 'Juan Pérez', phone: '5491198765432', qrToken: 'QR-JUAN-FARMA', totalPoints: 450, currentStars: 0, totalStars: 0, createdAt: thirtyDaysAgo, discountAvailable: false });
+      // --- 4. MEMBRESÍAS ---
+      db.insert<Customer>('customers', { id: 'm-juan-cafe', globalCustomerId: 'global-juan', commerceId: idCafe, name: 'Juan Pérez', phone: '5491198765432', qrToken: 'QR-JUAN-CAFE', totalPoints: 0, currentStars: 3, totalStars: 3, createdAt: thirtyDaysAgo, discountAvailable: false } as any);
+      db.insert<Customer>('customers', { id: 'm-juan-gym', globalCustomerId: 'global-juan', commerceId: idGym, name: 'Juan Pérez', phone: '5491198765432', qrToken: 'QR-JUAN-GYM', totalPoints: 1200, currentStars: 0, totalStars: 0, createdAt: thirtyDaysAgo, discountAvailable: false } as any);
+      db.insert<Customer>('customers', { id: 'm-juan-barber', globalCustomerId: 'global-juan', commerceId: idBarber, name: 'Juan Pérez', phone: '5491198765432', qrToken: 'QR-JUAN-BARBER', totalPoints: 0, currentStars: 0, totalStars: 0, createdAt: thirtyDaysAgo, discountAvailable: true, discountExpiresAt: new Date(Date.now() + 10 * 24 * 60 * 60 * 1000).toISOString() } as any);
+      db.insert<Customer>('customers', { id: 'm-juan-pizza', globalCustomerId: 'global-juan', commerceId: idPizza, name: 'Juan Pérez', phone: '5491198765432', qrToken: 'QR-JUAN-PIZZA', totalPoints: 0, currentStars: 2, totalStars: 2, createdAt: thirtyDaysAgo, discountAvailable: false } as any);
+      db.insert<Customer>('customers', { id: 'm-juan-farma', globalCustomerId: 'global-juan', commerceId: idFarma, name: 'Juan Pérez', phone: '5491198765432', qrToken: 'QR-JUAN-FARMA', totalPoints: 450, currentStars: 0, totalStars: 0, createdAt: thirtyDaysAgo, discountAvailable: false } as any);
 
-      // Escenarios para Café Delicias (Demo Owner View)
-      // Ana: Cupón por vencer
       const anaExpiry = new Date();
       anaExpiry.setHours(anaExpiry.getHours() + 12);
-      db.insert<Customer>('customers', { id: 'm-ana-cafe', globalCustomerId: 'global-ana', commerceId: idCafe, name: 'Ana Silva', phone: '5491112345678', qrToken: 'QR-ANA-CAFE', totalPoints: 0, currentStars: 1, totalStars: 1, createdAt: thirtyDaysAgo, discountAvailable: true, discountExpiresAt: anaExpiry.toISOString() });
-      
-      // Carlos: Cerca de premio (4/5 estrellas)
-      db.insert<Customer>('customers', { id: 'm-carlos-cafe', globalCustomerId: 'global-carlos', commerceId: idCafe, name: 'Carlos Méndez', phone: '5491122334455', qrToken: 'QR-CARLOS-CAFE', totalPoints: 0, currentStars: 4, totalStars: 4, createdAt: thirtyDaysAgo, discountAvailable: false });
-      
-      // Lucía: Inactiva (+45 días)
+      db.insert<Customer>('customers', { id: 'm-ana-cafe', globalCustomerId: 'global-ana', commerceId: idCafe, name: 'Ana Silva', phone: '5491112345678', qrToken: 'QR-ANA-CAFE', totalPoints: 0, currentStars: 1, totalStars: 1, createdAt: thirtyDaysAgo, discountAvailable: true, discountExpiresAt: anaExpiry.toISOString() } as any);
+
+      db.insert<Customer>('customers', { id: 'm-carlos-cafe', globalCustomerId: 'global-carlos', commerceId: idCafe, name: 'Carlos Méndez', phone: '5491122334455', qrToken: 'QR-CARLOS-CAFE', totalPoints: 0, currentStars: 4, totalStars: 4, createdAt: thirtyDaysAgo, discountAvailable: false } as any);
+
       const luciaVisit = new Date();
       luciaVisit.setDate(luciaVisit.getDate() - 45);
-      db.insert<Customer>('customers', { id: 'm-lucia-cafe', globalCustomerId: 'global-lucia', commerceId: idCafe, name: 'Lucía Torres', phone: '5491155667788', qrToken: 'QR-LUCIA-CAFE', totalPoints: 0, currentStars: 2, totalStars: 2, createdAt: thirtyDaysAgo, discountAvailable: false });
+      db.insert<Customer>('customers', { id: 'm-lucia-cafe', globalCustomerId: 'global-lucia', commerceId: idCafe, name: 'Lucía Torres', phone: '5491155667788', qrToken: 'QR-LUCIA-CAFE', totalPoints: 0, currentStars: 2, totalStars: 2, createdAt: thirtyDaysAgo, discountAvailable: false } as any);
 
-      // Diego: Activo reciente
-      db.insert<Customer>('customers', { id: 'm-diego-cafe', globalCustomerId: 'global-diego', commerceId: idCafe, name: 'Diego Ramírez', phone: '5491199001122', qrToken: 'QR-DIEGO-CAFE', totalPoints: 0, currentStars: 1, totalStars: 1, createdAt: thirtyDaysAgo, discountAvailable: false });
+      db.insert<Customer>('customers', { id: 'm-diego-cafe', globalCustomerId: 'global-diego', commerceId: idCafe, name: 'Diego Ramírez', phone: '5491199001122', qrToken: 'QR-DIEGO-CAFE', totalPoints: 0, currentStars: 1, totalStars: 1, createdAt: thirtyDaysAgo, discountAvailable: false } as any);
 
       // --- 5. TRANSACCIONES ---
-      const txs = [
+      const txs: any[] = [
         { commerceId: idCafe, customerId: 'm-juan-cafe', amount: 4500, points: 0, starsGained: 1, createdAt: thirtyDaysAgo },
         { commerceId: idCafe, customerId: 'm-juan-cafe', amount: 3200, points: 0, starsGained: 1, createdAt: twoDaysAgo },
         { commerceId: idCafe, customerId: 'm-carlos-cafe', amount: 5000, points: 0, starsGained: 4, createdAt: twoDaysAgo },
@@ -130,11 +231,10 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         { commerceId: idGym, customerId: 'm-juan-gym', amount: 15000, points: 1200, createdAt: thirtyDaysAgo },
         { commerceId: idFarma, customerId: 'm-juan-farma', amount: 8900, points: 450, createdAt: twoDaysAgo },
       ];
-      txs.forEach(t => db.insert('transactions', { ...t, id: crypto.randomUUID(), staffUserId: 'user-cafe', method: 'SCAN' }));
+      txs.forEach(t => db.insert('transactions' as any, { ...t, id: crypto.randomUUID(), staffUserId: 'user-cafe', method: 'SCAN' }));
 
       // --- 6. USUARIOS LOGIN ---
-      // Dueño Café (Acceso Panel Comercio)
-      db.insert('users', {
+      db.insert('users' as any, {
         id: 'user-cafe',
         email: 'cafe@test.com',
         password: 'cafe123',
@@ -146,11 +246,10 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         isActive: true,
         acceptedTerms: true,
         acceptedTermsDate: thirtyDaysAgo,
-        termsVersion: '1.0'
+        termsVersion: '1.0',
       });
 
-      // Juan (Acceso Panel Cliente)
-      db.insert('users', {
+      db.insert('users' as any, {
         id: 'user-juan',
         email: 'juan@test.com',
         password: 'juan123',
@@ -162,7 +261,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         isActive: true,
         acceptedTerms: true,
         acceptedTermsDate: thirtyDaysAgo,
-        termsVersion: '1.0'
+        termsVersion: '1.0',
       });
 
       // Suscripciones
@@ -175,29 +274,34 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           startDate: thirtyDaysAgo,
           nextBillingDate: new Date(new Date().setMonth(now.getMonth() + 1)).toISOString(),
           amount: 2500,
-          createdAt: thirtyDaysAgo
-        });
+          createdAt: thirtyDaysAgo,
+        } as any);
       });
     }
 
+    // ✅ Cargar sesión y normalizar (ARREGLA commerceId vacío)
     const savedUser = localStorage.getItem('club_session');
     if (savedUser) {
-      setUser(JSON.parse(savedUser));
+      const parsed = JSON.parse(savedUser) as User;
+      const fixed = normalizeUser(parsed);
+      setUser(fixed);
+      if (fixed) localStorage.setItem('club_session', JSON.stringify(fixed));
     }
+
     setIsLoading(false);
   }, []);
 
   const login = async (email: string, pass: string): Promise<boolean> => {
     const users = db.getAll<User>('users');
-    const found = users.find(u => 
-      u.email?.toLowerCase() === email.toLowerCase() && 
-      u.isActive &&
-      (u.password === pass || pass === `${email.split('@')[0]}123`)
+    const found = users.find(
+      u =>
+        (u.email || '').toLowerCase() === email.toLowerCase() &&
+        u.isActive &&
+        ((u as any).password === pass || pass === `${email.split('@')[0]}123`)
     );
-    
+
     if (found) {
-      setUser(found);
-      localStorage.setItem('club_session', JSON.stringify(found));
+      setUserAndPersist(found);
       return true;
     }
     return false;
@@ -227,24 +331,24 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         isActive: true,
         acceptedTerms: true,
         acceptedTermsDate: new Date().toISOString(),
-        termsVersion: '1.0'
-      });
+        termsVersion: '1.0',
+      } as any);
     }
 
-    setUser(existingUser);
-    localStorage.setItem('club_session', JSON.stringify(existingUser));
+    setUserAndPersist(existingUser);
     return true;
   };
 
   const changePassword = async (newPass: string): Promise<boolean> => {
     if (!user) return false;
-    db.update<User>('users', user.id, { 
-      password: newPass, 
-      mustChangePassword: false 
-    });
-    const updatedUser = { ...user, password: newPass, mustChangePassword: false };
-    setUser(updatedUser);
-    localStorage.setItem('club_session', JSON.stringify(updatedUser));
+
+    db.update<User>('users', user.id, {
+      password: newPass,
+      mustChangePassword: false,
+    } as any);
+
+    const updatedUser = { ...user, password: newPass, mustChangePassword: false } as any;
+    setUserAndPersist(updatedUser);
     return true;
   };
 
@@ -262,6 +366,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
 export const useAuth = () => {
   const context = useContext(AuthContext);
-  if (!context) throw new Error("useAuth must be used within AuthProvider");
+  if (!context) throw new Error('useAuth must be used within AuthProvider');
   return context;
 };
