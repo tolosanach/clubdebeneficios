@@ -1,8 +1,22 @@
 import React, { useState, useMemo } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import {
-  LogOut, Home, QrCode, Settings, Gift, Users, BarChart3,
-  Menu, X, CreditCard, AlertTriangle, Plus, ShieldHalf, Search, Store, MessageSquare
+  LogOut,
+  Home,
+  QrCode,
+  Settings,
+  Gift,
+  Users,
+  BarChart3,
+  Menu,
+  X,
+  CreditCard,
+  AlertTriangle,
+  Plus,
+  ShieldHalf,
+  Search,
+  Store,
+  MessageSquare,
 } from 'lucide-react';
 import { useAuth } from '../services/auth';
 import { db } from '../services/db';
@@ -20,17 +34,19 @@ const Layout: React.FC<LayoutProps> = ({ children, title }) => {
   const [isMenuOpen, setIsMenuOpen] = React.useState(false);
   const [isSpeedDialOpen, setIsSpeedDialOpen] = useState(false);
 
-  const commerce = user?.commerceId ? db.getById<Commerce>('commerces', user.commerceId) : null;
+  // ✅ FIX: con el db nuevo NO se usa db.getById<Commerce>()
+  // Además, tipamos el resultado para evitar que TS lo reduzca a {id:string}
+  const commerce = user?.commerceId
+    ? ((db.getById('commerces', user.commerceId) as Commerce | undefined) ?? null)
+    : null;
+
   const subscription = user?.commerceId ? db.getSubscriptionByCommerce(user.commerceId) : null;
 
   if (!user) return <>{children}</>;
 
   const menuItems = {
-    [UserRole.SUPER_ADMIN]: [
-      { label: 'Dashboard', icon: BarChart3, path: '/admin' },
-    ],
+    [UserRole.SUPER_ADMIN]: [{ label: 'Dashboard', icon: BarChart3, path: '/admin' }],
     [UserRole.COMMERCE_OWNER]: [
-      // ✅ Ya tenías “Inicio”. Lo dejamos como el acceso claro al dashboard.
       { label: 'Inicio', icon: Home, path: '/commerce' },
       { label: 'Escanear', icon: QrCode, path: '/commerce/scan' },
       { label: 'Recordatorios', icon: MessageSquare, path: '/commerce/reminders' },
@@ -47,12 +63,7 @@ const Layout: React.FC<LayoutProps> = ({ children, title }) => {
       { label: 'Clientes', icon: Users, path: '/commerce/customers' },
       { label: 'Premios', icon: Gift, path: '/commerce/rewards' },
     ],
-    [UserRole.SCANNER]: [
-      // ✅ OPCIONAL: si querés que SCANNER también vuelva al panel principal.
-      // Si no corresponde, dejalo como está.
-      // { label: 'Inicio', icon: Home, path: '/commerce' },
-      { label: 'Escanear', icon: QrCode, path: '/commerce/scan' },
-    ],
+    [UserRole.SCANNER]: [{ label: 'Escanear', icon: QrCode, path: '/commerce/scan' }],
     [UserRole.VIEWER]: [
       { label: 'Inicio', icon: Home, path: '/commerce' },
       { label: 'Clientes', icon: Users, path: '/commerce/customers' },
@@ -61,9 +72,10 @@ const Layout: React.FC<LayoutProps> = ({ children, title }) => {
       { label: 'Mis Beneficios', icon: Gift, path: '/customer' },
       { label: 'Descubrir Locales', icon: Store, path: '/customer' },
     ],
-  };
+  } as const;
 
-  const currentItems = menuItems[user.role] || [];
+  const currentItems = (menuItems as any)[user.role] || [];
+
   const isOverdue =
     subscription?.status === SubscriptionStatus.OVERDUE ||
     subscription?.status === SubscriptionStatus.SUSPENDED;
@@ -72,26 +84,16 @@ const Layout: React.FC<LayoutProps> = ({ children, title }) => {
     [UserRole.COMMERCE_OWNER, UserRole.STAFF_MANAGER, UserRole.SCANNER].includes(user.role) &&
     location.pathname !== '/commerce/settings';
 
-  // ✅ NUEVO: definir cuál es “Home” según rol
   const homePath = useMemo(() => {
     if (user.role === UserRole.SUPER_ADMIN) return '/admin';
     if (user.role === UserRole.CUSTOMER) return '/customer';
-    // Commerce roles (owner, staff, viewer, scanner) vuelven al panel comercio
     return '/commerce';
   }, [user.role]);
 
-  // ✅ NUEVO: función para marcar item activo con subrutas
   const isItemActive = (itemPath: string) => {
     const current = location.pathname;
-
-    // Match exacto (por las dudas)
     if (current === itemPath) return true;
-
-    // Si el item es "/commerce", que active SOLO cuando estamos exactamente en "/commerce"
-    // (para que "Inicio" no quede activo en todas las subrutas)
     if (itemPath === '/commerce') return current === '/commerce';
-
-    // Para el resto, match por prefijo
     return current.startsWith(itemPath + '/');
   };
 
@@ -107,7 +109,6 @@ const Layout: React.FC<LayoutProps> = ({ children, title }) => {
             {isMenuOpen ? <X size={20} /> : <Menu size={20} />}
           </button>
 
-          {/* ✅ CAMBIO: logo + título clickeables (volver al panel principal) */}
           <button
             onClick={() => {
               navigate(homePath);
@@ -132,7 +133,6 @@ const Layout: React.FC<LayoutProps> = ({ children, title }) => {
               <h1 className="text-sm font-semibold tracking-tight text-black">
                 {title || commerce?.name || 'Club'}
               </h1>
-              {/* ✅ NUEVO: “volver” explícito, súper claro */}
               <span className="text-[10px] text-slate-300 font-black uppercase tracking-widest">
                 Panel principal
               </span>
@@ -177,8 +177,8 @@ const Layout: React.FC<LayoutProps> = ({ children, title }) => {
           } bg-white border-r border-[#eaeaea] w-64`}
         >
           <div className="p-4 space-y-1">
-            {currentItems.map((item) => {
-              const active = isItemActive(item.path); // ✅ NUEVO
+            {currentItems.map((item: any) => {
+              const active = isItemActive(item.path);
 
               return (
                 <button
