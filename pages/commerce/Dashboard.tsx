@@ -1,5 +1,5 @@
 // pages/commerce/Dashboard.tsx
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
   Users,
@@ -26,6 +26,21 @@ import { useAuth } from '../../services/auth';
 import { Commerce, PlanType, UserRole, Customer } from '../../types';
 import { supabase } from '../../services/supabase';
 
+type UiTx = {
+  id: string;
+  commerceId: string;
+  customerId: string;
+  staffUserId?: string | null;
+  amount: number;
+  points: number;
+  method: 'SCAN' | 'MANUAL' | string;
+  createdAt: string;
+  redeemedRewardId?: string | null;
+  starsGained?: number | null;
+  couponGenerated?: boolean | null;
+  discountApplied?: number | null;
+};
+
 const CommerceDashboard: React.FC = () => {
   const { user, changePassword } = useAuth();
   const navigate = useNavigate();
@@ -34,7 +49,7 @@ const CommerceDashboard: React.FC = () => {
   const [newPass, setNewPass] = useState('');
   const [notifications, setNotifications] = useState<AdminNotification[]>([]);
 
-  // ✅ MISMO MAPEO QUE EN CustomersPage
+  // ✅ MISMO MAPEO QUE EN CustomersPage / ScanPage
   const commerceId = useMemo(() => {
     if (!user?.commerceId) return '';
     return user.commerceId === 'commerce-cafe-id' ? 'commerce-1' : user.commerceId;
@@ -47,12 +62,15 @@ const CommerceDashboard: React.FC = () => {
   }, [commerceId]);
 
   const rewards = useMemo(() => (commerceId ? db.getRewardsByCommerce(commerceId) : []), [commerceId]);
-  const transactions = useMemo(() => (commerceId ? db.getTransactionsByCommerce(commerceId) : []), [commerceId]);
   const planUsage = useMemo(() => (commerceId ? db.getCommerceUsage(commerceId) : null), [commerceId]);
 
   // ✅ Customers desde Supabase
   const [customers, setCustomers] = useState<Customer[]>([]);
   const [customersLoading, setCustomersLoading] = useState(false);
+
+  // ✅ Transactions desde Supabase (para Actividad Reciente real)
+  const [txs, setTxs] = useState<UiTx[]>([]);
+  const [txLoading, setTxLoading] = useState(false);
 
   const refreshCustomers = async () => {
     try {
@@ -100,8 +118,58 @@ const CommerceDashboard: React.FC = () => {
     }
   };
 
+  const refreshTransactions = async () => {
+    try {
+      if (!commerceId) {
+        setTxs([]);
+        return;
+      }
+
+      setTxLoading(true);
+
+      const { data, error } = await supabase
+        .from('transactions')
+        .select('*')
+        .eq('commerce_id', commerceId)
+        .order('created_at', { ascending: false })
+        .limit(10);
+
+      if (error) {
+        console.error('Dashboard transactions error:', error);
+        setTxs([]);
+        return;
+      }
+
+      const mapped: UiTx[] = (data ?? []).map((t: any) => ({
+        id: t.id,
+        commerceId: t.commerce_id,
+        customerId: t.customer_id,
+        staffUserId: t.staff_user_id ?? null,
+        amount: Number(t.amount ?? 0),
+        points: Number(t.points ?? 0),
+        method: t.method ?? 'SCAN',
+        createdAt: t.created_at,
+        redeemedRewardId: t.redeemed_reward_id ?? null,
+        starsGained: t.stars_gained ?? null,
+        couponGenerated: t.coupon_generated ?? null,
+        discountApplied: t.discount_applied ?? null,
+      }));
+
+      setTxs(mapped);
+    } catch (e) {
+      console.error('Dashboard refreshTransactions crash:', e);
+      setTxs([]);
+    } finally {
+      setTxLoading(false);
+    }
+  };
+
+  const refreshAll = async () => {
+    await Promise.all([refreshCustomers(), refreshTransactions()]);
+  };
+
   useEffect(() => {
-    refreshCustomers();
+    refreshAll();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [commerceId]);
 
@@ -119,18 +187,30 @@ const CommerceDashboard: React.FC = () => {
     setNotifications((prev) => prev.filter((n) => n.id !== id));
   };
 
-  // ✅ Analytics “mínimo consistente” con Supabase customers (para demo)
-  // Si querés después lo calculamos real con transactions en Supabase.
+  // ✅ Analytics base (demo): con Supabase customers; luego lo refinamos con txs reales
   const totalMembers = customers.length;
-  const activeCount = 0;
-  const inactiveCount = totalMembers;
-  const rewardsDelivered = 0;
+
+  // “Activos” = clientes con al menos 1 transacción en los últimos 30 días (en base a las txs cargadas)
+  // Para un cálculo perfecto habría que pedir más de 10 txs o hacerlo en SQL. Esto es “demo razonable”.
+  const activeCustomerIds = useMemo(() => {
+    const cutoff = Date.now() - 30 * 24 * 60 * 60 * 1000;
+    const ids = new Set<string>();
+    txs.forEach((t) => {
+      const ts = new Date(t.createdAt).getTime();
+      if (!Number.isNaN(ts) && ts >= cutoff) ids.add(t.customerId);
+    });
+    return ids;
+  }, [txs]);
+
+  const activeCount = activeCustomerIds.size;
+  const inactiveCount = Math.max(0, totalMembers - activeCount);
+  const rewardsDelivered = txs.filter((t) => !!t.redeemedRewardId).length;
   const returnRate = totalMembers > 0 ? (activeCount / totalMembers) * 100 : 0;
 
-  // Dynamic Opportunity Logic (sin depender de analytics de db local)
+  // Dynamic Opportunity Logic
   const opportunity = useMemo(() => {
     const clientsCount = customers.length;
-    const salesCount = transactions.length;
+    const salesCount = txs.length;
     const rewardsCount = rewards.length;
 
     if (clientsCount === 0 || salesCount === 0) {
@@ -166,7 +246,7 @@ const CommerceDashboard: React.FC = () => {
       action: 'Registrar venta',
       path: '/commerce/scan',
     };
-  }, [customers.length, transactions.length, rewards.length]);
+  }, [customers.length, txs.length, rewards.length]);
 
   const returnRateColor =
     returnRate > 40 ? 'text-emerald-500' : returnRate > 20 ? 'text-amber-500' : 'text-rose-500';
@@ -226,12 +306,11 @@ const CommerceDashboard: React.FC = () => {
     user?.role || UserRole.VIEWER
   );
 
-  // ✅ “Actividad reciente” = últimas altas de socios (Supabase)
-  const recentCustomers = useMemo(() => {
-    return customers
-      .slice()
-      .sort((a, b) => new Date(b.createdAt || 0).getTime() - new Date(a.createdAt || 0).getTime())
-      .slice(0, 10);
+  // Quick lookup: customer by id
+  const customerById = useMemo(() => {
+    const map = new Map<string, Customer>();
+    customers.forEach((c) => map.set(c.id, c));
+    return map;
   }, [customers]);
 
   return (
@@ -414,7 +493,7 @@ const CommerceDashboard: React.FC = () => {
           )}
         </div>
 
-        {/* Recent Activity List */}
+        {/* Recent Activity List (REAL: transactions) */}
         <div className="lg:col-span-2 bg-white rounded-[40px] border border-slate-100 shadow-sm overflow-hidden flex flex-col">
           <div className="px-8 py-6 border-b border-slate-50 flex items-center justify-between bg-slate-50/30">
             <h3 className="font-black text-xs text-slate-400 uppercase tracking-widest flex items-center gap-2">
@@ -429,35 +508,54 @@ const CommerceDashboard: React.FC = () => {
           </div>
 
           <div className="divide-y divide-slate-50 overflow-y-auto max-h-[500px] no-scrollbar">
-            {customersLoading && (
+            {(customersLoading || txLoading) && (
               <div className="py-10 text-center text-slate-300">
                 <p className="text-[10px] font-black uppercase tracking-[0.2em]">Cargando actividad…</p>
               </div>
             )}
 
             {!customersLoading &&
-              recentCustomers.map((c) => (
-                <div key={c.id} className="px-8 py-6 flex items-center justify-between hover:bg-slate-50/50 transition-colors group">
-                  <div className="flex items-center gap-5">
-                    <div className="w-12 h-12 rounded-2xl bg-slate-50 flex items-center justify-center text-slate-300 font-black text-sm uppercase border border-slate-100 group-hover:bg-white group-hover:text-blue-500 transition-all">
-                      {c.name?.[0] || 'S'}
+              !txLoading &&
+              txs.map((t) => {
+                const c = customerById.get(t.customerId);
+                const initial = c?.name?.[0] || 'S';
+                const labelMethod = t.method === 'SCAN' ? 'Escaneo QR' : 'Manual';
+                const dateStr = t.createdAt ? new Date(t.createdAt).toLocaleDateString('es-AR') : '—';
+
+                return (
+                  <div key={t.id} className="px-8 py-6 flex items-center justify-between hover:bg-slate-50/50 transition-colors group">
+                    <div className="flex items-center gap-5">
+                      <div className="w-12 h-12 rounded-2xl bg-slate-50 flex items-center justify-center text-slate-300 font-black text-sm uppercase border border-slate-100 group-hover:bg-white group-hover:text-blue-500 transition-all">
+                        {initial}
+                      </div>
+                      <div>
+                        <p className="font-bold text-slate-900 text-[15px] leading-tight mb-1">
+                          {c?.name || 'Socio'}
+                          {t.redeemedRewardId && (
+                            <span className="ml-2 text-[9px] bg-emerald-50 text-emerald-600 px-1.5 py-0.5 rounded border border-emerald-100">
+                              CANJEÓ PREMIO
+                            </span>
+                          )}
+                        </p>
+                        <p className="text-[10px] text-slate-400 font-black uppercase tracking-widest">
+                          {dateStr} • {labelMethod}
+                        </p>
+                      </div>
                     </div>
-                    <div>
-                      <p className="font-bold text-slate-900 text-[15px] leading-tight mb-1">{c.name || 'Socio'}</p>
-                      <p className="text-[10px] text-slate-400 font-black uppercase tracking-widest">
-                        {c.createdAt ? new Date(c.createdAt).toLocaleDateString() : '—'} • Alta de socio
+
+                    <div className="text-right">
+                      <p className="text-black font-black text-[16px] leading-none mb-1">
+                        {t.points >= 0 ? `+${t.points}` : t.points} pts
+                      </p>
+                      <p className="text-[11px] font-bold text-slate-300 tracking-tight">
+                        ${Number(t.amount ?? 0).toLocaleString('es-AR')}
                       </p>
                     </div>
                   </div>
+                );
+              })}
 
-                  <div className="text-right">
-                    <p className="text-black font-black text-[16px] leading-none mb-1">+0 pts</p>
-                    <p className="text-[11px] font-bold text-slate-300 tracking-tight">—</p>
-                  </div>
-                </div>
-              ))}
-
-            {!customersLoading && customers.length === 0 && (
+            {!customersLoading && !txLoading && txs.length === 0 && (
               <div className="py-24 text-center text-slate-300 space-y-4 flex flex-col items-center">
                 <div className="p-6 bg-slate-50 rounded-[32px]">
                   <CreditCard size={40} className="opacity-20" />
@@ -468,7 +566,10 @@ const CommerceDashboard: React.FC = () => {
           </div>
 
           <div className="p-4 border-t border-slate-50 bg-white flex justify-end">
-            <button onClick={refreshCustomers} className="text-[10px] font-black uppercase tracking-widest text-slate-400 hover:text-black">
+            <button
+              onClick={refreshAll}
+              className="text-[10px] font-black uppercase tracking-widest text-slate-400 hover:text-black"
+            >
               Refrescar
             </button>
           </div>
