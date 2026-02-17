@@ -22,6 +22,8 @@ import { db } from '../../services/db';
 import { useAuth } from '../../services/auth';
 import { Commerce, PointsMode, Reward } from '../../types';
 
+const COUPON_RULE_TEXT = 'Válido para tu próxima compra.';
+
 const StatusBadge: React.FC<{ isConfigured: boolean }> = ({ isConfigured }) => (
   <div
     className={`flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[10px] font-medium transition-all ${
@@ -57,11 +59,7 @@ const AccordionStep: React.FC<{
         : 'bg-white border-slate-100 hover:border-slate-200 shadow-sm'
     }`}
   >
-    <button
-      type="button"
-      onClick={onClick}
-      className="w-full p-6 sm:p-7 flex items-center justify-between text-left transition-all"
-    >
+    <button type="button" onClick={onClick} className="w-full p-6 sm:p-7 flex items-center justify-between text-left transition-all">
       <div className="flex items-center gap-4 sm:gap-5">
         <div
           className={`w-11 h-11 rounded-xl flex items-center justify-center shrink-0 transition-all ${
@@ -98,51 +96,6 @@ const AccordionStep: React.FC<{
   </div>
 );
 
-const EmptyRewardsCta: React.FC<{
-  title: string;
-  description: string;
-  buttonLabel: string;
-  onClick: () => void;
-  variant: 'points' | 'stars';
-}> = ({ title, description, buttonLabel, onClick, variant }) => {
-  const styles =
-    variant === 'stars'
-      ? {
-          box: 'bg-yellow-50 border-yellow-100',
-          iconWrap: 'bg-yellow-600 text-white',
-          button: 'bg-yellow-600 shadow-yellow-200',
-          text: 'text-yellow-900',
-        }
-      : {
-          box: 'bg-indigo-50 border-indigo-100',
-          iconWrap: 'bg-indigo-600 text-white',
-          button: 'bg-indigo-600 shadow-indigo-200',
-          text: 'text-indigo-900',
-        };
-
-  return (
-    <div className={`p-6 rounded-[28px] border ${styles.box} space-y-3`}>
-      <div className="flex items-start gap-4">
-        <div className={`w-10 h-10 rounded-2xl flex items-center justify-center ${styles.iconWrap}`}>
-          <Gift size={18} />
-        </div>
-        <div className="space-y-1">
-          <p className={`text-sm font-black ${styles.text}`}>{title}</p>
-          <p className="text-xs text-slate-500 font-medium">{description}</p>
-        </div>
-      </div>
-
-      <button
-        onClick={onClick}
-        className={`w-full py-4 rounded-2xl text-[11px] font-black uppercase tracking-widest text-white shadow-lg active:scale-95 transition-all ${styles.button}`}
-      >
-        <Plus size={16} className="inline-block mr-2 -mt-0.5" />
-        {buttonLabel}
-      </button>
-    </div>
-  );
-};
-
 const SettingsPage: React.FC = () => {
   const { user } = useAuth();
   const navigate = useNavigate();
@@ -167,10 +120,8 @@ const SettingsPage: React.FC = () => {
   const [pointsMode, setPointsMode] = useState<PointsMode>(PointsMode.PERCENTAGE);
   const [pointsValue, setPointsValue] = useState(10);
 
-  // ✅ seguimos guardando starsGoal/discountPercent/ruleText
-  const [starsGoal, setStarsGoal] = useState(5);
   const [discountPercent, setDiscountPercent] = useState(10);
-  const [ruleText, setRuleText] = useState('');
+  const [ruleText, setRuleText] = useState(COUPON_RULE_TEXT);
 
   // Publicidad
   const [publicListed, setPublicListed] = useState(false);
@@ -178,33 +129,38 @@ const SettingsPage: React.FC = () => {
   const [city, setCity] = useState('');
 
   useEffect(() => {
-    if (user?.commerceId) {
-      const data = db.getById<Commerce>('commerces', user.commerceId);
-      const rewards = db.getAll<Reward>('rewards').filter(r => r.commerceId === user.commerceId);
-      const activeCount = db.getActiveBenefitsCount(user.commerceId);
+    if (!user?.commerceId) return;
 
-      setAllRewards(rewards);
-      setActiveBenefitsCount(activeCount);
+    const data = db.getById<Commerce>('commerces', user.commerceId);
+    const rewards = db.getAll<Reward>('rewards').filter(r => r.commerceId === user.commerceId);
+    const activeCount = db.getActiveBenefitsCount(user.commerceId);
 
-      if (data) {
-        setCommerce(data);
-        setName(data.name || '');
-        setEnablePoints(data.enable_points || false);
-        setEnableStars(data.enable_stars || false);
-        setEnableCoupon(data.enable_coupon || false);
-        setPointsMode(data.pointsMode || PointsMode.PERCENTAGE);
-        setPointsValue(data.pointsValue || 10);
+    setAllRewards(rewards);
+    setActiveBenefitsCount(activeCount);
 
-        setStarsGoal(data.starsGoal || 5);
-        setDiscountPercent(data.discountPercent || 10);
-        setRuleText(data.ruleText || '');
+    if (data) {
+      setCommerce(data);
+      setName(data.name || '');
+      setEnablePoints(!!data.enable_points);
+      setEnableStars(!!data.enable_stars);
+      setEnableCoupon(!!data.enable_coupon);
+      setPointsMode((data.pointsMode as PointsMode) || PointsMode.PERCENTAGE);
+      setPointsValue(data.pointsValue || 10);
+      setDiscountPercent(data.discountPercent || 10);
 
-        setPublicListed(data.public_listed || false);
-        setProvince(data.province || '');
-        setCity(data.city || '');
-      }
+      // Texto fijo (no editable)
+      setRuleText(COUPON_RULE_TEXT);
+
+      setPublicListed(!!data.public_listed);
+      setProvince(data.province || '');
+      setCity(data.city || '');
     }
   }, [user]);
+
+  // Si activan cupón, forzamos texto fijo siempre
+  useEffect(() => {
+    if (enableCoupon) setRuleText(COUPON_RULE_TEXT);
+  }, [enableCoupon]);
 
   const isLocked = useMemo(() => activeBenefitsCount > 0 && !overrideLock, [activeBenefitsCount, overrideLock]);
 
@@ -228,16 +184,17 @@ const SettingsPage: React.FC = () => {
     }
 
     if (type === 'C') setEnableCoupon(!enableCoupon);
+
     setMechError('');
   };
 
   const filteredPointsRewards = useMemo(() => allRewards.filter(r => r.rewardType === 'POINTS'), [allRewards]);
   const filteredStarsRewards = useMemo(() => allRewards.filter(r => r.rewardType === 'STARS'), [allRewards]);
 
-  // ✅ no usamos más pointsRewardId / starsRewardId (se elimina la selección)
   const isDirty = useMemo(() => {
     if (!commerce) return false;
 
+    // ruleText NO cuenta porque es fijo
     return (
       name !== commerce.name ||
       enablePoints !== commerce.enable_points ||
@@ -245,28 +202,23 @@ const SettingsPage: React.FC = () => {
       enableCoupon !== commerce.enable_coupon ||
       pointsMode !== commerce.pointsMode ||
       pointsValue !== commerce.pointsValue ||
-      starsGoal !== commerce.starsGoal ||
       discountPercent !== commerce.discountPercent ||
-      ruleText !== (commerce.ruleText || '') ||
       publicListed !== (commerce.public_listed || false) ||
       province !== (commerce.province || '') ||
       city !== (commerce.city || '')
     );
-  }, [
-    commerce,
-    name,
-    enablePoints,
-    enableStars,
-    enableCoupon,
-    pointsMode,
-    pointsValue,
-    starsGoal,
-    discountPercent,
-    ruleText,
-    publicListed,
-    province,
-    city,
-  ]);
+  }, [commerce, name, enablePoints, enableStars, enableCoupon, pointsMode, pointsValue, discountPercent, publicListed, province, city]);
+
+  const pointsExampleText = useMemo(() => {
+    const purchase = 10000;
+    if (!enablePoints) return '';
+    if (pointsMode === PointsMode.PERCENTAGE) {
+      const pts = Math.floor(purchase * ((pointsValue || 0) / 100));
+      return `Ejemplo: si el cliente compra $${purchase.toLocaleString('es-AR')} y tenés ${pointsValue}% de acumulación, suma ${pts.toLocaleString('es-AR')} puntos.`;
+    }
+    const pts = Math.floor(pointsValue || 0);
+    return `Ejemplo: si el cliente compra $${purchase.toLocaleString('es-AR')}, suma ${pts.toLocaleString('es-AR')} puntos (puntos fijos por compra).`;
+  }, [enablePoints, pointsMode, pointsValue]);
 
   const handleSave = async () => {
     if (!user?.commerceId || !isDirty) return;
@@ -279,7 +231,7 @@ const SettingsPage: React.FC = () => {
     setLoading(true);
     await new Promise(r => setTimeout(r, 800));
 
-    const newVersion = overrideLock ? (commerce?.configVersion || 1) + 1 : commerce?.configVersion || 1;
+    const newVersion = overrideLock ? (commerce?.configVersion || 1) + 1 : (commerce?.configVersion || 1);
 
     db.update<Commerce>('commerces', user.commerceId, {
       name,
@@ -287,18 +239,17 @@ const SettingsPage: React.FC = () => {
       enable_stars: enableStars,
       enable_coupon: enableCoupon,
 
-      // ✅ eliminamos selección de “premio elegido” (catálogo manda)
-      pointsRewardId: '',
-      starsRewardId: '',
-
       pointsMode,
       pointsValue,
-      starsGoal,
+
       discountPercent,
-      ruleText,
+      // Texto fijo
+      ruleText: COUPON_RULE_TEXT,
+
       public_listed: publicListed,
       province,
       city,
+
       configVersion: newVersion,
     });
 
@@ -319,7 +270,6 @@ const SettingsPage: React.FC = () => {
         <p className="text-slate-400 text-sm">Gestioná cómo interactúan tus socios con tu negocio.</p>
       </div>
 
-      {/* Banner de Bloqueo por Beneficios Activos */}
       {activeBenefitsCount > 0 && (
         <div
           className={`mx-2 p-6 rounded-[32px] border-2 transition-all ${
@@ -327,11 +277,7 @@ const SettingsPage: React.FC = () => {
           }`}
         >
           <div className="flex gap-5">
-            <div
-              className={`w-12 h-12 rounded-2xl flex items-center justify-center shrink-0 border ${
-                isLocked ? 'bg-white text-amber-600 border-amber-200' : 'bg-white text-blue-600 border-blue-200'
-              }`}
-            >
+            <div className={`w-12 h-12 rounded-2xl flex items-center justify-center shrink-0 border ${isLocked ? 'bg-white text-amber-600 border-amber-200' : 'bg-white text-blue-600 border-blue-200'}`}>
               {isLocked ? <Lock size={20} /> : <Zap size={20} />}
             </div>
             <div className="space-y-3 flex-1">
@@ -339,43 +285,30 @@ const SettingsPage: React.FC = () => {
                 <h4 className={`text-[15px] font-black uppercase tracking-tight ${isLocked ? 'text-amber-800' : 'text-blue-800'}`}>
                   {isLocked ? 'Campos Protegidos' : 'Nueva Campaña en edición'}
                 </h4>
-                <span
-                  className={`text-[10px] font-black px-2.5 py-1 rounded-full border ${
-                    isLocked ? 'bg-white text-amber-600 border-amber-200' : 'bg-white text-blue-600 border-blue-200'
-                  }`}
-                >
+                <span className={`text-[10px] font-black px-2.5 py-1 rounded-full border ${isLocked ? 'bg-white text-amber-600 border-amber-200' : 'bg-white text-blue-600 border-blue-200'}`}>
                   {activeBenefitsCount} BENEFICIOS ACTIVOS
                 </span>
               </div>
+
               <p className={`text-sm leading-relaxed font-medium ${isLocked ? 'text-amber-700/80' : 'text-blue-700/80'}`}>
                 {isLocked
                   ? 'No podés cambiar las reglas críticas porque hay beneficios vigentes. Esto evita modificar condiciones ya notificadas a tus clientes.'
                   : 'Estás creando una nueva versión de reglas. Lo ya emitido mantendrá sus condiciones originales hasta su vencimiento.'}
               </p>
+
               <div className="flex items-center gap-4 pt-2">
-                <button
-                  onClick={() => navigate('/commerce/customers')}
-                  className={`text-[10px] font-black uppercase tracking-widest flex items-center gap-1.5 transition-all ${
-                    isLocked ? 'text-amber-900 hover:opacity-70' : 'text-blue-900 hover:opacity-70'
-                  }`}
-                >
+                <button onClick={() => navigate('/commerce/customers')} className={`text-[10px] font-black uppercase tracking-widest flex items-center gap-1.5 transition-all ${isLocked ? 'text-amber-900 hover:opacity-70' : 'text-blue-900 hover:opacity-70'}`}>
                   Ver beneficios <ArrowRight size={12} />
                 </button>
 
                 {isLocked && (
-                  <button
-                    onClick={() => setOverrideLock(true)}
-                    className="px-4 py-2 bg-amber-900 text-white rounded-xl text-[10px] font-black uppercase tracking-widest shadow-lg shadow-amber-900/20 active:scale-95 transition-all"
-                  >
+                  <button onClick={() => setOverrideLock(true)} className="px-4 py-2 bg-amber-900 text-white rounded-xl text-[10px] font-black uppercase tracking-widest shadow-lg shadow-amber-900/20 active:scale-95 transition-all">
                     Crear nueva campaña
                   </button>
                 )}
 
                 {!isLocked && overrideLock && (
-                  <button
-                    onClick={() => setOverrideLock(false)}
-                    className="text-[10px] font-black uppercase tracking-widest text-blue-900/40 hover:text-blue-900 transition-colors"
-                  >
+                  <button onClick={() => setOverrideLock(false)} className="text-[10px] font-black uppercase tracking-widest text-blue-900/40 hover:text-blue-900 transition-colors">
                     Cancelar edición
                   </button>
                 )}
@@ -386,7 +319,6 @@ const SettingsPage: React.FC = () => {
       )}
 
       <div className="space-y-6">
-        {/* PASO 1 */}
         <AccordionStep
           number={1}
           title="Datos del negocio"
@@ -407,7 +339,6 @@ const SettingsPage: React.FC = () => {
           </div>
         </AccordionStep>
 
-        {/* PASO 2 */}
         <AccordionStep
           number={2}
           title="Mecanismos activos"
@@ -419,7 +350,6 @@ const SettingsPage: React.FC = () => {
         >
           <div className="space-y-8">
             <div className={`grid gap-3 transition-opacity ${isLocked ? 'opacity-50 pointer-events-none' : ''}`}>
-              {/* Cupón */}
               <button
                 onClick={() => handleMechToggle('C')}
                 className={`p-6 rounded-[28px] border text-left flex items-center justify-between transition-all ${
@@ -440,7 +370,6 @@ const SettingsPage: React.FC = () => {
                 </div>
               </button>
 
-              {/* Puntos */}
               <button
                 onClick={() => handleMechToggle('P')}
                 className={`p-6 rounded-[28px] border text-left flex items-center justify-between transition-all ${
@@ -461,7 +390,6 @@ const SettingsPage: React.FC = () => {
                 </div>
               </button>
 
-              {/* Estrellas */}
               <button
                 onClick={() => handleMechToggle('S')}
                 className={`p-6 rounded-[28px] border text-left flex items-center justify-between transition-all ${
@@ -491,10 +419,10 @@ const SettingsPage: React.FC = () => {
             )}
 
             <div className="space-y-10 pt-6 border-t border-slate-50">
-              {/* Config Cupón */}
               {enableCoupon && (
                 <div className="space-y-4 animate-in fade-in">
                   <h5 className="text-[10px] font-black text-blue-600 uppercase tracking-[0.2em] mb-4">Configuración Cupón</h5>
+
                   <div className="grid sm:grid-cols-2 gap-6">
                     <div className="space-y-2">
                       <label className="text-[10px] font-bold text-slate-400 uppercase">Valor del Descuento (%)</label>
@@ -508,21 +436,25 @@ const SettingsPage: React.FC = () => {
                         onChange={e => setDiscountPercent(parseInt(e.target.value) || 0)}
                       />
                     </div>
+
                     <div className="space-y-2">
                       <label className="text-[10px] font-bold text-slate-400 uppercase">Texto Informativo</label>
+                      {/* NO editable */}
                       <input
                         type="text"
-                        className="w-full h-11 px-4 bg-slate-50 border rounded-xl font-medium"
-                        value={ruleText}
-                        onChange={e => setRuleText(e.target.value)}
-                        placeholder="Ej: Válido para tu próxima compra."
+                        disabled
+                        className="w-full h-11 px-4 bg-slate-50 border rounded-xl font-medium text-slate-700 opacity-90 cursor-not-allowed"
+                        value={ruleText || COUPON_RULE_TEXT}
+                        readOnly
                       />
+                      <p className="text-[11px] text-slate-400 font-medium italic">
+                        Este texto es fijo para evitar confusiones en el mensaje al cliente.
+                      </p>
                     </div>
                   </div>
                 </div>
               )}
 
-              {/* Config Puntos (sin seleccionar premio) */}
               {enablePoints && (
                 <div className="space-y-6 animate-in fade-in">
                   <h5 className="text-[10px] font-black text-indigo-600 uppercase tracking-[0.2em]">Configuración Puntos</h5>
@@ -553,43 +485,49 @@ const SettingsPage: React.FC = () => {
                     </div>
                   </div>
 
+                  {/* Nota ejemplo */}
+                  {!!pointsExampleText && (
+                    <div className="p-4 bg-indigo-50 border border-indigo-100 rounded-2xl text-indigo-800">
+                      <p className="text-xs font-bold">{pointsExampleText}</p>
+                    </div>
+                  )}
+
+                  {/* Si no hay premios, CTA más claro */}
                   {filteredPointsRewards.length === 0 && (
-                    <EmptyRewardsCta
-                      variant="points"
-                      title="Todavía no creaste premios de puntos"
-                      description="Creá tu primer premio y empezá a ofrecer beneficios a tus clientes."
-                      buttonLabel="Crear tu primer premio"
-                      onClick={() => navigate('/commerce/rewards')}
-                    />
+                    <div className="p-4 bg-slate-50 border border-dashed rounded-2xl text-center space-y-2">
+                      <p className="text-xs font-medium text-slate-500">Todavía no tenés premios para este programa.</p>
+                      <button
+                        onClick={() => navigate('/commerce/rewards')}
+                        className="flex items-center gap-1.5 mx-auto px-4 py-1.5 bg-indigo-600 text-white rounded-lg text-[10px] font-black uppercase tracking-widest shadow-lg shadow-indigo-100"
+                      >
+                        <Plus size={12} /> Crear tu primer premio
+                      </button>
+                    </div>
                   )}
                 </div>
               )}
 
-              {/* Config Estrellas (sin seleccionar premio) */}
               {enableStars && (
-                <div className="space-y-6 animate-in fade-in">
+                <div className="space-y-4 animate-in fade-in">
                   <h5 className="text-[10px] font-black text-yellow-600 uppercase tracking-[0.2em]">Configuración Estrellas</h5>
 
-                  <div className="space-y-2 max-w-xs">
-                    <label className="text-[10px] font-bold text-slate-400 uppercase">Meta de estrellas</label>
-                    <input
-                      type="number"
-                      disabled={isLocked}
-                      className="w-full h-11 px-4 bg-slate-50 border rounded-xl font-black"
-                      value={starsGoal}
-                      onChange={e => setStarsGoal(parseInt(e.target.value) || 1)}
-                    />
-                    <p className="text-xs text-slate-400 italic">Los premios se configuran desde el catálogo de beneficios.</p>
-                  </div>
-
-                  {filteredStarsRewards.length === 0 && (
-                    <EmptyRewardsCta
-                      variant="stars"
-                      title="Todavía no creaste premios de estrellas"
-                      description="Creá tu primer premio y empezá a ofrecer beneficios a tus clientes."
-                      buttonLabel="Crear tu primer premio"
-                      onClick={() => navigate('/commerce/rewards')}
-                    />
+                  {/* Eliminado: Meta de estrellas + selector de premio (porque ahora cada premio define su requisito) */}
+                  {filteredStarsRewards.length === 0 ? (
+                    <div className="p-4 bg-slate-50 border border-dashed rounded-2xl text-center space-y-2">
+                      <p className="text-xs font-medium text-slate-500">Todavía no tenés premios de estrellas.</p>
+                      <button
+                        onClick={() => navigate('/commerce/rewards')}
+                        className="flex items-center gap-1.5 mx-auto px-4 py-1.5 bg-yellow-600 text-white rounded-lg text-[10px] font-black uppercase tracking-widest shadow-lg shadow-yellow-100"
+                      >
+                        <Plus size={12} /> Crear tu primer premio
+                      </button>
+                    </div>
+                  ) : (
+                    <div className="p-4 bg-yellow-50 border border-yellow-100 rounded-2xl text-yellow-900">
+                      <p className="text-xs font-bold">
+                        Listo ✅ Tus premios de estrellas se administran desde el <b>catálogo</b>. Cada premio define cuántas estrellas requiere.
+                      </p>
+                    </div>
                   )}
                 </div>
               )}
@@ -597,7 +535,6 @@ const SettingsPage: React.FC = () => {
           </div>
         </AccordionStep>
 
-        {/* PASO 3 */}
         <AccordionStep
           number={3}
           title="Visibilidad Pública"
