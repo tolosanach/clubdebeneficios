@@ -1,16 +1,7 @@
 // pages/commerce/ScanPage.tsx
 import React, { useEffect, useMemo, useState } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
-import {
-  CheckCircle2,
-  ArrowLeft,
-  QrCode,
-  Zap,
-  Star,
-  Sparkles,
-  UserSearch,
-  History,
-} from 'lucide-react';
+import { CheckCircle2, ArrowLeft, QrCode, UserSearch } from 'lucide-react';
 
 import QRScanner from '../../components/QRScanner';
 import { db } from '../../services/db';
@@ -32,13 +23,19 @@ const ScanPage: React.FC = () => {
   const [lastTx, setLastTx] = useState<Transaction | null>(null);
   const [entryMethod, setEntryMethod] = useState<'SCAN' | 'MANUAL'>('SCAN');
 
-  // ✅ MISMO MAPEO QUE EN Customers/Dashboard
+  // ✅ evita doble click
+  const [isSaving, setIsSaving] = useState(false);
+
+  // ✅ mensaje visible si algo falla
+  const [uiError, setUiError] = useState<string>('');
+
+  // Convertimos commerce-cafe-id a commerce-1 igual que en CustomersPage y Dashboard:
   const effectiveCommerceId = useMemo(() => {
     const raw = user?.commerceId || '';
     return raw === 'commerce-cafe-id' ? 'commerce-1' : raw;
   }, [user?.commerceId]);
 
-  // OJO: Commerce/Usage sigue en DB local (por ahora)
+  // Sólo usamos db local para mostrar valores, pero no para “guardar”:
   const commerce = useMemo(() => {
     if (!effectiveCommerceId) return null;
     return db.getById<Commerce>('commerces', effectiveCommerceId);
@@ -52,8 +49,8 @@ const ScanPage: React.FC = () => {
   const isOverLimit = usage?.isOverLimit;
 
   useEffect(() => {
-    if (location.state?.selectedCustomer) {
-      setCustomer(location.state.selectedCustomer);
+    if ((location.state as any)?.selectedCustomer) {
+      setCustomer((location.state as any).selectedCustomer);
       setEntryMethod('MANUAL');
       setStep('CONFIRMING');
       window.history.replaceState({}, document.title);
@@ -67,32 +64,19 @@ const ScanPage: React.FC = () => {
     return Math.floor(ruleVal);
   };
 
-  // ---------------------------
-  // Normalizar token del QR
-  // (a veces el QR trae una URL completa tipo https://.../#/q/CUST-XXXX)
-  // ---------------------------
+  // Normaliza el contenido del QR: extrae sólo el token (CUST-XXXX) aunque venga en una URL
   const normalizeToken = (raw: string) => {
     const s = String(raw || '').trim();
-
-    // Caso: URL con "#/q/"
     const fromHashQ = s.split('#/q/')[1];
     if (fromHashQ) return fromHashQ.split(/[?#/]/)[0].trim();
-
-    // Caso: URL con "/q/"
     const fromSlashQ = s.split('/q/')[1];
     if (fromSlashQ) return fromSlashQ.split(/[?#/]/)[0].trim();
-
-    // Caso: token embebido (CUST-XXXX)
     const m = s.match(/(CUST-[A-Z0-9]+)/i);
     if (m?.[1]) return m[1].toUpperCase();
-
-    // Caso: token directo
     return s.split(/[?#/]/)[0].trim();
   };
 
-  // ---------------------------
-  // Supabase helpers
-  // ---------------------------
+  // Convierte una fila de Supabase al tipo Customer
   const mapCustomerRowToApp = (c: any): Customer => ({
     id: c.id,
     commerceId: c.commerce_id,
@@ -111,9 +95,9 @@ const ScanPage: React.FC = () => {
     countryCode: c.country_code ?? 'AR',
   });
 
+  // Busca un cliente por token, con commerce_id incluido
   const fetchCustomerByToken = async (tokenRaw: string) => {
     const token = normalizeToken(tokenRaw);
-
     if (!token || !effectiveCommerceId) return null;
 
     const { data, error } = await supabase
@@ -127,6 +111,7 @@ const ScanPage: React.FC = () => {
     return data ? mapCustomerRowToApp(data) : null;
   };
 
+  // Actualiza el cliente en Supabase (por ejemplo, sus puntos)
   const updateCustomerSupabase = async (customerId: string, patch: any) => {
     if (!effectiveCommerceId) throw new Error('Missing effectiveCommerceId');
 
@@ -139,8 +124,8 @@ const ScanPage: React.FC = () => {
     if (error) throw error;
   };
 
+  // ✅ Inserta transacción y fuerza error si algo bloquea
   const insertTransactionSupabase = async (tx: Transaction) => {
-    // ✅ payload mínimo (evita romper si no creaste columnas extra)
     const payload: any = {
       id: tx.id,
       commerce_id: tx.commerceId,
@@ -153,22 +138,28 @@ const ScanPage: React.FC = () => {
       redeemed_reward_id: tx.redeemedRewardId ?? null,
     };
 
-    const { error } = await supabase.from('transactions').insert(payload);
+    const { data, error } = await supabase
+      .from('transactions')
+      .insert(payload)
+      .select()
+      .single()
+      .throwOnError();
+
     if (error) throw error;
+    return data;
   };
 
-  // ---------------------------
-  // Scan
-  // ---------------------------
   const handleScan = async (tokenRaw: string) => {
     try {
+      setUiError('');
+
       if (!user || !effectiveCommerceId) return;
 
       const token = normalizeToken(tokenRaw);
       const found = await fetchCustomerByToken(token);
 
       if (!found) {
-        alert('Socio no encontrado.');
+        setUiError('Socio no encontrado.');
         return;
       }
 
@@ -177,40 +168,33 @@ const ScanPage: React.FC = () => {
       setStep('CONFIRMING');
     } catch (error) {
       console.error(error);
-      alert('Error al leer el socio.');
+      setUiError('Error al leer el socio.');
     }
   };
 
-  // ---------------------------
-  // Submit (Registrar venta)
-  // ---------------------------
   const handleSubmit = async () => {
-    try {
-      // ✅ logs para ver dónde se corta
-      console.log('HANDLE_SUBMIT start', {
-        amount,
-        customer,
-        commerce,
-        user,
-        effectiveCommerceId,
-        entryMethod,
-      });
+    if (isSaving) return;
 
-      // ✅ no dependemos de commerce local para permitir insertar
+    try {
+      setIsSaving(true);
+      setUiError('');
+
       if (!customer || !user || !effectiveCommerceId) {
-        console.log('HANDLE_SUBMIT early return', { customer, user, effectiveCommerceId });
+        setUiError('Falta cliente o sesión. Volvé a escanear.');
         return;
       }
 
-      const numAmount = parseFloat(amount) || 0;
+      const numAmount = parseFloat(amount);
+      if (!Number.isFinite(numAmount) || numAmount <= 0) {
+        setUiError('Ingresá un monto válido (mayor a 0).');
+        return;
+      }
 
-      // Si commerce local existe, calculamos puntos; si no, 0 (para no bloquear el insert)
-      const txPoints =
-        commerce && commerce.enable_points ? calculatePoints(numAmount) : 0;
+      const txPoints = commerce && commerce.enable_points ? calculatePoints(numAmount) : 0;
 
       const tx: Transaction = {
         id: crypto.randomUUID(),
-        commerceId: effectiveCommerceId, // ✅ SIEMPRE el commerce_id real para Supabase
+        commerceId: effectiveCommerceId,
         customerId: customer.id,
         staffUserId: user.id,
         amount: numAmount,
@@ -220,65 +204,53 @@ const ScanPage: React.FC = () => {
         redeemedRewardId: selectedReward?.id,
       };
 
-      console.log('BEFORE PATCH/INSERT', { tx });
-
-      // PATCH mínimo (no bloquea si commerce local es null)
+      // patch puntos / estrellas / cupón
       const patch: any = {};
 
-      // Si hay commerce local y puntos habilitados, actualizamos puntos
       if (commerce?.enable_points) {
         let finalPoints = customer.totalPoints || 0;
         finalPoints += txPoints;
 
-        if (selectedReward && selectedReward.rewardType === 'POINTS') {
-          finalPoints -= selectedReward.pointsThreshold || 0;
+        if (selectedReward && (selectedReward as any).rewardType === 'POINTS') {
+          finalPoints -= (selectedReward as any).pointsThreshold || 0;
           finalPoints = Math.max(0, finalPoints);
         }
 
         patch.total_points = finalPoints;
       }
 
-      // Si hay commerce local y estrellas habilitadas
       if (commerce?.enable_stars) {
-        let newCurrentStars = customer.currentStars || 0;
-        let newTotalStars = customer.totalStars || 0;
+        let newCurrent = customer.currentStars || 0;
+        let newTotal = customer.totalStars || 0;
 
-        if (selectedReward && selectedReward.rewardType === 'STARS') {
-          newCurrentStars = Math.max(0, newCurrentStars - (selectedReward.starsThreshold || 0));
+        if (selectedReward && (selectedReward as any).rewardType === 'STARS') {
+          newCurrent = Math.max(0, newCurrent - ((selectedReward as any).starsThreshold || 0));
         } else {
-          newCurrentStars += 1;
-          newTotalStars += 1;
+          newCurrent += 1;
+          newTotal += 1;
         }
 
-        patch.current_stars = newCurrentStars;
-        patch.total_stars = newTotalStars;
+        patch.current_stars = newCurrent;
+        patch.total_stars = newTotal;
       }
 
-      // Si hay commerce local y cupón habilitado
+      // ✅ DESCUENTO “PRÓXIMA COMPRA”
+      // Regla: el descuento se activa al crear el cliente si el comercio lo tiene ON.
+      // Acá NO lo reactivamos. Solo lo consumimos si se aplicó en esta operación.
       if (commerce?.enable_coupon) {
-        const nextExpiry = new Date();
-        nextExpiry.setDate(nextExpiry.getDate() + (commerce.discountExpirationDays || 30));
-
-        patch.discount_available = true;
-        patch.discount_expires_at = nextExpiry.toISOString();
-        patch.last_discount_used_at = applyCoupon
-          ? new Date().toISOString()
-          : (customer as any).lastDiscountUsedAt ?? null;
+        if (applyCoupon && customer.discountAvailable) {
+          patch.discount_available = false;
+          patch.last_discount_used_at = new Date().toISOString();
+        }
+        // Si no se aplicó, no tocamos nada del descuento.
       }
 
-      // ✅ si no hay nada para actualizar, al menos insertamos la transacción
       if (Object.keys(patch).length > 0) {
-        console.log('UPDATING customer patch', patch);
         await updateCustomerSupabase(customer.id, patch);
-      } else {
-        console.log('SKIP customer update (empty patch)');
       }
 
-      console.log('INSERTING transaction...');
       await insertTransactionSupabase(tx);
-      console.log('AFTER INSERT ✅');
 
-      // refrescar cliente para mostrar saldos actualizados
       const refreshed = await fetchCustomerByToken(customer.qrToken);
       if (refreshed) setCustomer(refreshed);
 
@@ -286,8 +258,21 @@ const ScanPage: React.FC = () => {
       setStep('SUCCESS');
     } catch (error: any) {
       console.error('HANDLE_SUBMIT ERROR', error);
-      alert(`Error al registrar la venta en Supabase.\n${error?.message || error}`);
+      setUiError('No se pudo registrar la venta. Probá de nuevo.');
+    } finally {
+      setIsSaving(false);
     }
+  };
+
+  const resetToIdle = () => {
+    setUiError('');
+    setCustomer(null);
+    setAmount('');
+    setApplyCoupon(false);
+    setSelectedReward(null);
+    setLastTx(null);
+    setEntryMethod('SCAN');
+    setStep('IDLE');
   };
 
   if (step === 'SCANNING') return <QRScanner onScan={handleScan} onClose={() => setStep('IDLE')} />;
@@ -295,7 +280,10 @@ const ScanPage: React.FC = () => {
   return (
     <div className="max-w-md mx-auto pb-10">
       <div className="flex items-center gap-4 mb-10 px-4">
-        <button onClick={() => navigate('/commerce')} className="p-1.5 -ml-1.5 text-slate-400 hover:text-black">
+        <button
+          onClick={() => navigate('/commerce')}
+          className="p-1.5 -ml-1.5 text-slate-400 hover:text-black"
+        >
           <ArrowLeft size={20} />
         </button>
         <h1 className="text-xl font-bold tracking-tight text-black">Registrar Venta</h1>
@@ -307,11 +295,21 @@ const ScanPage: React.FC = () => {
             <div className="w-14 h-14 rounded-2xl flex items-center justify-center mb-6 bg-slate-50 text-slate-900 border border-[#eee]">
               <QrCode size={28} />
             </div>
+
             <h3 className="text-lg font-bold mb-2">Escanear Socio</h3>
-            <p className="text-slate-400 mb-8 font-medium text-[13px]">Escaneá el QR del cliente para sumar beneficios.</p>
+            <p className="text-slate-400 mb-6 font-medium text-[13px]">
+              Escaneá el QR del cliente para sumar beneficios.
+            </p>
+
+            {uiError && (
+              <div className="w-full text-sm font-semibold text-red-600 bg-red-50 border border-red-100 rounded-2xl p-3 mb-4">
+                {uiError}
+              </div>
+            )}
 
             <button
               onClick={() => {
+                setUiError('');
                 setEntryMethod('SCAN');
                 setStep('SCANNING');
               }}
@@ -332,8 +330,8 @@ const ScanPage: React.FC = () => {
       )}
 
       {step === 'CONFIRMING' && customer && (
-        <div className="mx-4 bg-white p-8 rounded-[40px] border border-[#eaeaea] shadow-sm space-y-8 animate-in zoom-in-95">
-          <div className="text-center space-y-4">
+        <div className="mx-4 bg-white p-8 rounded-[40px] border border-[#eaeaea] shadow-sm space-y-6 animate-in zoom-in-95">
+          <div className="text-center space-y-3">
             <div className="w-14 h-14 bg-slate-50 mx-auto rounded-2xl flex items-center justify-center text-xl font-bold text-slate-300 border">
               {customer.name?.[0] || 'S'}
             </div>
@@ -357,102 +355,77 @@ const ScanPage: React.FC = () => {
             </div>
           </div>
 
-          <div className="space-y-4">
-            {commerce?.enable_coupon && customer.discountAvailable && (
-              <button
-                onClick={() => setApplyCoupon(!applyCoupon)}
-                className={`w-full py-4 px-6 rounded-2xl border-2 flex items-center justify-between transition-all ${
-                  applyCoupon ? 'bg-black border-black text-white' : 'bg-blue-50 border-blue-100 text-blue-600'
-                }`}
-              >
-                <div className="flex items-center gap-3">
-                  <Zap size={18} />
-                  <span className="text-xs font-bold">Aplicar {commerce.discountPercent}% OFF</span>
-                </div>
-                {applyCoupon && <CheckCircle2 size={18} />}
-              </button>
-            )}
-
-            <div className="space-y-2 group">
-              <label className="text-[10px] font-black text-slate-300 uppercase tracking-widest ml-1">Monto de Venta</label>
-              <div className="relative">
-                <span className="absolute left-5 top-1/2 -translate-y-1/2 text-xl font-black text-slate-300">$</span>
-                <input
-                  type="number"
-                  value={amount}
-                  onChange={(e) => setAmount(e.target.value)}
-                  placeholder="0.00"
-                  autoFocus
-                  className="w-full pl-10 pr-5 py-5 bg-slate-50 border border-slate-100 rounded-2xl text-4xl font-black text-slate-900 outline-none focus:border-black transition-all"
-                />
+          {commerce?.enable_coupon && customer.discountAvailable && (
+            <button
+              onClick={() => setApplyCoupon(!applyCoupon)}
+              className={`w-full py-4 px-6 rounded-2xl border-2 flex items-center justify-between transition-all ${
+                applyCoupon ? 'bg-black border-black text-white' : 'bg-blue-50 border-blue-100 text-blue-600'
+              }`}
+            >
+              <div className="flex items-center gap-2">
+                <span className="font-black text-[11px] uppercase tracking-widest">
+                  {applyCoupon ? 'Cupón aplicado' : 'Aplicar cupón'}
+                </span>
               </div>
-            </div>
+              <span className="text-xs font-black">{applyCoupon ? 'SI' : 'NO'}</span>
+            </button>
+          )}
+
+          <div className="space-y-2">
+            <label className="text-[10px] font-black text-slate-400 uppercase">Monto</label>
+            <input
+              value={amount}
+              onChange={(e) => setAmount(e.target.value)}
+              inputMode="decimal"
+              placeholder="Ej: 12000"
+              className="w-full border border-[#eaeaea] rounded-2xl px-4 py-4 text-lg font-black outline-none"
+            />
           </div>
 
-          <div className="flex flex-col gap-3 pt-4">
-            <button
-              onClick={handleSubmit}
-              disabled={!amount && !selectedReward}
-              className="w-full py-5 bg-black text-white rounded-[24px] font-black text-[11px] uppercase tracking-widest shadow-xl active:scale-95 transition-all"
-            >
-              Confirmar Operación
-            </button>
-            <button
-              onClick={() => {
-                setStep('IDLE');
-                setCustomer(null);
-                setAmount('');
-                setApplyCoupon(false);
-                setSelectedReward(null);
-              }}
-              className="w-full py-3 text-slate-300 font-black text-[10px] uppercase tracking-widest hover:text-black"
-            >
-              Cancelar
-            </button>
-          </div>
+          {uiError && (
+            <div className="text-sm font-semibold text-red-600 bg-red-50 border border-red-100 rounded-2xl p-3">
+              {uiError}
+            </div>
+          )}
+
+          <button
+            onClick={handleSubmit}
+            disabled={isSaving}
+            className="w-full py-4 bg-black text-white rounded-2xl font-black text-[11px] uppercase tracking-widest shadow-xl disabled:opacity-40 transition-all"
+          >
+            {isSaving ? 'Registrando...' : 'Confirmar operación'}
+          </button>
+
+          <button
+            onClick={resetToIdle}
+            className="w-full py-4 bg-white border border-[#eaeaea] text-slate-600 rounded-2xl font-black text-[11px] uppercase tracking-widest"
+          >
+            Cancelar / Volver
+          </button>
         </div>
       )}
 
-      {step === 'SUCCESS' && lastTx && customer && (
-        <div className="mx-4 bg-white p-12 rounded-[40px] border border-[#eaeaea] shadow-sm text-center space-y-8 animate-in zoom-in-95">
-          <div className="w-16 h-16 bg-emerald-50 text-emerald-600 mx-auto rounded-[24px] flex items-center justify-center border border-emerald-100 shadow-sm">
-            <CheckCircle2 size={36} />
+      {step === 'SUCCESS' && (
+        <div className="mx-4 bg-white p-8 rounded-[40px] border border-[#eaeaea] shadow-sm space-y-6 text-center animate-in zoom-in-95">
+          <div className="w-14 h-14 bg-green-50 mx-auto rounded-2xl flex items-center justify-center border border-green-100">
+            <CheckCircle2 className="text-green-600" />
           </div>
 
-          <div>
-            <h3 className="text-2xl font-black text-slate-900 tracking-tight mb-2">¡Impacto registrado!</h3>
-            <p className="text-sm text-slate-500 font-medium">{customer.name.split(' ')[0]} ya recibió sus beneficios.</p>
-
-            <div className="mt-8 space-y-2">
-              {lastTx.points > 0 && (
-                <div className="bg-indigo-50 text-indigo-600 py-2.5 px-4 rounded-xl text-[10px] font-black uppercase tracking-widest flex items-center justify-center gap-2">
-                  <Sparkles size={14} /> +{lastTx.points} puntos sumados
-                </div>
-              )}
-              <div className="bg-slate-50 text-slate-500 py-2.5 px-4 rounded-xl text-[10px] font-black uppercase tracking-widest flex items-center justify-center gap-2">
-                <Star size={14} /> Operación registrada
-              </div>
-              {(applyCoupon || customer.discountAvailable) && (
-                <div className="bg-slate-900 text-white py-2.5 px-4 rounded-xl text-[10px] font-black uppercase tracking-widest flex items-center justify-center gap-2">
-                  <History size={14} /> Cupón {applyCoupon ? 'aplicado' : 'disponible'}
-                </div>
-              )}
-            </div>
-          </div>
+          <h3 className="text-2xl font-black text-slate-900">¡Impacto registrado!</h3>
+          <p className="text-slate-500 font-medium">{customer?.name || 'El cliente'} ya recibió sus beneficios.</p>
 
           <button
-            onClick={() => {
-              setStep('IDLE');
-              setAmount('');
-              setCustomer(null);
-              setApplyCoupon(false);
-              setSelectedReward(null);
-              setLastTx(null);
-            }}
-            className="w-full py-5 bg-black text-white rounded-[24px] font-black text-[11px] uppercase tracking-widest shadow-xl"
+            onClick={resetToIdle}
+            className="w-full py-5 bg-black text-white rounded-[28px] font-black text-[11px] uppercase tracking-widest shadow-xl"
           >
             Siguiente venta
           </button>
+
+          {lastTx && (
+            <div className="text-xs text-slate-400">
+              Monto: <b>{lastTx.amount}</b> — Puntos: <b>{lastTx.points}</b>
+            </div>
+          )}
         </div>
       )}
     </div>
