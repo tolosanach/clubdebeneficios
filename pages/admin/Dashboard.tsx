@@ -14,7 +14,7 @@ import {
   MessageSquare
 } from 'lucide-react';
 
-import { supabase } from '../../services/supabaseClient';
+import { supabase } from '../../services/supabase';
 import { useAuth } from '../../services/auth';
 import { Commerce, PlanType } from '../../types';
 
