@@ -1,5 +1,5 @@
-import React, { createContext, useContext, useEffect, useMemo, useState } from "react";
-import { createClient } from "@supabase/supabase-js";
+import React, { createContext, useContext, useEffect, useState } from "react";
+import { supabase } from "./supabase";
 import { User, UserRole } from "../types";
 
 interface AuthContextType {
@@ -14,7 +14,7 @@ interface AuthContextType {
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
-// ===== Helpers OTP (simulado) sin db.ts =====
+// ===== OTP simulado sin db.ts =====
 const OTP_STORAGE_KEY = "club_otps";
 
 function setOtp(phone: string, code: string) {
@@ -34,15 +34,13 @@ function verifyStoredOtp(phone: string, code: string) {
 
   // expira a los 10 min
   const ageMs = Date.now() - (entry.createdAt || 0);
-  const isExpired = ageMs > 10 * 60 * 1000;
+  if (ageMs > 10 * 60 * 1000) return false;
 
-  if (isExpired) return false;
   return String(entry.code) === String(code);
 }
 
 // ===== Mapper DB -> App User =====
 function mapDbUserToAppUser(row: any): User {
-  // Tu tabla users tiene: id, email, password, name, role, commerce_id, is_active, created_at (+ phone si la agregaste)
   return {
     id: row.id,
     email: row.email ?? undefined,
@@ -57,19 +55,6 @@ function mapDbUserToAppUser(row: any): User {
 export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [user, setUser] = useState<User | null>(null);
   const [isLoading, setIsLoading] = useState(true);
-
-  // Supabase client (frontend)
-  const supabase = useMemo(() => {
-    const url = (import.meta as any).env.VITE_SUPABASE_URL;
-    const anon = (import.meta as any).env.VITE_SUPABASE_ANON_KEY;
-
-    if (!url || !anon) {
-      // No tiramos error acá para no romper el build, pero sí te va a fallar login si faltan.
-      console.error("Missing VITE_SUPABASE_URL or VITE_SUPABASE_ANON_KEY");
-    }
-
-    return createClient(url, anon);
-  }, []);
 
   const setUserAndPersist = (u: User | null) => {
     setUser(u);
@@ -90,7 +75,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     setIsLoading(false);
   }, []);
 
-  // ===== LOGIN EMAIL/PASS (Supabase users) =====
+  // ===== LOGIN EMAIL/PASS (contra tabla users) =====
   const login = async (email: string, pass: string): Promise<boolean> => {
     try {
       const cleanEmail = (email || "").trim().toLowerCase();
@@ -115,8 +100,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       // Comparación simple (hoy estás guardando password plano en users)
       if ((data as any).password !== cleanPass) return false;
 
-      const appUser = mapDbUserToAppUser(data);
-      setUserAndPersist(appUser);
+      setUserAndPersist(mapDbUserToAppUser(data));
       return true;
     } catch (e: any) {
       console.error("login error:", e?.message || e);
@@ -166,13 +150,12 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         return true;
       }
 
-      // 3) si NO existe: crear un usuario básico
-      // Nota: tu tabla users permite email NULL y commerce_id NULL.
+      // 3) si NO existe: crear un usuario básico (consumidor)
       const payload = {
         email: null,
         password: null,
         name: businessName?.trim() ? businessName.trim() : `Usuario ${cleanPhone.slice(-4)}`,
-        role: UserRole.CUSTOMER, // o el rol que uses para consumidores
+        role: UserRole.CUSTOMER,
         commerce_id: null,
         is_active: true,
         phone: cleanPhone,
@@ -200,13 +183,11 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const changePassword = async (newPass: string): Promise<boolean> => {
     try {
       if (!user?.id) return false;
+
       const clean = (newPass || "").trim();
       if (clean.length < 4) return false;
 
-      const { error } = await supabase
-        .from("users")
-        .update({ password: clean } as any)
-        .eq("id", user.id);
+      const { error } = await supabase.from("users").update({ password: clean } as any).eq("id", user.id);
 
       if (error) {
         console.error("changePassword error:", error.message);

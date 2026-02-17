@@ -1,94 +1,21 @@
-
 <!DOCTYPE html>
 <html lang="es">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Club de Beneficios</title>
-    <script src="https://cdn.tailwindcss.com"></script>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
-    <style>
-        :root {
-            --brand-primary: #0070f3;
-            --bg-main: #fafafa;
-            --text-main: #171717;
-            --text-secondary: #666666;
-            --border-subtle: #eaeaea;
-        }
-        body { 
-            font-family: 'Inter', sans-serif; 
-            background-color: var(--bg-main);
-            color: var(--text-main);
-            -webkit-font-smoothing: antialiased;
-            -moz-osx-font-smoothing: grayscale;
-        }
-        /* Hide scrollbars */
-        ::-webkit-scrollbar { display: none; }
-        .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
-        
-        .saas-card {
-            background: #ffffff;
-            border: 1px solid var(--border-subtle);
-            border-radius: 12px;
-            box-shadow: 0 1px 2px rgba(0,0,0,0.02);
-            transition: all 0.2s ease-in-out;
-        }
-        .saas-card:hover {
-            box-shadow: 0 4px 12px rgba(0,0,0,0.04);
-            border-color: #d1d1d1;
-        }
-        .btn-primary {
-            background: var(--text-main);
-            color: #ffffff;
-            transition: all 0.2s;
-        }
-        .btn-primary:hover {
-            opacity: 0.9;
-            transform: translateY(-1px);
-        }
-        .btn-secondary {
-            background: #ffffff;
-            border: 1px solid var(--border-subtle);
-            color: var(--text-main);
-        }
-        .btn-secondary:hover {
-            background: #fafafa;
-            border-color: #d1d1d1;
-        }
-    </style>
-<script type="importmap">
-{
-  "imports": {
-    "react": "https://esm.sh/react@^19.2.4",
-    "react-dom/": "https://esm.sh/react-dom@^19.2.4/",
-    "react/": "https://esm.sh/react@^19.2.4/",
-    "lucide-react": "https://esm.sh/lucide-react@^0.563.0",
-    "react-router-dom": "https://esm.sh/react-router-dom@^7.13.0",
-    "qrcode.react": "https://esm.sh/qrcode.react@^4.2.0",
-    "html5-qrcode": "https://esm.sh/html5-qrcode@^2.3.8"
-  }
-}
-</script>
-<link rel="stylesheet" href="/index.css">
-</head>
-<body class="selection:bg-blue-100">
+
+    <!-- Fuente (ok) -->
+    <link
+      href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap"
+      rel="stylesheet"
+    />
+  </head>
+
+  <body class="selection:bg-blue-100">
     <div id="root"></div>
-<script type="module" src="/index.tsx"></script>
-</body>
+
+    <!-- ✅ ENTRY DE VITE -->
+    <script type="module" src="/src/main.tsx"></script>
+  </body>
 </html>
-<script>
-  window.addEventListener('error', (e) => {
-    document.body.innerHTML =
-      '<pre style="white-space:pre-wrap;padding:16px;font:14px monospace;">' +
-      'JS error:\n' + (e.error?.stack || e.message) +
-      '</pre>';
-  });
-
-  window.addEventListener('unhandledrejection', (e) => {
-    document.body.innerHTML =
-      '<pre style="white-space:pre-wrap;padding:16px;font:14px monospace;">' +
-      'Promise error:\n' + (e.reason?.stack || e.reason) +
-      '</pre>';
-  });
-</script>
-
