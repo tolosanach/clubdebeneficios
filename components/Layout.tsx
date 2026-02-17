@@ -263,7 +263,7 @@ const Layout: React.FC<LayoutProps> = ({ children, title }) => {
 
           {isSpeedDialOpen && (
             <div
-              className="fixed inset-0 bg-white/40 backdrop-blur-[2px] z-40 transition-all"
+              className="fixed inset-0 bg-black/10 z-40"
               onClick={() => setIsSpeedDialOpen(false)}
             />
           )}
