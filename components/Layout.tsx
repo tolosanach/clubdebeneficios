@@ -214,16 +214,19 @@ const Layout: React.FC<LayoutProps> = ({ children, title }) => {
       </div>
 
       {canUseQuickActions && subscription?.status !== SubscriptionStatus.SUSPENDED && (
-        <div className="lg:hidden fixed bottom-6 right-6 z-50 flex flex-col items-end gap-3">
+        // ✅ z alto para que nada tape los botones
+        <div className="lg:hidden fixed bottom-6 right-6 z-[60] flex flex-col items-end gap-3">
           {isSpeedDialOpen && (
-            <div className="flex flex-col items-end gap-3 mb-3 animate-in slide-in-from-bottom-4 duration-200">
+            // ✅ z más alto y pointer-events para asegurar click
+            <div className="relative z-[70] pointer-events-auto flex flex-col items-end gap-3 mb-3 animate-in slide-in-from-bottom-4 duration-200">
               {[UserRole.COMMERCE_OWNER, UserRole.STAFF_MANAGER].includes(user.role) && (
                 <button
-                  onClick={() => {
+                  onClick={(e) => {
+                    e.stopPropagation();
                     navigate('/commerce/search-customer');
                     setIsSpeedDialOpen(false);
                   }}
-                  className="flex items-center gap-3 bg-white border border-slate-200 px-4 py-3 rounded-2xl shadow-xl active:scale-[0.95] transition-all group"
+                  className="pointer-events-auto flex items-center gap-3 bg-white border border-slate-200 px-4 py-3 rounded-2xl shadow-xl active:scale-[0.95] transition-all group"
                 >
                   <span className="text-[11px] font-black uppercase tracking-widest text-slate-500">
                     Buscar / Crear Socio
@@ -235,11 +238,12 @@ const Layout: React.FC<LayoutProps> = ({ children, title }) => {
               )}
 
               <button
-                onClick={() => {
+                onClick={(e) => {
+                  e.stopPropagation();
                   navigate('/commerce/scan');
                   setIsSpeedDialOpen(false);
                 }}
-                className="flex items-center gap-3 bg-white border border-slate-200 px-4 py-3 rounded-2xl shadow-xl active:scale-[0.95] transition-all group"
+                className="pointer-events-auto flex items-center gap-3 bg-white border border-slate-200 px-4 py-3 rounded-2xl shadow-xl active:scale-[0.95] transition-all group"
               >
                 <span className="text-[11px] font-black uppercase tracking-widest text-slate-500">
                   Registrar Venta
@@ -252,8 +256,11 @@ const Layout: React.FC<LayoutProps> = ({ children, title }) => {
           )}
 
           <button
-            onClick={() => setIsSpeedDialOpen(!isSpeedDialOpen)}
-            className={`w-14 h-14 bg-black text-white rounded-full shadow-2xl flex items-center justify-center hover:opacity-90 active:scale-[0.90] transition-all z-50 ${
+            onClick={(e) => {
+              e.stopPropagation();
+              setIsSpeedDialOpen(!isSpeedDialOpen);
+            }}
+            className={`w-14 h-14 bg-black text-white rounded-full shadow-2xl flex items-center justify-center hover:opacity-90 active:scale-[0.90] transition-all ${
               isSpeedDialOpen ? 'rotate-45' : ''
             }`}
             aria-label="Acciones rápidas"
@@ -261,9 +268,10 @@ const Layout: React.FC<LayoutProps> = ({ children, title }) => {
             <Plus size={28} />
           </button>
 
+          {/* ✅ Overlay debajo del menú (z menor), pero arriba del contenido (cierra al tocar fuera) */}
           {isSpeedDialOpen && (
             <div
-              className="fixed inset-0 bg-black/10 z-40"
+              className="fixed inset-0 bg-black/10 z-[50]"
               onClick={() => setIsSpeedDialOpen(false)}
             />
           )}
