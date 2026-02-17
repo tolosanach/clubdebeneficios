@@ -8,15 +8,17 @@ type CreateCommerceBody = {
 
   // dueño
   owner_email: string;
-  owner_phone?: string;
+  owner_phone: string; // lo hago obligatorio porque tu UI lo pide sí o sí
   owner_password?: string;
 
   enable_points?: boolean;
   points_mode?: string;
   points_value?: number;
+
   enable_coupon?: boolean;
   discount_percent?: number;
   discount_expiration_days?: number;
+
   enable_stars?: boolean;
   stars_goal?: number;
 };
@@ -32,46 +34,60 @@ function slugifyId(name: string) {
 }
 
 function generateTempPassword() {
-  return Math.random().toString(36).slice(-8);
+  // 10 chars alfanumérico
+  return Math.random().toString(36).slice(-10);
 }
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {
   try {
     if (req.method !== "POST") {
-      return res.status(405).json({ error: "Method not allowed" });
+      return res.status(405).json({ ok: false, error: "Method not allowed" });
     }
 
-    const SUPABASE_URL = process.env.SUPABASE_URL;
-    const SERVICE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY;
+    // ✅ Env vars robustas (frontend y backend)
+    const SUPABASE_URL = process.env.SUPABASE_URL || process.env.VITE_SUPABASE_URL;
+    const SERVICE_KEY =
+      process.env.SUPABASE_SERVICE_ROLE_KEY || // ✅ tu caso real en Vercel
+      process.env.SUPABASE_SERVICE_ROLE ||     // por si existe
+      process.env.SUPABASE_SERVICE_KEY;        // por si existe
 
     if (!SUPABASE_URL || !SERVICE_KEY) {
       return res.status(500).json({
+        ok: false,
         error: "Missing server env vars",
-        details: "Set SUPABASE_URL and SUPABASE_SERVICE_ROLE_KEY in Vercel env vars",
+        details:
+          "Set SUPABASE_URL (or VITE_SUPABASE_URL) and SUPABASE_SERVICE_ROLE_KEY in Vercel env vars",
       });
     }
 
     const supabase = createClient(SUPABASE_URL, SERVICE_KEY);
 
     const body =
-      typeof req.body === "string" ? JSON.parse(req.body) : req.body as CreateCommerceBody;
+      typeof req.body === "string"
+        ? (JSON.parse(req.body) as CreateCommerceBody)
+        : (req.body as CreateCommerceBody);
 
+    // ======================
     // Validaciones mínimas
+    // ======================
     if (!body?.name || body.name.trim().length < 2) {
-      return res.status(400).json({ error: "name is required" });
+      return res.status(400).json({ ok: false, error: "name is required" });
     }
 
-    if (!body?.owner_email) {
-      return res.status(400).json({ error: "owner_email is required" });
+    if (!body?.owner_email || body.owner_email.trim().length < 5) {
+      return res.status(400).json({ ok: false, error: "owner_email is required" });
+    }
+
+    if (!body?.owner_phone || body.owner_phone.trim().length < 6) {
+      return res.status(400).json({ ok: false, error: "owner_phone is required" });
     }
 
     const commerceId = body.id?.trim() || slugifyId(body.name);
-    const tempPassword = body.owner_password || generateTempPassword();
+    const tempPassword = (body.owner_password && body.owner_password.trim()) || generateTempPassword();
 
     // ======================
-    // 1. Crear comercio
+    // 1) Crear comercio
     // ======================
-
     const commercePayload = {
       id: commerceId,
       name: body.name.trim(),
@@ -97,48 +113,49 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
     if (commerceError) {
       return res.status(400).json({
+        ok: false,
         error: "Error creating commerce",
         details: commerceError.message,
       });
     }
 
     // ======================
-    // 2. Crear usuario dueño
+    // 2) Crear usuario dueño
     // ======================
-
     const userPayload = {
-      email: body.owner_email.trim(),
+      email: body.owner_email.trim().toLowerCase(),
       password: tempPassword,
-      name: body.name.trim() + " Owner",
-      phone: body.owner_phone ?? null,
+      name: `${body.name.trim()} Owner`,
+      phone: body.owner_phone.trim(), // ✅ teléfono guardado
       role: "COMMERCE_OWNER",
       commerce_id: commerceId,
       is_active: true,
     };
 
-    const { error: userError } = await supabase
-      .from("users")
-      .insert(userPayload);
+    const { error: userError } = await supabase.from("users").insert(userPayload);
 
     if (userError) {
+      // ✅ rollback: borrar el commerce recién creado para no dejar basura
+      await supabase.from("commerces").delete().eq("id", commerceId);
+
       return res.status(400).json({
-        error: "Commerce created but user failed",
+        ok: false,
+        error: "Commerce created but user failed (rolled back)",
         details: userError.message,
       });
     }
 
     // ======================
-    // 3. Respuesta final
+    // 3) Respuesta final
     // ======================
-
     return res.status(200).json({
       ok: true,
       commerce: commerceData,
       tempPassword,
     });
-
   } catch (err: any) {
     return res.status(500).json({
+      ok: false,
       error: "Unhandled error",
       details: err?.message || String(err),
     });
