@@ -1,11 +1,24 @@
-
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../services/auth';
-import { db } from '../services/db';
 import PhoneInput from '../components/PhoneInput';
 import TermsModal from '../components/TermsModal';
-import { LogIn, HelpCircle, MessageSquare, Chrome, Mail, ArrowLeft, Loader2, CheckCircle2, ChevronDown, ChevronUp, Shield, Coffee, Smartphone, User as UserIcon, AlertCircle } from 'lucide-react';
+import {
+  LogIn,
+  HelpCircle,
+  MessageSquare,
+  Chrome,
+  ArrowLeft,
+  Loader2,
+  CheckCircle2,
+  ChevronDown,
+  ChevronUp,
+  Shield,
+  Coffee,
+  User as UserIcon,
+  AlertCircle,
+  Mail
+} from 'lucide-react';
 
 type AuthStep = 'SELECTION' | 'WHATSAPP_PHONE' | 'WHATSAPP_OTP' | 'EMAIL';
 
@@ -13,7 +26,7 @@ const LoginPage: React.FC = () => {
   const [step, setStep] = useState<AuthStep>('SELECTION');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
-  
+
   // Phone related state
   const [phoneNumber, setPhoneNumber] = useState('');
   const [countryCode, setCountryCode] = useState('AR');
@@ -34,11 +47,17 @@ const LoginPage: React.FC = () => {
     e.preventDefault();
     setIsLoading(true);
     setError('');
-    const success = await login(email, password);
-    if (success) {
-      navigate('/');
-    } else {
-      setError('Credenciales incorrectas');
+
+    try {
+      const success = await login(email, password);
+      if (success) {
+        navigate('/');
+      } else {
+        setError('Credenciales incorrectas');
+      }
+    } catch (err: any) {
+      setError(err?.message || 'No se pudo iniciar sesión');
+    } finally {
       setIsLoading(false);
     }
   };
@@ -46,57 +65,80 @@ const LoginPage: React.FC = () => {
   const handleDemoLogin = async (demoEmail: string, demoPass: string) => {
     setIsLoading(true);
     setError('');
-    const success = await login(demoEmail, demoPass);
-    if (success) {
-      navigate('/');
-    } else {
-      setError('Error al ingresar con cuenta demo');
+
+    try {
+      const success = await login(demoEmail, demoPass);
+      if (success) {
+        navigate('/');
+      } else {
+        setError('Error al ingresar con cuenta demo');
+      }
+    } catch (err: any) {
+      setError(err?.message || 'Error al ingresar con cuenta demo');
+    } finally {
       setIsLoading(false);
     }
   };
 
-  const handleSendOTP = async (e: React.FormEvent) => {
-    e.preventDefault();
+  const handleSendOTP = async (e?: React.FormEvent) => {
+    if (e) e.preventDefault();
     if (!fullPhone) return;
+
     setIsLoading(true);
     setError('');
-    const success = await sendOTP(fullPhone);
-    if (success) {
-      setStep('WHATSAPP_OTP');
-    } else {
-      setError('Error al enviar código');
+
+    try {
+      const success = await sendOTP(fullPhone);
+      if (success) {
+        setStep('WHATSAPP_OTP');
+      } else {
+        setError('Error al enviar código');
+      }
+    } catch (err: any) {
+      setError(err?.message || 'Error al enviar código');
+    } finally {
+      setIsLoading(false);
     }
-    setIsLoading(false);
   };
 
   const handleVerifyOTP = async (phone: string, code: string, bizName?: string) => {
-    // Si es un usuario nuevo, validar términos
-    if (!db.getUserByPhone(phone) && !acceptedTerms) {
-      setError('Debes aceptar los términos para registrar tu negocio');
-      return;
+    // ✅ Ya no dependemos de db.ts / localStorage para habilitar o bloquear registro.
+    // Solo validamos términos si el usuario está cargando nombre de negocio (registro nuevo).
+    if (bizName?.trim()?.length) {
+      if (!acceptedTerms) {
+        setError('Debes aceptar los términos para registrar tu negocio');
+        return;
+      }
     }
 
     setIsLoading(true);
     setError('');
-    const success = await verifyOTP(phone, code, bizName);
-    if (success) {
-      navigate('/');
-    } else {
-      setError('Código inválido o expirado');
+
+    try {
+      const success = await verifyOTP(phone, code, bizName);
+      if (success) {
+        navigate('/');
+      } else {
+        setError('Código inválido o expirado');
+      }
+    } catch (err: any) {
+      setError(err?.message || 'Código inválido o expirado');
+    } finally {
+      setIsLoading(false);
     }
-    setIsLoading(false);
   };
 
   const demoAccounts = [
     { name: 'Super Admin', email: 'admin@club.com', pass: 'admin123', icon: Shield, color: 'text-purple-500' },
-    { name: 'Dueño Café', email: 'cafe@test.com', pass: 'cafe123', icon: Coffee, color: 'text-orange-500' },
+    // ⚠️ AJUSTÁ ESTA PASS si en tu SQL pusiste otra
+    { name: 'Dueño Café', email: 'cafe@test.com', pass: '123456', icon: Coffee, color: 'text-orange-500' },
     { name: 'Cliente Juan', email: 'juan@test.com', pass: 'juan123', icon: UserIcon, color: 'text-emerald-500' },
   ];
 
   return (
     <div className="min-h-screen bg-[#fafafa] flex flex-col items-center justify-center p-6">
       <div className="w-full max-w-[400px] space-y-14 animate-in fade-in slide-in-from-bottom-4 duration-700">
-        
+
         {/* Header Section */}
         <div className="text-center space-y-4">
           <div className="w-16 h-16 bg-black rounded-[22px] flex items-center justify-center mx-auto mb-2 shadow-sm">
@@ -107,7 +149,7 @@ const LoginPage: React.FC = () => {
             Lanzá en menos de 2 minutos tu propio programa de beneficios.
           </p>
         </div>
-        
+
         <div className="bg-white p-6 rounded-[32px] border border-slate-100 shadow-sm relative overflow-hidden">
           {error && (
             <div className="mb-6 p-4 bg-red-50 text-red-600 text-[11px] rounded-xl font-bold border border-red-100 flex items-center gap-3 animate-in slide-in-from-top-2">
@@ -117,7 +159,7 @@ const LoginPage: React.FC = () => {
 
           {step === 'SELECTION' && (
             <div className="space-y-12 animate-in fade-in zoom-in-95 duration-200">
-              
+
               {/* Primary Buttons */}
               <div className="space-y-5">
                 <button
@@ -132,6 +174,19 @@ const LoginPage: React.FC = () => {
                   className="w-full h-[54px] bg-[#f9f9f9] border border-slate-200 text-slate-900 rounded-2xl font-bold text-sm flex items-center justify-center gap-3 hover:bg-slate-100 active:scale-[0.98] transition-all"
                 >
                   <Chrome size={18} /> Continuar con Google
+                </button>
+
+                {/* ✅ BOTÓN NUEVO: Login email/password */}
+                <button
+                  onClick={() => {
+                    setError('');
+                    setEmail('');
+                    setPassword('');
+                    setStep('EMAIL');
+                  }}
+                  className="w-full h-[54px] bg-white border border-slate-200 text-slate-900 rounded-2xl font-bold text-sm flex items-center justify-center gap-3 hover:bg-slate-50 active:scale-[0.98] transition-all"
+                >
+                  <Mail size={18} /> Ingresar con email
                 </button>
               </div>
 
@@ -148,7 +203,7 @@ const LoginPage: React.FC = () => {
               {/* Demo Section Card */}
               <div className="space-y-6">
                 <div className="border rounded-2xl border-slate-100 overflow-hidden">
-                  <button 
+                  <button
                     onClick={() => setIsDemoExpanded(!isDemoExpanded)}
                     className="w-full px-5 py-4 flex items-center justify-between bg-slate-50/30 hover:bg-slate-50 transition-colors"
                   >
@@ -158,7 +213,7 @@ const LoginPage: React.FC = () => {
                     </div>
                     {isDemoExpanded ? <ChevronUp size={16} className="text-slate-300" /> : <ChevronDown size={16} className="text-slate-300" />}
                   </button>
-                  
+
                   {isDemoExpanded && (
                     <div className="p-3 space-y-2 animate-in slide-in-from-top-2 duration-300">
                       {demoAccounts.map(acc => (
@@ -200,13 +255,20 @@ const LoginPage: React.FC = () => {
 
           {step === 'WHATSAPP_PHONE' && (
             <form onSubmit={handleSendOTP} className="space-y-8 animate-in slide-in-from-right-4 duration-300">
-              <button onClick={() => setStep('SELECTION')} className="text-slate-400 hover:text-black flex items-center gap-2 text-[10px] font-black uppercase tracking-widest mb-4 transition-colors">
+              <button
+                type="button"
+                onClick={() => setStep('SELECTION')}
+                className="text-slate-400 hover:text-black flex items-center gap-2 text-[10px] font-black uppercase tracking-widest mb-4 transition-colors"
+              >
                 <ArrowLeft size={14} /> Volver
               </button>
+
               <div className="space-y-5">
                 <h2 className="text-xl font-black text-black tracking-tight">Verificá tu número</h2>
-                <p className="text-xs text-slate-400 font-medium leading-relaxed">Te enviaremos un código de seguridad por WhatsApp para validar tu identity.</p>
-                
+                <p className="text-xs text-slate-400 font-medium leading-relaxed">
+                  Te enviaremos un código de seguridad por WhatsApp para validar tu identidad.
+                </p>
+
                 <PhoneInput
                   label="Número de Teléfono"
                   value={phoneNumber}
@@ -219,6 +281,7 @@ const LoginPage: React.FC = () => {
                   required
                 />
               </div>
+
               <button
                 type="submit"
                 disabled={isLoading || !phoneNumber}
@@ -230,34 +293,49 @@ const LoginPage: React.FC = () => {
           )}
 
           {step === 'WHATSAPP_OTP' && (
-            <form onSubmit={(e) => { e.preventDefault(); handleVerifyOTP(fullPhone, otp, businessName); }} className="space-y-8 animate-in slide-in-from-right-4 duration-300">
-              <button onClick={() => setStep('WHATSAPP_PHONE')} className="text-slate-400 hover:text-black flex items-center gap-2 text-[10px] font-black uppercase tracking-widest mb-4 transition-colors">
+            <form
+              onSubmit={(e) => {
+                e.preventDefault();
+                handleVerifyOTP(fullPhone, otp, businessName);
+              }}
+              className="space-y-8 animate-in slide-in-from-right-4 duration-300"
+            >
+              <button
+                type="button"
+                onClick={() => setStep('WHATSAPP_PHONE')}
+                className="text-slate-400 hover:text-black flex items-center gap-2 text-[10px] font-black uppercase tracking-widest mb-4 transition-colors"
+              >
                 <ArrowLeft size={14} /> Editar número
               </button>
+
               <div className="space-y-5">
                 <div className="flex items-center justify-between">
                   <h2 className="text-xl font-black text-black tracking-tight">Ingresá el código</h2>
-                  <div className="w-10 h-10 bg-green-50 text-green-500 rounded-xl flex items-center justify-center border border-green-100"><CheckCircle2 size={18} /></div>
+                  <div className="w-10 h-10 bg-green-50 text-green-500 rounded-xl flex items-center justify-center border border-green-100">
+                    <CheckCircle2 size={18} />
+                  </div>
                 </div>
+
                 <p className="text-xs text-slate-400 font-medium leading-relaxed">
                   Te enviamos un código al <span className="text-black font-bold">{fullPhone}</span>
                 </p>
-                
-                {!db.getUserByPhone(fullPhone) && (
-                  <div className="space-y-6 animate-in fade-in duration-500">
-                    <div className="space-y-2">
-                      <label className="text-[10px] font-black text-slate-300 uppercase tracking-widest ml-1">Nombre de tu Negocio</label>
-                      <input
-                        type="text"
-                        value={businessName}
-                        onChange={(e) => setBusinessName(e.target.value)}
-                        className="w-full h-14 px-5 bg-slate-50 border border-[#eaeaea] rounded-2xl text-base font-bold focus:border-black outline-none transition-all"
-                        placeholder="Ej: Café Central"
-                        required
-                      />
-                    </div>
 
-                    {/* Terms for new WhatsApp users */}
+                {/* ✅ Registro nuevo: solo si completa nombre de negocio */}
+                <div className="space-y-6 animate-in fade-in duration-500">
+                  <div className="space-y-2">
+                    <label className="text-[10px] font-black text-slate-300 uppercase tracking-widest ml-1">
+                      Nombre de tu Negocio (solo si es tu primera vez)
+                    </label>
+                    <input
+                      type="text"
+                      value={businessName}
+                      onChange={(e) => setBusinessName(e.target.value)}
+                      className="w-full h-14 px-5 bg-slate-50 border border-[#eaeaea] rounded-2xl text-base font-bold focus:border-black outline-none transition-all"
+                      placeholder="Ej: Café Central"
+                    />
+                  </div>
+
+                  {businessName.trim().length > 0 && (
                     <div className="pt-2">
                       <label className="flex items-start gap-3 cursor-pointer group">
                         <div className="relative flex items-center mt-1">
@@ -283,8 +361,8 @@ const LoginPage: React.FC = () => {
                         </span>
                       </label>
                     </div>
-                  </div>
-                )}
+                  )}
+                </div>
 
                 <div className="space-y-2">
                   <label className="text-[10px] font-black text-slate-300 uppercase tracking-widest ml-1">Código de 6 dígitos</label>
@@ -300,21 +378,27 @@ const LoginPage: React.FC = () => {
                   />
                 </div>
               </div>
+
               <div className="space-y-4">
                 <button
                   type="submit"
-                  disabled={isLoading || otp.length < 6 || (!db.getUserByPhone(fullPhone) && !acceptedTerms)}
+                  disabled={
+                    isLoading ||
+                    otp.length < 6 ||
+                    (businessName.trim().length > 0 && !acceptedTerms)
+                  }
                   className={`w-full h-14 rounded-2xl font-black text-sm transition-all flex items-center justify-center gap-2 ${
-                    (db.getUserByPhone(fullPhone) || acceptedTerms) && otp.length === 6
-                      ? 'bg-black text-white hover:opacity-90 active:scale-[0.98]' 
+                    otp.length === 6 && (businessName.trim().length === 0 || acceptedTerms)
+                      ? 'bg-black text-white hover:opacity-90 active:scale-[0.98]'
                       : 'bg-slate-100 text-slate-300 cursor-not-allowed'
                   }`}
                 >
                   {isLoading ? <Loader2 size={20} className="animate-spin" /> : 'Verificar'}
                 </button>
-                <button 
+
+                <button
                   type="button"
-                  onClick={handleSendOTP}
+                  onClick={() => handleSendOTP()}
                   className="w-full text-[10px] font-black text-slate-300 uppercase tracking-widest hover:text-black transition-colors"
                 >
                   Reenviar código
@@ -325,9 +409,14 @@ const LoginPage: React.FC = () => {
 
           {step === 'EMAIL' && (
             <form onSubmit={handleEmailSubmit} className="space-y-6 animate-in slide-in-from-left-4 duration-300">
-              <button onClick={() => setStep('SELECTION')} className="text-slate-400 hover:text-black flex items-center gap-2 text-[10px] font-black uppercase tracking-widest mb-4 transition-colors">
+              <button
+                type="button"
+                onClick={() => setStep('SELECTION')}
+                className="text-slate-400 hover:text-black flex items-center gap-2 text-[10px] font-black uppercase tracking-widest mb-4 transition-colors"
+              >
                 <ArrowLeft size={14} /> Volver
               </button>
+
               <div className="space-y-2">
                 <label className="text-[10px] font-black text-slate-300 uppercase tracking-widest ml-1">Email</label>
                 <input
@@ -362,7 +451,7 @@ const LoginPage: React.FC = () => {
             </form>
           )}
         </div>
-        
+
         {/* Footer Support Section */}
         <div className="text-center space-y-4">
           <p className="text-[11px] text-slate-400 font-medium tracking-tight">
@@ -371,9 +460,9 @@ const LoginPage: React.FC = () => {
         </div>
       </div>
 
-      <TermsModal 
-        isOpen={showTermsModal} 
-        onClose={() => setShowTermsModal(false)} 
+      <TermsModal
+        isOpen={showTermsModal}
+        onClose={() => setShowTermsModal(false)}
         onAccept={() => {
           setAcceptedTerms(true);
           setShowTermsModal(false);
