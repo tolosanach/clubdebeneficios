@@ -1,482 +1,453 @@
-// pages/commerce/ScanPage.tsx
+// pages/commerce/SettingsPage.tsx
 import React, { useEffect, useMemo, useState } from 'react';
-import { useNavigate, useLocation } from 'react-router-dom';
-import { CheckCircle2, ArrowLeft, QrCode, UserSearch, Home } from 'lucide-react'; // ✅ NUEVO: Home
+import { useNavigate } from 'react-router-dom';
+import { ArrowLeft, Save, Zap, Percent, BadgeDollarSign } from 'lucide-react';
 
-import QRScanner from '../../components/QRScanner';
 import { db } from '../../services/db';
 import { useAuth } from '../../services/auth';
 import { supabase } from '../../services/supabase';
+import { Commerce, PointsMode, UserRole } from '../../types';
 
-import { Commerce, Customer, PointsMode, Transaction, Reward } from '../../types';
-
-const ScanPage: React.FC = () => {
+const SettingsPage: React.FC = () => {
   const { user } = useAuth();
   const navigate = useNavigate();
-  const location = useLocation();
 
-  const [step, setStep] = useState<'IDLE' | 'SCANNING' | 'CONFIRMING' | 'SUCCESS'>('IDLE');
-  const [customer, setCustomer] = useState<Customer | null>(null);
-  const [amount, setAmount] = useState<string>('');
-  const [applyCoupon, setApplyCoupon] = useState(false);
-  const [selectedReward, setSelectedReward] = useState<Reward | null>(null);
-  const [lastTx, setLastTx] = useState<Transaction | null>(null);
-  const [entryMethod, setEntryMethod] = useState<'SCAN' | 'MANUAL'>('SCAN');
-
-  // ✅ evita doble click
-  const [isSaving, setIsSaving] = useState(false);
-
-  // ✅ mensaje visible si algo falla
-  const [uiError, setUiError] = useState<string>('');
-
-  // Convertimos commerce-cafe-id a commerce-1 igual que en CustomersPage y Dashboard:
+  // ✅ MISMO MAPEO QUE EN Customers/Dashboard/Scan
   const effectiveCommerceId = useMemo(() => {
     const raw = user?.commerceId || '';
     return raw === 'commerce-cafe-id' ? 'commerce-1' : raw;
   }, [user?.commerceId]);
 
-  // Sólo usamos db local para mostrar valores, pero no para “guardar”:
-  const commerce = useMemo(() => {
-    if (!effectiveCommerceId) return null;
-    return db.getById<Commerce>('commerces', effectiveCommerceId);
-  }, [effectiveCommerceId]);
+  const canEdit = useMemo(() => {
+    return [UserRole.COMMERCE_OWNER, UserRole.STAFF_MANAGER].includes(
+      user?.role || UserRole.VIEWER
+    );
+  }, [user?.role]);
 
-  const usage = useMemo(() => {
-    if (!commerce) return null;
-    return db.getCommerceUsage(commerce.id);
-  }, [commerce]);
+  // -----------------------
+  // Estado remoto (Supabase) + fallback local (db)
+  // -----------------------
+  const [commerce, setCommerce] = useState<Commerce | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [uiError, setUiError] = useState<string>('');
 
-  const isOverLimit = usage?.isOverLimit;
+  // -----------------------
+  // Local form state
+  // -----------------------
+  const [enablePoints, setEnablePoints] = useState<boolean>(false);
+  const [pointsMode, setPointsMode] = useState<PointsMode>(PointsMode.FIXED);
+  const [pointsValue, setPointsValue] = useState<number>(10);
 
-  // ✅ NUEVO: ruta única al dashboard (si mañana cambia, la tocás en un solo lugar)
-  const DASHBOARD_PATH = '/commerce';
+  const [enableCoupon, setEnableCoupon] = useState<boolean>(false);
+  const [discountPercent, setDiscountPercent] = useState<number>(10);
+  const [discountExpirationDays, setDiscountExpirationDays] = useState<number>(30);
 
-  // ✅ NUEVO: “volver” inteligente
-  const goBackSmart = () => {
-    // Si hay historial (o si venimos con un state), conviene volver atrás.
-    // Si no, mandamos al dashboard para evitar quedar atrapado.
-    if (window.history.length > 1 || location.state) navigate(-1);
-    else navigate(DASHBOARD_PATH);
+  const [saving, setSaving] = useState(false);
+
+  // Helper: mapeo fila Supabase -> Commerce app
+  const mapCommerceRowToApp = (c: any): Commerce => {
+    // OJO: adapto nombres típicos de columnas. Si tu tabla usa otros nombres,
+    // avisame cuáles y lo ajusto en 1 minuto.
+    return {
+      id: c.id,
+      name: c.name,
+      logoUrl: c.logo_url ?? c.logoUrl,
+      enable_points: !!c.enable_points,
+      pointsMode: (c.points_mode ?? c.pointsMode ?? PointsMode.FIXED) as PointsMode,
+      pointsValue: Number(c.points_value ?? c.pointsValue ?? 10),
+
+      enable_coupon: !!c.enable_coupon,
+      discountPercent: Number(c.discount_percent ?? c.discountPercent ?? 10),
+      discountExpirationDays: Number(c.discount_expiration_days ?? c.discountExpirationDays ?? 30),
+
+      // Dejo pasar cualquier otro campo que tu tipo Commerce tenga sin romper
+      ...c,
+    } as Commerce;
   };
 
-  // ✅ NUEVO: ir al panel principal desde cualquier estado
-  const goHome = () => navigate(DASHBOARD_PATH);
-
+  // Load commerce desde Supabase (con fallback a db si no existe o falla)
   useEffect(() => {
-    if ((location.state as any)?.selectedCustomer) {
-      setCustomer((location.state as any).selectedCustomer);
-      setEntryMethod('MANUAL');
-      setStep('CONFIRMING');
-      window.history.replaceState({}, document.title);
-    }
-  }, [location.state]);
+    let alive = true;
 
-  const calculatePoints = (val: number) => {
-    if (!commerce || !commerce.enable_points) return 0;
-    const ruleVal = commerce.pointsValue;
-    if (commerce.pointsMode === PointsMode.PERCENTAGE) return Math.floor(val * (ruleVal / 100));
-    return Math.floor(ruleVal);
-  };
+    const run = async () => {
+      try {
+        setUiError('');
+        setLoading(true);
 
-  // Normaliza el contenido del QR: extrae sólo el token (CUST-XXXX) aunque venga en una URL
-  const normalizeToken = (raw: string) => {
-    const s = String(raw || '').trim();
-    const fromHashQ = s.split('#/q/')[1];
-    if (fromHashQ) return fromHashQ.split(/[?#/]/)[0].trim();
-    const fromSlashQ = s.split('/q/')[1];
-    if (fromSlashQ) return fromSlashQ.split(/[?#/]/)[0].trim();
-    const m = s.match(/(CUST-[A-Z0-9]+)/i);
-    if (m?.[1]) return m[1].toUpperCase();
-    return s.split(/[?#/]/)[0].trim();
-  };
+        if (!effectiveCommerceId) {
+          // fallback
+          const local = null;
+          if (alive) setCommerce(local);
+          return;
+        }
 
-  // Convierte una fila de Supabase al tipo Customer
-  const mapCustomerRowToApp = (c: any): Customer => ({
-    id: c.id,
-    commerceId: c.commerce_id,
-    name: c.name,
-    phone: c.phone,
-    email: c.email,
-    qrToken: c.qr_token,
-    totalPoints: c.total_points ?? 0,
-    currentStars: c.current_stars ?? 0,
-    totalStars: c.total_stars ?? 0,
-    createdAt: c.created_at,
-    discountAvailable: c.discount_available ?? false,
-    discountExpiresAt: c.discount_expires_at ?? undefined,
-    lastDiscountUsedAt: c.last_discount_used_at ?? undefined,
-    phoneNumber: c.phone_number ?? '',
-    countryCode: c.country_code ?? 'AR',
-  });
+        // 1) Intento Supabase
+        const { data, error } = await supabase
+          .from('commerces')
+          .select('*')
+          .eq('id', effectiveCommerceId)
+          .maybeSingle();
 
-  // Busca un cliente por token, con commerce_id incluido
-  const fetchCustomerByToken = async (tokenRaw: string) => {
-    const token = normalizeToken(tokenRaw);
-    if (!token || !effectiveCommerceId) return null;
+        if (error) throw error;
 
-    const { data, error } = await supabase
-      .from('customers')
-      .select('*')
-      .eq('qr_token', token)
-      .eq('commerce_id', effectiveCommerceId)
-      .maybeSingle();
+        if (data) {
+          const mapped = mapCommerceRowToApp(data);
+          if (!alive) return;
+          setCommerce(mapped);
 
-    if (error) throw error;
-    return data ? mapCustomerRowToApp(data) : null;
-  };
+          // Mantengo db “sincronizado” por si otras pantallas aún lo leen
+          try {
+            db.update<Commerce>('commerces', mapped.id, mapped);
+          } catch {
+            // si tu db es read-only o no existe en prod, lo ignoramos
+          }
+          return;
+        }
 
-  // Actualiza el cliente en Supabase (por ejemplo, sus puntos)
-  const updateCustomerSupabase = async (customerId: string, patch: any) => {
-    if (!effectiveCommerceId) throw new Error('Missing effectiveCommerceId');
-
-    const { error } = await supabase
-      .from('customers')
-      .update(patch)
-      .eq('id', customerId)
-      .eq('commerce_id', effectiveCommerceId);
-
-    if (error) throw error;
-  };
-
-  // Inserta transacción y fuerza error si algo bloquea
-  const insertTransactionSupabase = async (tx: Transaction) => {
-    const payload: any = {
-      id: tx.id,
-      commerce_id: tx.commerceId,
-      customer_id: tx.customerId,
-      staff_user_id: tx.staffUserId,
-      amount: tx.amount,
-      points: tx.points,
-      method: tx.method,
-      created_at: tx.createdAt,
-      redeemed_reward_id: tx.redeemedRewardId ?? null,
+        // 2) Fallback db local
+        const local = db.getById<Commerce>('commerces', effectiveCommerceId);
+        if (!alive) return;
+        setCommerce(local ?? null);
+      } catch (e: any) {
+        console.error('Settings load error:', e);
+        // fallback db local
+        try {
+          const local = effectiveCommerceId
+            ? db.getById<Commerce>('commerces', effectiveCommerceId)
+            : null;
+          if (alive) setCommerce(local ?? null);
+        } catch {
+          if (alive) setCommerce(null);
+        }
+        if (alive) setUiError('No se pudo cargar la configuración desde Supabase.');
+      } finally {
+        if (alive) setLoading(false);
+      }
     };
 
-    const { data, error } = await supabase
-      .from('transactions')
-      .insert(payload)
-      .select()
-      .single()
-      .throwOnError();
+    run();
+    return () => {
+      alive = false;
+    };
+  }, [effectiveCommerceId]);
 
-    if (error) throw error;
-    return data;
-  };
+  // hydrate form desde commerce
+  useEffect(() => {
+    if (!commerce) return;
 
-  const handleScan = async (tokenRaw: string) => {
+    setEnablePoints(!!commerce.enable_points);
+    setPointsMode((commerce.pointsMode ?? PointsMode.FIXED) as PointsMode);
+    setPointsValue(Number(commerce.pointsValue ?? 10));
+
+    setEnableCoupon(!!commerce.enable_coupon);
+    setDiscountPercent(Number(commerce.discountPercent ?? 10));
+    setDiscountExpirationDays(Number(commerce.discountExpirationDays ?? 30));
+  }, [commerce]);
+
+  const handleSave = async () => {
     try {
       setUiError('');
 
-      if (!user || !effectiveCommerceId) return;
-
-      const token = normalizeToken(tokenRaw);
-      const found = await fetchCustomerByToken(token);
-
-      if (!found) {
-        setUiError('Socio no encontrado.');
+      if (!commerce) return;
+      if (!canEdit) {
+        setUiError('No tenés permisos para editar la configuración.');
+        return;
+      }
+      if (!effectiveCommerceId) {
+        setUiError('CommerceId vacío. No se puede guardar.');
         return;
       }
 
-      setCustomer(found);
-      setEntryMethod('SCAN');
-      setStep('CONFIRMING');
-    } catch (error) {
-      console.error(error);
-      setUiError('Error al leer el socio.');
-    }
-  };
+      setSaving(true);
 
-  const handleSubmit = async () => {
-    if (isSaving) return;
+      // Payload Supabase (ajustá nombres si tu tabla usa otros)
+      const patch = {
+        enable_points: enablePoints,
+        points_mode: pointsMode,
+        points_value: Number(pointsValue || 0),
 
-    try {
-      setIsSaving(true);
-      setUiError('');
-
-      if (!customer || !user || !effectiveCommerceId) {
-        setUiError('Falta cliente o sesión. Volvé a escanear.');
-        return;
-      }
-
-      const numAmount = parseFloat(amount);
-      if (!Number.isFinite(numAmount) || numAmount <= 0) {
-        setUiError('Ingresá un monto válido (mayor a 0).');
-        return;
-      }
-
-      const txPoints = commerce && commerce.enable_points ? calculatePoints(numAmount) : 0;
-
-      const tx: Transaction = {
-        id: crypto.randomUUID(),
-        commerceId: effectiveCommerceId,
-        customerId: customer.id,
-        staffUserId: user.id,
-        amount: numAmount,
-        points: txPoints,
-        method: entryMethod,
-        createdAt: new Date().toISOString(),
-        redeemedRewardId: selectedReward?.id,
+        enable_coupon: enableCoupon,
+        discount_percent: Number(discountPercent || 0),
+        discount_expiration_days: Number(discountExpirationDays || 0),
       };
 
-      // patch puntos / estrellas / cupón
-      const patch: any = {};
+      const { error } = await supabase
+        .from('commerces')
+        .update(patch)
+        .eq('id', effectiveCommerceId);
 
-      if (commerce?.enable_points) {
-        let finalPoints = customer.totalPoints || 0;
-        finalPoints += txPoints;
+      if (error) throw error;
 
-        if (selectedReward && (selectedReward as any).rewardType === 'POINTS') {
-          finalPoints -= (selectedReward as any).pointsThreshold || 0;
-          finalPoints = Math.max(0, finalPoints);
-        }
+      // Actualizo estado local + db local
+      const updated: Commerce = {
+        ...commerce,
+        enable_points: enablePoints,
+        pointsMode,
+        pointsValue: Number(pointsValue || 0),
+        enable_coupon: enableCoupon,
+        discountPercent: Number(discountPercent || 0),
+        discountExpirationDays: Number(discountExpirationDays || 0),
+      };
 
-        patch.total_points = finalPoints;
-      }
+      setCommerce(updated);
+      try {
+        db.update<Commerce>('commerces', updated.id, updated);
+      } catch {}
 
-      if (commerce?.enable_stars) {
-        let newCurrent = customer.currentStars || 0;
-        let newTotal = customer.totalStars || 0;
-
-        if (selectedReward && (selectedReward as any).rewardType === 'STARS') {
-          newCurrent = Math.max(0, newCurrent - ((selectedReward as any).starsThreshold || 0));
-        } else {
-          newCurrent += 1;
-          newTotal += 1;
-        }
-
-        patch.current_stars = newCurrent;
-        patch.total_stars = newTotal;
-      }
-
-      if (commerce?.enable_coupon) {
-        const nextExpiry = new Date();
-        nextExpiry.setDate(nextExpiry.getDate() + (commerce.discountExpirationDays || 30));
-        patch.discount_available = true;
-        patch.discount_expires_at = nextExpiry.toISOString();
-        patch.last_discount_used_at = applyCoupon
-          ? new Date().toISOString()
-          : (customer as any).lastDiscountUsedAt ?? null;
-      }
-
-      if (Object.keys(patch).length > 0) {
-        await updateCustomerSupabase(customer.id, patch);
-      }
-
-      await insertTransactionSupabase(tx);
-
-      const refreshed = await fetchCustomerByToken(customer.qrToken);
-      if (refreshed) setCustomer(refreshed);
-
-      setLastTx(tx);
-      setStep('SUCCESS');
-    } catch (error: any) {
-      console.error('HANDLE_SUBMIT ERROR', error);
-      setUiError('No se pudo registrar la venta. Probá de nuevo.');
+      navigate('/commerce');
+    } catch (e: any) {
+      console.error('Settings save error:', e);
+      setUiError('Error al guardar configuración en Supabase.');
     } finally {
-      setIsSaving(false);
+      setSaving(false);
     }
   };
 
-  const resetToIdle = () => {
-    setUiError('');
-    setCustomer(null);
-    setAmount('');
-    setApplyCoupon(false);
-    setSelectedReward(null);
-    setLastTx(null);
-    setEntryMethod('SCAN');
-    setStep('IDLE');
-  };
-
-  if (step === 'SCANNING') return <QRScanner onScan={handleScan} onClose={() => setStep('IDLE')} />;
-
-  return (
-    <div className="max-w-md mx-auto pb-10">
-      {/* ✅ Header mejorado con Home + Title clickeable */}
-      <div className="flex items-center justify-between gap-4 mb-10 px-4">
-        <div className="flex items-center gap-3">
+  if (loading) {
+    return (
+      <div className="max-w-md mx-auto p-6">
+        <div className="flex items-center gap-3 mb-6">
           <button
-            onClick={goBackSmart} // ✅ NUEVO
+            onClick={() => navigate('/commerce')}
             className="p-1.5 -ml-1.5 text-slate-400 hover:text-black"
-            aria-label="Volver"
           >
             <ArrowLeft size={20} />
           </button>
+          <h1 className="text-xl font-black">Configuración</h1>
+        </div>
+        <div className="bg-white border border-slate-100 rounded-[32px] p-8 text-center text-slate-400">
+          Cargando…
+        </div>
+      </div>
+    );
+  }
 
-          {/* ✅ NUEVO: título clickeable (equivalente a “logo clickeable”) */}
+  if (!commerce) {
+    return (
+      <div className="max-w-md mx-auto p-6">
+        <div className="flex items-center gap-3 mb-6">
           <button
-            onClick={goHome}
-            className="text-left"
-            aria-label="Ir al panel principal"
+            onClick={() => navigate('/commerce')}
+            className="p-1.5 -ml-1.5 text-slate-400 hover:text-black"
           >
-            <h1 className="text-xl font-bold tracking-tight text-black hover:opacity-80">
-              Registrar Venta
-            </h1>
-            <p className="text-[11px] font-black uppercase tracking-widest text-slate-300 -mt-0.5">
-              Panel principal
-            </p>
+            <ArrowLeft size={20} />
           </button>
+          <h1 className="text-xl font-black">Configuración</h1>
         </div>
 
-        {/* ✅ NUEVO: botón Inicio explícito */}
+        <div className="bg-white border border-slate-100 rounded-[32px] p-8 text-center text-slate-400">
+          No se encontró el comercio (commerceId vacío o inexistente).
+        </div>
+
+        {uiError && (
+          <div className="mt-4 text-sm font-semibold text-red-600 bg-red-50 border border-red-100 rounded-2xl p-3">
+            {uiError}
+          </div>
+        )}
+      </div>
+    );
+  }
+
+  return (
+    <div className="max-w-md mx-auto pb-20">
+      {/* Header */}
+      <div className="flex items-center gap-4 mb-10 px-4">
         <button
-          onClick={goHome}
-          className="px-3 py-2 rounded-2xl border border-[#eaeaea] bg-white hover:bg-slate-50 text-slate-700 flex items-center gap-2 font-black text-[10px] uppercase tracking-widest"
-          aria-label="Inicio"
+          onClick={() => navigate('/commerce')}
+          className="p-1.5 -ml-1.5 text-slate-400 hover:text-black"
         >
-          <Home size={16} />
-          Inicio
+          <ArrowLeft size={20} />
         </button>
+        <div className="flex-1">
+          <h1 className="text-xl font-black tracking-tight text-black">Configuración</h1>
+          <p className="text-xs text-slate-400 font-bold uppercase tracking-widest mt-1">
+            {commerce.name || 'Mi comercio'}
+          </p>
+        </div>
       </div>
 
-      {step === 'IDLE' && (
-        <div className="space-y-4 px-4">
-          <div className="bg-white border border-[#eaeaea] p-10 rounded-[40px] shadow-sm flex flex-col items-center text-center">
-            <div className="w-14 h-14 rounded-2xl flex items-center justify-center mb-6 bg-slate-50 text-slate-900 border border-[#eee]">
-              <QrCode size={28} />
-            </div>
+      <div className="px-4 space-y-6">
+        {uiError && (
+          <div className="text-sm font-semibold text-red-600 bg-red-50 border border-red-100 rounded-2xl p-3">
+            {uiError}
+          </div>
+        )}
 
-            <h3 className="text-lg font-bold mb-2">Escanear Socio</h3>
-            <p className="text-slate-400 mb-6 font-medium text-[13px]">
-              Escaneá el QR del cliente para sumar beneficios.
-            </p>
-
-            {uiError && (
-              <div className="w-full text-sm font-semibold text-red-600 bg-red-50 border border-red-100 rounded-2xl p-3 mb-4">
-                {uiError}
+        {/* Points */}
+        <div className="bg-white border border-slate-100 rounded-[40px] p-8 shadow-sm space-y-6">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-3">
+              <div className="w-11 h-11 rounded-2xl bg-indigo-50 border border-indigo-100 flex items-center justify-center text-indigo-600">
+                <Zap size={18} />
               </div>
-            )}
-
-            <button
-              onClick={() => {
-                setUiError('');
-                setEntryMethod('SCAN');
-                setStep('SCANNING');
-              }}
-              disabled={isOverLimit}
-              className="w-full py-4 bg-black text-white rounded-2xl font-black text-[11px] uppercase tracking-widest shadow-xl disabled:opacity-20 transition-all"
-            >
-              Abrir Cámara
-            </button>
-          </div>
-
-          <button
-            onClick={() => navigate('/commerce/search-customer')}
-            className="w-full py-5 bg-white border border-[#eaeaea] text-slate-400 rounded-[28px] font-black text-[11px] uppercase tracking-widest hover:bg-slate-50 transition-all flex items-center justify-center gap-3"
-          >
-            <UserSearch size={18} /> Buscar por nombre o teléfono
-          </button>
-        </div>
-      )}
-
-      {step === 'CONFIRMING' && customer && (
-        <div className="mx-4 bg-white p-8 rounded-[40px] border border-[#eaeaea] shadow-sm space-y-6 animate-in zoom-in-95">
-          <div className="text-center space-y-3">
-            <div className="w-14 h-14 bg-slate-50 mx-auto rounded-2xl flex items-center justify-center text-xl font-bold text-slate-300 border">
-              {customer.name?.[0] || 'S'}
-            </div>
-            <h3 className="text-xl font-black text-slate-900 leading-tight">{customer.name}</h3>
-
-            <div className="grid grid-cols-2 gap-2">
-              {commerce?.enable_points && (
-                <div className="bg-indigo-50 p-3 rounded-2xl border border-indigo-100">
-                  <p className="text-[10px] font-black text-indigo-400 uppercase">Saldo Puntos</p>
-                  <p className="text-lg font-black text-indigo-700">{customer.totalPoints}</p>
-                </div>
-              )}
-
-              {commerce?.enable_stars && (
-                <div className="bg-yellow-50 p-3 rounded-2xl border border-yellow-100">
-                  <p className="text-[10px] font-black text-yellow-400 uppercase">Sellos</p>
-                  <p className="text-lg font-black text-yellow-700">{customer.currentStars}</p>
-                </div>
-              )}
-            </div>
-          </div>
-
-          {commerce?.enable_coupon && customer.discountAvailable && (
-            <button
-              onClick={() => setApplyCoupon(!applyCoupon)}
-              className={`w-full py-4 px-6 rounded-2xl border-2 flex items-center justify-between transition-all ${
-                applyCoupon ? 'bg-black border-black text-white' : 'bg-blue-50 border-blue-100 text-blue-600'
-              }`}
-            >
-              <div className="flex items-center gap-2">
-                <span className="font-black text-[11px] uppercase tracking-widest">
-                  {applyCoupon ? 'Cupón aplicado' : 'Aplicar cupón'}
-                </span>
+              <div>
+                <p className="text-sm font-black text-slate-900">Puntos</p>
+                <p className="text-[12px] text-slate-400 font-medium">Sumá puntos por compras.</p>
               </div>
-              <span className="text-xs font-black">{applyCoupon ? 'SI' : 'NO'}</span>
-            </button>
-          )}
+            </div>
 
-          <div className="space-y-2">
-            <label className="text-[10px] font-black text-slate-400 uppercase">Monto</label>
-            <input
-              value={amount}
-              onChange={(e) => setAmount(e.target.value)}
-              inputMode="decimal"
-              placeholder="Ej: 12000"
-              className="w-full border border-[#eaeaea] rounded-2xl px-4 py-4 text-lg font-black outline-none"
-            />
+            <label className="inline-flex items-center cursor-pointer">
+              <input
+                type="checkbox"
+                className="sr-only peer"
+                checked={enablePoints}
+                onChange={(e) => setEnablePoints(e.target.checked)}
+                disabled={!canEdit}
+              />
+              <div className="w-12 h-7 bg-slate-200 peer-focus:outline-none rounded-full peer peer-checked:bg-black relative transition-all">
+                <div className="absolute top-0.5 left-0.5 w-6 h-6 bg-white rounded-full transition-all peer-checked:translate-x-5" />
+              </div>
+            </label>
           </div>
 
-          {uiError && (
-            <div className="text-sm font-semibold text-red-600 bg-red-50 border border-red-100 rounded-2xl p-3">
-              {uiError}
+          {enablePoints && (
+            <div className="space-y-4">
+              <div className="space-y-2">
+                <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">
+                  Modo de cálculo
+                </label>
+                <div className="grid grid-cols-2 gap-2">
+                  <button
+                    type="button"
+                    onClick={() => setPointsMode(PointsMode.FIXED)}
+                    disabled={!canEdit}
+                    className={`py-4 rounded-2xl border text-[11px] font-black uppercase tracking-widest transition-all ${
+                      pointsMode === PointsMode.FIXED
+                        ? 'bg-black text-white border-black'
+                        : 'bg-white text-slate-500 border-slate-200 hover:bg-slate-50'
+                    }`}
+                  >
+                    Fijo
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setPointsMode(PointsMode.PERCENTAGE)}
+                    disabled={!canEdit}
+                    className={`py-4 rounded-2xl border text-[11px] font-black uppercase tracking-widest transition-all ${
+                      pointsMode === PointsMode.PERCENTAGE
+                        ? 'bg-black text-white border-black'
+                        : 'bg-white text-slate-500 border-slate-200 hover:bg-slate-50'
+                    }`}
+                  >
+                    Porcentaje
+                  </button>
+                </div>
+              </div>
+
+              <div className="space-y-2">
+                <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">
+                  Valor
+                </label>
+                <div className="relative">
+                  <div className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-300">
+                    {pointsMode === PointsMode.PERCENTAGE ? <Percent size={16} /> : <Zap size={16} />}
+                  </div>
+                  <input
+                    type="number"
+                    value={pointsValue}
+                    onChange={(e) => setPointsValue(Number(e.target.value))}
+                    disabled={!canEdit}
+                    className="w-full pl-11 pr-4 py-4 bg-slate-50 border border-slate-100 rounded-2xl outline-none font-black text-slate-900 focus:border-black transition-all"
+                    placeholder={pointsMode === PointsMode.PERCENTAGE ? 'Ej: 5 (5%)' : 'Ej: 10 puntos'}
+                  />
+                </div>
+
+                <p className="text-[11px] text-slate-400 font-medium leading-relaxed">
+                  {pointsMode === PointsMode.PERCENTAGE
+                    ? 'Se calcula como % del monto (redondeado). Ej: 5 = 5% del monto.'
+                    : 'Se suma un valor fijo por operación. Ej: 10 = 10 puntos por compra.'}
+                </p>
+              </div>
             </div>
           )}
-
-          <button
-            onClick={handleSubmit}
-            disabled={isSaving}
-            className="w-full py-4 bg-black text-white rounded-2xl font-black text-[11px] uppercase tracking-widest shadow-xl disabled:opacity-40 transition-all"
-          >
-            {isSaving ? 'Registrando...' : 'Confirmar operación'}
-          </button>
-
-          <button
-            onClick={resetToIdle}
-            className="w-full py-4 bg-white border border-[#eaeaea] text-slate-600 rounded-2xl font-black text-[11px] uppercase tracking-widest"
-          >
-            Cancelar / Volver
-          </button>
         </div>
-      )}
 
-      {step === 'SUCCESS' && (
-        <div className="mx-4 bg-white p-8 rounded-[40px] border border-[#eaeaea] shadow-sm space-y-6 text-center animate-in zoom-in-95">
-          <div className="w-14 h-14 bg-green-50 mx-auto rounded-2xl flex items-center justify-center border border-green-100">
-            <CheckCircle2 className="text-green-600" />
+        {/* Coupon */}
+        <div className="bg-white border border-slate-100 rounded-[40px] p-8 shadow-sm space-y-6">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-3">
+              <div className="w-11 h-11 rounded-2xl bg-blue-50 border border-blue-100 flex items-center justify-center text-blue-600">
+                <BadgeDollarSign size={18} />
+              </div>
+              <div>
+                <p className="text-sm font-black text-slate-900">Cupón</p>
+                <p className="text-[12px] text-slate-400 font-medium">Generá un descuento disponible.</p>
+              </div>
+            </div>
+
+            <label className="inline-flex items-center cursor-pointer">
+              <input
+                type="checkbox"
+                className="sr-only peer"
+                checked={enableCoupon}
+                onChange={(e) => setEnableCoupon(e.target.checked)}
+                disabled={!canEdit}
+              />
+              <div className="w-12 h-7 bg-slate-200 peer-focus:outline-none rounded-full peer peer-checked:bg-black relative transition-all">
+                <div className="absolute top-0.5 left-0.5 w-6 h-6 bg-white rounded-full transition-all peer-checked:translate-x-5" />
+              </div>
+            </label>
           </div>
 
-          <h3 className="text-2xl font-black text-slate-900">¡Impacto registrado!</h3>
-          <p className="text-slate-500 font-medium">{customer?.name || 'El cliente'} ya recibió sus beneficios.</p>
+          {enableCoupon && (
+            <div className="space-y-4">
+              <div className="space-y-2">
+                <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">
+                  % de descuento
+                </label>
+                <div className="relative">
+                  <div className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-300">
+                    <Percent size={16} />
+                  </div>
+                  <input
+                    type="number"
+                    value={discountPercent}
+                    onChange={(e) => setDiscountPercent(Number(e.target.value))}
+                    disabled={!canEdit}
+                    className="w-full pl-11 pr-4 py-4 bg-slate-50 border border-slate-100 rounded-2xl outline-none font-black text-slate-900 focus:border-black transition-all"
+                    placeholder="10"
+                  />
+                </div>
+              </div>
 
-          <button
-            onClick={resetToIdle}
-            className="w-full py-5 bg-black text-white rounded-[28px] font-black text-[11px] uppercase tracking-widest shadow-xl"
-          >
-            Siguiente venta
-          </button>
-
-          {/* ✅ NUEVO: acceso rápido al panel desde éxito */}
-          <button
-            onClick={goHome}
-            className="w-full py-5 bg-white border border-[#eaeaea] text-slate-700 rounded-[28px] font-black text-[11px] uppercase tracking-widest hover:bg-slate-50 transition-all"
-          >
-            Volver al panel
-          </button>
-
-          {lastTx && (
-            <div className="text-xs text-slate-400">
-              Monto: <b>{lastTx.amount}</b> — Puntos: <b>{lastTx.points}</b>
+              <div className="space-y-2">
+                <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">
+                  Vence en (días)
+                </label>
+                <input
+                  type="number"
+                  value={discountExpirationDays}
+                  onChange={(e) => setDiscountExpirationDays(Number(e.target.value))}
+                  disabled={!canEdit}
+                  className="w-full px-4 py-4 bg-slate-50 border border-slate-100 rounded-2xl outline-none font-black text-slate-900 focus:border-black transition-all"
+                  placeholder="30"
+                />
+                <p className="text-[11px] text-slate-400 font-medium">
+                  Ej: 30 = el cupón vence a los 30 días desde que se genera.
+                </p>
+              </div>
             </div>
           )}
         </div>
-      )}
+
+        {/* Save */}
+        <button
+          onClick={handleSave}
+          disabled={!canEdit || saving}
+          className="w-full py-5 bg-black text-white rounded-[24px] font-black text-[11px] uppercase tracking-widest shadow-xl disabled:opacity-30 active:scale-95 transition-all flex items-center justify-center gap-2"
+        >
+          <Save size={16} />
+          {saving ? 'Guardando…' : 'Guardar cambios'}
+        </button>
+
+        {!canEdit && (
+          <p className="text-center text-[11px] text-slate-400 font-medium">
+            Tu usuario no tiene permisos para editar ajustes.
+          </p>
+        )}
+      </div>
     </div>
   );
 };
 
-export default ScanPage;
+export default SettingsPage;
