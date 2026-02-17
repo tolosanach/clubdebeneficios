@@ -165,7 +165,6 @@ const ScanPage: React.FC = () => {
       if (!user || !effectiveCommerceId) return;
 
       const token = normalizeToken(tokenRaw);
-
       const found = await fetchCustomerByToken(token);
 
       if (!found) {
@@ -186,58 +185,77 @@ const ScanPage: React.FC = () => {
   // Submit (Registrar venta)
   // ---------------------------
   const handleSubmit = async () => {
-  try {
-    console.log('CLICK Confirmar Operación', { amount, customer, effectiveCommerceId });
+    try {
+      // ✅ logs para ver dónde se corta
+      console.log('HANDLE_SUBMIT start', {
+        amount,
+        customer,
+        commerce,
+        user,
+        effectiveCommerceId,
+        entryMethod,
+      });
 
-    if (!customer || !commerce || !user) return;
+      // ✅ no dependemos de commerce local para permitir insertar
+      if (!customer || !user || !effectiveCommerceId) {
+        console.log('HANDLE_SUBMIT early return', { customer, user, effectiveCommerceId });
+        return;
+      }
 
-    const numAmount = parseFloat(amount) || 0;
-    const txPoints = commerce.enable_points ? calculatePoints(numAmount) : 0;
+      const numAmount = parseFloat(amount) || 0;
 
-    const tx: Transaction = {
-      id: crypto.randomUUID(),
-      commerceId: commerce.id,
-      customerId: customer.id,
-      staffUserId: user.id,
-      amount: numAmount,
-      points: txPoints,
-      method: entryMethod,
-      createdAt: new Date().toISOString(),
-      redeemedRewardId: selectedReward?.id,
-    };
+      // Si commerce local existe, calculamos puntos; si no, 0 (para no bloquear el insert)
+      const txPoints =
+        commerce && commerce.enable_points ? calculatePoints(numAmount) : 0;
 
-      // 1) Puntos (Supabase)
-      let finalPoints = customer.totalPoints || 0;
-      if (commerce.enable_points) {
+      const tx: Transaction = {
+        id: crypto.randomUUID(),
+        commerceId: effectiveCommerceId, // ✅ SIEMPRE el commerce_id real para Supabase
+        customerId: customer.id,
+        staffUserId: user.id,
+        amount: numAmount,
+        points: txPoints,
+        method: entryMethod,
+        createdAt: new Date().toISOString(),
+        redeemedRewardId: selectedReward?.id,
+      };
+
+      console.log('BEFORE PATCH/INSERT', { tx });
+
+      // PATCH mínimo (no bloquea si commerce local es null)
+      const patch: any = {};
+
+      // Si hay commerce local y puntos habilitados, actualizamos puntos
+      if (commerce?.enable_points) {
+        let finalPoints = customer.totalPoints || 0;
         finalPoints += txPoints;
 
         if (selectedReward && selectedReward.rewardType === 'POINTS') {
           finalPoints -= selectedReward.pointsThreshold || 0;
           finalPoints = Math.max(0, finalPoints);
         }
+
+        patch.total_points = finalPoints;
       }
 
-      // 2) Estrellas (Supabase)
-      let newCurrentStars = customer.currentStars || 0;
-      let newTotalStars = customer.totalStars || 0;
-      if (commerce.enable_stars) {
+      // Si hay commerce local y estrellas habilitadas
+      if (commerce?.enable_stars) {
+        let newCurrentStars = customer.currentStars || 0;
+        let newTotalStars = customer.totalStars || 0;
+
         if (selectedReward && selectedReward.rewardType === 'STARS') {
           newCurrentStars = Math.max(0, newCurrentStars - (selectedReward.starsThreshold || 0));
         } else {
           newCurrentStars += 1;
           newTotalStars += 1;
         }
-      }
 
-      // 3) Cupón (Supabase)
-      const patch: any = {};
-      if (commerce.enable_points) patch.total_points = finalPoints;
-      if (commerce.enable_stars) {
         patch.current_stars = newCurrentStars;
         patch.total_stars = newTotalStars;
       }
 
-      if (commerce.enable_coupon) {
+      // Si hay commerce local y cupón habilitado
+      if (commerce?.enable_coupon) {
         const nextExpiry = new Date();
         nextExpiry.setDate(nextExpiry.getDate() + (commerce.discountExpirationDays || 30));
 
@@ -246,12 +264,19 @@ const ScanPage: React.FC = () => {
         patch.last_discount_used_at = applyCoupon
           ? new Date().toISOString()
           : (customer as any).lastDiscountUsedAt ?? null;
-
-        // Si querés guardar si aplicó cupón en la tx, agregalo cuando tengas columnas extra.
       }
 
-      await updateCustomerSupabase(customer.id, patch);
+      // ✅ si no hay nada para actualizar, al menos insertamos la transacción
+      if (Object.keys(patch).length > 0) {
+        console.log('UPDATING customer patch', patch);
+        await updateCustomerSupabase(customer.id, patch);
+      } else {
+        console.log('SKIP customer update (empty patch)');
+      }
+
+      console.log('INSERTING transaction...');
       await insertTransactionSupabase(tx);
+      console.log('AFTER INSERT ✅');
 
       // refrescar cliente para mostrar saldos actualizados
       const refreshed = await fetchCustomerByToken(customer.qrToken);
@@ -259,9 +284,9 @@ const ScanPage: React.FC = () => {
 
       setLastTx(tx);
       setStep('SUCCESS');
-    } catch (error) {
-      console.error(error);
-      alert('Error al registrar la venta en Supabase.');
+    } catch (error: any) {
+      console.error('HANDLE_SUBMIT ERROR', error);
+      alert(`Error al registrar la venta en Supabase.\n${error?.message || error}`);
     }
   };
 
