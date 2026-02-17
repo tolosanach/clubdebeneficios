@@ -186,23 +186,25 @@ const ScanPage: React.FC = () => {
   // Submit (Registrar venta)
   // ---------------------------
   const handleSubmit = async () => {
-    try {
-      if (!customer || !commerce || !user) return;
+  try {
+    console.log('CLICK Confirmar Operación', { amount, customer, effectiveCommerceId });
 
-      const numAmount = parseFloat(amount) || 0;
-      const txPoints = commerce.enable_points ? calculatePoints(numAmount) : 0;
+    if (!customer || !commerce || !user) return;
 
-      const tx: Transaction = {
-        id: crypto.randomUUID(),
-        commerceId: commerce.id,
-        customerId: customer.id,
-        staffUserId: user.id,
-        amount: numAmount,
-        points: txPoints,
-        method: entryMethod,
-        createdAt: new Date().toISOString(),
-        redeemedRewardId: selectedReward?.id,
-      };
+    const numAmount = parseFloat(amount) || 0;
+    const txPoints = commerce.enable_points ? calculatePoints(numAmount) : 0;
+
+    const tx: Transaction = {
+      id: crypto.randomUUID(),
+      commerceId: commerce.id,
+      customerId: customer.id,
+      staffUserId: user.id,
+      amount: numAmount,
+      points: txPoints,
+      method: entryMethod,
+      createdAt: new Date().toISOString(),
+      redeemedRewardId: selectedReward?.id,
+    };
 
       // 1) Puntos (Supabase)
       let finalPoints = customer.totalPoints || 0;
