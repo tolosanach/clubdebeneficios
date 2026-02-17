@@ -1,7 +1,9 @@
-
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
-import { LogOut, Home, QrCode, Settings, Gift, Users, BarChart3, Menu, X, CreditCard, AlertTriangle, Plus, UserPlus, ShieldHalf, Search, Store, MessageSquare } from 'lucide-react';
+import {
+  LogOut, Home, QrCode, Settings, Gift, Users, BarChart3,
+  Menu, X, CreditCard, AlertTriangle, Plus, ShieldHalf, Search, Store, MessageSquare
+} from 'lucide-react';
 import { useAuth } from '../services/auth';
 import { db } from '../services/db';
 import { UserRole, Commerce, SubscriptionStatus } from '../types';
@@ -28,6 +30,7 @@ const Layout: React.FC<LayoutProps> = ({ children, title }) => {
       { label: 'Dashboard', icon: BarChart3, path: '/admin' },
     ],
     [UserRole.COMMERCE_OWNER]: [
+      // ✅ Ya tenías “Inicio”. Lo dejamos como el acceso claro al dashboard.
       { label: 'Inicio', icon: Home, path: '/commerce' },
       { label: 'Escanear', icon: QrCode, path: '/commerce/scan' },
       { label: 'Recordatorios', icon: MessageSquare, path: '/commerce/reminders' },
@@ -45,6 +48,9 @@ const Layout: React.FC<LayoutProps> = ({ children, title }) => {
       { label: 'Premios', icon: Gift, path: '/commerce/rewards' },
     ],
     [UserRole.SCANNER]: [
+      // ✅ OPCIONAL: si querés que SCANNER también vuelva al panel principal.
+      // Si no corresponde, dejalo como está.
+      // { label: 'Inicio', icon: Home, path: '/commerce' },
       { label: 'Escanear', icon: QrCode, path: '/commerce/scan' },
     ],
     [UserRole.VIEWER]: [
@@ -53,72 +59,157 @@ const Layout: React.FC<LayoutProps> = ({ children, title }) => {
     ],
     [UserRole.CUSTOMER]: [
       { label: 'Mis Beneficios', icon: Gift, path: '/customer' },
-      { label: 'Descubrir Locales', icon: Store, path: '/customer' }, 
+      { label: 'Descubrir Locales', icon: Store, path: '/customer' },
     ],
   };
 
   const currentItems = menuItems[user.role] || [];
-  const isOverdue = subscription?.status === SubscriptionStatus.OVERDUE || subscription?.status === SubscriptionStatus.SUSPENDED;
-  const canUseQuickActions = [UserRole.COMMERCE_OWNER, UserRole.STAFF_MANAGER, UserRole.SCANNER].includes(user.role) && 
-                             location.pathname !== '/commerce/settings';
+  const isOverdue =
+    subscription?.status === SubscriptionStatus.OVERDUE ||
+    subscription?.status === SubscriptionStatus.SUSPENDED;
+
+  const canUseQuickActions =
+    [UserRole.COMMERCE_OWNER, UserRole.STAFF_MANAGER, UserRole.SCANNER].includes(user.role) &&
+    location.pathname !== '/commerce/settings';
+
+  // ✅ NUEVO: definir cuál es “Home” según rol
+  const homePath = useMemo(() => {
+    if (user.role === UserRole.SUPER_ADMIN) return '/admin';
+    if (user.role === UserRole.CUSTOMER) return '/customer';
+    // Commerce roles (owner, staff, viewer, scanner) vuelven al panel comercio
+    return '/commerce';
+  }, [user.role]);
+
+  // ✅ NUEVO: función para marcar item activo con subrutas
+  const isItemActive = (itemPath: string) => {
+    const current = location.pathname;
+
+    // Match exacto (por las dudas)
+    if (current === itemPath) return true;
+
+    // Si el item es "/commerce", que active SOLO cuando estamos exactamente en "/commerce"
+    // (para que "Inicio" no quede activo en todas las subrutas)
+    if (itemPath === '/commerce') return current === '/commerce';
+
+    // Para el resto, match por prefijo
+    return current.startsWith(itemPath + '/');
+  };
 
   return (
     <div className="min-h-screen flex flex-col font-sans">
       <header className="bg-white border-b border-[#eaeaea] sticky top-0 z-50 px-6 h-14 flex items-center justify-between">
         <div className="flex items-center gap-4">
-          <button onClick={() => setIsMenuOpen(!isMenuOpen)} className="p-2 -ml-2 text-slate-500 lg:hidden">
+          <button
+            onClick={() => setIsMenuOpen(!isMenuOpen)}
+            className="p-2 -ml-2 text-slate-500 lg:hidden"
+            aria-label="Abrir menú"
+          >
             {isMenuOpen ? <X size={20} /> : <Menu size={20} />}
           </button>
-          <div className="flex items-center gap-2">
+
+          {/* ✅ CAMBIO: logo + título clickeables (volver al panel principal) */}
+          <button
+            onClick={() => {
+              navigate(homePath);
+              setIsMenuOpen(false);
+            }}
+            className="flex items-center gap-2 text-left hover:opacity-90 transition-opacity"
+            aria-label="Ir al panel principal"
+          >
             {commerce?.logoUrl ? (
-              <img src={commerce.logoUrl} className="w-6 h-6 rounded object-cover border border-[#eee]" />
+              <img
+                src={commerce.logoUrl}
+                className="w-6 h-6 rounded object-cover border border-[#eee]"
+                alt="Logo comercio"
+              />
             ) : (
               <div className="w-6 h-6 rounded bg-black text-white flex items-center justify-center font-bold text-[10px]">
                 {commerce?.name?.[0] || 'C'}
               </div>
             )}
-            <h1 className="text-sm font-semibold tracking-tight text-black">{title || commerce?.name || 'Club'}</h1>
-          </div>
+
+            <div className="flex flex-col leading-tight">
+              <h1 className="text-sm font-semibold tracking-tight text-black">
+                {title || commerce?.name || 'Club'}
+              </h1>
+              {/* ✅ NUEVO: “volver” explícito, súper claro */}
+              <span className="text-[10px] text-slate-300 font-black uppercase tracking-widest">
+                Panel principal
+              </span>
+            </div>
+          </button>
         </div>
-        
+
         <div className="flex items-center gap-4">
           {isOverdue && user.role === UserRole.COMMERCE_OWNER && (
-            <button onClick={() => navigate('/commerce/billing')} className="hidden sm:flex items-center gap-1.5 bg-red-50 text-red-600 px-3 py-1 rounded-full text-[10px] font-bold border border-red-100">
-               <AlertTriangle size={12} /> Cuenta en Mora
+            <button
+              onClick={() => navigate('/commerce/billing')}
+              className="hidden sm:flex items-center gap-1.5 bg-red-50 text-red-600 px-3 py-1 rounded-full text-[10px] font-bold border border-red-100"
+            >
+              <AlertTriangle size={12} /> Cuenta en Mora
             </button>
           )}
+
           <div className="hidden sm:flex flex-col items-end">
             <p className="text-xs font-medium text-black">{user.name}</p>
-            <p className="text-[10px] text-slate-400 font-medium uppercase tracking-wider">{user.role.replace('_', ' ')}</p>
+            <p className="text-[10px] text-slate-400 font-medium uppercase tracking-wider">
+              {user.role.replace('_', ' ')}
+            </p>
           </div>
-          <button onClick={() => { logout(); navigate('/login'); }} className="p-1.5 text-slate-400 hover:text-black transition-colors">
+
+          <button
+            onClick={() => {
+              logout();
+              navigate('/login');
+            }}
+            className="p-1.5 text-slate-400 hover:text-black transition-colors"
+            aria-label="Cerrar sesión"
+          >
             <LogOut size={18} />
           </button>
         </div>
       </header>
 
       <div className="flex flex-1 overflow-hidden">
-        <nav className={`fixed inset-0 z-40 lg:relative lg:z-0 lg:block ${isMenuOpen ? 'block' : 'hidden'} bg-white border-r border-[#eaeaea] w-64`}>
+        <nav
+          className={`fixed inset-0 z-40 lg:relative lg:z-0 lg:block ${
+            isMenuOpen ? 'block' : 'hidden'
+          } bg-white border-r border-[#eaeaea] w-64`}
+        >
           <div className="p-4 space-y-1">
-            {currentItems.map((item) => (
-              <button
-                key={item.label}
-                onClick={() => { navigate(item.path); setIsMenuOpen(false); }}
-                className={`w-full flex items-center gap-3 px-3 py-2 rounded-lg transition-all ${location.pathname === item.path ? 'bg-slate-50 text-black font-semibold' : 'text-slate-500 hover:bg-slate-50 hover:text-black'}`}
-              >
-                <item.icon size={16} />
-                <span className="text-[13px]">{item.label}</span>
-              </button>
-            ))}
+            {currentItems.map((item) => {
+              const active = isItemActive(item.path); // ✅ NUEVO
+
+              return (
+                <button
+                  key={item.label}
+                  onClick={() => {
+                    navigate(item.path);
+                    setIsMenuOpen(false);
+                  }}
+                  className={`w-full flex items-center gap-3 px-3 py-2 rounded-lg transition-all ${
+                    active
+                      ? 'bg-slate-50 text-black font-semibold'
+                      : 'text-slate-500 hover:bg-slate-50 hover:text-black'
+                  }`}
+                >
+                  <item.icon size={16} />
+                  <span className="text-[13px]">{item.label}</span>
+                </button>
+              );
+            })}
           </div>
         </nav>
-        
-        {isMenuOpen && <div className="fixed inset-0 bg-black/5 z-30 lg:hidden" onClick={() => setIsMenuOpen(false)} />}
-        
+
+        {isMenuOpen && (
+          <div
+            className="fixed inset-0 bg-black/5 z-30 lg:hidden"
+            onClick={() => setIsMenuOpen(false)}
+          />
+        )}
+
         <main className="flex-1 overflow-y-auto p-6 lg:p-8 no-scrollbar bg-[#fafafa]">
-          <div className="max-w-6xl mx-auto">
-            {children}
-          </div>
+          <div className="max-w-6xl mx-auto">{children}</div>
         </main>
       </div>
 
@@ -128,38 +219,52 @@ const Layout: React.FC<LayoutProps> = ({ children, title }) => {
             <div className="flex flex-col items-end gap-3 mb-3 animate-in slide-in-from-bottom-4 duration-200">
               {[UserRole.COMMERCE_OWNER, UserRole.STAFF_MANAGER].includes(user.role) && (
                 <button
-                  onClick={() => { navigate('/commerce/search-customer'); setIsSpeedDialOpen(false); }}
+                  onClick={() => {
+                    navigate('/commerce/search-customer');
+                    setIsSpeedDialOpen(false);
+                  }}
                   className="flex items-center gap-3 bg-white border border-slate-200 px-4 py-3 rounded-2xl shadow-xl active:scale-[0.95] transition-all group"
                 >
-                  <span className="text-[11px] font-black uppercase tracking-widest text-slate-500">Buscar / Crear Socio</span>
+                  <span className="text-[11px] font-black uppercase tracking-widest text-slate-500">
+                    Buscar / Crear Socio
+                  </span>
                   <div className="w-10 h-10 bg-blue-50 text-blue-600 rounded-xl flex items-center justify-center">
                     <Search size={20} />
                   </div>
                 </button>
               )}
+
               <button
-                onClick={() => { navigate('/commerce/scan'); setIsSpeedDialOpen(false); }}
+                onClick={() => {
+                  navigate('/commerce/scan');
+                  setIsSpeedDialOpen(false);
+                }}
                 className="flex items-center gap-3 bg-white border border-slate-200 px-4 py-3 rounded-2xl shadow-xl active:scale-[0.95] transition-all group"
               >
-                <span className="text-[11px] font-black uppercase tracking-widest text-slate-500">Registrar Venta</span>
+                <span className="text-[11px] font-black uppercase tracking-widest text-slate-500">
+                  Registrar Venta
+                </span>
                 <div className="w-10 h-10 bg-slate-50 text-black rounded-xl flex items-center justify-center">
                   <QrCode size={20} />
                 </div>
               </button>
             </div>
           )}
-          
-          <button 
-            onClick={() => setIsSpeedDialOpen(!isSpeedDialOpen)} 
-            className={`w-14 h-14 bg-black text-white rounded-full shadow-2xl flex items-center justify-center hover:opacity-90 active:scale-[0.90] transition-all z-50 ${isSpeedDialOpen ? 'rotate-45' : ''}`}
+
+          <button
+            onClick={() => setIsSpeedDialOpen(!isSpeedDialOpen)}
+            className={`w-14 h-14 bg-black text-white rounded-full shadow-2xl flex items-center justify-center hover:opacity-90 active:scale-[0.90] transition-all z-50 ${
+              isSpeedDialOpen ? 'rotate-45' : ''
+            }`}
+            aria-label="Acciones rápidas"
           >
             <Plus size={28} />
           </button>
-          
+
           {isSpeedDialOpen && (
-            <div 
-              className="fixed inset-0 bg-white/40 backdrop-blur-[2px] z-40 transition-all" 
-              onClick={() => setIsSpeedDialOpen(false)} 
+            <div
+              className="fixed inset-0 bg-white/40 backdrop-blur-[2px] z-40 transition-all"
+              onClick={() => setIsSpeedDialOpen(false)}
             />
           )}
         </div>

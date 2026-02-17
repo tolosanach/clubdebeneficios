@@ -1,7 +1,7 @@
 // pages/commerce/ScanPage.tsx
 import React, { useEffect, useMemo, useState } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
-import { CheckCircle2, ArrowLeft, QrCode, UserSearch } from 'lucide-react';
+import { CheckCircle2, ArrowLeft, QrCode, UserSearch, Home } from 'lucide-react'; // ✅ NUEVO: Home
 
 import QRScanner from '../../components/QRScanner';
 import { db } from '../../services/db';
@@ -47,6 +47,20 @@ const ScanPage: React.FC = () => {
   }, [commerce]);
 
   const isOverLimit = usage?.isOverLimit;
+
+  // ✅ NUEVO: ruta única al dashboard (si mañana cambia, la tocás en un solo lugar)
+  const DASHBOARD_PATH = '/commerce';
+
+  // ✅ NUEVO: “volver” inteligente
+  const goBackSmart = () => {
+    // Si hay historial (o si venimos con un state), conviene volver atrás.
+    // Si no, mandamos al dashboard para evitar quedar atrapado.
+    if (window.history.length > 1 || location.state) navigate(-1);
+    else navigate(DASHBOARD_PATH);
+  };
+
+  // ✅ NUEVO: ir al panel principal desde cualquier estado
+  const goHome = () => navigate(DASHBOARD_PATH);
 
   useEffect(() => {
     if ((location.state as any)?.selectedCustomer) {
@@ -278,14 +292,41 @@ const ScanPage: React.FC = () => {
 
   return (
     <div className="max-w-md mx-auto pb-10">
-      <div className="flex items-center gap-4 mb-10 px-4">
+      {/* ✅ Header mejorado con Home + Title clickeable */}
+      <div className="flex items-center justify-between gap-4 mb-10 px-4">
+        <div className="flex items-center gap-3">
+          <button
+            onClick={goBackSmart} // ✅ NUEVO
+            className="p-1.5 -ml-1.5 text-slate-400 hover:text-black"
+            aria-label="Volver"
+          >
+            <ArrowLeft size={20} />
+          </button>
+
+          {/* ✅ NUEVO: título clickeable (equivalente a “logo clickeable”) */}
+          <button
+            onClick={goHome}
+            className="text-left"
+            aria-label="Ir al panel principal"
+          >
+            <h1 className="text-xl font-bold tracking-tight text-black hover:opacity-80">
+              Registrar Venta
+            </h1>
+            <p className="text-[11px] font-black uppercase tracking-widest text-slate-300 -mt-0.5">
+              Panel principal
+            </p>
+          </button>
+        </div>
+
+        {/* ✅ NUEVO: botón Inicio explícito */}
         <button
-          onClick={() => navigate('/commerce')}
-          className="p-1.5 -ml-1.5 text-slate-400 hover:text-black"
+          onClick={goHome}
+          className="px-3 py-2 rounded-2xl border border-[#eaeaea] bg-white hover:bg-slate-50 text-slate-700 flex items-center gap-2 font-black text-[10px] uppercase tracking-widest"
+          aria-label="Inicio"
         >
-          <ArrowLeft size={20} />
+          <Home size={16} />
+          Inicio
         </button>
-        <h1 className="text-xl font-bold tracking-tight text-black">Registrar Venta</h1>
       </div>
 
       {step === 'IDLE' && (
@@ -347,8 +388,6 @@ const ScanPage: React.FC = () => {
               {commerce?.enable_stars && (
                 <div className="bg-yellow-50 p-3 rounded-2xl border border-yellow-100">
                   <p className="text-[10px] font-black text-yellow-400 uppercase">Sellos</p>
-
-                  {/* ✅ CAMBIO: ahora NO mostramos “/ meta”, solo el conteo actual */}
                   <p className="text-lg font-black text-yellow-700">{customer.currentStars}</p>
                 </div>
               )}
@@ -419,6 +458,14 @@ const ScanPage: React.FC = () => {
             className="w-full py-5 bg-black text-white rounded-[28px] font-black text-[11px] uppercase tracking-widest shadow-xl"
           >
             Siguiente venta
+          </button>
+
+          {/* ✅ NUEVO: acceso rápido al panel desde éxito */}
+          <button
+            onClick={goHome}
+            className="w-full py-5 bg-white border border-[#eaeaea] text-slate-700 rounded-[28px] font-black text-[11px] uppercase tracking-widest hover:bg-slate-50 transition-all"
+          >
+            Volver al panel
           </button>
 
           {lastTx && (
