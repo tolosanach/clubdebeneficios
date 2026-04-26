@@ -448,7 +448,7 @@ function MemberBadge({ createdAt }) {
           <Check size={20} color="#fff" strokeWidth={2.5} />
         </div>
         <div>
-          <p style={{ color:'#fff', fontSize:14, fontWeight:600, fontFamily:FN, margin:0 }}>Ya sos parte del club</p>
+          <p style={{ color:'#fff', fontSize:14, fontWeight:600, fontFamily:FN, margin:0 }}>Sos parte de este club</p>
           {since && <p style={{ color:'rgba(255,255,255,0.5)', fontSize:12, margin:'2px 0 0', fontFamily:FI }}>Miembro desde {since}</p>}
         </div>
       </div>
