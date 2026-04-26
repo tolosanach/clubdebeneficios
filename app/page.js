@@ -12319,6 +12319,9 @@ function ScannerView({ user, profile, setView }) {
   // para que el owner elija qué hacer. Una vez elegido, modeSelected pasa a true.
   const [scanMode, setScanMode]       = useState(null)
   const [modeSelected, setModeSelected] = useState(false)
+  // States del flow "Escanear nuevo Club" (modo join-club)
+  const [joinScanActive, setJoinScanActive] = useState(false)
+  const [joinScanError,  setJoinScanError]  = useState('')
   const [commerceId, setCommerceId]   = useState('')
   const [amount,     setAmount]       = useState('')   // monto en pesos para sistema de puntos (1:1)
   const [result, setResult]           = useState(null)
@@ -12600,10 +12603,62 @@ function ScannerView({ user, profile, setView }) {
     </button>
   )
 
-  // Si elige "Escanear nuevo Club", delegamos a ClientQRView (mismo flow que el cliente
-  // para sumarse a un club). Le pasamos el botón "Cambiar modo" como headerExtra.
+  // Si elige "Escanear nuevo Club", mostramos la misma estructura que el otro
+  // modo: título + botón "Abrir cámara" → JsQrScanner que detecta QR de
+  // comercio y redirige al perfil del club con flag from_qr=1.
   if (scanMode === 'join-club') {
-    return <ClientQRView user={user} profile={profile} setView={setView} headerExtra={backToPicker} />
+    return (
+      <div style={{ maxWidth:440, margin:'0 auto', padding:'30px 18px 80px' }}>
+        {backToPicker}
+        <div style={{ fontFamily:FN, fontSize:10, color:C.o, fontWeight:800, letterSpacing:'.15em', textTransform:'uppercase', marginBottom:8 }}>✦ Escáner QR</div>
+        <h1 style={{ fontFamily:FN, fontSize:'clamp(22px,4vw,32px)', fontWeight:900, color:C.white, marginBottom:4 }}>Escanear nuevo Club</h1>
+        <p style={{ fontSize:13, color:C.mist, marginBottom:22 }}>Apuntá la cámara al QR del local para sumarte como cliente.</p>
+
+        {joinScanError && (
+          <div style={{ marginBottom:14, padding:'10px 13px', background:'rgba(248,116,68,0.10)', border:'1px solid rgba(248,116,68,0.32)', borderRadius:10, fontSize:12, color:'#fca36b', display:'flex', alignItems:'flex-start', gap:8 }}>
+            <span style={{ flexShrink:0 }}>⚠</span>
+            <span>{joinScanError}</span>
+          </div>
+        )}
+
+        <PCard style={{ overflow:'hidden', marginBottom:14 }}>
+          {joinScanActive && (
+            <JsQrScanner
+              onDecode={async (text) => {
+                const match = text.match(/\/(?:join|club)\/([^/?#\s]+)/)
+                if (!match) {
+                  setJoinScanError('Este QR no pertenece a un club de Benefix.')
+                  setJoinScanActive(false)
+                  return
+                }
+                const slug = match[1]
+                const sb = getSupabase()
+                const { data: c } = await sb.from('commerces').select('id, slug').eq('slug', slug).eq('active', true).maybeSingle()
+                if (!c) {
+                  setJoinScanError('No encontramos el negocio del QR.')
+                  setJoinScanActive(false)
+                  return
+                }
+                window.location.href = `/club/${slug}?from_qr=1`
+              }}
+              onError={() => setJoinScanError('No se pudo acceder a la cámara. Revisá los permisos.')}
+            />
+          )}
+          {!joinScanActive && (
+            <div style={{ padding:24, textAlign:'center' }}>
+              <div style={{ display:'flex', justifyContent:'center', marginBottom:12 }}>
+                <div style={{ width:64, height:64, borderRadius:16, background:'rgba(255,255,255,0.06)', display:'flex', alignItems:'center', justifyContent:'center' }}>
+                  <Camera size={28} color='rgba(255,255,255,0.50)' strokeWidth={2} />
+                </div>
+              </div>
+              <GBtn onClick={() => { setJoinScanError(''); setJoinScanActive(true) }} style={{ width:'100%', justifyContent:'center', fontSize:15, padding:'14px' }}>
+                Abrir cámara
+              </GBtn>
+            </div>
+          )}
+        </PCard>
+      </div>
+    )
   }
 
   return (
