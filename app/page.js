@@ -1892,7 +1892,7 @@ function FullscreenLoader({ message }) {
 }
 
 // ─── NAVBAR ───────────────────────────────────────────────────────────────────
-function Navbar({ setView, cityName, user, profile, onLogin, onLogout, currentView, onOwnerProfile }) {
+function Navbar({ setView, cityName, user, profile, onLogin, onLogout, currentView, clientTab, onOwnerProfile }) {
   const role = profile?.role || 'client'
 
   // ── Shared style helpers ──────────────────────────────────────────────────
@@ -1913,6 +1913,12 @@ function Navbar({ setView, cityName, user, profile, onLogin, onLogout, currentVi
   function ic(targetView) {
     return currentView === targetView ? '#fff' : 'rgba(255,255,255,0.70)'
   }
+  // Botón "Mi cuenta" se prende SOLO cuando el cliente está en el tab cuenta —
+  // el resto de los tabs del nav inferior (mis clubs, historial, mi qr) tienen
+  // su propio highlight ahí abajo. Coordinación entre nav superior y nav inferior.
+  const accountActive = currentView === 'client' && clientTab === 'cuenta'
+  const bsAccount     = accountActive ? GRAD_ACTIVE : NEUTRAL
+  const icAccount     = accountActive ? '#fff' : 'rgba(255,255,255,0.70)'
 
   const NAV = { position:'fixed', top:10, left:10, right:10, zIndex:200, borderRadius:14, height:52, display:'flex', alignItems:'center', justifyContent:'space-between' }
 
@@ -1942,8 +1948,8 @@ function Navbar({ setView, cityName, user, profile, onLogin, onLogout, currentVi
             <LayoutDashboard size={16} color={ic('admin')} />
           </button>
           <button title="Mi cuenta" onClick={() => window.dispatchEvent(new CustomEvent('benefix:navigate', { detail: { view: 'client', tab: 'cuenta' } }))}
-            style={{ ...BTN, ...bs('client'), cursor: 'pointer' }}>
-            <User size={16} color={ic('client')} />
+            style={{ ...BTN, ...bsAccount, cursor: 'pointer' }}>
+            <User size={16} color={icAccount} />
           </button>
           <button title="Salir" onClick={onLogout} style={{ ...BTN, ...NEUTRAL, cursor:'pointer' }}>
             <DoorOpen size={16} color="rgba(255,255,255,0.70)" />
@@ -1967,8 +1973,8 @@ function Navbar({ setView, cityName, user, profile, onLogin, onLogout, currentVi
             <Store size={16} color={ic('commerce-settings')} strokeWidth={2} />
           </button>
           <button title="Mi cuenta" onClick={() => window.dispatchEvent(new CustomEvent('benefix:navigate', { detail: { view: 'client', tab: 'cuenta' } }))}
-            style={{ ...BTN, ...bs('client'), cursor: 'pointer' }}>
-            <User size={16} color={ic('client')} strokeWidth={2} />
+            style={{ ...BTN, ...bsAccount, cursor: 'pointer' }}>
+            <User size={16} color={icAccount} strokeWidth={2} />
           </button>
           <button title="Cerrar sesión" onClick={onLogout} style={{ ...BTN, ...NEUTRAL, cursor:'pointer' }}>
             <LogOut size={16} color="rgba(255,255,255,0.70)" strokeWidth={2} />
@@ -1981,8 +1987,8 @@ function Navbar({ setView, cityName, user, profile, onLogin, onLogout, currentVi
             <ScanLine size={16} color={ic('scanner')} strokeWidth={2} />
           </button>
           <button title="Mi cuenta" onClick={() => window.dispatchEvent(new CustomEvent('benefix:navigate', { detail: { view: 'client', tab: 'cuenta' } }))}
-            style={{ ...BTN, ...bs('client'), cursor: 'pointer' }}>
-            <User size={16} color={ic('client')} strokeWidth={2} />
+            style={{ ...BTN, ...bsAccount, cursor: 'pointer' }}>
+            <User size={16} color={icAccount} strokeWidth={2} />
           </button>
           <button title="Cerrar sesión" onClick={onLogout} style={{ ...BTN, ...NEUTRAL, cursor:'pointer' }}>
             <LogOut size={16} color="rgba(255,255,255,0.70)" strokeWidth={2} />
@@ -4866,6 +4872,8 @@ function ClientView({ setView, user, profile, onLogout }) {
   const [acctForm,   setAcctForm]   = useState({ name: profile?.name || '', phone: profile?.phone || '' })
   const [acctSaving, setAcctSaving] = useState(false)
   const [acctStats,  setAcctStats]  = useState(null)
+  // Cartel desplegable de "¿Tenés un negocio?" — colapsado por defecto.
+  const [bizExpanded, setBizExpanded] = useState(false)
   const supabase = getSupabase()
 
   // Club filters
@@ -4928,6 +4936,12 @@ function ClientView({ setView, user, profile, onLogout }) {
     window.addEventListener('benefix:set-tab', onSetTab)
     return () => window.removeEventListener('benefix:set-tab', onSetTab)
   }, [])
+
+  // Cada vez que el tab cambia, le avisamos al Navbar global para que pueda
+  // sincronizar el highlight (botón persona arriba ↔ tabs del nav inferior).
+  useEffect(() => {
+    window.dispatchEvent(new CustomEvent('benefix:client-tab-changed', { detail: { tab } }))
+  }, [tab])
 
   // Load account stats when "cuenta" tab is first opened
   useEffect(() => {
@@ -5330,29 +5344,49 @@ function ClientView({ setView, user, profile, onLogout }) {
               Para que un cliente que ya está logueado pueda agregar su negocio
               sin tener que volver a la home a buscar el botón "Soy comercio". */}
           {profile?.role !== 'commerce_owner' && (
-            <div
-              onClick={() => setView('register-commerce')}
-              style={{
-                position:'relative', overflow:'hidden',
-                background:'linear-gradient(135deg, rgba(254,80,0,0.18) 0%, rgba(189,75,248,0.22) 100%)',
-                border:'1px solid rgba(189,75,248,0.32)',
-                borderRadius:16, padding:'16px 18px', marginBottom:12,
-                cursor:'pointer', transition:'transform 160ms ease',
-                display:'flex', alignItems:'center', gap:14,
-              }}
-              onMouseDown={e => e.currentTarget.style.transform = 'scale(0.98)'}
-              onMouseUp={e => e.currentTarget.style.transform = 'scale(1)'}
-              onMouseLeave={e => e.currentTarget.style.transform = 'scale(1)'}>
-              <div style={{ width:46, height:46, borderRadius:12, background:G, display:'flex', alignItems:'center', justifyContent:'center', flexShrink:0, boxShadow:'0 4px 18px rgba(168,85,247,0.42)' }}>
-                <Store size={22} color='#fff' strokeWidth={2} />
-              </div>
-              <div style={{ flex:1, minWidth:0 }}>
-                <div style={{ fontFamily:FN, fontSize:14, fontWeight:700, color:'#fff', marginBottom:2 }}>¿Tenés un negocio?</div>
-                <div style={{ fontSize:12, color:'rgba(255,255,255,0.65)', lineHeight:1.45 }}>
-                  Registralo y empezá a fidelizar tus clientes. Es la misma cuenta — seguís siendo cliente también.
+            <div style={{
+              position:'relative', overflow:'hidden',
+              background:'linear-gradient(135deg, rgba(254,80,0,0.18) 0%, rgba(189,75,248,0.22) 100%)',
+              border:'1px solid rgba(189,75,248,0.32)',
+              borderRadius:16, marginBottom:12,
+            }}>
+              {/* Header — siempre visible: ícono + título + chevron */}
+              <button
+                onClick={() => setBizExpanded(e => !e)}
+                style={{
+                  width:'100%', background:'transparent', border:'none', cursor:'pointer',
+                  padding:'14px 18px',
+                  display:'flex', alignItems:'center', gap:14, textAlign:'left',
+                  fontFamily:'inherit',
+                }}>
+                <div style={{ width:46, height:46, borderRadius:12, background:G, display:'flex', alignItems:'center', justifyContent:'center', flexShrink:0, boxShadow:'0 4px 18px rgba(168,85,247,0.42)' }}>
+                  <Store size={22} color='#fff' strokeWidth={2} />
                 </div>
-              </div>
-              <ArrowRight size={18} color='rgba(255,255,255,0.65)' strokeWidth={2.4} style={{ flexShrink:0 }} />
+                <div style={{ flex:1, minWidth:0, fontFamily:FN, fontSize:14, fontWeight:700, color:'#fff' }}>
+                  ¿Tenés un negocio?
+                </div>
+                <ChevronDown size={18} color='rgba(255,255,255,0.65)' strokeWidth={2.4}
+                  style={{ flexShrink:0, transform: bizExpanded ? 'rotate(180deg)' : 'rotate(0)', transition:'transform 220ms ease' }} />
+              </button>
+              {/* Body — solo cuando expandido: texto + CTA */}
+              {bizExpanded && (
+                <div style={{ padding:'0 18px 16px 78px' }}>
+                  <div style={{ fontSize:12, color:'rgba(255,255,255,0.65)', lineHeight:1.5, marginBottom:12 }}>
+                    Registralo y empezá a fidelizar tus clientes. Es la misma cuenta — seguís siendo cliente también.
+                  </div>
+                  <button onClick={() => setView('register-commerce')}
+                    style={{
+                      display:'inline-flex', alignItems:'center', gap:6,
+                      background:G, border:'none', borderRadius:10,
+                      padding:'9px 14px', color:'#fff', fontSize:13, fontWeight:700,
+                      cursor:'pointer', fontFamily:FN,
+                      boxShadow:'0 4px 14px rgba(168,85,247,0.35)',
+                    }}>
+                    Registrar mi negocio
+                    <ArrowRight size={14} strokeWidth={2.4} />
+                  </button>
+                </div>
+              )}
             </div>
           )}
 
@@ -12934,6 +12968,11 @@ export default function App() {
   const [commerce, setCommerce] = useState(null)
   const [user,     setUser]     = useState(null)
   const [profile,  setProfile]  = useState(null)
+  // Tab activa del ClientView (Mis Clubs / Historial / Mi QR / Cuenta).
+  // El ClientView dispatcha 'benefix:client-tab-changed' cada vez que cambia,
+  // y acá lo guardamos para que el Navbar pueda saber cuál tab está activa
+  // y coordinar el highlight del botón persona vs los tabs del nav inferior.
+  const [clientTab, setClientTab] = useState('mis clubs')
   const [cities,        setCities]        = useState([])
   const [citiesLoading, setCitiesLoading] = useState(true)
   const [showOnboarding, setShowOnboarding] = useState(false)
@@ -13113,6 +13152,17 @@ export default function App() {
     return () => window.removeEventListener('benefix:navigate', onNavigate)
   }, [view])
 
+  // ClientView nos avisa cada vez que cambia su tab, para que el Navbar
+  // pueda decidir si el botón persona se enciende (tab=cuenta) o no.
+  useEffect(() => {
+    function onClientTabChanged(e) {
+      const next = e.detail?.tab
+      if (next) setClientTab(next)
+    }
+    window.addEventListener('benefix:client-tab-changed', onClientTabChanged)
+    return () => window.removeEventListener('benefix:client-tab-changed', onClientTabChanged)
+  }, [])
+
   async function handleOwnerProfile() {
     if (!user) return
     const { data } = await supabase.from('commerces').select('*').eq('owner_id', user.id).single()
@@ -13164,7 +13214,7 @@ export default function App() {
           }}
         />
       )}
-      <Navbar setView={navigate} cityName={currentCity?.name} user={user} profile={profile} onLogin={handleLogin} onLogout={handleLogout} currentView={view} onOwnerProfile={handleOwnerProfile} />
+      <Navbar setView={navigate} cityName={currentCity?.name} user={user} profile={profile} onLogin={handleLogin} onLogout={handleLogout} currentView={view} clientTab={clientTab} onOwnerProfile={handleOwnerProfile} />
       <div style={{ height:80 }} />
       {view === 'home'      && <HomeView setView={navigate} user={user} profile={profile} />}
       {view === 'directory'          && <DirectoryView citySlug={citySlug} cities={cities} setView={navigate} setCommerce={setCommerce} />}
