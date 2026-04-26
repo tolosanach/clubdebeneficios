@@ -9,6 +9,7 @@ import {
   Flame, Star, Gem, Sparkles,
   Coffee, Scissors, Utensils, ShoppingBag, Wrench, Building2,
   Shield, MessageCircle, ArrowRight, Check, Smartphone,
+  ScanLine, LogOut,
 } from 'lucide-react'
 import PhoneInput from '../../../lib/PhoneInput'
 
@@ -450,78 +451,59 @@ function MemberBadge({ createdAt }) {
   )
 }
 
-function BottomNav({ tab, setTab, prizesCount }) {
-  const [indicator, setIndicator] = useState({ left: 0, width: 0 })
-  const refs = useRef([])
-
+// Nav de pestañas — pegado arriba abajo del navbar global, con gradient
+// naranja-violeta. Mismo formato que el nav cliente (Mis Clubs / Historial / Mi QR).
+function ClubTopNav({ tab, setTab, prizesCount }) {
   const TABS = [
-    { id:'inicio',  Icon:Home,   label:'Inicio'              },
-    { id:'premios', Icon:Gift,   label:'Premios', badge:prizesCount },
-    { id:'miqr',    Icon:QrCode, label:'Mi QR'               },
+    { id:'inicio',  label:'Inicio'  },
+    { id:'premios', label:'Premios', badge: prizesCount },
+    { id:'miqr',    label:'Mi QR'   },
   ]
-
-  useEffect(() => {
-    const idx = TABS.findIndex(t => t.id === tab)
-    const el = refs.current[idx]
-    if (el) setIndicator({ left: el.offsetLeft, width: el.offsetWidth })
-  }, [tab])
-
   return (
     <nav style={{
-      position:'fixed', bottom:0, left:0, right:0, zIndex:200,
-      padding:'8px 16px',
-      paddingBottom:'calc(8px + env(safe-area-inset-bottom))',
+      background: 'linear-gradient(135deg, #FE5000, #BD4BF8)',
+      boxShadow: '0 8px 24px -8px rgba(0,0,0,0.45)',
     }}>
       <div style={{
-        position:'relative', display:'flex',
-        background:'rgba(18,18,24,0.92)',
-        backdropFilter:'blur(32px)', WebkitBackdropFilter:'blur(32px)',
-        borderRadius:9999,
-        border:'1px solid rgba(255,255,255,0.10)',
-        boxShadow:'0 24px 80px rgba(0,0,0,0.5)',
-        padding:5,
+        maxWidth: 520, margin: '0 auto',
+        display: 'flex', alignItems: 'stretch', justifyContent: 'center',
+        padding: '12px 16px',
       }}>
-        {/* Sliding glass indicator */}
-        <div style={{
-          position:'absolute', top:5, bottom:5,
-          left:indicator.left, width:indicator.width,
-          borderRadius:9999,
-          transition:'left 280ms cubic-bezier(0.23,1,0.32,1), width 280ms cubic-bezier(0.23,1,0.32,1)',
-          pointerEvents:'none', zIndex:0,
-        }} className="nav-pill-glass" />
-
-        {TABS.map(({ id, Icon, label, badge }, i) => {
+        {TABS.map(({ id, label, badge }, i) => {
           const active = tab === id
+          const isLast = i === TABS.length - 1
           return (
             <button key={id}
-              ref={el => { refs.current[i] = el }}
               onClick={() => setTab(id)}
-              onMouseDown={e => e.currentTarget.style.transform = 'scale(0.95)'}
+              onMouseDown={e => e.currentTarget.style.transform = 'scale(0.97)'}
               onMouseUp={e => e.currentTarget.style.transform = 'scale(1)'}
               onMouseLeave={e => e.currentTarget.style.transform = 'scale(1)'}
               style={{
-                flex:1, position:'relative', zIndex:1,
-                display:'flex', flexDirection:'column', alignItems:'center', gap:4,
-                padding:'10px 8px 8px',
-                background:'transparent', border:'none', borderRadius:9999,
-                color: active ? '#fff' : 'rgba(255,255,255,0.40)',
-                cursor:'pointer', transition:'color 200ms ease',
+                flex: 1,
+                background: 'transparent',
+                border: 'none',
+                borderRight: isLast ? 'none' : '1px solid rgba(255,255,255,0.35)',
+                color: '#fff',
+                fontFamily: FN,
+                fontSize: 13,
+                fontWeight: active ? 700 : 500,
+                letterSpacing: '.02em',
+                opacity: active ? 1 : 0.78,
+                padding: '4px 8px',
+                cursor: 'pointer',
+                transition: 'opacity 180ms ease, font-weight 180ms ease, transform 160ms cubic-bezier(0.23,1,0.32,1)',
+                position: 'relative',
               }}>
-              <div style={{ position:'relative', filter: active ? 'drop-shadow(0 0 7px rgba(255,255,255,0.55))' : 'none', transition:'filter 200ms ease' }}>
-                <Icon size={21} strokeWidth={active ? 0 : 2} fill={active ? 'currentColor' : 'none'} stroke={active ? 'currentColor' : 'rgba(255,255,255,0.40)'} />
-                {badge > 0 && (
-                  <span style={{
-                    position:'absolute', top:-5, right:-7,
-                    background:C.v, color:'#fff',
-                    fontSize:9, fontWeight:700, fontFamily:FN,
-                    borderRadius:9999, padding:'1px 5px',
-                    minWidth:16, textAlign:'center', lineHeight:1.5,
-                  }}>
-                    {badge}
-                  </span>
-                )}
-              </div>
-              <span style={{ fontSize:10, fontWeight:active?700:500, fontFamily:FN, letterSpacing:'.02em' }}>{label}</span>
+              {label}
+              {badge > 0 && (
+                <span style={{
+                  position:'absolute', top:-6, right: isLast ? 0 : 6,
+                  background:'rgba(255,255,255,0.95)', color:'#7C3AED',
+                  fontSize:9, fontWeight:800, fontFamily:FN,
+                  borderRadius:9999, padding:'1px 5px',
+                  minWidth:16, textAlign:'center', lineHeight:1.5,
+                }}>{badge}</span>
+              )}
             </button>
           )
         })}
@@ -675,14 +657,17 @@ export default function ClubProfilePage() {
   }, [user, data, membership])
 
   useEffect(() => {
-    if (!user || !membership) return
+    // El QR personal es ÚNICO y existe desde que el user se loguea —
+    // no depende de ser miembro de este club ni de ninguno. Lo generamos
+    // apenas haya user para mostrarlo también en el flujo pre-join.
+    if (!user) return
     import('qrcode').then(QRCode => {
       QRCode.default.toDataURL(`CLUB-${user.id}`, {
         width:220, margin:2,
         color: { dark:'#0f0f1a', light:'#ffffff' },
       }).then(setQrDataUrl)
     })
-  }, [user, membership])
+  }, [user])
 
   // Cargar reseñas cuando tenemos el commerce_id
   useEffect(() => {
@@ -833,18 +818,38 @@ export default function ClubProfilePage() {
 
       {/* ── NAVBAR FIJO ── */}
       <div style={{ position:'fixed', top:0, left:0, right:0, zIndex:200 }}>
-        <nav style={{ background:'rgba(0,0,0,0.75)', backdropFilter:'blur(24px)', WebkitBackdropFilter:'blur(24px)', borderBottom:`1px solid ${C.rim}`, padding:'0 20px', display:'flex', alignItems:'center', justifyContent:'space-between', height:58 }}>
+        <nav style={{ background:'rgba(0,0,0,0.75)', backdropFilter:'blur(24px)', WebkitBackdropFilter:'blur(24px)', borderBottom:`1px solid ${C.rim}`, padding:'0 16px', display:'flex', alignItems:'center', justifyContent:'space-between', height:58 }}>
           <Logo />
-          <div style={{ display:'flex', gap:8, alignItems:'center' }}>
-            <a href="/?view=client" title="Mi cuenta" style={{ display:'flex', alignItems:'center', justifyContent:'center', width:36, height:36, borderRadius:9, background:G, border:'none', cursor:'pointer', color:'#fff', boxShadow:'0 4px 14px #FE500033', textDecoration:'none' }}>
-              <User size={16} strokeWidth={2} />
+          <div style={{ display:'flex', gap:6, alignItems:'center' }}>
+            {/* Escanear QR — atajo a la cámara */}
+            <a href="/?view=scanner" title="Escanear QR" style={{ display:'flex', alignItems:'center', justifyContent:'center', width:34, height:34, borderRadius:9, background:'rgba(255,255,255,0.06)', border:`1px solid ${C.rim}`, cursor:'pointer', color:'rgba(255,255,255,0.78)', textDecoration:'none' }}>
+              <ScanLine size={15} strokeWidth={2} />
             </a>
+            {/* Mi cuenta */}
+            <a href="/?view=client" title="Mi cuenta" style={{ display:'flex', alignItems:'center', justifyContent:'center', width:34, height:34, borderRadius:9, background:G, border:'none', cursor:'pointer', color:'#fff', boxShadow:'0 4px 14px #FE500033', textDecoration:'none' }}>
+              <User size={15} strokeWidth={2} />
+            </a>
+            {/* Cerrar sesión — solo si hay user */}
+            {user && (
+              <button title="Cerrar sesión"
+                onClick={async () => {
+                  const sb = getSupabase()
+                  await sb.auth.signOut()
+                  if (typeof window !== 'undefined') window.location.href = '/'
+                }}
+                style={{ display:'flex', alignItems:'center', justifyContent:'center', width:34, height:34, borderRadius:9, background:'transparent', border:'none', cursor:'pointer', color:'rgba(255,255,255,0.70)', padding:0 }}>
+                <LogOut size={15} strokeWidth={2} />
+              </button>
+            )}
           </div>
         </nav>
+        {/* ── NAV DE PESTAÑAS (Inicio / Premios / Mi QR) — pegado abajo del navbar
+              con el gradiente de marca, mismo formato que el nav cliente. ── */}
+        <ClubTopNav tab={tab} setTab={setTab} prizesCount={activePrizes.length} />
       </div>
 
-      {/* Spacer para compensar el navbar fijo (+ banner demo) */}
-      <div style={{ height: isDemo ? 92 : 58 }} />
+      {/* Spacer: 58 navbar + 50 nav de pestañas = 108 (+ banner demo si aplica) */}
+      <div style={{ height: isDemo ? 142 : 108 }} />
 
       {/* ── 2. HERO - portada ── */}
       <section style={{ position:'relative', width:'100%', height:'35vh', minHeight:240, overflow:'hidden' }}>
@@ -1562,21 +1567,50 @@ export default function ClubProfilePage() {
                 </div>
               </div>
             ) : (
-              /* No miembro */
+              /* No miembro — el QR personal del user es ÚNICO y existe desde
+                 que se logueó. NO depende de unirse a un club. Mostramos
+                 directamente el QR (si está logueado) y el CTA para unirse
+                 si todavía no es socio de este club. */
               <div style={{ textAlign:'center', paddingTop:10 }}>
-                <div style={{ display:'flex', justifyContent:'center', marginBottom:16 }}>
-                  <div style={{ width:72, height:72, borderRadius:'50%', background:'rgba(168,85,247,0.12)', border:'1px solid rgba(168,85,247,0.25)', display:'flex', alignItems:'center', justifyContent:'center' }}>
-                    <QrCode size={34} strokeWidth={1.5} color={C.v} />
-                  </div>
-                </div>
-                <div style={{ fontFamily:FN, fontSize:22, fontWeight:700, color:C.white, marginBottom:10, lineHeight:1.1, letterSpacing:'-0.02em' }}>
-                  Tu QR te espera
-                </div>
-                <div style={{ fontSize:14, color:C.mist, lineHeight:1.7, marginBottom:28, maxWidth:300, margin:'0 auto 28px' }}>
-                  Unite al club de {commerce.name} y en segundos tenés tu código QR para acumular {unitLabel}.
-                </div>
+                {user ? (
+                  <>
+                    <div style={{ fontFamily:FN, fontSize:22, fontWeight:700, color:C.white, marginBottom:10, lineHeight:1.1, letterSpacing:'-0.02em' }}>
+                      Tu código QR
+                    </div>
+                    <div style={{ fontSize:14, color:C.mist, lineHeight:1.7, marginBottom:18, maxWidth:300, margin:'0 auto 18px' }}>
+                      Mostralo al comerciante para que te sume {unitLabel}. Sirve para todos tus clubes.
+                    </div>
+                    {qrDataUrl ? (
+                      <div style={{ display:'flex', justifyContent:'center', marginBottom:20 }}>
+                        <div style={{ background:'#fff', padding:14, borderRadius:18, boxShadow:'0 12px 40px rgba(168,85,247,0.25)' }}>
+                          <img src={qrDataUrl} alt="Tu QR" style={{ width:200, height:200, display:'block' }} />
+                        </div>
+                      </div>
+                    ) : (
+                      <div style={{ display:'flex', justifyContent:'center', marginBottom:20 }}>
+                        <div style={{ width:228, height:228, borderRadius:18, background:'rgba(255,255,255,0.04)', border:'1px solid rgba(255,255,255,0.08)', display:'flex', alignItems:'center', justifyContent:'center', color:C.dust, fontSize:12 }}>
+                          Generando QR...
+                        </div>
+                      </div>
+                    )}
+                  </>
+                ) : (
+                  <>
+                    <div style={{ display:'flex', justifyContent:'center', marginBottom:16 }}>
+                      <div style={{ width:72, height:72, borderRadius:'50%', background:'rgba(168,85,247,0.12)', border:'1px solid rgba(168,85,247,0.25)', display:'flex', alignItems:'center', justifyContent:'center' }}>
+                        <QrCode size={34} strokeWidth={1.5} color={C.v} />
+                      </div>
+                    </div>
+                    <div style={{ fontFamily:FN, fontSize:22, fontWeight:700, color:C.white, marginBottom:10, lineHeight:1.1, letterSpacing:'-0.02em' }}>
+                      Tu QR te espera
+                    </div>
+                    <div style={{ fontSize:14, color:C.mist, lineHeight:1.7, marginBottom:28, maxWidth:300, margin:'0 auto 28px' }}>
+                      Iniciá sesión y unite a este club para empezar a acumular {unitLabel}.
+                    </div>
+                  </>
+                )}
 
-                <div style={{ display:'flex', flexDirection:'column', alignItems:'center', gap:14, marginBottom:28, padding:'20px 16px', background:'rgba(168,85,247,0.08)', border:'1px solid rgba(168,85,247,0.18)', borderRadius:18 }}>
+                <div style={{ display:'flex', flexDirection:'column', alignItems:'center', gap:14, marginBottom:20, padding:'20px 16px', background:'rgba(168,85,247,0.08)', border:'1px solid rgba(168,85,247,0.18)', borderRadius:18 }}>
                   <div style={{ display:'flex', alignItems:'center', gap:10 }}>
                     <UnitIcon size={26} {...unitIconProps} color={C.v} />
                     <span style={{ fontFamily:FN, fontSize:26, fontWeight:900, background:GA, WebkitBackgroundClip:'text', WebkitTextFillColor:'transparent', backgroundClip:'text', letterSpacing:'-0.02em', textTransform:'capitalize' }}>
@@ -1584,7 +1618,7 @@ export default function ClubProfilePage() {
                     </span>
                   </div>
                   <p style={{ fontSize:13, color:C.mist, textAlign:'center', lineHeight:1.6, maxWidth:260 }}>
-                    Acumulá {unitLabel} en cada visita y canjealos por premios exclusivos.
+                    Unite al club de {commerce.name} para acumular {unitLabel} en cada visita y canjearlos por premios.
                   </p>
                 </div>
 
@@ -1601,7 +1635,7 @@ export default function ClubProfilePage() {
                     transition:'all .2s ease',
                   }}>
                   <span style={{display:'flex',alignItems:'center',gap:8,justifyContent:'center'}}>
-                    <Sparkles size={16} strokeWidth={2} /> Unirme y obtener mi QR
+                    <Sparkles size={16} strokeWidth={2} /> Unirme al club
                   </span>
                 </button>
               </div>
@@ -1610,8 +1644,45 @@ export default function ClubProfilePage() {
         )}
       </div>
 
-      {/* ── Bottom nav ── */}
-      <BottomNav tab={tab} setTab={setTab} prizesCount={activePrizes.length} />
+      {/* ── Link sutil "dejar de ser parte" — solo si es miembro de este club ── */}
+      {isMember && (
+        <div style={{ textAlign:'center', padding:'8px 16px 28px' }}>
+          <button
+            onClick={async () => {
+              if (!confirm(`¿Dejar de ser parte de ${commerce.name}? Vas a perder tus ${unitLabel} acumulados.`)) return
+              try {
+                const r = await fetch('/api/leave-club', {
+                  method: 'POST',
+                  headers: { 'Content-Type': 'application/json' },
+                  body: JSON.stringify({ commerce_id: commerce.id }),
+                })
+                const d = await r.json().catch(() => ({}))
+                if (r.ok && d.ok) {
+                  setMembership(null)
+                  if (typeof window !== 'undefined') window.location.href = '/?view=client'
+                } else {
+                  alert(d.error || 'No se pudo dejar el club. Probá de nuevo.')
+                }
+              } catch {
+                alert('Sin conexión. Probá de nuevo.')
+              }
+            }}
+            style={{
+              background: 'transparent',
+              border: 'none',
+              color: 'rgba(255,255,255,0.40)',
+              fontFamily: 'inherit',
+              fontSize: 12,
+              textDecoration: 'underline',
+              cursor: 'pointer',
+              padding: '4px 8px',
+            }}>
+            Dejar de ser parte de este club
+          </button>
+        </div>
+      )}
+
+      {/* Nav de pestañas pasó arriba (ClubTopNav) — abajo no va más. */}
 
       {/* ── JOIN MODAL ── */}
       {showModal && (

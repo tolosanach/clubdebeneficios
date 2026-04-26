@@ -892,32 +892,15 @@ function makeSlug(str) {
 // ─── QR GENERATOR WITH EXCAVATED LOGO ─────────────────────────────────────────
 // Cuts a clean circular gap from the center of the QR and draws the app logo
 // into that space so no QR modules overlap the logo.
-async function makeQR(value, { width = 300, margin = 2, dark, light }, logoColor = 'white') {
+async function makeQR(value, { width = 300, margin = 2, dark, light }, _logoColor /* unused */) {
+  // QR limpio sin logo central. El logo previo (la "C" de Benefix) rompía
+  // la detección de jsQR — ahora el QR es 100% legible para cualquier scanner.
+  // Mantenemos errorCorrectionLevel 'H' por las dudas de manchas/dobleces
+  // físicos cuando se imprima.
   const QRCode = (await import('qrcode')).default
-  const base = await QRCode.toDataURL(value, {
+  return await QRCode.toDataURL(value, {
     width, margin, errorCorrectionLevel: 'H', color: { dark, light },
   })
-  const img = await new Promise(res => { const i = new Image(); i.onload = () => res(i); i.src = base })
-  const canvas = document.createElement('canvas')
-  canvas.width = width; canvas.height = width
-  const ctx = canvas.getContext('2d')
-  ctx.drawImage(img, 0, 0, width, width)
-
-  const cx = width / 2, cy = width / 2, r = Math.round(width * 0.13)
-  ctx.save()
-  ctx.globalCompositeOperation = 'destination-out'
-  ctx.beginPath(); ctx.arc(cx, cy, r, 0, Math.PI * 2); ctx.fill()
-  ctx.restore()
-
-  const c = logoColor === 'white' ? 'white' : '#7c3aed'
-  const ls = r * 1.55
-  const svg = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 28 28" width="${ls}" height="${ls}" fill="none"><path d="M14 4C8.477 4 4 8.477 4 14s4.477 10 10 10" stroke="${c}" stroke-width="3" stroke-linecap="round"/><rect x="16" y="5.5" width="8" height="5" rx="2.5" fill="${c}" opacity=".9"/><rect x="16" y="12" width="9" height="5.5" rx="2.75" fill="${c}"/></svg>`
-  const logoImg = await new Promise(res => {
-    const i = new Image(); i.onload = () => res(i)
-    i.src = 'data:image/svg+xml;charset=utf-8,' + encodeURIComponent(svg)
-  })
-  ctx.drawImage(logoImg, cx - ls / 2, cy - ls / 2, ls, ls)
-  return canvas.toDataURL('image/png')
 }
 
 // ─── LOGO CROP UTILITIES ──────────────────────────────────────────────────────

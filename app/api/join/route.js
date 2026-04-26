@@ -29,13 +29,13 @@ export async function POST(request) {
 
     if (!commerce) return NextResponse.json({ error: 'Comercio no encontrado' }, { status: 404 })
 
-    // ¿Ya es miembro?
+    // ¿Ya es miembro? Usamos maybeSingle() para no tirar error cuando no existe.
     const { data: existing } = await supabaseAdmin
       .from('memberships')
       .select('id')
       .eq('user_id', user.id)
       .eq('commerce_id', commerce_id)
-      .single()
+      .maybeSingle()
 
     if (existing) return NextResponse.json({ ok: true, already_member: true })
 
@@ -60,10 +60,12 @@ export async function POST(request) {
         .eq('id', user.id)
     }
 
-    // Crear membership
+    // Crear membership con status 'active' para que aparezca como miembro
+    // efectivo desde el primer momento (bug previo: status='pending' hacía
+    // que /club/[slug] siguiera mostrando el slide "Deslizá para unirte").
     const { data: newMem, error: memErr } = await supabaseAdmin
       .from('memberships')
-      .insert({ user_id: user.id, commerce_id, points: 0, stars: 0, visits_count: 0, status: 'pending' })
+      .insert({ user_id: user.id, commerce_id, points: 0, stars: 0, visits_count: 0, status: 'active' })
       .select('id')
       .single()
 

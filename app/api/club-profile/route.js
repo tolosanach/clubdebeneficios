@@ -56,7 +56,7 @@ export async function GET(request) {
         .select('id, points, stars, visits_count, last_visit, status, created_at')
         .eq('user_id', user.id)
         .eq('commerce_id', commerce.id)
-        .single()
+        .maybeSingle()
       membership = mem || null
 
       // Also fetch profile phone
@@ -64,7 +64,7 @@ export async function GET(request) {
         .from('profiles')
         .select('phone, name, avatar_url')
         .eq('id', user.id)
-        .single()
+        .maybeSingle()
 
       // Fetch active client_promotions for this membership
       let clientPromos = []
