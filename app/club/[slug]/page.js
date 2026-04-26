@@ -416,7 +416,7 @@ function SlideToJoinButton({ onJoin, isDemoClub }) {
           flexShrink:0,
         }}
         onMouseDown={e => { if (!isDemoClub) { e.preventDefault(); handleStart() } }}
-        onTouchStart={e => { if (!isDemoClub) { e.preventDefault(); handleStart() } }}
+        onTouchStart={() => { if (!isDemoClub) handleStart() }}
       >
         {isComplete
           ? <Check size={24} color="#fff" strokeWidth={2.5} />
