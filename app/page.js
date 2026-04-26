@@ -12103,15 +12103,10 @@ function ClientQRView({ user, profile, setView, headerExtra }) {
   }
 
   async function handleClientScan(text) {
-    console.log('[handleClientScan] text recibido:', text)
-    if (processingRef.current) {
-      console.log('[handleClientScan] ya está procesando, ignoro')
-      return
-    }
+    if (processingRef.current) return
 
     // El QR detectado no tiene formato de Benefix (no matchea /club/[slug] ni /join/[slug])
     const match = text.match(/\/(?:join|club)\/([^/?#\s]+)/)
-    console.log('[handleClientScan] match:', match)
     if (!match) {
       processingRef.current = true
       await stopCamera()
@@ -12123,10 +12118,8 @@ function ClientQRView({ user, profile, setView, headerExtra }) {
     await stopCamera()
 
     const slug = match[1]
-    console.log('[handleClientScan] slug detectado:', slug)
     const { data: commerce, error: cErr } = await supabase
       .from('commerces').select('id, name').eq('slug', slug).eq('active', true).single()
-    console.log('[handleClientScan] commerce:', commerce, 'error:', cErr)
 
     if (cErr || !commerce) {
       setDoneError('No encontramos el negocio del QR. Capaz el comercio cerró su club o el QR no está vigente.')

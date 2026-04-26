@@ -352,13 +352,17 @@ function SlideToJoinButton({ onJoin, isDemoClub }) {
         border:'1px solid rgba(168,85,247,0.35)',
         borderRadius:9999, overflow:'hidden',
         userSelect:'none',
+        // touchAction:'none' le dice al browser que este elemento no scrollea
+        // ni hace zoom — así no necesitamos preventDefault en touchmove (que
+        // ahora es passive por default y tira warnings cuando se llama).
+        touchAction:'none',
         cursor: isDemoClub ? 'default' : 'pointer',
         boxShadow:'0 0 24px rgba(168,85,247,0.15)',
       }}
       onMouseMove={e => handleMove(e.clientX)}
       onMouseUp={handleEnd}
       onMouseLeave={handleEnd}
-      onTouchMove={e => { e.preventDefault(); handleMove(e.touches[0].clientX) }}
+      onTouchMove={e => handleMove(e.touches[0].clientX)}
       onTouchEnd={handleEnd}
     >
       {/* Gradiente de fondo base (siempre visible, sutil) */}
@@ -1087,19 +1091,7 @@ export default function ClubProfilePage() {
         )}
         <div style={{ padding:'20px 16px 0', position: fromQr && !isMember ? 'relative' : 'static', zIndex: fromQr && !isMember ? 200 : 'auto' }}>
           {isMember ? (
-            <>
-              {/* Banner cuando viene del QR y ya es miembro */}
-              {fromQr && (
-                <div style={{ marginBottom:14, padding:'12px 14px', background:'rgba(34,197,94,0.10)', border:'1px solid rgba(34,197,94,0.30)', borderRadius:12, display:'flex', alignItems:'center', gap:10 }}>
-                  <Check size={18} color='#22c55e' strokeWidth={2.5} />
-                  <div style={{ flex:1, minWidth:0 }}>
-                    <div style={{ fontFamily:FN, fontSize:13, fontWeight:700, color:'#fff', marginBottom:2 }}>Ya sos parte de {commerce.name}</div>
-                    <div style={{ fontSize:11.5, color:'rgba(255,255,255,0.65)', lineHeight:1.5 }}>Mostrá tu QR personal en caja para sumar {unitLabel}.</div>
-                  </div>
-                </div>
-              )}
-              <MemberBadge createdAt={membership?.created_at} />
-            </>
+            <MemberBadge createdAt={membership?.created_at} />
           ) : (
             <>
               {fromQr && (
@@ -1114,57 +1106,38 @@ export default function ClubProfilePage() {
               )}
               <SlideToJoinButton
                 onJoin={async () => {
-                  console.log('[SlideToJoin] inicio. user state:', user?.email || 'null', 'phone state:', userProfile?.phone || phone || 'vacío')
+                  // Si ya tenemos user + teléfono → unir directo. Si no, hacer
+                  // re-fetch (la sesión puede no estar hidratada en el state local
+                  // tras un full reload, pero sí estar viva en cookies).
                   let currentUser = user
                   let currentPhone = (userProfile?.phone || phone || '').trim()
                   const sb = getSupabase()
 
-                  // Re-fetch del user si el state local está vacío.
-                  // Usamos getSession() (lee de cookies/storage) en lugar de
-                  // getUser() (que pega al server y puede fallar si las cookies
-                  // no se transmitieron o si hay race entre instancias).
                   if (!currentUser) {
                     try {
                       const { data: sess } = await sb.auth.getSession()
                       currentUser = sess?.session?.user || null
-                      if (currentUser) {
-                        console.log('[SlideToJoin] user obtenido via session:', currentUser.email)
-                        setUser(currentUser)
-                      } else {
-                        // Fallback: intentar getUser() también, por las dudas
+                      if (!currentUser) {
                         const { data } = await sb.auth.getUser()
                         currentUser = data.user || null
-                        if (currentUser) {
-                          console.log('[SlideToJoin] user obtenido via getUser fallback:', currentUser.email)
-                          setUser(currentUser)
-                        } else {
-                          console.log('[SlideToJoin] sin sesion: ni getSession ni getUser devolvieron user')
-                        }
                       }
-                    } catch (e) { console.log('[SlideToJoin] error fetching session:', e) }
+                      if (currentUser) setUser(currentUser)
+                    } catch {}
                   }
 
-                  // Re-fetch del teléfono SIEMPRE que falte y haya user
-                  // (el bug previo era que solo se refetcheaba si el user state estaba null).
                   if (currentUser && !currentPhone) {
                     try {
                       const { data: prof } = await sb.from('profiles').select('phone').eq('id', currentUser.id).maybeSingle()
                       if (prof?.phone) {
                         currentPhone = prof.phone.trim()
                         setUserProfile(p => ({ ...(p || {}), phone: prof.phone }))
-                        console.log('[SlideToJoin] phone re-fetched del profile:', currentPhone)
-                      } else {
-                        console.log('[SlideToJoin] profile no tiene phone')
                       }
-                    } catch (e) { console.log('[SlideToJoin] error fetching profile:', e) }
+                    } catch {}
                   }
 
-                  console.log('[SlideToJoin] decision. user:', !!currentUser, 'phone:', !!currentPhone)
                   if (currentUser && currentPhone) {
-                    console.log('[SlideToJoin] uniendo directo via handleJoin')
                     handleJoin(currentPhone)
                   } else {
-                    console.log('[SlideToJoin] abriendo modal porque falta', !currentUser ? 'user' : '', !currentPhone ? 'phone' : '')
                     setShowModal(true)
                   }
                 }}
