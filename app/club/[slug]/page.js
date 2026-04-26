@@ -892,6 +892,23 @@ export default function ClubProfilePage() {
   // Spotlight cuando el cliente entra escaneando el QR del negocio.
   const fromQr       = searchParams.get('from_qr') === '1'
 
+  // Spotlight: aparece SOLO la primera vez que el cliente entra a este club
+  // por QR. Después se persiste en localStorage para no volver a interrumpir.
+  // Inicializa en true para que arranque sin spotlight y se decida en useEffect.
+  const [spotlightSeen, setSpotlightSeen] = useState(true)
+  useEffect(() => {
+    if (typeof window === 'undefined' || !slug) return
+    const key = `benefix:spotlight_${slug}`
+    if (localStorage.getItem(key)) {
+      setSpotlightSeen(true)
+    } else {
+      setSpotlightSeen(false)
+      // Lo marcamos solo si efectivamente venimos del QR (de lo contrario
+      // alguien que entró por link directo no debería "consumir" el primer view).
+      if (fromQr) localStorage.setItem(key, '1')
+    }
+  }, [slug, fromQr])
+
   // URL "Cómo llegar" — siempre direcciones (con destino), no solo búsqueda.
   // Con coords es más preciso; sin coords usamos dirección + ciudad + provincia
   // para mejorar el match cuando hay nombres de calles repetidos.
@@ -1086,15 +1103,15 @@ export default function ClubProfilePage() {
               y elevamos el slider con z-index alto para que sea lo único
               visible. Al deslizar, el overlay desaparece (porque deja de
               aplicar la condición !isMember). */}
-        {fromQr && !isMember && (
+        {fromQr && !isMember && !spotlightSeen && (
           <div style={{ position:'fixed', inset:0, zIndex:150, background:'rgba(0,0,0,0.78)', backdropFilter:'blur(4px)', WebkitBackdropFilter:'blur(4px)', pointerEvents:'none' }} />
         )}
-        <div style={{ padding:'20px 16px 0', position: fromQr && !isMember ? 'relative' : 'static', zIndex: fromQr && !isMember ? 200 : 'auto' }}>
+        <div style={{ padding:'20px 16px 0', position: fromQr && !isMember && !spotlightSeen ? 'relative' : 'static', zIndex: fromQr && !isMember && !spotlightSeen ? 200 : 'auto' }}>
           {isMember ? (
             <MemberBadge createdAt={membership?.created_at} />
           ) : (
             <>
-              {fromQr && (
+              {fromQr && !spotlightSeen && (
                 <div style={{ textAlign:'center', marginBottom:16 }}>
                   <div style={{ fontFamily:FN, fontSize:18, fontWeight:800, color:'#fff', marginBottom:6, textShadow:'0 2px 12px rgba(0,0,0,0.6)' }}>
                     Estás a un paso
