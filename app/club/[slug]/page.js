@@ -1118,18 +1118,29 @@ export default function ClubProfilePage() {
                   let currentPhone = (userProfile?.phone || phone || '').trim()
                   const sb = getSupabase()
 
-                  // Re-fetch del user si el state local está vacío
+                  // Re-fetch del user si el state local está vacío.
+                  // Usamos getSession() (lee de cookies/storage) en lugar de
+                  // getUser() (que pega al server y puede fallar si las cookies
+                  // no se transmitieron o si hay race entre instancias).
                   if (!currentUser) {
                     try {
-                      const { data } = await sb.auth.getUser()
-                      currentUser = data.user || null
+                      const { data: sess } = await sb.auth.getSession()
+                      currentUser = sess?.session?.user || null
                       if (currentUser) {
-                        console.log('[SlideToJoin] user re-fetched:', currentUser.email)
+                        console.log('[SlideToJoin] user obtenido via session:', currentUser.email)
                         setUser(currentUser)
                       } else {
-                        console.log('[SlideToJoin] no hay sesion activa')
+                        // Fallback: intentar getUser() también, por las dudas
+                        const { data } = await sb.auth.getUser()
+                        currentUser = data.user || null
+                        if (currentUser) {
+                          console.log('[SlideToJoin] user obtenido via getUser fallback:', currentUser.email)
+                          setUser(currentUser)
+                        } else {
+                          console.log('[SlideToJoin] sin sesion: ni getSession ni getUser devolvieron user')
+                        }
                       }
-                    } catch (e) { console.log('[SlideToJoin] error fetching user:', e) }
+                    } catch (e) { console.log('[SlideToJoin] error fetching session:', e) }
                   }
 
                   // Re-fetch del teléfono SIEMPRE que falte y haya user
