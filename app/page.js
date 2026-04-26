@@ -12536,18 +12536,35 @@ function ScannerView({ user, profile, setView }) {
   // Pantalla inicial — dos botones grandes apilados verticalmente para que
   // el owner elija qué quiere hacer. Solo se ve cuando todavía no eligió modo.
   if (!modeSelected) {
+    // Cada opción usa una variante del esquema violeta/fucsia para que se vea
+    // claramente que son acciones distintas. Violeta = acción del dueño
+    // (registrar visita); Fucsia = acción del dueño-como-cliente (sumarse a otro club).
     const OPTIONS = [
       {
         id: 'register-visit',
         title: 'Registrar visita de cliente',
         desc: 'Escaneá el QR personal de un cliente para sumarle visita o canjear un premio.',
         Icon: ScanLine,
+        // Violeta
+        bg:         'linear-gradient(135deg, rgba(124,58,237,0.16), rgba(139,92,246,0.10))',
+        border:     'rgba(139,92,246,0.40)',
+        iconBg:     'linear-gradient(135deg, #7C3AED, #8B5CF6)',
+        shadow:     '0 4px 18px rgba(139,92,246,0.40)',
+        descColor:  'rgba(229,221,255,0.75)',
+        arrowColor: 'rgba(196,181,253,0.85)',
       },
       {
         id: 'join-club',
-        title: 'Escanear nuevo Club',
+        title: 'Quiero sumarme a un club',
         desc: 'Sumate como cliente a otro comercio escaneando su QR.',
         Icon: QrCode,
+        // Fucsia
+        bg:         'linear-gradient(135deg, rgba(219,39,119,0.16), rgba(236,72,153,0.10))',
+        border:     'rgba(236,72,153,0.40)',
+        iconBg:     'linear-gradient(135deg, #DB2777, #EC4899)',
+        shadow:     '0 4px 18px rgba(236,72,153,0.40)',
+        descColor:  'rgba(255,221,236,0.75)',
+        arrowColor: 'rgba(251,182,206,0.85)',
       },
     ]
     return (
@@ -12563,8 +12580,8 @@ function ScannerView({ user, profile, setView }) {
               style={{
                 width:'100%', textAlign:'left',
                 padding:'18px 18px',
-                background:'linear-gradient(135deg, rgba(254,80,0,0.12), rgba(189,75,248,0.16))',
-                border:'1px solid rgba(189,75,248,0.32)',
+                background: opt.bg,
+                border: `1px solid ${opt.border}`,
                 borderRadius:16,
                 cursor:'pointer',
                 display:'flex', alignItems:'center', gap:14,
@@ -12574,14 +12591,14 @@ function ScannerView({ user, profile, setView }) {
               onMouseDown={e => e.currentTarget.style.transform = 'scale(0.98)'}
               onMouseUp={e => e.currentTarget.style.transform = 'scale(1)'}
               onMouseLeave={e => e.currentTarget.style.transform = 'scale(1)'}>
-              <div style={{ width:48, height:48, borderRadius:12, background: 'linear-gradient(135deg, #FE5000, #BD4BF8)', display:'flex', alignItems:'center', justifyContent:'center', flexShrink:0, boxShadow:'0 4px 18px rgba(168,85,247,0.35)' }}>
+              <div style={{ width:48, height:48, borderRadius:12, background: opt.iconBg, display:'flex', alignItems:'center', justifyContent:'center', flexShrink:0, boxShadow: opt.shadow }}>
                 <opt.Icon size={22} color='#fff' strokeWidth={2.2} />
               </div>
               <div style={{ flex:1, minWidth:0 }}>
-                <div style={{ fontFamily:FN, fontSize:14, fontWeight:700, color:C.white, marginBottom:3 }}>{opt.title}</div>
-                <div style={{ fontSize:12, color:'rgba(255,255,255,0.65)', lineHeight:1.45 }}>{opt.desc}</div>
+                <div style={{ fontFamily:FN, fontSize:14, fontWeight:700, color:'#fff', marginBottom:3 }}>{opt.title}</div>
+                <div style={{ fontSize:12, color: opt.descColor, lineHeight:1.45 }}>{opt.desc}</div>
               </div>
-              <ArrowRight size={18} color='rgba(255,255,255,0.55)' strokeWidth={2.2} style={{ flexShrink:0 }} />
+              <ArrowRight size={18} color={opt.arrowColor} strokeWidth={2.2} style={{ flexShrink:0 }} />
             </button>
           ))}
         </div>
@@ -12611,7 +12628,7 @@ function ScannerView({ user, profile, setView }) {
       <div style={{ maxWidth:440, margin:'0 auto', padding:'30px 18px 80px' }}>
         {backToPicker}
         <div style={{ fontFamily:FN, fontSize:10, color:C.o, fontWeight:800, letterSpacing:'.15em', textTransform:'uppercase', marginBottom:8 }}>✦ Escáner QR</div>
-        <h1 style={{ fontFamily:FN, fontSize:'clamp(22px,4vw,32px)', fontWeight:900, color:C.white, marginBottom:4 }}>Escanear nuevo Club</h1>
+        <h1 style={{ fontFamily:FN, fontSize:'clamp(22px,4vw,32px)', fontWeight:900, color:C.white, marginBottom:4 }}>Quiero sumarme a un club</h1>
         <p style={{ fontSize:13, color:C.mist, marginBottom:22 }}>Apuntá la cámara al QR del local para sumarte como cliente.</p>
 
         {joinScanError && (
