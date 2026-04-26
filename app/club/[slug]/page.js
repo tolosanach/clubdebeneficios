@@ -1,7 +1,7 @@
 'use client'
 import { useEffect, useState, useRef } from 'react'
 import { useParams, useSearchParams } from 'next/navigation'
-import { createClient } from '@supabase/supabase-js'
+import { getSupabase as getSharedSupabase } from '../../../lib/supabase'
 import {
   Home, Gift, QrCode, User, Users,
   ChevronLeft, ChevronDown, ChevronRight,
@@ -43,11 +43,12 @@ const GA  = 'linear-gradient(135deg, #a855f7, #ec4899)'
 const FN = "'Space Grotesk', system-ui, sans-serif"
 const FI = "'Inter', system-ui, sans-serif"
 
+// Reusamos el cliente compartido (singleton de @supabase/ssr con cookies). El
+// "getSupabase" local que existía antes creaba una NUEVA instancia con
+// @supabase/supabase-js que usaba localStorage en vez de cookies — esa
+// instancia no veía la sesión y rompía el flujo de unirse al club.
 function getSupabase() {
-  return createClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL,
-    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
-  )
+  return getSharedSupabase()
 }
 
 const DAYS_MAP = { lunes:'Lu', martes:'Ma', miércoles:'Mi', jueves:'Ju', viernes:'Vi', sábado:'Sa', domingo:'Do' }
