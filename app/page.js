@@ -4194,8 +4194,8 @@ function ClientBottomNav({ tab, setTab, profile, setView }) {
   // dedicado en el Navbar global de arriba.
   const TABS = [
     { id: 'mis clubs', label: 'Mis Clubs' },
+    { id: 'premios',   label: 'Premios'   },
     { id: 'historial', label: 'Historial' },
-    { id: 'mi qr',     label: 'Mi QR'     },
   ]
 
   return (
@@ -4981,7 +4981,7 @@ function ClientView({ setView, user, profile, onLogout }) {
     if (!user) return
     setLoading(true)
     Promise.all([
-      supabase.from('memberships').select('*, commerce:commerces(id,name,img_url,slug,prog_type,prog_goal,category,city_name,brand_color,rating,promotions(id,type,value,description,days,expires_at,active,expiration_type,expiration_days)), client_promotions(id,promotion_id,expires_at,granted_at,status)').eq('user_id', user.id),
+      supabase.from('memberships').select('*, commerce:commerces(id,name,img_url,slug,prog_type,prog_goal,category,city_name,brand_color,rating,promotions(id,type,value,description,days,expires_at,active,expiration_type,expiration_days),prizes(id,name,cost,img_url,system_type,active,stock)), client_promotions(id,promotion_id,expires_at,granted_at,status)').eq('user_id', user.id),
       supabase.from('visits').select('*, commerce:commerces(name, img_url)').eq('user_id', user.id).order('scanned_at', { ascending:false }).limit(20),
     ]).then(([{ data:m }, { data:v }]) => {
       setMemberships(m || [])
@@ -5206,6 +5206,97 @@ function ClientView({ setView, user, profile, onLogout }) {
               <div style={{ height:'40vh' }} />
             </>
           )}
+        </div>
+      )}
+
+      {/* ── Premios — lista combinada de premios disponibles en todos los clubs del cliente ── */}
+      {!loading && tab === 'premios' && (
+        <div>
+          {(() => {
+            // Junto todos los premios activos de todos los commerces, mantengo
+            // el balance del cliente (stars o points según prog_type) y ordeno
+            // por "más cerca de canjear" primero (ratio más alto), después por costo.
+            const all = []
+            for (const m of memberships) {
+              const c = m.commerce
+              if (!c) continue
+              const isStars = c.prog_type === 'stars'
+              const bal = isStars ? (m.stars || 0) : (m.points || 0)
+              const list = (c.prizes || []).filter(p =>
+                p.active && (p.system_type || c.prog_type) === c.prog_type
+              )
+              for (const p of list) {
+                all.push({
+                  prize: p,
+                  commerce: c,
+                  bal,
+                  isStars,
+                  pct: p.cost > 0 ? Math.min(100, Math.round((bal / p.cost) * 100)) : 0,
+                  canRedeem: bal >= p.cost,
+                })
+              }
+            }
+            all.sort((a, b) => {
+              if (a.canRedeem !== b.canRedeem) return a.canRedeem ? -1 : 1
+              return b.pct - a.pct
+            })
+
+            if (all.length === 0) {
+              return (
+                <div style={{ textAlign:'center', padding:'52px 24px 32px' }}>
+                  <div style={{ width:76, height:76, borderRadius:24, background:'rgba(236,72,153,0.10)', border:'1px solid rgba(236,72,153,0.22)', display:'flex', alignItems:'center', justifyContent:'center', margin:'0 auto 18px' }}>
+                    <Gift size={32} strokeWidth={1.5} color='rgba(236,72,153,0.70)' />
+                  </div>
+                  <div style={{ fontFamily:FN, fontSize:17, fontWeight:800, color:'rgba(255,255,255,0.80)', marginBottom:8 }}>Sin premios disponibles</div>
+                  <div style={{ fontSize:13, color:'rgba(255,255,255,0.50)', lineHeight:1.6, maxWidth:280, margin:'0 auto' }}>
+                    Cuando tus clubs carguen premios, los vas a ver acá ordenados por los que estás más cerca de canjear.
+                  </div>
+                </div>
+              )
+            }
+
+            return (
+              <div style={{ display:'flex', flexDirection:'column', gap:8 }}>
+                {all.map(({ prize, commerce, bal, isStars, pct, canRedeem }) => {
+                  const unitColor = isStars ? '#8B5CF6' : '#EC4899'
+                  const unitLabel = isStars ? 'estrellas' : 'puntos'
+                  const unitIcon  = isStars ? Star : Gem
+                  const UI = unitIcon
+                  const missing = Math.max(0, prize.cost - bal)
+                  return (
+                    <div key={`${commerce.id}-${prize.id}`} style={{
+                      background:'rgba(255,255,255,0.04)',
+                      border:'1px solid rgba(255,255,255,0.08)',
+                      borderRadius:14, padding:'12px 14px',
+                      display:'flex', alignItems:'center', gap:12,
+                    }}>
+                      <div style={{ width:48, height:48, borderRadius:11, background:`${unitColor}1F`, border:`1px solid ${unitColor}40`, display:'flex', alignItems:'center', justifyContent:'center', flexShrink:0, overflow:'hidden' }}>
+                        {prize.img_url
+                          ? <img src={prize.img_url} alt="" style={{ width:'100%', height:'100%', objectFit:'cover' }} />
+                          : <Gift size={20} color={unitColor} strokeWidth={2} />}
+                      </div>
+                      <div style={{ flex:1, minWidth:0 }}>
+                        <div style={{ fontFamily:FN, fontSize:13, fontWeight:700, color:'#fff', marginBottom:2, overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>{prize.name}</div>
+                        <div style={{ fontSize:11, color:'rgba(255,255,255,0.55)', marginBottom:6, overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>{commerce.name}</div>
+                        <div style={{ height:4, borderRadius:99, background:'rgba(255,255,255,0.08)', overflow:'hidden' }}>
+                          <div style={{ width:`${pct}%`, height:'100%', background:unitColor, borderRadius:99, transition:'width .35s ease' }} />
+                        </div>
+                      </div>
+                      <div style={{ flexShrink:0, textAlign:'right' }}>
+                        <div style={{ display:'inline-flex', alignItems:'center', gap:4, fontFamily:FN, fontSize:13, fontWeight:800, color: canRedeem ? '#22c55e' : unitColor }}>
+                          <UI size={11} {...(isStars ? { strokeWidth:0, fill:'currentColor' } : { strokeWidth:2 })} />
+                          {prize.cost}
+                        </div>
+                        <div style={{ fontSize:10, color:'rgba(255,255,255,0.45)', marginTop:2, whiteSpace:'nowrap' }}>
+                          {canRedeem ? '¡Canjeable!' : `Faltan ${missing}`}
+                        </div>
+                      </div>
+                    </div>
+                  )
+                })}
+              </div>
+            )
+          })()}
         </div>
       )}
 
