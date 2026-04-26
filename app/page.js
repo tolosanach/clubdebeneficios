@@ -13440,11 +13440,12 @@ function AdminView({ cities: initialCities, profile }) {
 function DevToolbar({ user, profile, onRoleChange }) {
   const [switching, setSwitching] = useState(null)
   if (!user) return null
-  // Solo arquitectotolosa@gmail.com puede ver el DevToolbar en producción.
-  // En desarrollo local (NODE_ENV=development) lo ven todos.
+  // Solo arquitectotolosa@gmail.com puede ver el DevToolbar — en cualquier
+  // entorno. Antes dependíamos de NODE_ENV pero Vercel no lo setea como
+  // esperábamos, así que el guard fallaba y el toolbar aparecía en producción.
   const ADMIN_EMAILS = ['arquitectotolosa@gmail.com']
-  const isAdminEmail = ADMIN_EMAILS.includes((user.email || '').toLowerCase())
-  if (!isAdminEmail && process.env.NODE_ENV !== 'development') return null
+  const userEmail = (user.email || '').toLowerCase().trim()
+  if (!ADMIN_EMAILS.includes(userEmail)) return null
 
   const ROLES = [
     { id:'client',         label:'Cliente',   color:C.info },
