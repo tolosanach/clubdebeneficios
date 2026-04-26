@@ -3308,6 +3308,15 @@ function CommerceView({ commerce:c, setView, user, onLoginRequired, onCommerceUp
         // editValue: URL pública (ya subida) o '' para borrar
         payload[editField.key] = editValue || null
         localUpdate[editField.key] = editValue || null
+      } else if (editField.type === 'location') {
+        // editValue: { country, city_name, address }
+        const v = editValue || {}
+        payload.country   = v.country?.trim()   || null
+        payload.city_name = v.city_name?.trim() || null
+        payload.address   = v.address?.trim()   || null
+        localUpdate.country   = payload.country
+        localUpdate.city_name = payload.city_name
+        localUpdate.address   = payload.address
       } else {
         // text / textarea / number
         const val = editField.type === 'number'
@@ -3582,8 +3591,8 @@ function CommerceView({ commerce:c, setView, user, onLoginRequired, onCommerceUp
                 <div style={{ fontSize:12, color:C.mist, overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>{c.address || `${c.lat}, ${c.lng}`}</div>
               </div>
               {isOwner && (
-                <button onClick={() => openEdit({ key:'address', value:c.address||'', label:'Dirección', type:'text', placeholder:'Calle y número, ciudad' })}
-                  aria-label="Editar dirección"
+                <button onClick={() => openEdit({ key:'location', value:{ country:c.country||'', city_name:c.city_name||'', address:c.address||'' }, label:'Ubicación', type:'location' })}
+                  aria-label="Editar ubicación"
                   style={{ background:'rgba(255,255,255,0.06)', border:'1px solid rgba(255,255,255,0.10)', borderRadius:8, padding:5, cursor:'pointer', color:C.mist, display:'flex', flexShrink:0 }}>
                   <Pen size={12} strokeWidth={2} />
                 </button>
@@ -3599,8 +3608,8 @@ function CommerceView({ commerce:c, setView, user, onLoginRequired, onCommerceUp
             <MapPin size={18} color="rgba(255,255,255,0.30)" strokeWidth={2} />
             <div style={{ fontSize:12, color:'rgba(255,255,255,0.35)', fontStyle:'italic', flex:1 }}>Dirección no informada</div>
             {isOwner && (
-              <button onClick={() => openEdit({ key:'address', value:'', label:'Dirección', type:'text', placeholder:'Calle y número, ciudad' })}
-                aria-label="Agregar dirección"
+              <button onClick={() => openEdit({ key:'location', value:{ country:c.country||'', city_name:c.city_name||'', address:c.address||'' }, label:'Ubicación', type:'location' })}
+                aria-label="Agregar ubicación"
                 style={{ background:'rgba(255,255,255,0.06)', border:'1px solid rgba(255,255,255,0.10)', borderRadius:8, padding:5, cursor:'pointer', color:C.mist, display:'flex', flexShrink:0 }}>
                 <Pen size={12} strokeWidth={2} />
               </button>
@@ -3634,6 +3643,16 @@ function CommerceView({ commerce:c, setView, user, onLoginRequired, onCommerceUp
                   </div>
                 )}
               </div>
+              {isOwner && (
+                <button onClick={() => {
+                  try { localStorage.setItem('benefix:cameFromPreview', '1') } catch {}
+                  window.dispatchEvent(new CustomEvent('benefix:navigate', { detail: { view: 'commerce-settings', tab: 'recompensas' } }))
+                }}
+                  aria-label="Editar promoción"
+                  style={{ position:'relative', zIndex:1, background:'rgba(0,0,0,0.30)', border:'1px solid rgba(255,255,255,0.18)', borderRadius:8, padding:6, cursor:'pointer', color:C.mist, display:'flex', flexShrink:0 }}>
+                  <Pen size={12} strokeWidth={2} />
+                </button>
+              )}
             </div>
           )
         })()}
@@ -3647,8 +3666,19 @@ function CommerceView({ commerce:c, setView, user, onLoginRequired, onCommerceUp
           const unitColor = isStars ? '#8B5CF6' : '#EC4899'  // violeta / fucsia (paleta de sistemas)
           return (
             <PCard style={{ padding:18, marginBottom:13 }}>
-              <div style={{ fontFamily:FN, fontSize:10, color:'#EC4899', fontWeight:800, letterSpacing:'.14em', textTransform:'uppercase', marginBottom:13, display:'flex', alignItems:'center', gap:7 }}>
-                <Gift size={12} strokeWidth={2.5} color="#EC4899" /> Catálogo de premios
+              <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', marginBottom:13, gap:8 }}>
+                <div style={{ fontFamily:FN, fontSize:10, color:'#EC4899', fontWeight:800, letterSpacing:'.14em', textTransform:'uppercase', display:'flex', alignItems:'center', gap:7 }}>
+                  <Gift size={12} strokeWidth={2.5} color="#EC4899" /> Catálogo de premios
+                </div>
+                {isOwner && (
+                  <button onClick={() => {
+                    try { localStorage.setItem('benefix:cameFromPreview', '1') } catch {}
+                    window.dispatchEvent(new CustomEvent('benefix:navigate', { detail: { view: 'commerce-settings', tab: 'premios' } }))
+                  }}
+                    style={{ background:'transparent', border:'none', color:'#EC4899', fontSize:11, fontFamily:FN, fontWeight:700, cursor:'pointer', display:'inline-flex', alignItems:'center', gap:4, padding:0, flexShrink:0 }}>
+                    Ver catálogo <ArrowRight size={11} strokeWidth={2.5} />
+                  </button>
+                )}
               </div>
               {prizes.length === 0 ? (
                 <div style={{ padding:'18px 14px', textAlign:'center', border:'1px dashed rgba(255,255,255,0.12)', borderRadius:10, background:'rgba(255,255,255,0.02)' }}>
@@ -3817,6 +3847,29 @@ function CommerceView({ commerce:c, setView, user, onLoginRequired, onCommerceUp
                 inputMode={editField.type === 'number' ? 'numeric' : 'text'}
                 style={{ width:'100%', background:'rgba(255,255,255,0.06)', border:'1px solid rgba(255,255,255,0.14)', borderRadius:12, padding:'12px 14px', fontSize:15, color:C.white, fontFamily:'inherit', boxSizing:'border-box' }} />
             )}
+
+            {editField.type === 'location' && (() => {
+              const v = editValue || {}
+              const upd = (k, val) => setEditValue({ ...v, [k]: val })
+              const inputStyle = { width:'100%', background:'rgba(255,255,255,0.06)', border:'1px solid rgba(255,255,255,0.14)', borderRadius:12, padding:'12px 14px', fontSize:14, color:C.white, fontFamily:'inherit', boxSizing:'border-box' }
+              const labelStyle = { fontSize:11, color:C.dust, fontWeight:600, textTransform:'uppercase', letterSpacing:'.06em', display:'block', marginBottom:6 }
+              return (
+                <div style={{ display:'flex', flexDirection:'column', gap:12 }}>
+                  <div>
+                    <label style={labelStyle}>País</label>
+                    <input type="text" value={v.country || ''} onChange={e => upd('country', e.target.value)} placeholder="Argentina" style={inputStyle} />
+                  </div>
+                  <div>
+                    <label style={labelStyle}>Localidad</label>
+                    <input type="text" value={v.city_name || ''} onChange={e => upd('city_name', e.target.value)} placeholder="Ej: General Pico" style={inputStyle} />
+                  </div>
+                  <div>
+                    <label style={labelStyle}>Dirección</label>
+                    <input type="text" value={v.address || ''} onChange={e => upd('address', e.target.value)} placeholder="Calle y número" style={inputStyle} autoFocus />
+                  </div>
+                </div>
+              )
+            })()}
 
             {/* Prize creator — todos los campos del premio + foto opcional. */}
             {editField.type === 'prize' && (() => {
@@ -5074,7 +5127,14 @@ function ClientView({ setView, user, profile, onLogout }) {
       {/* ── Mis clubs ── */}
       {!loading && tab === 'mis clubs' && (
         <div>
-          <DynamicGreeting name={profile?.name} type="client" style={{ marginBottom:4 }} />
+          <div style={{ display:'flex', alignItems:'center', gap:8, marginBottom:4, flexWrap:'wrap' }}>
+            <DynamicGreeting name={profile?.name} type="client" />
+            <InfoHint align="left" text={
+              'Acá ves tu billetera de clubes — cada tarjeta es un negocio donde estás anotado.\n\n' +
+              'Tocá una tarjeta para darla vuelta y ver más datos: tus puntos, premios disponibles y promos activas.\n\n' +
+              'Si tenés varios clubes podés filtrarlos por ciudad o categoría con los chips de arriba.'
+            } />
+          </div>
 
           {displayMemberships.length === 0 ? (
             /* Empty wallet state */
@@ -5236,7 +5296,14 @@ function ClientView({ setView, user, profile, onLogout }) {
               {/* Header */}
               <div style={{ display:'flex', alignItems:'flex-start', justifyContent:'space-between', marginBottom:24, position:'relative' }}>
                 <div>
-                  <div style={{ fontFamily:FN, fontSize:22, fontWeight:900, color:'#fff', letterSpacing:'-.01em', lineHeight:1 }}>BENEFIX PASS</div>
+                  <div style={{ display:'flex', alignItems:'center', gap:6 }}>
+                    <div style={{ fontFamily:FN, fontSize:22, fontWeight:900, color:'#fff', letterSpacing:'-.01em', lineHeight:1 }}>BENEFIX PASS</div>
+                    <InfoHint align="left" color="rgba(255,255,255,0.85)" text={
+                      'Tu QR personal único. Mostralo al comerciante en cada compra para que lo escanee y te sume estrellas o puntos.\n\n' +
+                      'El mismo QR sirve para todos los clubes donde estés anotado — no necesitás uno por cada negocio.\n\n' +
+                      'Si lo perdés o querés bloquearlo, escribinos por soporte y te ayudamos.'
+                    } />
+                  </div>
                   <div style={{ fontFamily:FI, fontSize:12, color:'rgba(255,255,255,0.65)', marginTop:4 }}>Tu pase de beneficios</div>
                 </div>
                 {/* Logo badge */}
@@ -5807,7 +5874,16 @@ function RegisterCommerceView({ setView, user, onProfileRefresh, onLoginRequired
           {/* ── Paso 2: Nombre ── */}
           {step === 2 && (
             <div>
-              <div style={{ fontFamily:FN, fontSize:26, fontWeight:900, color:C.white, marginBottom:6, letterSpacing:'-.02em' }}>¿Cómo se llama tu negocio?</div>
+              <div style={{ display:'flex', alignItems:'flex-start', gap:8, marginBottom:6 }}>
+                <div style={{ fontFamily:FN, fontSize:26, fontWeight:900, color:C.white, letterSpacing:'-.02em', lineHeight:1.15 }}>¿Cómo se llama tu negocio?</div>
+                <div style={{ marginTop:6 }}>
+                  <InfoHint align="right" text={
+                    'El nombre que ven tus clientes en la app y en sus tarjetas.\n\n' +
+                    'Por seguridad, una vez creado el club solo podés cambiarlo cada 20 días, así que elegí bien.\n\n' +
+                    'Tip: usá el nombre completo de tu local (ej. "Café Berlín" en vez de solo "Berlín").'
+                  } />
+                </div>
+              </div>
               <div style={{ fontSize:14, color:C.mist, marginBottom:24, lineHeight:1.5 }}>Este nombre verán tus clientes</div>
               <input
                 type="text" autoFocus value={form.name}
@@ -5837,7 +5913,16 @@ function RegisterCommerceView({ setView, user, onProfileRefresh, onLoginRequired
 
             return (
               <div>
-                <div style={{ fontFamily:FN, fontSize:26, fontWeight:900, color:C.white, marginBottom:6, letterSpacing:'-.02em' }}>¿Qué tipo de negocio es?</div>
+                <div style={{ display:'flex', alignItems:'flex-start', gap:8, marginBottom:6 }}>
+                  <div style={{ fontFamily:FN, fontSize:26, fontWeight:900, color:C.white, letterSpacing:'-.02em', lineHeight:1.15 }}>¿Qué tipo de negocio es?</div>
+                  <div style={{ marginTop:6 }}>
+                    <InfoHint align="right" text={
+                      'Tu rubro le sirve a los clientes para encontrarte cuando filtran por categoría en el directorio.\n\n' +
+                      'Si no encontrás tu rubro exacto, podés escribirlo manualmente con la opción "Otro".\n\n' +
+                      'Tip: probá escribiendo palabras clave informales (ej. "ropa", "zapatos", "verduras") — la búsqueda reconoce muchos sinónimos.'
+                    } />
+                  </div>
+                </div>
                 <div style={{ fontSize:14, color:C.mist, marginBottom:16, lineHeight:1.5 }}>Buscá tu rubro o explorá por categoría</div>
 
                 {/* Search */}
@@ -5974,7 +6059,16 @@ function RegisterCommerceView({ setView, user, onProfileRefresh, onLoginRequired
           {/* ── Paso 4: Ubicación ── */}
           {step === 4 && (
             <div>
-              <div style={{ fontFamily:FN, fontSize:26, fontWeight:900, color:C.white, marginBottom:6, letterSpacing:'-.02em' }}>¿Dónde está tu negocio?</div>
+              <div style={{ display:'flex', alignItems:'flex-start', gap:8, marginBottom:6 }}>
+                <div style={{ fontFamily:FN, fontSize:26, fontWeight:900, color:C.white, letterSpacing:'-.02em', lineHeight:1.15 }}>¿Dónde está tu negocio?</div>
+                <div style={{ marginTop:6 }}>
+                  <InfoHint align="right" text={
+                    'La ubicación se usa para que los clientes de tu zona te encuentren cuando navegan el directorio por ciudad.\n\n' +
+                    'Por ahora cubrimos Argentina. Si tu ciudad no aparece en la lista, escribinos por soporte y la sumamos.\n\n' +
+                    'Podés saltar este paso y completarlo después desde la pestaña Configuración.'
+                  } />
+                </div>
+              </div>
               <div style={{ fontSize:14, color:C.mist, marginBottom:24, lineHeight:1.5 }}>Así te encuentran los clientes cercanos</div>
 
               <div style={{ marginBottom:12 }}>
@@ -6128,18 +6222,37 @@ function RegisterCommerceView({ setView, user, onProfileRefresh, onLoginRequired
                     </div>
                     <ChevronDown size={16} color="rgba(255,255,255,0.40)" style={{ transform: minPurchaseOpen ? 'rotate(180deg)' : 'none', transition:'transform 200ms ease', flexShrink:0 }} />
                   </button>
-                  {minPurchaseOpen && (
-                    <div style={{ padding:'0 14px 14px', borderTop:'1px solid rgba(255,255,255,0.06)' }}>
-                      <input type="number" min={0} value={form.prog_min_purchase}
-                        onChange={e => setForm(f => ({ ...f, prog_min_purchase: e.target.value }))}
-                        placeholder="Ej: $ 10.000"
-                        style={{ width:'100%', marginTop:12, padding:'11px 14px', background:'rgba(255,255,255,0.06)', border:'1px solid rgba(255,255,255,0.12)', borderRadius:10, color:C.white, fontSize:14, fontFamily:FI, boxSizing:'border-box' }}
-                      />
-                      <div style={{ fontSize:11, color:'rgba(255,255,255,0.45)', marginTop:6, lineHeight:1.5 }}>
-                        Útil si vendés productos baratos. Solo compras de ese monto o más suman estrella.
+                  {minPurchaseOpen && (() => {
+                    const noMin = !form.prog_min_purchase || Number(form.prog_min_purchase) === 0
+                    return (
+                      <div style={{ padding:'0 14px 14px', borderTop:'1px solid rgba(255,255,255,0.06)' }}>
+                        <input type="number" min={0}
+                          value={form.prog_min_purchase}
+                          disabled={noMin}
+                          onChange={e => setForm(f => ({ ...f, prog_min_purchase: e.target.value }))}
+                          placeholder="Ej: $ 10.000"
+                          style={{ width:'100%', marginTop:12, padding:'11px 14px', background:'rgba(255,255,255,0.06)', border:'1px solid rgba(255,255,255,0.12)', borderRadius:10, color:C.white, fontSize:14, fontFamily:FI, boxSizing:'border-box', opacity: noMin ? 0.45 : 1, cursor: noMin ? 'not-allowed' : 'text' }}
+                        />
+                        {/* Checkbox "sin compra mínima" — al tildarlo deshabilita el input y limpia el monto */}
+                        <label style={{ display:'flex', alignItems:'center', gap:8, marginTop:10, cursor:'pointer' }}>
+                          <input type="checkbox"
+                            checked={noMin}
+                            onChange={e => {
+                              if (e.target.checked) setForm(f => ({ ...f, prog_min_purchase: '' }))
+                              // Al destildar no hacemos nada — el user va a escribir un monto en el input
+                            }}
+                            style={{ width:16, height:16, accentColor:'#BD4BF8', cursor:'pointer', flexShrink:0 }}
+                          />
+                          <span style={{ fontSize:12, color:'rgba(255,255,255,0.78)', userSelect:'none' }}>
+                            Sin compra mínima · cualquier compra suma estrella
+                          </span>
+                        </label>
+                        <div style={{ fontSize:11, color:'rgba(255,255,255,0.45)', marginTop:8, lineHeight:1.5 }}>
+                          Útil si vendés productos baratos. Solo compras de ese monto o más suman estrella.
+                        </div>
                       </div>
-                    </div>
-                  )}
+                    )
+                  })()}
                 </div>
               )}
 
@@ -6159,7 +6272,16 @@ function RegisterCommerceView({ setView, user, onProfileRefresh, onLoginRequired
           {/* ── Paso 6: Detalles del local (todos opcionales) ── */}
           {step === 6 && (
             <div>
-              <div style={{ fontFamily:FN, fontSize:26, fontWeight:900, color:C.white, marginBottom:6, letterSpacing:'-.02em' }}>Datos de contacto</div>
+              <div style={{ display:'flex', alignItems:'flex-start', gap:8, marginBottom:6 }}>
+                <div style={{ fontFamily:FN, fontSize:26, fontWeight:900, color:C.white, letterSpacing:'-.02em', lineHeight:1.15 }}>Datos de contacto</div>
+                <div style={{ marginTop:6 }}>
+                  <InfoHint align="right" text={
+                    'Toda la info de este paso es opcional pero te recomendamos completarla.\n\n' +
+                    'El teléfono se usa para que los clientes te contacten desde la app, y la dirección se muestra en tu ficha pública.\n\n' +
+                    'Podés saltar este paso y completar todo después desde Configuración.'
+                  } />
+                </div>
+              </div>
               <div style={{ fontSize:14, color:C.mist, marginBottom:20, lineHeight:1.5 }}>Para que tus clientes te encuentren. Podés saltar y completar después.</div>
 
               <div style={{ marginBottom:14 }}>
@@ -6199,7 +6321,16 @@ function RegisterCommerceView({ setView, user, onProfileRefresh, onLoginRequired
           {/* ── Paso 7: Logo (opcional) ── */}
           {step === 7 && (
             <div>
-              <div style={{ fontFamily:FN, fontSize:26, fontWeight:900, color:C.white, marginBottom:6, letterSpacing:'-.02em' }}>Logo de tu negocio</div>
+              <div style={{ display:'flex', alignItems:'flex-start', gap:8, marginBottom:6 }}>
+                <div style={{ fontFamily:FN, fontSize:26, fontWeight:900, color:C.white, letterSpacing:'-.02em', lineHeight:1.15 }}>Logo de tu negocio</div>
+                <div style={{ marginTop:6 }}>
+                  <InfoHint align="right" text={
+                    'El logo aparece en la tarjeta digital del cliente, en tu ficha pública y en el header del panel.\n\n' +
+                    'Idealmente subí una imagen cuadrada (1:1) en JPG, PNG o WebP, mínimo 200×200 píxeles.\n\n' +
+                    'Si no tenés logo todavía, saltá el paso y la app va a usar la inicial de tu nombre como avatar provisorio.'
+                  } />
+                </div>
+              </div>
               <div style={{ fontSize:14, color:C.mist, marginBottom:24, lineHeight:1.5 }}>Te lo van a ver tus clientes en la billetera y en tu perfil. Podés saltar y subirlo después.</div>
 
               <div style={{ display:'flex', flexDirection:'column', alignItems:'center', marginBottom:18 }}>
@@ -6228,7 +6359,16 @@ function RegisterCommerceView({ setView, user, onProfileRefresh, onLoginRequired
           {/* ── Paso 8: Primer premio (opcional con skip) ── */}
           {step === 8 && (
             <div>
-              <div style={{ fontFamily:FN, fontSize:26, fontWeight:900, color:C.white, marginBottom:6, letterSpacing:'-.02em' }}>¿Tu primer premio?</div>
+              <div style={{ display:'flex', alignItems:'flex-start', gap:8, marginBottom:6 }}>
+                <div style={{ fontFamily:FN, fontSize:26, fontWeight:900, color:C.white, letterSpacing:'-.02em', lineHeight:1.15 }}>¿Tu primer premio?</div>
+                <div style={{ marginTop:6 }}>
+                  <InfoHint align="right" text={
+                    'Los premios son lo que los clientes pueden canjear con sus estrellas o puntos acumulados.\n\n' +
+                    'Sugerencias de primer premio: un café gratis, 10% de descuento, una bebida de regalo, un servicio extra.\n\n' +
+                    'Después podés cargar más premios y editarlos desde la pestaña Premios del panel.'
+                  } />
+                </div>
+              </div>
               <div style={{ fontSize:14, color:C.mist, marginBottom:20, lineHeight:1.5 }}>Para que los clientes vean qué pueden canjear. Podés saltar este paso y configurar premios más adelante desde tu panel.</div>
 
               <div style={{ marginBottom:14 }}>
@@ -9486,17 +9626,37 @@ function CommerceSettingsView({ user, profile, setView, onLogout, onOwnerProfile
         {/* ── RECOMPENSAS — pestaña unificada con 3 secciones ── */}
         {savingSystem && <FullscreenLoader message="Actualizando sistema..." />}
 
+        {/* Botón "← Volver a previsualización pública" cuando el dueño llegó desde
+            el preview público (ej: tocó el lápiz del banner de descuento). */}
+        {tab === 'recompensas' && typeof window !== 'undefined' && localStorage.getItem('benefix:cameFromPreview') === '1' && (
+          <button onClick={() => {
+            try { localStorage.removeItem('benefix:cameFromPreview') } catch {}
+            onOwnerProfile?.()
+          }}
+            style={{ display:'inline-flex', alignItems:'center', gap:6, marginBottom:14, padding:'6px 12px 6px 8px', background:'rgba(189,75,248,0.10)', border:'1px solid rgba(189,75,248,0.30)', borderRadius:99, color:'#BD4BF8', fontFamily:FN, fontSize:11.5, fontWeight:700, cursor:'pointer' }}>
+            <ArrowLeft size={13} strokeWidth={2.5} /> Volver a previsualización
+          </button>
+        )}
+
         {/* Header global — mini diagrama "QR → 🎁" en lugar de subtítulo
             largo. Cuenta toda la historia (escanea y recibe) con dos íconos.
             La sección "TU SISTEMA BASE" también queda absorbida: las cards
             de abajo se autoexplican.
             El color del regalo sigue al sistema seleccionado (preview o
             guardado), así si previsualizás Puntos ves el regalo en fucsia. */}
-        {tab === 'recompensas' && (() => {
+        {tab === 'recompensas' && (
+          <div style={{
+            background:'rgba(255,255,255,0.025)',
+            border:'1px solid rgba(255,255,255,0.08)',
+            borderRadius:16,
+            padding:'18px 16px 16px',
+            marginBottom:14,
+          }}>
+        {(() => {
           const headerType = pendingSystemType ?? commerce?.prog_type ?? 'stars'
           const headerCol  = headerType === 'points' ? '#EC4899' : '#8B5CF6'
           return (
-            <div style={{ marginBottom:18 }}>
+            <div style={{ marginBottom:14 }}>
               <div style={{ display:'flex', alignItems:'center', gap:8, marginBottom:10 }}>
                 <div style={{ width:34, height:34, borderRadius:9, background:'rgba(255,255,255,0.05)', border:'1px solid rgba(255,255,255,0.10)', display:'flex', alignItems:'center', justifyContent:'center' }}>
                   <QrCode size={17} color={C.mist} strokeWidth={2} />
@@ -9506,7 +9666,15 @@ function CommerceSettingsView({ user, profile, setView, onLogout, onOwnerProfile
                   <Gift size={17} color={headerCol} strokeWidth={2} />
                 </div>
               </div>
-              <div style={{ fontFamily:FN, fontSize:18, fontWeight:900, color:C.white, letterSpacing:'.08em', textTransform:'uppercase' }}>Recompensas por compra</div>
+              <div style={{ display:'flex', alignItems:'center', gap:8 }}>
+                <div style={{ fontFamily:FN, fontSize:18, fontWeight:900, color:C.white, letterSpacing:'.08em', textTransform:'uppercase' }}>Recompensas por compra</div>
+                <InfoHint align="left" text={
+                  'Es el sistema base con el que tus clientes acumulan recompensas al escanear su QR.\n\n' +
+                  '• Estrellas: 1 estrella por compra. Simple, ideal para tickets parecidos.\n\n' +
+                  '• Puntos: 1 punto por cada peso gastado. Flexible para tickets variables.\n\n' +
+                  'Podés cambiar de sistema cuando quieras. Si lo hacés, los premios viejos quedan pausados y vuelves a cargarlos en el sistema nuevo.'
+                } />
+              </div>
               {/* Chip FREE — para que se lea con el mismo lenguaje que el resto
                   de las secciones: título arriba, badge de plan abajo. */}
               <div style={{ display:'flex', gap:6, marginTop:8 }}>
@@ -9516,7 +9684,7 @@ function CommerceSettingsView({ user, profile, setView, onLogout, onOwnerProfile
           )
         })()}
 
-        {tab === 'recompensas' && (() => {
+        {(() => {
           const SYSTEMS = [
             { id:'stars',  Icon:Star, label:'Estrellas', color:'#8B5CF6', colorDark:'#7C3AED',
               desc:'1 estrella por compra. Simple y visual.' },
@@ -9610,7 +9778,9 @@ function CommerceSettingsView({ user, profile, setView, onLogout, onOwnerProfile
                     {/* Conector ⇅ — superpuesto sobre el borde entre ambas cards.
                         Margen negativo en el contenedor del botón colapsa el
                         espacio entre cards y deja que el botón flote sobre la
-                        unión. Único disparador del cambio. */}
+                        unión. Único disparador del cambio.
+                        Las flechas hacen un loop sutil de rotación 180° que
+                        sugiere que tocando se invierte el sistema. */}
                     <div style={{ display:'flex', justifyContent:'center', margin:'-18px 0', position:'relative', zIndex:5, pointerEvents:'none' }}>
                       <button
                         onClick={() => setPendingSystemType(inactiveSys.id)}
@@ -9619,8 +9789,16 @@ function CommerceSettingsView({ user, profile, setView, onLogout, onOwnerProfile
                         style={{ width:36, height:36, borderRadius:'50%', background:`linear-gradient(135deg, ${inactiveSys.color}, ${inactiveSys.colorDark})`, border:'2px solid rgba(20,20,28,0.95)', display:'flex', alignItems:'center', justifyContent:'center', flexShrink:0, cursor:'pointer', padding:0, pointerEvents:'auto', boxShadow:`0 6px 16px -4px ${inactiveSys.color}88`, transition:'transform .15s ease' }}
                         onMouseEnter={e => { e.currentTarget.style.transform = 'scale(1.10)' }}
                         onMouseLeave={e => { e.currentTarget.style.transform = 'scale(1)' }}>
-                        <ArrowUpDown size={15} color="#fff" strokeWidth={2.5} />
+                        <ArrowUpDown size={15} color="#fff" strokeWidth={2.5}
+                          style={{ animation: prefersReduced ? 'none' : 'sysSwapFlip 2.6s ease-in-out infinite' }} />
                       </button>
+                      <style>{`
+                        @keyframes sysSwapFlip {
+                          0%, 22%  { transform: rotate(0deg) }
+                          50%, 72% { transform: rotate(180deg) }
+                          100%     { transform: rotate(360deg) }
+                        }
+                      `}</style>
                     </div>
 
                     {/* Contenedor unificado: card activa + campos de edición */}
@@ -9652,12 +9830,20 @@ function CommerceSettingsView({ user, profile, setView, onLogout, onOwnerProfile
                           const dirty = String(cur ?? '') !== String(commerce?.prog_min_purchase ?? '')
                           return (
                             <div style={{ display:'flex', alignItems:'center', gap:6 }}>
-                              <span style={{ fontSize:13, fontWeight:900, color: has ? 'rgba(74,222,128,0.95)' : C.dust, fontFamily:FN, lineHeight:1, width:12, textAlign:'center' }}>$</span>
-                              <span>Compra mínima:</span>
-                              <input type="number" min={0} value={cur ?? ''} onChange={e => set('prog_min_purchase', e.target.value)}
-                                placeholder="—" inputMode="numeric"
-                                disabled={hasPendingChange}
-                                style={{ background:C.bg3, border:`1px solid ${C.rim}`, borderRadius:6, padding:'3px 8px', fontSize:12, color:C.white, width:80, fontFamily:'inherit', opacity: hasPendingChange ? 0.5 : 1 }} />
+                              <span style={{ fontSize:13, fontWeight:900, color: activeSys.color, fontFamily:FN, lineHeight:1, width:12, textAlign:'center' }}>$</span>
+                              <span>Monto compra mínima:</span>
+                              <InfoHint align="left" size={12} text={
+                                'Solo cuentan las compras de este monto en adelante para sumar una estrella.\n\n' +
+                                'Útil si vendés productos baratos: así un cliente que compra solo $100 no acumula estrellas tan rápido.\n\n' +
+                                'Si lo dejás vacío, cualquier compra suma una estrella.'
+                              } />
+                              <div style={{ position:'relative', display:'inline-block' }}>
+                                <span style={{ position:'absolute', left:8, top:'50%', transform:'translateY(-50%)', fontSize:12, fontWeight:700, color: activeSys.color, fontFamily:FN, pointerEvents:'none' }}>$</span>
+                                <input type="number" min={0} value={cur ?? ''} onChange={e => set('prog_min_purchase', e.target.value)}
+                                  placeholder="—" inputMode="numeric"
+                                  disabled={hasPendingChange}
+                                  style={{ background:C.bg3, border:`1px solid ${C.rim}`, borderRadius:6, padding:'3px 8px 3px 18px', fontSize:12, color:C.white, width:90, fontFamily:'inherit', opacity: hasPendingChange ? 0.5 : 1 }} />
+                              </div>
                               {dirty && !hasPendingChange && (
                                 <button onClick={saveFidelizacion} disabled={saving}
                                   style={{ background:GV, border:'none', borderRadius:6, padding:'3px 9px', color:'#fff', fontSize:10, fontWeight:700, fontFamily:FN, cursor:'pointer' }}>
@@ -9755,6 +9941,8 @@ function CommerceSettingsView({ user, profile, setView, onLogout, onOwnerProfile
             </div>
           )
         })()}
+          </div>
+        )}
 
         {/* ── PREMIOS ── */}
         {tab === 'premios' && (
@@ -9766,9 +9954,26 @@ function CommerceSettingsView({ user, profile, setView, onLogout, onOwnerProfile
                 <ArrowLeft size={13} strokeWidth={2.5} /> Volver a recompensas
               </button>
             )}
+            {/* Botón "← Volver a previsualización pública" si el usuario vino del preview con el ojo. */}
+            {typeof window !== 'undefined' && localStorage.getItem('benefix:cameFromPreview') === '1' && (
+              <button onClick={() => {
+                try { localStorage.removeItem('benefix:cameFromPreview') } catch {}
+                onOwnerProfile?.()
+              }}
+                style={{ display:'inline-flex', alignItems:'center', gap:6, marginBottom:14, marginLeft: cameFromTab === 'recompensas' ? 8 : 0, padding:'6px 12px 6px 8px', background:'rgba(189,75,248,0.10)', border:'1px solid rgba(189,75,248,0.30)', borderRadius:99, color:'#BD4BF8', fontFamily:FN, fontSize:11.5, fontWeight:700, cursor:'pointer' }}>
+                <ArrowLeft size={13} strokeWidth={2.5} /> Volver a previsualización
+              </button>
+            )}
             {/* Header con contador de límite */}
             <div style={{ display:'flex', alignItems:'flex-start', justifyContent:'space-between', marginBottom:4, gap:10 }}>
-              <div style={{ fontFamily:FN, fontSize:18, fontWeight:900, color:C.white, letterSpacing:'.08em', textTransform:'uppercase' }}>Premios</div>
+              <div style={{ display:'flex', alignItems:'center', gap:8 }}>
+                <div style={{ fontFamily:FN, fontSize:18, fontWeight:900, color:C.white, letterSpacing:'.08em', textTransform:'uppercase' }}>Premios</div>
+                <InfoHint align="left" text={
+                  'Cargá los premios que tus clientes pueden canjear con sus estrellas o puntos acumulados.\n\n' +
+                  'Cada premio tiene un costo (en la unidad de tu sistema activo), un nombre, una imagen opcional y stock opcional.\n\n' +
+                  'Si cambiás de sistema (estrellas ↔ puntos), los premios viejos quedan pausados y los volvés a cargar en el sistema nuevo.'
+                } />
+              </div>
               {perms.max_rewards !== null && (
                 <div style={{ display:'flex', alignItems:'center', gap:6, background: rewardsAtLimit ? '#f874441a' : `${C.v}11`, border:`1px solid ${rewardsAtLimit ? '#f8744444' : `${C.v}33`}`, borderRadius:8, padding:'4px 10px', flexShrink:0 }}>
                   <span style={{ fontFamily:FN, fontSize:11, fontWeight:700, color: rewardsAtLimit ? '#f87444' : C.v }}>
@@ -10038,10 +10243,22 @@ function CommerceSettingsView({ user, profile, setView, onLogout, onOwnerProfile
 
         {/* ─── SECCIÓN 2: RECOMPENSAS EXTRA (STARTER + PRO) ─── */}
         {tab === 'recompensas' && (
-          <div style={{ marginTop:24, marginBottom:12 }}>
+          <div style={{
+            background:'rgba(255,255,255,0.025)',
+            border:'1px solid rgba(255,255,255,0.08)',
+            borderRadius:16,
+            padding:'18px 16px 16px',
+            marginBottom:14,
+          }}>
             {/* Título + línea divisoria */}
             <div style={{ display:'flex', alignItems:'center', gap:10 }}>
               <span style={{ fontSize:18, fontWeight:900, color:C.white, letterSpacing:'.08em', textTransform:'uppercase' }}>Recompensas extra</span>
+              <InfoHint align="left" text={
+                'Beneficios adicionales que vienen ENCIMA de tu sistema de estrellas o puntos.\n\n' +
+                '• Cupón próxima visita: un % OFF que el cliente recibe automáticamente y usa la próxima vez que va.\n\n' +
+                '• Días con bonus ×2: los días que vos elegís, los clientes acumulan al doble. Útil para llenar días flojos.\n\n' +
+                'Disponibles desde el plan STARTER.'
+              } />
               <div style={{ flex:1, height:1, background:'rgba(255,255,255,0.06)' }} />
             </div>
             {/* Chips de plan debajo del título */}
@@ -10059,14 +10276,12 @@ function CommerceSettingsView({ user, profile, setView, onLogout, onOwnerProfile
                 </>
               )}
             </div>
-          </div>
-        )}
 
         {/* ── PROMOCIONES — locked ──
             Layout: rectángulos full-width apilados, con descripción colapsable
             inline (no más modal teaser). Click en la card → expande beneficios
             + ejemplo + CTA "Activar STARTER" abajo de la misma card. */}
-        {tab === 'recompensas' && !canPromote && (() => {
+        {!canPromote && (() => {
           const PROMOS = [
             {
               id:'discount', glyph:'-%', color:'#F59E0B', rgb:'245,158,11',
@@ -10157,7 +10372,7 @@ function CommerceSettingsView({ user, profile, setView, onLogout, onOwnerProfile
           )
         })()}
 
-        {tab === 'recompensas' && canPromote && (() => {
+        {canPromote && (() => {
           const DURATIONS = [
             { id:'today',  label:'Solo hoy'        },
             { id:'3days',  label:'3 días'           },
@@ -10423,6 +10638,8 @@ function CommerceSettingsView({ user, profile, setView, onLogout, onOwnerProfile
           </div>
           )
         })()}
+          </div>
+        )}
 
         {/* ── Cross-promo: invita a la pestaña Mensajes (PRO) ──
             Intensidad bajada (deshabilitado-style) + candado destacado + chip
@@ -10573,7 +10790,14 @@ function CommerceSettingsView({ user, profile, setView, onLogout, onOwnerProfile
           return (
             <div>
               <div style={{ marginBottom:24 }}>
-                <div style={{ fontFamily:FN, fontSize:18, fontWeight:900, color:C.white, marginBottom:4, letterSpacing:'.08em', textTransform:'uppercase' }}>Reportes</div>
+                <div style={{ display:'flex', alignItems:'center', gap:8, marginBottom:4 }}>
+                  <div style={{ fontFamily:FN, fontSize:18, fontWeight:900, color:C.white, letterSpacing:'.08em', textTransform:'uppercase' }}>Reportes</div>
+                  <InfoHint align="left" text={
+                    'Datos crudos de tu actividad: cada visita registrada, cada canje y la lista completa de tus clientes.\n\n' +
+                    'Útil para revisar el día a día (ej. ver qué clientes vinieron hoy), exportar tu base, o cruzar números a fin de mes.\n\n' +
+                    'Si querés gráficos resumidos en vez de tablas, mirá la pestaña Análisis.'
+                  } />
+                </div>
                 <div style={{ fontSize:13, color:C.mist }}>Historial de visitas, canjes y base de clientes.</div>
               </div>
 
@@ -10841,7 +11065,17 @@ function CommerceSettingsView({ user, profile, setView, onLogout, onOwnerProfile
           return (
             <div>
               <div style={{ marginBottom:24 }}>
-                <div style={{ fontFamily:FN, fontSize:18, fontWeight:900, color:C.white, marginBottom:4, letterSpacing:'.08em', textTransform:'uppercase' }}>Segmentación de clientes</div>
+                <div style={{ display:'flex', alignItems:'center', gap:8, marginBottom:4 }}>
+                  <div style={{ fontFamily:FN, fontSize:18, fontWeight:900, color:C.white, letterSpacing:'.08em', textTransform:'uppercase' }}>Segmentación de clientes</div>
+                  <InfoHint align="left" text={
+                    'Tus clientes se agrupan automáticamente en 4 segmentos según su comportamiento:\n\n' +
+                    '• Nuevos: clientes con menos de 14 días desde su primera visita.\n\n' +
+                    '• Frecuentes: vienen seguido (3+ visitas en los últimos 30 días).\n\n' +
+                    '• VIP: tus mejores clientes — los que más visitas o gasto acumulan.\n\n' +
+                    '• Inactivos: hace más de 30 días que no escanean su QR.\n\n' +
+                    'Tocá un segmento para ver el listado y enviarles mensajes.'
+                  } />
+                </div>
                 <div style={{ fontSize:13, color:C.mist }}>Analiza comportamiento y segmenta tu base de clientes.</div>
               </div>
               {loadingSegments ? (
@@ -10989,7 +11223,15 @@ function CommerceSettingsView({ user, profile, setView, onLogout, onOwnerProfile
             ya no hace falta porque acá es la pestaña entera. ── */}
         {tab === 'planes' && (
           <div>
-            <div style={{ fontFamily:FN, fontSize:18, fontWeight:900, color:C.white, marginBottom:4, letterSpacing:'.08em', textTransform:'uppercase' }}>Planes</div>
+            <div style={{ display:'flex', alignItems:'center', gap:8, marginBottom:4 }}>
+              <div style={{ fontFamily:FN, fontSize:18, fontWeight:900, color:C.white, letterSpacing:'.08em', textTransform:'uppercase' }}>Planes</div>
+              <InfoHint align="left" text={
+                'FREE: gratis, hasta 30 clientes, sin promociones extra ni mensajes automáticos.\n\n' +
+                'STARTER: hasta 60 clientes y desbloqueás Recompensas extra (cupón próxima visita y días con bonus ×2).\n\n' +
+                'PRO: clientes ilimitados, todas las promos y Automatizaciones de WhatsApp.\n\n' +
+                'Podés cambiar de plan cuando quieras.'
+              } />
+            </div>
             <div style={{ fontSize:12, color:C.mist, marginBottom:18 }}>Elegí el plan que mejor se adapta a tu negocio.</div>
 
             {/* Banner del plan actual — destacado para que el usuario sepa
@@ -11656,7 +11898,14 @@ function CommerceSettingsView({ user, profile, setView, onLogout, onOwnerProfile
                   <ArrowLeft size={13} strokeWidth={2.5} /> Volver a recompensas
                 </button>
               )}
-              <div style={{ fontFamily:FN, fontSize:18, fontWeight:900, color:C.white, marginBottom:4, letterSpacing:'.08em', textTransform:'uppercase' }}>Automatizaciones</div>
+              <div style={{ display:'flex', alignItems:'center', gap:8, marginBottom:4 }}>
+                <div style={{ fontFamily:FN, fontSize:18, fontWeight:900, color:C.white, letterSpacing:'.08em', textTransform:'uppercase' }}>Automatizaciones</div>
+                <InfoHint align="left" text={
+                  'Mensajes de WhatsApp que la app te ayuda a enviar a clientes específicos sin que tengas que pensarlo.\n\n' +
+                  'La app detecta los clientes que cumplen una condición (ej. "no vinieron hace 30 días") y te muestra el mensaje listo para enviar. Vos lo revisás y lo despachás con un click.\n\n' +
+                  'Disponible en plan PRO.'
+                } />
+              </div>
               <div style={{ fontSize:13, color:C.mist, marginBottom:20 }}>Mensajes listos para enviar a tus clientes.</div>
 
               <div style={{ display:'flex', flexDirection:'column', gap:10 }}>
@@ -11721,7 +11970,7 @@ function CommerceSettingsView({ user, profile, setView, onLogout, onOwnerProfile
 }
 
 // ─── QR PERSONAL DEL CLIENTE ─────────────────────────────────────────────────
-function ClientQRView({ user, profile, setView }) {
+function ClientQRView({ user, profile, setView, headerExtra }) {
   const [mode,        setMode]        = useState('qr') // 'qr' | 'scanning' | 'error'
   const [doneError,   setDoneError]   = useState('')
   const [cameraError, setCameraError] = useState('')
@@ -11869,8 +12118,10 @@ function ClientQRView({ user, profile, setView }) {
   }
   return (
     <>
-      <ClientBottomNav tab="mi qr" setTab={handleNavTab} profile={profile} setView={setView} />
-    <div className="modal-in" style={{ display:'flex', flexDirection:'column', alignItems:'center', padding:'58px 16px 40px', maxWidth:420, margin:'0 auto' }}>
+      {!headerExtra && <ClientBottomNav tab="mi qr" setTab={handleNavTab} profile={profile} setView={setView} />}
+    <div className="modal-in" style={{ display:'flex', flexDirection:'column', alignItems:'center', padding: headerExtra ? '24px 16px 40px' : '58px 16px 40px', maxWidth:420, margin:'0 auto' }}>
+
+      {headerExtra}
 
       {cameraError && (
         <div style={{ fontSize:12, color:'#f87444', marginBottom:16, textAlign:'center' }}>{cameraError}</div>
@@ -11899,7 +12150,14 @@ function ClientQRView({ user, profile, setView }) {
           {/* Header */}
           <div style={{ display:'flex', alignItems:'flex-start', justifyContent:'space-between', marginBottom:24, position:'relative' }}>
             <div>
-              <div style={{ fontFamily:FN, fontSize:22, fontWeight:900, color:'#fff', letterSpacing:'-.01em', lineHeight:1 }}>BENEFIX PASS</div>
+              <div style={{ display:'flex', alignItems:'center', gap:6 }}>
+                <div style={{ fontFamily:FN, fontSize:22, fontWeight:900, color:'#fff', letterSpacing:'-.01em', lineHeight:1 }}>BENEFIX PASS</div>
+                <InfoHint align="left" color="rgba(255,255,255,0.85)" text={
+                  'Tu QR personal único. Mostralo al comerciante en cada compra para que lo escanee y te sume estrellas o puntos.\n\n' +
+                  'El mismo QR sirve para todos los clubes donde estés anotado — no necesitás uno por cada negocio.\n\n' +
+                  'Si lo perdés o querés bloquearlo, escribinos por soporte y te ayudamos.'
+                } />
+              </div>
               <div style={{ fontFamily:FI, fontSize:12, color:'rgba(255,255,255,0.65)', marginTop:4 }}>Tu pase de beneficios</div>
             </div>
             {/* Logo badge */}
@@ -11974,6 +12232,9 @@ function ScannerView({ user, profile, setView }) {
       <div style={{ color:C.mist, fontSize:13 }}>Esta sección es solo para comercios adheridos.</div>
     </div>
   )
+  // Modo del scanner para owners: 'register-visit' (escanear QR del cliente que vino al local)
+  // o 'join-club' (escanear QR de otro local para sumarse como cliente). Default: register-visit.
+  const [scanMode, setScanMode]       = useState('register-visit')
   const [commerceId, setCommerceId]   = useState('')
   const [amount,     setAmount]       = useState('')   // monto en pesos para sistema de puntos (1:1)
   const [result, setResult]           = useState(null)
@@ -12218,8 +12479,42 @@ function ScannerView({ user, profile, setView }) {
   const unitLabel = result?.prog_type === 'stars' ? 'estrellas' : 'puntos'
   const unitColor = result?.prog_type === 'stars' ? '#8B5CF6' : '#EC4899'
 
+  // Toggle de modo del scanner para owners. Aparece arriba en ambos modos.
+  const modeToggle = (
+    <div style={{ display:'flex', gap:6, padding:4, background:'rgba(255,255,255,0.05)', border:'1px solid rgba(255,255,255,0.10)', borderRadius:14, marginBottom:18, width:'100%' }}>
+      {[
+        { id:'register-visit', label:'Registrar visita de cliente' },
+        { id:'join-club',      label:'Escanear nuevo Club' },
+      ].map(opt => {
+        const active = scanMode === opt.id
+        return (
+          <button key={opt.id} onClick={() => setScanMode(opt.id)}
+            style={{
+              flex:1, padding:'9px 8px', borderRadius:11,
+              background: active ? 'linear-gradient(135deg, #FE5000, #BD4BF8)' : 'transparent',
+              border: 'none',
+              color: active ? '#fff' : 'rgba(255,255,255,0.65)',
+              fontFamily:FN, fontSize:11.5, fontWeight: active ? 700 : 600,
+              cursor:'pointer', transition:'background 180ms ease, color 180ms ease',
+              boxShadow: active ? '0 4px 14px rgba(168,85,247,0.30)' : 'none',
+              lineHeight:1.2,
+            }}>
+            {opt.label}
+          </button>
+        )
+      })}
+    </div>
+  )
+
+  // Si elige "Escanear nuevo Club", delegamos a ClientQRView (mismo flow que el cliente
+  // para sumarse a un club). Le pasamos el toggle como headerExtra para que se vea arriba.
+  if (scanMode === 'join-club') {
+    return <ClientQRView user={user} profile={profile} setView={setView} headerExtra={modeToggle} />
+  }
+
   return (
     <div style={{ maxWidth:440, margin:'0 auto', padding:'30px 18px 80px' }}>
+      {modeToggle}
       <div style={{ fontFamily:FN, fontSize:10, color:C.o, fontWeight:800, letterSpacing:'.15em', textTransform:'uppercase', marginBottom:8 }}>✦ Escáner QR</div>
       <h1 style={{ fontFamily:FN, fontSize:'clamp(22px,4vw,32px)', fontWeight:900, color:C.white, marginBottom:4 }}>Registrar visita</h1>
       <p style={{ fontSize:13, color:C.mist, marginBottom:22 }}>Apuntá la cámara al QR del socio.</p>

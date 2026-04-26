@@ -17,7 +17,7 @@ export async function POST(request) {
   const body = await request.json()
   const {
     commerce_id, name, category, customCategory, description, img_url, cover_image,
-    phone, instagram, facebook, province, city_name, address, hours_structured, brand_color,
+    phone, instagram, facebook, country, province, city_name, address, hours_structured, brand_color,
     prog_min_purchase,
   } = body
 
@@ -98,6 +98,7 @@ export async function POST(request) {
     ...(body.phone            !== undefined && { phone:            phone || null }),
     ...(body.instagram        !== undefined && { instagram:        instagram || null }),
     ...(body.facebook         !== undefined && { facebook:         facebook || null }),
+    ...(body.country          !== undefined && { country:          country || null }),
     ...(body.province         !== undefined && { province:         province || null }),
     ...(body.city_name        !== undefined && { city_name:        city_name || null }),
     ...(body.address          !== undefined && { address:          address || null }),
