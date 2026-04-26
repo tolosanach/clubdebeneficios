@@ -11,6 +11,7 @@ import { FAMILIES_DATA } from '../lib/commerce-families-data'
 import PhoneInput from '../lib/PhoneInput'
 import SupportChat from '../lib/SupportChat'
 import SuggestionsInbox from '../lib/SuggestionsInbox'
+import InfoHint from '../lib/InfoHint'
 import { QRCodeSVG } from 'qrcode.react'
 import {
   Menu, QrCode, User, Home, LayoutDashboard, Users, Star, Gift,
@@ -5627,7 +5628,7 @@ function RegisterCommerceView({ setView, user, onProfileRefresh, onLoginRequired
   const [done,      setDone]     = useState(false)
   const [catFamily, setCatFamily] = useState(null)
   const [catSearch, setCatSearch] = useState('')
-  const [minPurchaseOpen, setMinPurchaseOpen] = useState(false)  // acordeón compra mínima
+  const [minPurchaseOpen, setMinPurchaseOpen] = useState(true)  // acordeón compra mínima — abierto por default
   const [uploadingLogo, setUploadingLogo] = useState(false)
 
   // Restore drill-down position when returning to step 3
@@ -6023,7 +6024,17 @@ function RegisterCommerceView({ setView, user, onProfileRefresh, onLoginRequired
           {/* ── Paso 5: Sistema de puntos ── */}
           {step === 5 && (
             <div>
-              <div style={{ fontFamily:FN, fontSize:26, fontWeight:900, color:C.white, marginBottom:6, letterSpacing:'-.02em' }}>¿Cómo van a ganar premios?</div>
+              <div style={{ display:'flex', alignItems:'flex-start', gap:8, marginBottom:6 }}>
+                <div style={{ fontFamily:FN, fontSize:26, fontWeight:900, color:C.white, letterSpacing:'-.02em', lineHeight:1.15 }}>¿Cómo van a ganar premios?</div>
+                <div style={{ marginTop:6 }}>
+                  <InfoHint align="right" text={
+                    'Elegí cómo tus clientes acumulan recompensas:\n\n' +
+                    '• Estrellas: simple, 1 estrella por compra. Ideal para cafeterías, barberías y rubros con tickets parecidos.\n\n' +
+                    '• Puntos: flexible, 1 punto por cada peso gastado. Ideal si los tickets varían mucho (restaurantes, ropa, ferretería).\n\n' +
+                    'Después podés cambiarlo desde el panel.'
+                  } />
+                </div>
+              </div>
               <div style={{ fontSize:13, color:C.mist, marginBottom:20, lineHeight:1.5 }}>Después podés cambiarlo.</div>
 
               {/* Pasos visibles solo en flow Estrellas (el de Puntos es 1 sólo paso) */}
@@ -6089,8 +6100,15 @@ function RegisterCommerceView({ setView, user, onProfileRefresh, onLoginRequired
 
               {/* Compra mínima — acordeón colapsado por default. Solo stars. */}
               {form.prog_type === 'stars' && (
-                <div style={{ fontFamily:FN, fontSize:10, fontWeight:700, color:'#8B5CF6', letterSpacing:'.10em', textTransform:'uppercase', marginBottom:8 }}>
-                  Paso 2 · Compra mínima
+                <div style={{ display:'flex', alignItems:'center', gap:6, marginBottom:8 }}>
+                  <div style={{ fontFamily:FN, fontSize:10, fontWeight:700, color:'#8B5CF6', letterSpacing:'.10em', textTransform:'uppercase' }}>
+                    Paso 2 · Compra mínima
+                  </div>
+                  <InfoHint align="left" text={
+                    'Solo cuentan las compras de este monto en adelante para sumar una estrella.\n\n' +
+                    'Útil si vendés productos baratos: así un cliente que compra solo $100 no acumula estrellas tan rápido.\n\n' +
+                    'Si lo dejás vacío, cualquier compra suma una estrella.'
+                  } />
                 </div>
               )}
               {form.prog_type === 'stars' && (
@@ -6114,7 +6132,7 @@ function RegisterCommerceView({ setView, user, onProfileRefresh, onLoginRequired
                     <div style={{ padding:'0 14px 14px', borderTop:'1px solid rgba(255,255,255,0.06)' }}>
                       <input type="number" min={0} value={form.prog_min_purchase}
                         onChange={e => setForm(f => ({ ...f, prog_min_purchase: e.target.value }))}
-                        placeholder="Ej: 1500"
+                        placeholder="Ej: $ 10.000"
                         style={{ width:'100%', marginTop:12, padding:'11px 14px', background:'rgba(255,255,255,0.06)', border:'1px solid rgba(255,255,255,0.12)', borderRadius:10, color:C.white, fontSize:14, fontFamily:FI, boxSizing:'border-box' }}
                       />
                       <div style={{ fontSize:11, color:'rgba(255,255,255,0.45)', marginTop:6, lineHeight:1.5 }}>
