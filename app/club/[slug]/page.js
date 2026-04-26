@@ -1113,35 +1113,46 @@ export default function ClubProfilePage() {
               )}
               <SlideToJoinButton
                 onJoin={async () => {
-                  // Si el usuario ya está logueado Y tiene teléfono cargado en
-                  // su perfil → unirlo directo sin pedir nada de nuevo. El
-                  // modal solo se muestra si falta auth o teléfono.
-                  // Hacemos un re-check del user por si el state local todavía
-                  // no se hidrató después de un full reload (redirect del scanner).
+                  console.log('[SlideToJoin] inicio. user state:', user?.email || 'null', 'phone state:', userProfile?.phone || phone || 'vacío')
                   let currentUser = user
                   let currentPhone = (userProfile?.phone || phone || '').trim()
+                  const sb = getSupabase()
+
+                  // Re-fetch del user si el state local está vacío
                   if (!currentUser) {
                     try {
-                      const sb = getSupabase()
                       const { data } = await sb.auth.getUser()
                       currentUser = data.user || null
                       if (currentUser) {
+                        console.log('[SlideToJoin] user re-fetched:', currentUser.email)
                         setUser(currentUser)
-                        // Re-fetch del teléfono si no lo teníamos
-                        if (!currentPhone) {
-                          const { data: prof } = await sb.from('profiles').select('phone').eq('id', currentUser.id).maybeSingle()
-                          if (prof?.phone) {
-                            currentPhone = prof.phone.trim()
-                            setUserProfile(p => ({ ...(p || {}), phone: prof.phone }))
-                          }
-                        }
+                      } else {
+                        console.log('[SlideToJoin] no hay sesion activa')
                       }
-                    } catch {}
+                    } catch (e) { console.log('[SlideToJoin] error fetching user:', e) }
                   }
 
+                  // Re-fetch del teléfono SIEMPRE que falte y haya user
+                  // (el bug previo era que solo se refetcheaba si el user state estaba null).
+                  if (currentUser && !currentPhone) {
+                    try {
+                      const { data: prof } = await sb.from('profiles').select('phone').eq('id', currentUser.id).maybeSingle()
+                      if (prof?.phone) {
+                        currentPhone = prof.phone.trim()
+                        setUserProfile(p => ({ ...(p || {}), phone: prof.phone }))
+                        console.log('[SlideToJoin] phone re-fetched del profile:', currentPhone)
+                      } else {
+                        console.log('[SlideToJoin] profile no tiene phone')
+                      }
+                    } catch (e) { console.log('[SlideToJoin] error fetching profile:', e) }
+                  }
+
+                  console.log('[SlideToJoin] decision. user:', !!currentUser, 'phone:', !!currentPhone)
                   if (currentUser && currentPhone) {
+                    console.log('[SlideToJoin] uniendo directo via handleJoin')
                     handleJoin(currentPhone)
                   } else {
+                    console.log('[SlideToJoin] abriendo modal porque falta', !currentUser ? 'user' : '', !currentPhone ? 'phone' : '')
                     setShowModal(true)
                   }
                 }}
