@@ -4873,23 +4873,18 @@ function ClientView({ setView, user, profile, onLogout }) {
   const [acctSaving, setAcctSaving] = useState(false)
   const [acctStats,  setAcctStats]  = useState(null)
   // Cartel "¿Tenés un negocio?" — máquina de estados con 2 ubicaciones:
-  //   top-collapsed  → arriba, primera vez, con Sí/No
-  //   top-expanded   → arriba, después de tocar Sí, con texto + link
-  //   hidden         → tocó No, oculto durante 1h
-  //   bottom-collapsed/expanded → abajo de "Guardar cambios", versión persistente
+  //   top-collapsed   → arriba, primera vez, con Sí/No
+  //   top-expanded    → arriba, después de tocar Sí, con texto + link
+  //   bottom-collapsed/expanded → abajo de "Guardar cambios", versión compacta
   //                                con flecha desplegable (sin Sí/No)
-  // Persistencia: localStorage guarda answer ('yes'|'no') y dismissedAt.
+  // Si tocó "No" o "Sí" en una sesión previa, arranca directo en bottom-collapsed.
+  // Persistencia: localStorage guarda answer ('yes'|'no'). Solo un cartel
+  // visible a la vez (nunca duplicado).
   const [bizState, setBizState] = useState(() => {
     if (typeof window === 'undefined') return 'top-collapsed'
     try {
-      const answer       = localStorage.getItem('benefix:bizAnswer')
-      const dismissedStr = localStorage.getItem('benefix:bizDismissedAt')
-      const dismissedAt  = dismissedStr ? parseInt(dismissedStr, 10) : 0
-      if (answer === 'yes') return 'bottom-collapsed'
-      if (answer === 'no') {
-        if (Date.now() - dismissedAt < 3600000) return 'hidden'
-        return 'bottom-collapsed'
-      }
+      const answer = localStorage.getItem('benefix:bizAnswer')
+      if (answer === 'yes' || answer === 'no') return 'bottom-collapsed'
       return 'top-collapsed'
     } catch { return 'top-collapsed' }
   })
@@ -4899,11 +4894,9 @@ function ClientView({ setView, user, profile, onLogout }) {
     setBizState('top-expanded')
   }
   function bizAnswerNo() {
-    try {
-      localStorage.setItem('benefix:bizAnswer', 'no')
-      localStorage.setItem('benefix:bizDismissedAt', String(Date.now()))
-    } catch {}
-    setBizState('hidden')
+    try { localStorage.setItem('benefix:bizAnswer', 'no') } catch {}
+    // Movimiento inmediato a la posición de abajo, compacto.
+    setBizState('bottom-collapsed')
   }
   function bizToggleBottom() {
     setBizState(s => s === 'bottom-expanded' ? 'bottom-collapsed' : 'bottom-expanded')
