@@ -451,13 +451,107 @@ function MemberBadge({ createdAt }) {
   )
 }
 
+// ClubHistory — lista combinada de visitas + canjes del cliente en este comercio.
+// Carga directo desde supabase con el cliente normal (RLS restringe al propio user).
+function ClubHistory({ user, commerceId, unitLabel, unitColor, UnitIcon, unitIconProps }) {
+  const [visits,      setVisits]      = useState([])
+  const [redemptions, setRedemptions] = useState([])
+  const [loading,     setLoading]     = useState(true)
+
+  useEffect(() => {
+    if (!user?.id || !commerceId) return
+    let cancelled = false
+    ;(async () => {
+      try {
+        const sb = getSupabase()
+        const [{ data: vData }, { data: rData }] = await Promise.all([
+          sb.from('visits')
+            .select('id, scanned_at, points_earned, amount_spent')
+            .eq('user_id', user.id).eq('commerce_id', commerceId)
+            .order('scanned_at', { ascending: false }).limit(50),
+          sb.from('redemptions')
+            .select('id, redeemed_at, points_spent, prize:prizes(name)')
+            .eq('user_id', user.id).eq('commerce_id', commerceId)
+            .order('redeemed_at', { ascending: false }).limit(50),
+        ])
+        if (!cancelled) {
+          setVisits(vData || [])
+          setRedemptions(rData || [])
+          setLoading(false)
+        }
+      } catch {
+        if (!cancelled) setLoading(false)
+      }
+    })()
+    return () => { cancelled = true }
+  }, [user?.id, commerceId])
+
+  const items = [
+    ...visits.map(v => ({ kind:'visit', date: v.scanned_at, points: v.points_earned, amount: v.amount_spent, id: 'v-'+v.id })),
+    ...redemptions.map(r => ({ kind:'redeem', date: r.redeemed_at, points: r.points_spent, prizeName: r.prize?.name, id: 'r-'+r.id })),
+  ].sort((a,b) => new Date(b.date) - new Date(a.date))
+
+  if (loading) {
+    return <div style={{ textAlign:'center', padding:'40px 0', color:C.dust, fontSize:13 }}>Cargando...</div>
+  }
+  if (items.length === 0) {
+    return (
+      <div style={{ textAlign:'center', padding:'40px 20px 20px' }}>
+        <div style={{ display:'flex', justifyContent:'center', marginBottom:16 }}>
+          <div style={{ width:64, height:64, borderRadius:'50%', background:'rgba(168,85,247,0.12)', border:'1px solid rgba(168,85,247,0.25)', display:'flex', alignItems:'center', justifyContent:'center' }}>
+            <Clock size={28} strokeWidth={1.5} color={C.v} />
+          </div>
+        </div>
+        <div style={{ fontFamily:FN, fontSize:16, fontWeight:600, color:C.white, marginBottom:8 }}>Sin movimientos todavía</div>
+        <div style={{ fontSize:12, color:C.mist, lineHeight:1.6, maxWidth:280, margin:'0 auto' }}>
+          Tus visitas y canjes en este negocio van a aparecer acá.
+        </div>
+      </div>
+    )
+  }
+
+  return (
+    <div style={{ display:'flex', flexDirection:'column', gap:8 }}>
+      {items.map(it => {
+        const d = new Date(it.date)
+        const dateStr = d.toLocaleDateString('es-AR', { day:'2-digit', month:'short', year:'2-digit' })
+        const timeStr = d.toLocaleTimeString('es-AR', { hour:'2-digit', minute:'2-digit' })
+        const isVisit = it.kind === 'visit'
+        return (
+          <div key={it.id} style={{
+            display:'flex', alignItems:'center', gap:12,
+            background:'rgba(255,255,255,0.04)',
+            border:'1px solid rgba(255,255,255,0.08)',
+            borderRadius:12, padding:'12px 14px',
+          }}>
+            <div style={{ width:38, height:38, borderRadius:10, background: isVisit ? 'rgba(168,85,247,0.12)' : 'rgba(236,72,153,0.12)', display:'flex', alignItems:'center', justifyContent:'center', flexShrink:0 }}>
+              {isVisit
+                ? <UnitIcon size={16} {...unitIconProps} color={unitColor} />
+                : <Gift size={16} color="#EC4899" strokeWidth={2} />}
+            </div>
+            <div style={{ flex:1, minWidth:0 }}>
+              <div style={{ fontFamily:FN, fontSize:13, fontWeight:600, color:C.white, marginBottom:2 }}>
+                {isVisit ? `Visita registrada` : `Canje: ${it.prizeName || 'Premio'}`}
+              </div>
+              <div style={{ fontSize:11, color:C.mist }}>{dateStr} · {timeStr}{isVisit && it.amount > 0 ? ` · $${Number(it.amount).toLocaleString('es-AR')}` : ''}</div>
+            </div>
+            <div style={{ flexShrink:0, fontFamily:FN, fontSize:13, fontWeight:700, color: isVisit ? unitColor : '#EC4899' }}>
+              {isVisit ? `+${it.points || 1}` : `-${it.points || 0}`} {unitLabel === 'estrellas' ? '★' : 'pts'}
+            </div>
+          </div>
+        )
+      })}
+    </div>
+  )
+}
+
 // Nav de pestañas — pegado arriba abajo del navbar global, con gradient
 // naranja-violeta. Mismo formato que el nav cliente (Mis Clubs / Historial / Mi QR).
 function ClubTopNav({ tab, setTab, prizesCount }) {
   const TABS = [
-    { id:'inicio',  label:'Inicio'  },
-    { id:'premios', label:'Premios', badge: prizesCount },
-    { id:'miqr',    label:'Mi QR'   },
+    { id:'inicio',    label:'Inicio'   },
+    { id:'premios',   label:'Premios', badge: prizesCount },
+    { id:'historial', label:'Historial' },
   ]
   return (
     <nav style={{
@@ -607,6 +701,9 @@ export default function ClubProfilePage() {
   const [reviewHover, setReviewHover]   = useState(0)
   const [submittingReview, setSubmittingReview] = useState(false)
   const [reviewError, setReviewError]   = useState('')
+  // Modal de confirmación para "dejar de ser parte del club"
+  const [leaveConfirm, setLeaveConfirm] = useState(false)
+  const [leaving,      setLeaving]      = useState(false)
 
   useEffect(() => {
     fetch(`/api/club-profile?slug=${slug}`)
@@ -664,7 +761,7 @@ export default function ClubProfilePage() {
     import('qrcode').then(QRCode => {
       QRCode.default.toDataURL(`CLUB-${user.id}`, {
         width:220, margin:2,
-        color: { dark:'#0f0f1a', light:'#ffffff' },
+        color: { dark:'#000000', light:'#FFFFFF' },
       }).then(setQrDataUrl)
     })
   }, [user])
@@ -787,6 +884,8 @@ export default function ClubProfilePage() {
   const pct          = Math.min(100, Math.round((bal / goal) * 100))
   const activePromo  = promos.find(p => p.active)
   const activePrizes = prizes.filter(p => p.active)
+  // Spotlight cuando el cliente entra escaneando el QR del negocio.
+  const fromQr       = searchParams.get('from_qr') === '1'
 
   // URL "Cómo llegar" — siempre direcciones (con destino), no solo búsqueda.
   // Con coords es más preciso; sin coords usamos dirección + ciudad + provincia
@@ -976,12 +1075,56 @@ export default function ClubProfilePage() {
           </div>
         </div>
 
-        {/* ── SLIDE TO JOIN / MEMBER BADGE (siempre visible) ── */}
-        <div style={{ padding:'20px 16px 0' }}>
+        {/* ── SLIDE TO JOIN / MEMBER BADGE (siempre visible) ──
+              Cuando el cliente viene del QR del negocio (?from_qr=1) y todavía
+              no es socio, ponemos un overlay oscuro encima de toda la pantalla
+              y elevamos el slider con z-index alto para que sea lo único
+              visible. Al deslizar, el overlay desaparece (porque deja de
+              aplicar la condición !isMember). */}
+        {fromQr && !isMember && (
+          <div style={{ position:'fixed', inset:0, zIndex:150, background:'rgba(0,0,0,0.78)', backdropFilter:'blur(4px)', WebkitBackdropFilter:'blur(4px)', pointerEvents:'none' }} />
+        )}
+        <div style={{ padding:'20px 16px 0', position: fromQr && !isMember ? 'relative' : 'static', zIndex: fromQr && !isMember ? 200 : 'auto' }}>
           {isMember ? (
-            <MemberBadge createdAt={membership?.created_at} />
+            <>
+              {/* Banner cuando viene del QR y ya es miembro */}
+              {fromQr && (
+                <div style={{ marginBottom:14, padding:'12px 14px', background:'rgba(34,197,94,0.10)', border:'1px solid rgba(34,197,94,0.30)', borderRadius:12, display:'flex', alignItems:'center', gap:10 }}>
+                  <Check size={18} color='#22c55e' strokeWidth={2.5} />
+                  <div style={{ flex:1, minWidth:0 }}>
+                    <div style={{ fontFamily:FN, fontSize:13, fontWeight:700, color:'#fff', marginBottom:2 }}>Ya sos parte de {commerce.name}</div>
+                    <div style={{ fontSize:11.5, color:'rgba(255,255,255,0.65)', lineHeight:1.5 }}>Mostrá tu QR personal en caja para sumar {unitLabel}.</div>
+                  </div>
+                </div>
+              )}
+              <MemberBadge createdAt={membership?.created_at} />
+            </>
           ) : (
-            <SlideToJoinButton onJoin={() => setShowModal(true)} isDemoClub={false} />
+            <>
+              {fromQr && (
+                <div style={{ textAlign:'center', marginBottom:16 }}>
+                  <div style={{ fontFamily:FN, fontSize:18, fontWeight:800, color:'#fff', marginBottom:6, textShadow:'0 2px 12px rgba(0,0,0,0.6)' }}>
+                    Estás a un paso
+                  </div>
+                  <div style={{ fontSize:13, color:'rgba(255,255,255,0.85)', textShadow:'0 2px 8px rgba(0,0,0,0.6)' }}>
+                    Deslizá para unirte al club de {commerce.name}
+                  </div>
+                </div>
+              )}
+              <SlideToJoinButton
+                onJoin={() => {
+                  // Si el usuario ya está logueado Y tiene teléfono cargado en
+                  // su perfil → unirlo directo sin pedir nada de nuevo. El
+                  // modal solo se muestra si falta auth o teléfono.
+                  const profilePhone = (userProfile?.phone || phone || '').trim()
+                  if (user && profilePhone) {
+                    handleJoin(profilePhone)
+                  } else {
+                    setShowModal(true)
+                  }
+                }}
+                isDemoClub={false} />
+            </>
           )}
         </div>
 
@@ -1492,151 +1635,32 @@ export default function ClubProfilePage() {
           </div>
         )}
 
-        {/* ━━━ TAB: MI QR ━━━ */}
-        {tab === 'miqr' && (
+        {/* ━━━ TAB: HISTORIAL — visitas y canjes del cliente en este negocio ━━━ */}
+        {tab === 'historial' && (
           <div style={{ margin:'16px 16px 0', animation:'fadeUp .3s ease' }}>
             {isMember ? (
-              <div>
-                {/* QR Card */}
-                <div style={{
-                  background:'rgba(255,255,255,0.05)',
-                  backdropFilter:'blur(24px)',
-                  WebkitBackdropFilter:'blur(24px)',
-                  border:'1px solid rgba(255,255,255,0.10)',
-                  borderRadius:24, padding:'24px',
-                  display:'flex', flexDirection:'column', alignItems:'center',
-                  marginBottom:14,
-                  animation:'glowPulse 3s ease-in-out infinite',
-                  position:'relative', overflow:'hidden',
-                }}>
-                  <div style={{ position:'absolute', top:-30, left:-30, width:120, height:120, borderRadius:'50%', background:'rgba(168,85,247,0.15)', filter:'blur(40px)', pointerEvents:'none' }} />
-                  <div style={{ position:'absolute', bottom:-30, right:-30, width:100, height:100, borderRadius:'50%', background:'rgba(236,72,153,0.12)', filter:'blur(35px)', pointerEvents:'none' }} />
-
-                  <div style={{ position:'relative', zIndex:1, display:'flex', flexDirection:'column', alignItems:'center' }}>
-                    {qrDataUrl
-                      ? <div style={{ background:'#ffffff', borderRadius:16, padding:14, marginBottom:16, boxShadow:'0 4px 20px rgba(0,0,0,0.3)' }}>
-                          <img src={qrDataUrl} alt="QR" style={{ width:180, height:180, borderRadius:8, display:'block' }} />
-                        </div>
-                      : <div style={{ width:208, height:208, background:'rgba(255,255,255,0.04)', borderRadius:16, display:'flex', alignItems:'center', justifyContent:'center', flexDirection:'column', gap:10, marginBottom:16 }}>
-                          <div style={{ width:40, height:40, borderRadius:'50%', border:'3px solid rgba(168,85,247,0.4)', borderTopColor:C.v, animation:'spin .7s linear infinite' }} />
-                          <div style={{ fontSize:12, color:C.mist }}>Generando...</div>
-                        </div>
-                    }
-                    <p style={{ fontFamily:FN, fontSize:15, fontWeight:600, color:C.white, marginBottom:4 }}>
-                      Mostrá este código en caja
-                    </p>
-                    <p style={{ color:'rgba(255,255,255,0.5)', fontSize:13, marginBottom:14 }}>
-                      para sumar {unitLabel} en cada visita
-                    </p>
-                    <div style={{ display:'inline-flex', alignItems:'center', gap:8, background:'rgba(168,85,247,0.12)', border:'1px solid rgba(168,85,247,0.25)', borderRadius:9999, padding:'6px 16px' }}>
-                      <UnitIcon size={14} {...unitIconProps} color={C.v} />
-                      <span style={{ fontFamily:FN, fontSize:14, fontWeight:700, color:C.v }}>{bal} {unitLabel}</span>
-                    </div>
-                  </div>
-                </div>
-
-                {/* Progreso */}
-                <div style={{ background:'rgba(255,255,255,0.05)', backdropFilter:'blur(16px)', WebkitBackdropFilter:'blur(16px)', border:'1px solid rgba(255,255,255,0.10)', borderRadius:16, padding:'16px', marginBottom:12 }}>
-                  <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', marginBottom:10 }}>
-                    <span style={{ color:C.white, fontSize:14, fontWeight:500, fontFamily:FI, display:'flex', alignItems:'center', gap:5 }}><UnitIcon size={14} {...unitIconProps} /> {bal} {unitLabel}</span>
-                    <span style={{ color:'rgba(255,255,255,0.5)', fontSize:13 }}>{goal} {unitLabel}</span>
-                  </div>
-                  <ProgressBar pct={pct} />
-                  <p style={{ color:'rgba(255,255,255,0.7)', fontSize:13, marginTop:10, fontFamily:FI, display:'flex', alignItems:'center', gap:5, flexWrap:'wrap' }}>
-                    <Gift size={13} strokeWidth={2} /> Te faltan{' '}
-                    <span style={{ color:C.white, fontWeight:600 }}>{Math.max(0, goal - bal)} {unitLabel}</span>
-                    {' '}para: {commerce.reward_text || `tu próxima recompensa`}
-                  </p>
-                </div>
-
-                {/* Stats */}
-                <div style={{ display:'grid', gridTemplateColumns:'repeat(3,1fr)', gap:10 }}>
-                  {[
-                    { v: String(bal),    l: unitLabel,  color: unitColor },
-                    { v: String(visits), l: 'visitas',  color: C.v },
-                    { v: `${pct}%`,      l: 'progreso', grad: true },
-                  ].map((s, i) => (
-                    <GlassCard key={i} style={{ borderRadius:14, padding:'14px 10px', textAlign:'center' }} hover={false}>
-                      {s.grad
-                        ? <div style={{ fontFamily:FN, fontSize:20, fontWeight:900, background:GA, WebkitBackgroundClip:'text', WebkitTextFillColor:'transparent', backgroundClip:'text' }}>{s.v}</div>
-                        : <div style={{ fontFamily:FN, fontSize:20, fontWeight:900, color:s.color }}>{s.v}</div>
-                      }
-                      <div style={{ fontSize:11, color:C.dust, marginTop:4 }}>{s.l}</div>
-                    </GlassCard>
-                  ))}
-                </div>
-              </div>
+              <ClubHistory user={user} commerceId={commerce.id} unitLabel={unitLabel} unitColor={unitColor} UnitIcon={UnitIcon} unitIconProps={unitIconProps} />
             ) : (
-              /* No miembro — el QR personal del user es ÚNICO y existe desde
-                 que se logueó. NO depende de unirse a un club. Mostramos
-                 directamente el QR (si está logueado) y el CTA para unirse
-                 si todavía no es socio de este club. */
-              <div style={{ textAlign:'center', paddingTop:10 }}>
-                {user ? (
-                  <>
-                    <div style={{ fontFamily:FN, fontSize:22, fontWeight:700, color:C.white, marginBottom:10, lineHeight:1.1, letterSpacing:'-0.02em' }}>
-                      Tu código QR
-                    </div>
-                    <div style={{ fontSize:14, color:C.mist, lineHeight:1.7, marginBottom:18, maxWidth:300, margin:'0 auto 18px' }}>
-                      Mostralo al comerciante para que te sume {unitLabel}. Sirve para todos tus clubes.
-                    </div>
-                    {qrDataUrl ? (
-                      <div style={{ display:'flex', justifyContent:'center', marginBottom:20 }}>
-                        <div style={{ background:'#fff', padding:14, borderRadius:18, boxShadow:'0 12px 40px rgba(168,85,247,0.25)' }}>
-                          <img src={qrDataUrl} alt="Tu QR" style={{ width:200, height:200, display:'block' }} />
-                        </div>
-                      </div>
-                    ) : (
-                      <div style={{ display:'flex', justifyContent:'center', marginBottom:20 }}>
-                        <div style={{ width:228, height:228, borderRadius:18, background:'rgba(255,255,255,0.04)', border:'1px solid rgba(255,255,255,0.08)', display:'flex', alignItems:'center', justifyContent:'center', color:C.dust, fontSize:12 }}>
-                          Generando QR...
-                        </div>
-                      </div>
-                    )}
-                  </>
-                ) : (
-                  <>
-                    <div style={{ display:'flex', justifyContent:'center', marginBottom:16 }}>
-                      <div style={{ width:72, height:72, borderRadius:'50%', background:'rgba(168,85,247,0.12)', border:'1px solid rgba(168,85,247,0.25)', display:'flex', alignItems:'center', justifyContent:'center' }}>
-                        <QrCode size={34} strokeWidth={1.5} color={C.v} />
-                      </div>
-                    </div>
-                    <div style={{ fontFamily:FN, fontSize:22, fontWeight:700, color:C.white, marginBottom:10, lineHeight:1.1, letterSpacing:'-0.02em' }}>
-                      Tu QR te espera
-                    </div>
-                    <div style={{ fontSize:14, color:C.mist, lineHeight:1.7, marginBottom:28, maxWidth:300, margin:'0 auto 28px' }}>
-                      Iniciá sesión y unite a este club para empezar a acumular {unitLabel}.
-                    </div>
-                  </>
-                )}
-
-                <div style={{ display:'flex', flexDirection:'column', alignItems:'center', gap:14, marginBottom:20, padding:'20px 16px', background:'rgba(168,85,247,0.08)', border:'1px solid rgba(168,85,247,0.18)', borderRadius:18 }}>
-                  <div style={{ display:'flex', alignItems:'center', gap:10 }}>
-                    <UnitIcon size={26} {...unitIconProps} color={C.v} />
-                    <span style={{ fontFamily:FN, fontSize:26, fontWeight:900, background:GA, WebkitBackgroundClip:'text', WebkitTextFillColor:'transparent', backgroundClip:'text', letterSpacing:'-0.02em', textTransform:'capitalize' }}>
-                      {unitLabel}
-                    </span>
+              <div style={{ textAlign:'center', padding:'40px 20px 20px' }}>
+                <div style={{ display:'flex', justifyContent:'center', marginBottom:16 }}>
+                  <div style={{ width:64, height:64, borderRadius:'50%', background:'rgba(168,85,247,0.12)', border:'1px solid rgba(168,85,247,0.25)', display:'flex', alignItems:'center', justifyContent:'center' }}>
+                    <Clock size={28} strokeWidth={1.5} color={C.v} />
                   </div>
-                  <p style={{ fontSize:13, color:C.mist, textAlign:'center', lineHeight:1.6, maxWidth:260 }}>
-                    Unite al club de {commerce.name} para acumular {unitLabel} en cada visita y canjearlos por premios.
-                  </p>
                 </div>
-
+                <div style={{ fontFamily:FN, fontSize:18, fontWeight:700, color:C.white, marginBottom:10 }}>
+                  Tu historial te espera
+                </div>
+                <div style={{ fontSize:13, color:C.mist, lineHeight:1.6, marginBottom:24, maxWidth:300, margin:'0 auto 24px' }}>
+                  Cuando seas socio de {commerce.name} vas a ver acá tus visitas y los premios que canjeaste.
+                </div>
                 <button onClick={() => setShowModal(true)}
-                  className="btn-pulse"
                   style={{
-                    width:'100%', padding:'16px',
+                    padding:'12px 24px',
                     background:'linear-gradient(135deg, #a855f7, #ec4899)',
-                    border:'none',
-                    borderRadius:16, color:'#fff',
-                    fontFamily:FN, fontSize:15, fontWeight:600,
-                    cursor:'pointer',
-                    boxShadow:'0 8px 28px rgba(168,85,247,0.45)',
-                    transition:'all .2s ease',
+                    border:'none', borderRadius:14, color:'#fff',
+                    fontFamily:FN, fontSize:14, fontWeight:600, cursor:'pointer',
                   }}>
-                  <span style={{display:'flex',alignItems:'center',gap:8,justifyContent:'center'}}>
-                    <Sparkles size={16} strokeWidth={2} /> Unirme al club
-                  </span>
+                  Unirme al club
                 </button>
               </div>
             )}
@@ -1648,25 +1672,7 @@ export default function ClubProfilePage() {
       {isMember && (
         <div style={{ textAlign:'center', padding:'8px 16px 28px' }}>
           <button
-            onClick={async () => {
-              if (!confirm(`¿Dejar de ser parte de ${commerce.name}? Vas a perder tus ${unitLabel} acumulados.`)) return
-              try {
-                const r = await fetch('/api/leave-club', {
-                  method: 'POST',
-                  headers: { 'Content-Type': 'application/json' },
-                  body: JSON.stringify({ commerce_id: commerce.id }),
-                })
-                const d = await r.json().catch(() => ({}))
-                if (r.ok && d.ok) {
-                  setMembership(null)
-                  if (typeof window !== 'undefined') window.location.href = '/?view=client'
-                } else {
-                  alert(d.error || 'No se pudo dejar el club. Probá de nuevo.')
-                }
-              } catch {
-                alert('Sin conexión. Probá de nuevo.')
-              }
-            }}
+            onClick={() => setLeaveConfirm(true)}
             style={{
               background: 'transparent',
               border: 'none',
@@ -1679,6 +1685,57 @@ export default function ClubProfilePage() {
             }}>
             Dejar de ser parte de este club
           </button>
+        </div>
+      )}
+
+      {/* Modal de confirmación de "dejar el club" */}
+      {leaveConfirm && (
+        <div onClick={() => !leaving && setLeaveConfirm(false)}
+          style={{ position:'fixed', inset:0, zIndex:9999, background:'rgba(0,0,0,0.78)', backdropFilter:'blur(12px)', WebkitBackdropFilter:'blur(12px)', display:'flex', alignItems:'center', justifyContent:'center', padding:20 }}>
+          <div onClick={e => e.stopPropagation()}
+            style={{ width:'100%', maxWidth:340, background:'rgba(20,16,32,0.98)', border:'1px solid rgba(255,255,255,0.10)', borderRadius:18, padding:'22px 20px', boxShadow:'0 32px 80px rgba(0,0,0,0.6)' }}>
+            <div style={{ display:'flex', justifyContent:'center', marginBottom:14 }}>
+              <div style={{ width:52, height:52, borderRadius:14, background:'rgba(248,116,68,0.14)', border:'1px solid rgba(248,116,68,0.32)', display:'flex', alignItems:'center', justifyContent:'center' }}>
+                <LogOut size={24} color='#f87444' strokeWidth={2} />
+              </div>
+            </div>
+            <div style={{ fontFamily:FN, fontSize:17, fontWeight:800, color:C.white, textAlign:'center', marginBottom:8 }}>
+              ¿Dejar el club?
+            </div>
+            <div style={{ fontSize:13, color:C.mist, textAlign:'center', lineHeight:1.55, marginBottom:20 }}>
+              Vas a perder tus <strong style={{ color:C.white }}>{bal} {unitLabel}</strong> acumulados en {commerce.name}. Si después querés volver, te tenés que unir de nuevo.
+            </div>
+            <div style={{ display:'flex', gap:10 }}>
+              <button onClick={() => setLeaveConfirm(false)} disabled={leaving}
+                style={{ flex:1, padding:'12px', background:'rgba(255,255,255,0.06)', border:'1px solid rgba(255,255,255,0.12)', borderRadius:12, color:C.pearl, fontFamily:FN, fontSize:13, fontWeight:600, cursor: leaving ? 'wait' : 'pointer', opacity: leaving ? 0.5 : 1 }}>
+                Cancelar
+              </button>
+              <button disabled={leaving}
+                onClick={async () => {
+                  setLeaving(true)
+                  try {
+                    const r = await fetch('/api/leave-club', {
+                      method: 'POST',
+                      headers: { 'Content-Type': 'application/json' },
+                      body: JSON.stringify({ commerce_id: commerce.id }),
+                    })
+                    const d = await r.json().catch(() => ({}))
+                    if (r.ok && d.ok) {
+                      if (typeof window !== 'undefined') window.location.href = '/?view=client'
+                    } else {
+                      alert(d.error || 'No se pudo dejar el club. Probá de nuevo.')
+                      setLeaving(false)
+                    }
+                  } catch {
+                    alert('Sin conexión. Probá de nuevo.')
+                    setLeaving(false)
+                  }
+                }}
+                style={{ flex:1, padding:'12px', background:'#dc2626', border:'none', borderRadius:12, color:'#fff', fontFamily:FN, fontSize:13, fontWeight:700, cursor: leaving ? 'wait' : 'pointer', opacity: leaving ? 0.5 : 1 }}>
+                {leaving ? 'Saliendo...' : 'Sí, salir'}
+              </button>
+            </div>
+          </div>
         </div>
       )}
 

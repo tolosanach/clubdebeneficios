@@ -1216,8 +1216,11 @@ function CommerceQRCard({ commerce }) {
   const printRef = useRef(null)
   const supabase = getSupabase()
 
+  // ?from_qr=1 activa el "spotlight" sobre el slider en /club/[slug] cuando
+  // el cliente entra escaneando este QR (oscurece el resto de la pantalla
+  // y enfoca al botón "Deslizá para unirte").
   const joinUrl = typeof window !== 'undefined' && slug
-    ? `${window.location.origin}/club/${slug}`
+    ? `${window.location.origin}/club/${slug}?from_qr=1`
     : ''
 
   useEffect(() => {
@@ -1231,8 +1234,10 @@ function CommerceQRCard({ commerce }) {
 
   useEffect(() => {
     if (!joinUrl) return
-    makeQR(joinUrl, { width: 300, margin: 2, dark: '#FFFFFF', light: '#00000000' }, 'white').then(setQrDataUrl)
-    makeQR(joinUrl, { width: 400, margin: 3, dark: '#1a1a1a', light: '#FFFFFF' }, 'purple').then(setPrintQrDataUrl)
+    // QR negro sobre blanco puro: máxima detectabilidad para cualquier scanner.
+    // Antes era blanco sobre transparente (estético pero peor para detectar).
+    makeQR(joinUrl, { width: 300, margin: 2, dark: '#000000', light: '#FFFFFF' }).then(setQrDataUrl)
+    makeQR(joinUrl, { width: 400, margin: 3, dark: '#000000', light: '#FFFFFF' }).then(setPrintQrDataUrl)
   }, [joinUrl])
 
   function copyLink() {
@@ -4968,7 +4973,7 @@ function ClientView({ setView, user, profile, onLogout }) {
 
   useEffect(() => {
     if (!user?.id) return
-    makeQR(`CLUB-${user.id}`, { width: 220, margin: 1, dark: '#FFFFFF', light: '#00000000' }, 'white')
+    makeQR(`CLUB-${user.id}`, { width: 220, margin: 2, dark: '#000000', light: '#FFFFFF' })
       .then(setPassQrUrl)
   }, [user?.id])
 
@@ -5457,21 +5462,33 @@ function ClientView({ setView, user, profile, onLogout }) {
                 size="sm"
               />
             </div>
-            <button
-              disabled={acctSaving}
-              onClick={async () => {
-                setAcctSaving(true)
-                const res = await fetch('/api/user/profile', {
-                  method:'PUT', headers:{ 'Content-Type':'application/json' },
-                  body: JSON.stringify(acctForm),
-                })
-                setAcctSaving(false)
-                if (res.ok) showToast('success', 'Perfil actualizado')
-                else        showToast('error', 'Error al guardar')
-              }}
-              style={{ width:'100%', padding:'11px', background:GV, border:'none', borderRadius:12, color:'#fff', fontFamily:FN, fontSize:13, fontWeight:700, cursor:'pointer', opacity:acctSaving?0.6:1 }}>
-              {acctSaving ? 'Guardando...' : 'Guardar cambios'}
-            </button>
+            {(() => {
+              // El botón solo se habilita si hay diferencia real entre el form
+              // y el profile guardado. Evita pisadas innecesarias y le da feedback
+              // visual al usuario de que sus cambios todavía no se guardaron.
+              const dirty = (
+                (acctForm.name || '').trim()  !== (profile?.name  || '').trim() ||
+                (acctForm.phone || '').trim() !== (profile?.phone || '').trim()
+              )
+              const disabled = !dirty || acctSaving
+              return (
+                <button
+                  disabled={disabled}
+                  onClick={async () => {
+                    setAcctSaving(true)
+                    const res = await fetch('/api/user/profile', {
+                      method:'PUT', headers:{ 'Content-Type':'application/json' },
+                      body: JSON.stringify(acctForm),
+                    })
+                    setAcctSaving(false)
+                    if (res.ok) showToast('success', 'Perfil actualizado')
+                    else        showToast('error', 'Error al guardar')
+                  }}
+                  style={{ width:'100%', padding:'11px', background: disabled ? 'rgba(255,255,255,0.06)' : GV, border: disabled ? '1px solid rgba(255,255,255,0.10)' : 'none', borderRadius:12, color: disabled ? 'rgba(255,255,255,0.40)' : '#fff', fontFamily:FN, fontSize:13, fontWeight:700, cursor: disabled ? 'not-allowed' : 'pointer' }}>
+                  {acctSaving ? 'Guardando...' : (dirty ? 'Guardar cambios' : 'Sin cambios')}
+                </button>
+              )
+            })()}
           </div>
 
           {/* Cartel "¿Tenés un negocio?" — versión BOTTOM (compacta, persistente
@@ -11970,7 +11987,7 @@ function ClientQRView({ user, profile, setView, headerExtra }) {
   const [passQrUrl, setPassQrUrl] = useState(null)
   useEffect(() => {
     if (!user?.id) return
-    makeQR(`CLUB-${user.id}`, { width: 220, margin: 1, dark: '#FFFFFF', light: '#00000000' }, 'white')
+    makeQR(`CLUB-${user.id}`, { width: 220, margin: 2, dark: '#000000', light: '#FFFFFF' })
       .then(setPassQrUrl)
   }, [user?.id])
 
@@ -11996,9 +12013,16 @@ function ClientQRView({ user, profile, setView, headerExtra }) {
 
   async function handleClientScan(text) {
     if (processingRef.current) return
-    // Accept /join/[slug] or /club/[slug] URLs
+
+    // El QR detectado no tiene formato de Benefix (no matchea /club/[slug] ni /join/[slug])
     const match = text.match(/\/(?:join|club)\/([^/?#\s]+)/)
-    if (!match) return // non-matching QR, keep scanning
+    if (!match) {
+      processingRef.current = true
+      await stopCamera()
+      setDoneError('Este código QR no pertenece a un club de Benefix. Probá con el QR del local.')
+      setMode('error')
+      return
+    }
     processingRef.current = true
     await stopCamera()
 
@@ -12007,12 +12031,22 @@ function ClientQRView({ user, profile, setView, headerExtra }) {
       .from('commerces').select('id, name').eq('slug', slug).eq('active', true).single()
 
     if (cErr || !commerce) {
-      setDoneError('Negocio no encontrado. Revisá que el QR sea de un comercio adherido.')
+      setDoneError('No encontramos el negocio del QR. Capaz el comercio cerró su club o el QR no está vigente.')
       setMode('error')
       processingRef.current = false
       return
     }
 
+    // Redirigimos al perfil público del club con flag from_qr=1 — el spotlight
+    // sobre el slider solo se muestra si NO sos miembro. Si ya lo sos, ves
+    // tu MemberBadge directamente (sin pasar por el modal de unirme).
+    if (typeof window !== 'undefined') {
+      window.location.href = `/club/${slug}?from_qr=1`
+    }
+    return
+
+    // (código viejo, deshabilitado pero conservado por si volvemos al auto-join)
+    // eslint-disable-next-line no-unreachable
     const res = await fetch('/api/join', {
       method: 'POST', headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ commerce_id: commerce.id })
@@ -12189,8 +12223,11 @@ function ScannerView({ user, profile, setView }) {
     </div>
   )
   // Modo del scanner para owners: 'register-visit' (escanear QR del cliente que vino al local)
-  // o 'join-club' (escanear QR de otro local para sumarse como cliente). Default: register-visit.
-  const [scanMode, setScanMode]       = useState('register-visit')
+  // o 'join-club' (escanear QR de otro local para sumarse como cliente).
+  // Default: null — la primera pantalla muestra dos botones grandes apilados
+  // para que el owner elija qué hacer. Una vez elegido, modeSelected pasa a true.
+  const [scanMode, setScanMode]       = useState(null)
+  const [modeSelected, setModeSelected] = useState(false)
   const [commerceId, setCommerceId]   = useState('')
   const [amount,     setAmount]       = useState('')   // monto en pesos para sistema de puntos (1:1)
   const [result, setResult]           = useState(null)
@@ -12402,42 +12439,85 @@ function ScannerView({ user, profile, setView }) {
   const unitLabel = result?.prog_type === 'stars' ? 'estrellas' : 'puntos'
   const unitColor = result?.prog_type === 'stars' ? '#8B5CF6' : '#EC4899'
 
-  // Toggle de modo del scanner para owners. Aparece arriba en ambos modos.
-  const modeToggle = (
-    <div style={{ display:'flex', gap:6, padding:4, background:'rgba(255,255,255,0.05)', border:'1px solid rgba(255,255,255,0.10)', borderRadius:14, marginBottom:18, width:'100%' }}>
-      {[
-        { id:'register-visit', label:'Registrar visita de cliente' },
-        { id:'join-club',      label:'Escanear nuevo Club' },
-      ].map(opt => {
-        const active = scanMode === opt.id
-        return (
-          <button key={opt.id} onClick={() => setScanMode(opt.id)}
-            style={{
-              flex:1, padding:'9px 8px', borderRadius:11,
-              background: active ? 'linear-gradient(135deg, #FE5000, #BD4BF8)' : 'transparent',
-              border: 'none',
-              color: active ? '#fff' : 'rgba(255,255,255,0.65)',
-              fontFamily:FN, fontSize:11.5, fontWeight: active ? 700 : 600,
-              cursor:'pointer', transition:'background 180ms ease, color 180ms ease',
-              boxShadow: active ? '0 4px 14px rgba(168,85,247,0.30)' : 'none',
-              lineHeight:1.2,
-            }}>
-            {opt.label}
-          </button>
-        )
-      })}
-    </div>
+  // Pantalla inicial — dos botones grandes apilados verticalmente para que
+  // el owner elija qué quiere hacer. Solo se ve cuando todavía no eligió modo.
+  if (!modeSelected) {
+    const OPTIONS = [
+      {
+        id: 'register-visit',
+        title: 'Registrar visita de cliente',
+        desc: 'Escaneá el QR personal de un cliente para sumarle visita o canjear un premio.',
+        Icon: ScanLine,
+      },
+      {
+        id: 'join-club',
+        title: 'Escanear nuevo Club',
+        desc: 'Sumate como cliente a otro comercio escaneando su QR.',
+        Icon: QrCode,
+      },
+    ]
+    return (
+      <div style={{ maxWidth:440, margin:'0 auto', padding:'40px 18px 80px' }}>
+        <div style={{ fontFamily:FN, fontSize:10, color:C.o, fontWeight:800, letterSpacing:'.15em', textTransform:'uppercase', marginBottom:8 }}>✦ Escáner QR</div>
+        <h1 style={{ fontFamily:FN, fontSize:'clamp(22px,4vw,32px)', fontWeight:900, color:C.white, marginBottom:6 }}>¿Qué querés hacer?</h1>
+        <p style={{ fontSize:13, color:C.mist, marginBottom:28 }}>Elegí una opción para empezar.</p>
+
+        <div style={{ display:'flex', flexDirection:'column', gap:12 }}>
+          {OPTIONS.map(opt => (
+            <button key={opt.id}
+              onClick={() => { setScanMode(opt.id); setModeSelected(true) }}
+              style={{
+                width:'100%', textAlign:'left',
+                padding:'18px 18px',
+                background:'linear-gradient(135deg, rgba(254,80,0,0.12), rgba(189,75,248,0.16))',
+                border:'1px solid rgba(189,75,248,0.32)',
+                borderRadius:16,
+                cursor:'pointer',
+                display:'flex', alignItems:'center', gap:14,
+                fontFamily:'inherit',
+                transition:'transform 160ms ease, border-color 160ms ease',
+              }}
+              onMouseDown={e => e.currentTarget.style.transform = 'scale(0.98)'}
+              onMouseUp={e => e.currentTarget.style.transform = 'scale(1)'}
+              onMouseLeave={e => e.currentTarget.style.transform = 'scale(1)'}>
+              <div style={{ width:48, height:48, borderRadius:12, background: 'linear-gradient(135deg, #FE5000, #BD4BF8)', display:'flex', alignItems:'center', justifyContent:'center', flexShrink:0, boxShadow:'0 4px 18px rgba(168,85,247,0.35)' }}>
+                <opt.Icon size={22} color='#fff' strokeWidth={2.2} />
+              </div>
+              <div style={{ flex:1, minWidth:0 }}>
+                <div style={{ fontFamily:FN, fontSize:14, fontWeight:700, color:C.white, marginBottom:3 }}>{opt.title}</div>
+                <div style={{ fontSize:12, color:'rgba(255,255,255,0.65)', lineHeight:1.45 }}>{opt.desc}</div>
+              </div>
+              <ArrowRight size={18} color='rgba(255,255,255,0.55)' strokeWidth={2.2} style={{ flexShrink:0 }} />
+            </button>
+          ))}
+        </div>
+      </div>
+    )
+  }
+
+  // Link sutil para volver a la selección — se muestra arriba en ambos modos.
+  const backToPicker = (
+    <button onClick={() => { setScanMode(null); setModeSelected(false); stopCamera() }}
+      style={{
+        display:'inline-flex', alignItems:'center', gap:6, marginBottom:14,
+        padding:'6px 12px 6px 8px',
+        background:'rgba(255,255,255,0.04)', border:`1px solid ${C.rim}`, borderRadius:99,
+        color:C.mist, fontFamily:FN, fontSize:11.5, fontWeight:600,
+        cursor:'pointer',
+      }}>
+      <ChevronLeft size={13} strokeWidth={2.5} /> Cambiar modo
+    </button>
   )
 
   // Si elige "Escanear nuevo Club", delegamos a ClientQRView (mismo flow que el cliente
-  // para sumarse a un club). Le pasamos el toggle como headerExtra para que se vea arriba.
+  // para sumarse a un club). Le pasamos el botón "Cambiar modo" como headerExtra.
   if (scanMode === 'join-club') {
-    return <ClientQRView user={user} profile={profile} setView={setView} headerExtra={modeToggle} />
+    return <ClientQRView user={user} profile={profile} setView={setView} headerExtra={backToPicker} />
   }
 
   return (
     <div style={{ maxWidth:440, margin:'0 auto', padding:'30px 18px 80px' }}>
-      {modeToggle}
+      {backToPicker}
       <div style={{ fontFamily:FN, fontSize:10, color:C.o, fontWeight:800, letterSpacing:'.15em', textTransform:'uppercase', marginBottom:8 }}>✦ Escáner QR</div>
       <h1 style={{ fontFamily:FN, fontSize:'clamp(22px,4vw,32px)', fontWeight:900, color:C.white, marginBottom:4 }}>Registrar visita</h1>
       <p style={{ fontSize:13, color:C.mist, marginBottom:22 }}>Apuntá la cámara al QR del socio.</p>
