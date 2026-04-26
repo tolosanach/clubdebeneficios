@@ -8475,7 +8475,7 @@ function CommerceSettingsView({ user, profile, setView, onLogout, onOwnerProfile
           phone:     phoneDigits,
           locality:  newMember.locality || commerce?.city_name || null,
         },
-        joined_at: membership.created_at,
+        joined_at: membership.joined_at,
       }
       setMembers(m => [...m, memberWithProfile])
       setNewMember({ email:'', full_name:'', phone:'', province: commerce?.province || '', locality: commerce?.city_name || '' })

@@ -730,7 +730,6 @@ export default function ClubProfilePage() {
     fetch(`/api/club-profile?slug=${slug}`)
       .then(r => r.json())
       .then(d => {
-        console.log('[club-profile] respuesta:', { ok: d.ok, hasMembership: !!d.membership, hasProfile: !!d.profile, debug: d._debug })
         if (!d.ok) {
           if (slug === 'cafe-berlin') { setData(CAFE_BERLIN_DEMO); setIsDemo(true); setPageState('ok'); return }
           setPageState('not_found'); return
@@ -1108,7 +1107,7 @@ export default function ClubProfilePage() {
         )}
         <div style={{ padding:'20px 16px 0', position: fromQr && !isMember && !spotlightSeen ? 'relative' : 'static', zIndex: fromQr && !isMember && !spotlightSeen ? 200 : 'auto' }}>
           {isMember ? (
-            <MemberBadge createdAt={membership?.created_at} />
+            <MemberBadge createdAt={membership?.joined_at} />
           ) : (
             <>
               {fromQr && !spotlightSeen && (
