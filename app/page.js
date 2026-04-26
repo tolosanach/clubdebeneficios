@@ -937,7 +937,23 @@ async function getCroppedBlob(imageSrc, pixelCrop, outputSize = 512) {
   const canvas = document.createElement('canvas')
   canvas.width = canvas.height = outputSize
   const ctx = canvas.getContext('2d')
-  ctx.drawImage(image, pixelCrop.x, pixelCrop.y, pixelCrop.width, pixelCrop.height, 0, 0, outputSize, outputSize)
+  // Limpiamos el canvas a transparente. Si el pixelCrop pisa zonas fuera de
+  // la imagen original (caso "fit con padding" para logos de proporciones
+  // extremas), esas zonas quedan transparentes en el output.
+  ctx.clearRect(0, 0, outputSize, outputSize)
+  // Clamp del source rect a las dimensiones reales de la imagen.
+  const sx = Math.max(0, pixelCrop.x)
+  const sy = Math.max(0, pixelCrop.y)
+  const sw = Math.min(image.width  - sx, pixelCrop.x + pixelCrop.width  - sx)
+  const sh = Math.min(image.height - sy, pixelCrop.y + pixelCrop.height - sy)
+  if (sw > 0 && sh > 0) {
+    const scale = outputSize / pixelCrop.width
+    const dx = (sx - pixelCrop.x) * scale
+    const dy = (sy - pixelCrop.y) * scale
+    const dw = sw * scale
+    const dh = sh * scale
+    ctx.drawImage(image, sx, sy, sw, sh, dx, dy, dw, dh)
+  }
   const px = ctx.getImageData(0, 0, outputSize, outputSize).data
   let hasAlpha = false
   for (let i = 3; i < px.length; i += 4) { if (px[i] < 255) { hasAlpha = true; break } }
@@ -954,8 +970,25 @@ function LogoCropper({ imageSrc, onSave, onCancel }) {
   const [zoom,      setZoom]      = useState(1)
   const [pixelCrop, setPixelCrop] = useState(null)
   const [saving,    setSaving]    = useState(false)
+  // Proporción de la imagen original. Si es muy distinta de 1:1 (ej. logos
+  // de texto largo), arrancamos en modo "fit" con objectFit:'contain' para
+  // que toda la imagen se vea sin recortar — el resto queda padding transparente.
+  const [imageRatio, setImageRatio] = useState(1)
+  const isExtreme = imageRatio < 0.85 || imageRatio > 1.15
 
   const onCropComplete = useCallback((_, px) => setPixelCrop(px), [])
+  const onMediaLoaded = useCallback((media) => {
+    const r = media.naturalWidth / media.naturalHeight
+    setImageRatio(r)
+    // Reseteamos crop y zoom al cargar una imagen nueva
+    setCrop({ x:0, y:0 })
+    setZoom(1)
+  }, [])
+
+  function autoFit() {
+    setCrop({ x:0, y:0 })
+    setZoom(1)
+  }
 
   async function handleSave() {
     if (!pixelCrop) return
@@ -966,15 +999,33 @@ function LogoCropper({ imageSrc, onSave, onCancel }) {
 
   return (
     <div style={{ position:'fixed', inset:0, zIndex:9999, background:'rgba(0,0,0,0.94)', display:'flex', flexDirection:'column', alignItems:'center', justifyContent:'center', padding:16 }}>
-      <div style={{ width:'100%', maxWidth:480, marginBottom:14 }}>
-        <div style={{ fontFamily:FN, fontSize:17, fontWeight:800, color:C.white, marginBottom:4 }}>Ajustá tu logo</div>
-        <div style={{ fontSize:12, color:C.mist, lineHeight:1.5 }}>Arrastrá y hacé zoom para encuadrar. Todos los logos son cuadrados.</div>
+      <div style={{ width:'100%', maxWidth:480, marginBottom:14, display:'flex', alignItems:'flex-start', justifyContent:'space-between', gap:12 }}>
+        <div style={{ flex:1, minWidth:0 }}>
+          <div style={{ fontFamily:FN, fontSize:17, fontWeight:800, color:C.white, marginBottom:4 }}>Ajustá tu logo</div>
+          <div style={{ fontSize:12, color:C.mist, lineHeight:1.5 }}>
+            {isExtreme
+              ? 'Tu logo no es cuadrado. Lo encuadramos con padding transparente.'
+              : 'Arrastrá y hacé zoom para encuadrar.'}
+          </div>
+        </div>
+        <button onClick={autoFit} disabled={saving} type="button"
+          style={{ flexShrink:0, padding:'7px 12px', borderRadius:99, background:'rgba(139,92,246,0.15)', border:'1px solid rgba(139,92,246,0.40)', color:'#c4b5fd', fontSize:11, fontFamily:FN, fontWeight:700, cursor:'pointer' }}>
+          Ajustar auto
+        </button>
       </div>
       <div style={{ width:'100%', maxWidth:480, aspectRatio:'1/1', position:'relative', borderRadius:16, overflow:'hidden', background:'#111', border:`1px solid ${C.rim}` }}>
         <Cropper
           image={imageSrc} crop={crop} zoom={zoom} aspect={1}
-          cropShape="rect" showGrid={false} restrictPosition
-          onCropChange={setCrop} onZoomChange={setZoom} onCropComplete={onCropComplete}
+          cropShape="rect" showGrid={false}
+          // objectFit:'contain' permite ver TODA la imagen al zoom mínimo.
+          // restrictPosition:false evita que la lib fuerce a tapar todo el cropArea
+          // (modo "cover") cuando la imagen no es cuadrada.
+          objectFit="contain"
+          restrictPosition={false}
+          minZoom={1}
+          onCropChange={setCrop} onZoomChange={setZoom}
+          onCropComplete={onCropComplete}
+          onMediaLoaded={onMediaLoaded}
           style={{
             containerStyle: { borderRadius:16 },
             cropAreaStyle: { border:'2px solid rgba(139,92,246,0.85)', borderRadius:10, boxShadow:'0 0 0 9999px rgba(0,0,0,0.55)' },
