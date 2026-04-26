@@ -10,13 +10,14 @@ import { hashToCardColor, cardColors } from '../lib/cardColors'
 import { FAMILIES_DATA } from '../lib/commerce-families-data'
 import PhoneInput from '../lib/PhoneInput'
 import SupportChat from '../lib/SupportChat'
+import SuggestionsInbox from '../lib/SuggestionsInbox'
 import { QRCodeSVG } from 'qrcode.react'
 import {
   Menu, QrCode, User, Home, LayoutDashboard, Users, Star, Gift,
   Flame, Bot, History, Settings, CreditCard, LogOut, X,
   BarChart2, Target, Building2, DoorOpen,
   Gem, Eye, ChevronLeft, ChevronRight, ChevronDown, ChevronUp, Calendar, Zap,
-  Mail, Phone, CheckCircle, Lock, RefreshCw, Trash2, UserPlus,
+  Mail, Phone, CheckCircle, Lock, RefreshCw, Trash2, UserPlus, ScanLine,
   Package, Rocket, Clock, Bell, Camera, MapPin, Search,
   Copy, AlertTriangle, AlertCircle, Smartphone, Palette,
   Activity, TrendingUp, TrendingDown, Download, Ban, Check, Plus, Globe, Printer, ArrowRight, ArrowLeft, Upload,
@@ -1952,7 +1953,7 @@ function Navbar({ setView, cityName, user, profile, onLogin, onLogout, currentVi
         {role === 'commerce_owner' && (<>
           <button title="Escanear QR" onClick={currentView==='scanner' ? undefined : () => setView('scanner')}
             style={{ ...BTN, ...bs('scanner','qr'), cursor: currentView==='scanner' ? 'default' : 'pointer' }}>
-            <QrCode size={16} color={ic('scanner')} strokeWidth={2} />
+            <ScanLine size={16} color={ic('scanner')} strokeWidth={2} />
           </button>
           <button title="Vista pública de mi club" onClick={currentView==='commerce' ? undefined : onOwnerProfile}
             style={{ ...BTN, ...bs('commerce','building'), cursor: currentView==='commerce' ? 'default' : 'pointer' }}>
@@ -1977,7 +1978,7 @@ function Navbar({ setView, cityName, user, profile, onLogin, onLogout, currentVi
         {role !== 'admin' && role !== 'commerce_owner' && (<>
           <button title="Escanear QR" onClick={currentView==='scanner' ? undefined : () => setView('scanner')}
             style={{ ...BTN, ...bs('scanner','qr'), cursor: currentView==='scanner' ? 'default' : 'pointer' }}>
-            <QrCode size={16} color={ic('scanner')} strokeWidth={2} />
+            <ScanLine size={16} color={ic('scanner')} strokeWidth={2} />
           </button>
           <button title="Mi cuenta" onClick={currentView==='client' ? undefined : () => setView('client')}
             style={{ ...BTN, ...bs('client'), cursor: currentView==='client' ? 'default' : 'pointer' }}>
@@ -4139,90 +4140,56 @@ function CommerceView({ commerce:c, setView, user, onLoginRequired, onCommerceUp
 
 // ─── CLIENT BOTTOM NAV ────────────────────────────────────────────────────────
 function ClientBottomNav({ tab, setTab, profile, setView }) {
-  const [indicator, setIndicator] = useState({ left: 0, width: 0 })
-  const refs = useRef([])
-
-  const baseTabs = [
-    { id: 'mis clubs', Icon: Home,   label: 'Mis Clubs' },
-    { id: 'historial', Icon: Clock,  label: 'Historial' },
-    { id: 'mi qr',     Icon: QrCode, label: 'Mi QR'     },
-    { id: 'cuenta',    Icon: User,   label: 'Mi Cuenta' },
+  // Nav superior de la vista cliente. Va fijo justo abajo del Navbar global.
+  // Solo 3 pestañas porque "Mi Cuenta" y "Mi Negocio" ya tienen su botón
+  // dedicado en el Navbar global de arriba.
+  const TABS = [
+    { id: 'mis clubs', label: 'Mis Clubs' },
+    { id: 'historial', label: 'Historial' },
+    { id: 'mi qr',     label: 'Mi QR'     },
   ]
-
-  // Acceso directo al panel del comerciante — solo visible para owners/admin.
-  // Es un "tab especial" que en lugar de cambiar de pestaña navega de view.
-  // Visualmente resalta con el gradient de marca para diferenciarlo del resto.
-  const isOwner = profile?.role === 'commerce_owner' || profile?.role === 'admin'
-  const TABS = isOwner
-    ? [...baseTabs, { id: '__commerce__', Icon: Store, label: 'Mi Negocio', highlight: true }]
-    : baseTabs
-
-  useEffect(() => {
-    const idx = TABS.findIndex(t => t.id === tab)
-    const el = refs.current[idx]
-    if (el) setIndicator({ left: el.offsetLeft, width: el.offsetWidth })
-  }, [tab, isOwner])
 
   return (
     <nav style={{
-      position: 'fixed', bottom: 0, left: 0, right: 0, zIndex: 200,
-      padding: '8px 16px',
-      paddingBottom: 'calc(8px + env(safe-area-inset-bottom))',
+      // Pegado al fondo del Navbar global. El Navbar es una "isla" fixed top:10
+      // con altura 52, así que termina en y=62 — ahí arranca este nav, sin gap.
+      position: 'fixed', top: 62, left: 0, right: 0, zIndex: 200,
+      background: 'linear-gradient(135deg, #FE5000, #BD4BF8)',
+      boxShadow: '0 8px 24px -8px rgba(0,0,0,0.45)',
     }}>
-      <div style={{ maxWidth: 480, margin: '0 auto' }}>
-      <div className="liquid-glass-strong" style={{
-        position: 'relative',
-        display: 'flex',
-        borderRadius: 9999,
-        boxShadow: '0 24px 80px rgba(0,0,0,0.5)',
-        padding: 5,
+      <div style={{
+        maxWidth: 520, margin: '0 auto',
+        display: 'flex', alignItems: 'stretch', justifyContent: 'center',
+        padding: '12px 16px',
       }}>
-        {/* Sliding glass indicator (solo se mueve entre tabs normales — el botón
-            "Mi Negocio" tiene su propio fondo permanente) */}
-        <div style={{
-          position: 'absolute',
-          top: 5, bottom: 5,
-          left: indicator.left, width: indicator.width,
-          borderRadius: 9999,
-          transition: 'left 280ms cubic-bezier(0.23,1,0.32,1), width 280ms cubic-bezier(0.23,1,0.32,1)',
-          pointerEvents: 'none', zIndex: 0,
-        }} className="nav-pill-glass" />
-
-        {TABS.map(({ id, Icon, label, highlight }, i) => {
+        {TABS.map(({ id, label }, i) => {
           const active = tab === id
-          const isAction = id === '__commerce__'
-          const handleClick = () => {
-            if (isAction) { setView?.('commerce-settings'); return }
-            setTab(id)
-          }
+          const isLast = i === TABS.length - 1
           return (
             <button key={id}
-              ref={el => { refs.current[i] = el }}
-              onClick={handleClick}
-              onMouseDown={e => e.currentTarget.style.transform = 'scale(0.95)'}
+              onClick={() => setTab(id)}
+              onMouseDown={e => e.currentTarget.style.transform = 'scale(0.97)'}
               onMouseUp={e => e.currentTarget.style.transform = 'scale(1)'}
               onMouseLeave={e => e.currentTarget.style.transform = 'scale(1)'}
               style={{
-                flex: 1, position: 'relative', zIndex: 1,
-                display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 4,
-                padding: '10px 8px 8px',
-                background: highlight ? G : 'transparent',
-                boxShadow: highlight ? '0 2px 14px rgba(168,85,247,0.42)' : 'none',
-                border: 'none', borderRadius: 9999,
-                color: active || highlight ? '#fff' : 'rgba(255,255,255,0.40)',
-                cursor: 'pointer', transition: 'color 200ms ease, transform 160ms cubic-bezier(0.23,1,0.32,1)',
+                flex: 1,
+                background: 'transparent',
+                border: 'none',
+                borderRight: isLast ? 'none' : '1px solid rgba(255,255,255,0.35)',
+                color: '#fff',
+                fontFamily: FN,
+                fontSize: 13,
+                fontWeight: active ? 700 : 500,
+                letterSpacing: '.02em',
+                opacity: active ? 1 : 0.78,
+                padding: '4px 8px',
+                cursor: 'pointer',
+                transition: 'opacity 180ms ease, font-weight 180ms ease, transform 160ms cubic-bezier(0.23,1,0.32,1)',
               }}>
-              <div style={{ filter: (active || highlight) ? 'drop-shadow(0 0 7px rgba(255,255,255,0.55))' : 'none', transition: 'filter 200ms ease' }}>
-                <Icon size={21}
-                  strokeWidth={active || highlight ? 0 : 2}
-                  fill={active || highlight ? 'currentColor' : 'none'}
-                  stroke={active || highlight ? 'currentColor' : 'rgba(255,255,255,0.40)'} />
-              </div>
-              <span style={{ fontSize: 10, fontWeight: (active || highlight) ? 700 : 500, fontFamily: FN, letterSpacing: '.03em' }}>{label}</span>
+              {label}
             </button>
           )
         })}
-      </div>
       </div>
     </nav>
   )
@@ -4576,14 +4543,35 @@ function WalletCardBack({ club, colors, onFlip, userId }) {
 // ─── WALLET CARD (flip container) ────────────────────────────────────────────
 function WalletCard({ club, variant, isActive, onScrollTo, isMock, userId }) {
   const [flipped, setFlipped] = useState(false)
+  // Si el usuario ya tocó la tarjeta, cancelamos el auto-flip de descubrimiento.
+  const userTouchedRef = useRef(false)
 
   useEffect(() => {
-    if (!isActive) setFlipped(false)
+    if (!isActive) {
+      setFlipped(false)
+      userTouchedRef.current = false
+      return
+    }
+    // Demo de descubrimiento: a los 2s la tarjeta se da vuelta sola, y a los 4s
+    // vuelve sola a su posición original. Sirve para que el usuario entienda
+    // que la tarjeta es giratoria. Si tocó antes, cancelamos toda la secuencia.
+    const flipTimer = setTimeout(() => {
+      if (!userTouchedRef.current) setFlipped(true)
+    }, 2000)
+    const unflipTimer = setTimeout(() => {
+      if (!userTouchedRef.current) setFlipped(false)
+    }, 4000)
+    return () => {
+      clearTimeout(flipTimer)
+      clearTimeout(unflipTimer)
+    }
   }, [isActive])
 
   const base     = club.commerce?.brand_color || hashToCardColor(club.commerce?.name || '')
   const colors   = cardColors(base)
-  const flipCard = isActive ? () => setFlipped(f => !f) : undefined
+  const flipCard = isActive
+    ? () => { userTouchedRef.current = true; setFlipped(f => !f) }
+    : undefined
 
   if (variant === 'peek') {
     return (
@@ -4998,7 +4986,7 @@ function ClientView({ setView, user, profile, onLogout }) {
   )
 
   return (
-    <div style={{ maxWidth:520, margin:'0 auto', padding:'18px 15px 80px' }}>
+    <div style={{ maxWidth:520, margin:'0 auto', padding:'58px 15px 24px' }}>
 
       {/* Header card — oculto en la pestaña "Mi Cuenta" (esa pestaña tiene
           su propio bloque de avatar + email, duplicar info acá molesta).
@@ -7447,6 +7435,29 @@ function CommerceSettingsView({ user, profile, setView, onLogout, onOwnerProfile
     localStorage.setItem('benefix:commerceTab', tab)
   }, [tab])
 
+  // Escucha 'benefix:set-tab' — lo dispara el buzón de sugerencias o cualquier otro
+  // componente que necesite navegar a una pestaña específica del panel comerciante.
+  // Algunos tabs "virtuales" (promociones) no tienen render propio, viven adentro
+  // de otros (recompensas). Mapeamos para que el navigate caiga en el lugar correcto.
+  useEffect(() => {
+    const TAB_ALIASES = {
+      promociones:   'recompensas',  // las promos viven dentro de recompensas
+      promotions:    'recompensas',
+      promo:         'recompensas',
+      sistema:       'recompensas',
+      plan:          'configuracion',
+      planes:        'configuracion',
+    }
+    function onSetTab(e) {
+      let next = e.detail?.tab
+      if (!next) return
+      if (TAB_ALIASES[next]) next = TAB_ALIASES[next]
+      setTab(next)
+    }
+    window.addEventListener('benefix:set-tab', onSetTab)
+    return () => window.removeEventListener('benefix:set-tab', onSetTab)
+  }, [setTab])
+
   useEffect(() => {
     const check = () => setIsMobile(window.innerWidth < 640)
     check()
@@ -8682,10 +8693,26 @@ function CommerceSettingsView({ user, profile, setView, onLogout, onOwnerProfile
           <>
             {/* Backdrop con blur — solo cuando está expandido. Click cierra el rail.
                 inset:0 cubre toda la pantalla incluyendo el navbar para que la atención
-                quede solo en el rail. */}
+                quede solo en el rail.
+                Encima del backdrop va un coachmark "Tocá para ver" con manito animada,
+                que guía al usuario para que descubra que tiene que tocar para destrabar. */}
             {railExpanded && (
-              <div onClick={() => setRailExpanded(false)}
-                style={{ position:'fixed', inset:0, zIndex:198, background:'rgba(0,0,0,0.40)', backdropFilter:'blur(8px)', WebkitBackdropFilter:'blur(8px)', transition:'backdrop-filter 280ms ease, background 280ms ease' }} />
+              <>
+                <div onClick={() => setRailExpanded(false)}
+                  style={{ position:'fixed', inset:0, zIndex:198, background:'rgba(0,0,0,0.40)', backdropFilter:'blur(8px)', WebkitBackdropFilter:'blur(8px)', transition:'backdrop-filter 280ms ease, background 280ms ease' }} />
+                <div style={{ position:'fixed', top:0, bottom:0, left:80, right:20, zIndex:199, display:'flex', alignItems:'center', justifyContent:'center', pointerEvents:'none' }}>
+                  <div style={{ display:'flex', flexDirection:'column', alignItems:'center', gap:14, textAlign:'center' }}>
+                    <Hand size={44} color="rgba(255,255,255,0.92)" strokeWidth={1.6} style={{ animation:'rail-tap 1.4s ease-in-out infinite' }} />
+                    <div style={{ fontFamily:FN, fontSize:13, fontWeight:700, color:'rgba(255,255,255,0.92)', letterSpacing:'.08em', textTransform:'uppercase' }}>Tocá para ver</div>
+                  </div>
+                </div>
+                <style>{`
+                  @keyframes rail-tap {
+                    0%, 100% { transform: scale(1) translateY(0) }
+                    45%, 55% { transform: scale(0.86) translateY(3px) }
+                  }
+                `}</style>
+              </>
             )}
             <aside className="liquid-glass-strong"
               onClick={e => { if (!railExpanded) { e.stopPropagation(); setRailExpanded(true) } }}
@@ -9129,6 +9156,19 @@ function CommerceSettingsView({ user, profile, setView, onLogout, onOwnerProfile
                               <span>{lastVisit}</span>
                             </div>
                           </div>
+                          {/* Botón directo de WhatsApp — atajo al menú contextual */}
+                          {phone && (
+                            <button onClick={e => {
+                              e.stopPropagation()
+                              const msg = `¡Hola ${name.split(' ')[0]}! Te invito a unirte al club de ${commerce?.name} en Benefix. Acumulá ${unitLabel} y canjeá recompensas\n\n${clubUrl}`
+                              window.open(`https://wa.me/${phone.replace(/\D/g,'')}?text=${encodeURIComponent(msg)}`, '_blank')
+                            }}
+                            aria-label="Enviar WhatsApp"
+                            title="Enviar WhatsApp"
+                            style={{ width:32, height:32, borderRadius:8, display:'flex', alignItems:'center', justifyContent:'center', background:'rgba(37,211,102,0.12)', border:'1px solid rgba(37,211,102,0.30)', color:'#25D366', cursor:'pointer', flexShrink:0, padding:0 }}>
+                              <MessageCircle size={14} strokeWidth={2} />
+                            </button>
+                          )}
                           {/* Trigger menú contextual */}
                           <button onClick={e => { e.stopPropagation(); setOpenMenuId(menuOpen ? null : m.id) }}
                             aria-label="Opciones"
@@ -13029,6 +13069,26 @@ export default function App() {
 
   function navigate(v) { setView(v); window.scrollTo({ top:0, behavior:'smooth' }) }
 
+  // Escucha 'benefix:navigate' (lo dispara el buzón de sugerencias cuando tocás un CTA).
+  // Si viene { view, tab }, navega a esa view y propaga el tab al CommerceSettingsView
+  // (que lo escucha como 'benefix:set-tab') una vez montado.
+  useEffect(() => {
+    function onNavigate(e) {
+      const targetView = e.detail?.view
+      const tab = e.detail?.tab
+      if (!targetView) return
+      if (targetView !== view) navigate(targetView)
+      if (tab) {
+        // Pequeño delay para asegurar que el componente destino esté montado
+        setTimeout(() => {
+          window.dispatchEvent(new CustomEvent('benefix:set-tab', { detail: { tab } }))
+        }, 80)
+      }
+    }
+    window.addEventListener('benefix:navigate', onNavigate)
+    return () => window.removeEventListener('benefix:navigate', onNavigate)
+  }, [view])
+
   async function handleOwnerProfile() {
     if (!user) return
     const { data } = await supabase.from('commerces').select('*').eq('owner_id', user.id).single()
@@ -13091,9 +13151,13 @@ export default function App() {
       {view === 'register-commerce'  && <RegisterCommerceView setView={navigate} cities={cities} user={user} onLoginRequired={() => handleLogin({ nextView: 'register-commerce' })} onProfileRefresh={() => loadProfile(user.id)} />}
       {view === 'commerce-settings'  && <CommerceSettingsView user={user} profile={profile} setView={navigate} onLogout={handleLogout} onOwnerProfile={handleOwnerProfile} />}
       {/* Chat de soporte con IA — visible cuando hay sesión. Pasa role según
-          la vista activa: comerciante en commerce-settings, cliente en el resto. */}
+          la vista activa: comerciante en commerce-settings, cliente en el resto.
+          El buzón de sugerencias va apilado encima del botón del chat. */}
       {user && view !== 'home' && view !== 'directory' && (
-        <SupportChat role={view === 'commerce-settings' ? 'merchant' : 'client'} />
+        <>
+          <SuggestionsInbox />
+          <SupportChat role={view === 'commerce-settings' ? 'merchant' : 'client'} />
+        </>
       )}
       <DevToolbar user={user} profile={profile} onRoleChange={() => loadProfile(user.id)} />
     </>
