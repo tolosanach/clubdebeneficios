@@ -1,0 +1,123 @@
+<!DOCTYPE html>
+<!-- saved from url=(0308)https://64f11d30-041c-44f9-8994-7e92090e2d49.claudeusercontent.com/v1/design/projects/64f11d30-041c-44f9-8994-7e92090e2d49/serve/exports/index.html?t=d071867dedb50003656e4bfad2b76f69dbe2ac1a61bf9cce2d4129976b26ed24.f481996b-52e8-49f4-93dd-c1227793f418.d2fe22b5-ca58-473b-8df7-eb47ae26dad4.1776971292&srcmap=1 -->
+<html lang="es" data-src-loc="16:32:4877"><head data-src-loc="33:39:2442"><meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+<style data-omelette-injected="">html,body{background:transparent}</style><script data-omelette-injected="">(()=>{var $=["https://claude.ai","https://preview.claude.ai","https://eap-omelette.claude.ai"];var F=30000;var A=3000;document.addEventListener("DOMContentLoaded",()=>{const Q="transform-react-jsx-source";document.querySelectorAll('script[type="text/babel"],script[type="text/jsx"]').forEach((J,V)=>{const X=J.getAttribute("data-plugins")||"";if(X.indexOf(Q)<0){J.setAttribute("data-plugins",X?`${X},${Q}`:Q)}if(!J.hasAttribute("data-filename")){J.setAttribute("data-filename",J.getAttribute("src")||`inline-${V}`)}})});var W=window.parent;if(W&&W!==window){const Q=(z,k)=>{try{W.postMessage({__omelette_log:true,type:z,data:k},"*")}catch{}};["log","warn","error"].forEach((z)=>{const k=console[z];console[z]=(...C)=>{const D=C.map((w)=>{try{return typeof w==="object"?JSON.stringify(w):String(w)}catch{try{return String(w)}catch{return"[unstringifiable]"}}}).join(" ");Q(z,D);k.apply(console,C)}});window.addEventListener("error",(z)=>{const k=z.target;if(k&&k!==window&&k.tagName){const C=k.src||k.href||"";Q("resource_error",`${k.tagName} failed to load: ${C}`)}else{Q("error",`${z.message||"Unknown error"} at ${z.filename||"?"}:${z.lineno||0}:${z.colno||0}`)}},true);window.addEventListener("unhandledrejection",(z)=>{const k=z.reason;const C=k instanceof Error?`${k.message} ${k.stack}`:String(k);Q("error",`Unhandled rejection: ${C}`)});const J=()=>{try{W.postMessage({type:"omelette:height",height:document.documentElement.scrollHeight},"*")}catch{}};if(document.readyState==="complete")J();else window.addEventListener("load",J);if(window.ResizeObserver)new ResizeObserver(J).observe(document.documentElement);const V={};let X=0;window.claude={complete(z){return new Promise((k,C)=>{if(!$.length){C(new Error("claude.complete: no parent origin"));return}const D=`c${++X}`;const w=()=>setTimeout(()=>{delete V[D];C(new Error(`claude.complete: no data for ${F/1000}s`))},F);const K=w();V[D]={resolve:k,reject:C,text:"",t:K,arm:w};try{for(const Z of $){W.postMessage({__om_api:true,id:D,body:z},Z)}}catch(Z){clearTimeout(K);delete V[D];C(Z)}})}};const Y={};let h=0;window.omelette={writeFile:(z,k)=>new Promise((C,D)=>{if(!$.length){C();return}const w=`f${++h}`;const K=setTimeout(()=>{delete Y[w];C()},A);Y[w]={resolve:C,reject:D,t:K};try{for(const Z of $){W.postMessage({__om_file:true,id:w,op:"write",path:z,content:k},Z)}}catch{clearTimeout(K);delete Y[w];C()}})};const b=(z)=>{try{return JSON.stringify(z)}catch{return JSON.stringify(String(z))}};window.addEventListener("message",(z)=>{if($.indexOf(z.origin)<0)return;if(z.source!==W)return;const k=z.data;if(!k)return;if(k.__om_file_r){const w=Y[k.id];if(!w)return;clearTimeout(w.t);delete Y[k.id];if(k.ok)w.resolve();else w.reject(new Error(k.error||"write failed"));return}if(k.__om_api_r){const w=V[k.id];if(!w)return;if(k.error!=null){clearTimeout(w.t);delete V[k.id];w.reject(new Error(k.error));return}if(k.chunk!=null){clearTimeout(w.t);w.t=w.arm();w.text+=k.chunk;return}if(k.done){clearTimeout(w.t);delete V[k.id];w.resolve(k.text!=null?k.text:w.text);return}return}if(!k.__om_eval)return;const C=k;const D=(w)=>{z.source.postMessage({...w,__om_eval_r:1,id:C.id},z.origin)};try{const w=(0,eval)(C.code);if(w&&typeof w.then==="function"){w.then((K)=>D({ok:1,v:b(K)}),(K)=>D({ok:0,e:String(K)}))}else{D({ok:1,v:b(w)})}}catch(w){D({ok:0,e:String(w)})}})}})();
+</script>
+
+
+<title data-src-loc="63:70:112">Benefix Loader · Preview completo</title>
+<script src="./lottie.min.js.descarga" data-src-loc="113:190:199"></script>
+<style data-src-loc="200:207:2434">
+  body {
+    margin: 0; font-family: 'Inter', system-ui, sans-serif; background: #0a0a0f;
+    min-height: 100vh; display: flex; flex-direction: column; align-items: center; padding: 40px 20px;
+    color: #fff;
+  }
+  h1 { font-size: 22px; font-weight: 600; margin: 0 0 8px; letter-spacing: -0.02em; }
+  .sub { color: rgba(255,255,255,0.5); font-size: 13px; margin-bottom: 40px; text-align: center; max-width: 500px; line-height: 1.5; }
+  .grid { display: grid; grid-template-columns: repeat(3, 260px); gap: 20px; }
+  .card {
+    background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.08); border-radius: 14px;
+    padding: 28px; display: flex; flex-direction: column; align-items: center; gap: 16px;
+    height: 260px; justify-content: space-between;
+  }
+  .card .label { font-size: 10px; letter-spacing: 0.22em; text-transform: uppercase; color: rgba(255,255,255,0.55); font-weight: 600; }
+  .card .preview { display: flex; align-items: center; justify-content: center; }
+  .card .fmt { font-size: 10px; color: rgba(255,255,255,0.4); font-family: monospace; }
+  .dl-row {
+    display: flex; gap: 12px; flex-wrap: wrap; justify-content: center; margin-top: 44px;
+  }
+  .dl {
+    background: linear-gradient(135deg, #a855f7, #c026d3 55%, #ec4899);
+    color: #fff; padding: 12px 22px; border-radius: 10px;
+    font-size: 13px; font-weight: 600; text-decoration: none;
+  }
+  .dl.secondary {
+    background: rgba(255,255,255,0.06); border: 1px solid rgba(255,255,255,0.1);
+  }
+  .note {
+    max-width: 820px; margin-top: 48px; padding: 24px; background: rgba(255,255,255,0.03);
+    border: 1px solid rgba(255,255,255,0.08); border-radius: 12px;
+    font-size: 13px; line-height: 1.7; color: rgba(255,255,255,0.75);
+  }
+  .note h3 { margin: 0 0 12px; font-size: 14px; color: #fff; }
+  .note h3 + h3 { margin-top: 24px; }
+  .note code {
+    background: #000; padding: 2px 7px; border-radius: 4px; font-size: 12px; color: #ec4899;
+    font-family: ui-monospace, 'SF Mono', Menlo, monospace;
+  }
+  .note pre {
+    background: #000; padding: 14px 18px; border-radius: 8px; overflow-x: auto;
+    font-size: 12px; color: #d4d4d8; margin: 8px 0 0;
+    font-family: ui-monospace, 'SF Mono', Menlo, monospace;
+  }
+</style>
+</head>
+<body data-src-loc="2443:2449:4869">
+  <h1 data-src-loc="2452:2456:2485">Benefix · Loader export</h1>
+  <div class="sub" data-src-loc="2488:2505:2599">Tres formatos listos para usar en la app. Preview en fondo oscuro. Loop de 3s, infinito.</div>
+
+  <div class="grid" data-src-loc="2603:2621:3380">
+    <div class="card" data-src-loc="2626:2644:2868">
+      <span class="label" data-src-loc="2651:2671:2689">SVG animado</span>
+      <div class="preview" data-src-loc="2696:2717:2811">
+        <img src="./benefix-loader.svg" width="140" height="140" alt="loader SVG" data-src-loc="2726:2798:2798">
+      </div>
+      <span class="fmt" data-src-loc="2818:2836:2857">.svg · ~900 B</span>
+    </div>
+
+    <div class="card" data-src-loc="2874:2892:3083">
+      <span class="label" data-src-loc="2899:2919:2937">Lottie JSON</span>
+      <div class="preview" id="lottie-preview" style="width:140px;height:140px" data-src-loc="2944:3018:3024"><svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" viewBox="0 0 200 200" width="200" height="200" preserveAspectRatio="xMidYMid meet" style="width: 100%; height: 100%; transform: translate3d(0px, 0px, 0px); content-visibility: visible;"><defs><clippath id="__lottie_element_2"><rect width="200" height="200" x="0" y="0"></rect></clippath><lineargradient id="__lottie_element_6" spreadMethod="pad" gradientUnits="userSpaceOnUse" x1="20" y1="20" x2="180" y2="180"><stop offset="0%" stop-color="rgb(168,85,247)"></stop><stop offset="55%" stop-color="rgb(192,38,211)"></stop><stop offset="100%" stop-color="rgb(236,72,153)"></stop></lineargradient></defs><g clip-path="url(#__lottie_element_2)"><g transform="matrix(1,0,0,1,0,0)" opacity="1" style="display: block;"><g opacity="1" transform="matrix(1,0,0,1,0,0)"><path stroke="url(#__lottie_element_6)" stroke-linecap="round" stroke-linejoin="round" fill-opacity="0" stroke-opacity="1" stroke-width="19" d=" M162.4980010986328,99.62200164794922 C162.49899291992188,99.74700164794922 162.5,99.8740005493164 162.5,100 C162.5,137.5 100,137.5 100,100"></path></g></g></g></svg></div>
+      <span class="fmt" data-src-loc="3031:3049:3072">.json · ~1.2 KB</span>
+    </div>
+
+    <div class="card" data-src-loc="3089:3107:3371">
+      <span class="label" data-src-loc="3114:3134:3156">HTML standalone</span>
+      <div class="preview" data-src-loc="3163:3184:3314">
+        <iframe src="./benefix-loader(1).html" style="width:140px;height:140px;border:0;background:transparent" data-src-loc="3193:3292:3301"></iframe>
+      </div>
+      <span class="fmt" data-src-loc="3321:3339:3360">.html · ~1 KB</span>
+    </div>
+  </div>
+
+  <div class="dl-row" data-src-loc="3384:3404:3636">
+    <a class="dl" href="./benefix-loader.svg" download="" data-src-loc="3409:3458:3469">⬇ SVG</a>
+    <a class="dl" href="https://64f11d30-041c-44f9-8994-7e92090e2d49.claudeusercontent.com/v1/design/projects/64f11d30-041c-44f9-8994-7e92090e2d49/serve/exports/benefix-loader.lottie.json" download="" data-src-loc="3474:3531:3550">⬇ Lottie JSON</a>
+    <a class="dl secondary" href="https://64f11d30-041c-44f9-8994-7e92090e2d49.claudeusercontent.com/v1/design/projects/64f11d30-041c-44f9-8994-7e92090e2d49/serve/exports/benefix-loader.html" download="" data-src-loc="3555:3615:3627">⬇ HTML</a>
+  </div>
+
+  <div class="note" data-src-loc="3640:3658:4637">
+    <h3 data-src-loc="3663:3667:3691">SVG — recomendado</h3>
+    Funciona en cualquier browser moderno. Fondo transparente. El loop es CSS nativo, sin JS.
+    <pre data-src-loc="3790:3795:3875">&lt;img src="benefix-loader.svg" width="80" height="80" alt="Cargando"&gt;</pre>
+
+    <h3 data-src-loc="3881:3885:3933">Lottie JSON — para React Native / Flutter</h3>
+    Ideal si la app es mobile nativa. Usá <code data-src-loc="3977:3983:4009">lottie-react-native</code> o <code data-src-loc="4012:4018:4039">lottie_flutter</code>. En web, con <code data-src-loc="4053:4059:4076">lottie-web</code>:
+    <pre data-src-loc="4082:4087:4290">import lottie from 'lottie-web';
+lottie.loadAnimation({
+  container: document.getElementById('loader'),
+  path: '/benefix-loader.lottie.json',
+  renderer: 'svg',
+  loop: true,
+  autoplay: true,
+});</pre>
+
+    <h3 data-src-loc="4296:4300:4321">GIF transparente</h3>
+    No generé GIF porque se pixelariza y pesa 10–20× más que el SVG para el mismo resultado.
+    Si lo necesitás: abrí <code data-src-loc="4448:4454:4479">benefix-loader.svg</code> en <a href="https://ezgif.com/svg-to-gif" style="color:#ec4899" data-src-loc="4483:4544:4568">ezgif.com/svg-to-gif</a>,
+    setealo a 200×200, 30fps, 3s, background transparent.
+  </div>
+
+  <script data-src-loc="4641:4649:4861">
+    lottie.loadAnimation({
+      container: document.getElementById('lottie-preview'),
+      path: 'benefix-loader.lottie.json',
+      renderer: 'svg',
+      loop: true,
+      autoplay: true,
+    });
+  </script>
+
+
+</body></html>

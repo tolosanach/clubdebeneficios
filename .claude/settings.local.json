@@ -1,0 +1,30 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(claude --version)",
+      "Bash(node --input-type=module)",
+      "Bash(node -e \"require\\('fs'\\).readFileSync\\('app/page.js','utf8'\\)\")",
+      "Bash(node -e \"try { require\\('./app/page.js'\\) } catch\\(e\\) { console.log\\(e.message\\) }\")",
+      "Bash(node *)",
+      "Bash(npm run *)",
+      "Bash(find *)",
+      "Bash(npx next *)",
+      "Bash(curl -s -o /dev/null -w \"%{http_code}\" http://localhost:3000/)",
+      "Bash(curl -s -o /dev/null -w \"%{http_code}\" http://localhost:3000/club/cafe-berlin)",
+      "Bash(curl -s -o /dev/null -w \"%{http_code}\" http://localhost:3000/demo)",
+      "Bash(grep -v \"//\\\\|c\\\\.emoji\\\\|commerce\\\\.emoji\\\\|📞\\\\|✦\\\\|⟳\\\\|✓\\\\|→\\\\|←\\\\|·\\\\|✕\\\\|⚠\\\\b\\\\|✅ ¡Visita\\\\|⚠ Error\\\\|msg\\\\`\\\\|msg:\\\\`\\\\|msg: \\\\`\")",
+      "Bash(grep -v \"//\\\\|c\\\\.emoji\\\\|commerce\\\\.emoji\\\\|📞\\\\|✦\\\\|⟳\\\\|✓\\\\|→\\\\|←\\\\|·\\\\|✕\\\\|⚠\\\\b\\\\|msg\\\\`\\\\|msg:\\\\`\\\\|msg: \\\\`\\\\|é\\\\|á\\\\|ó\\\\|ú\\\\|í\\\\|ñ\\\\|ü\")",
+      "Read(//mnt/skills/**)",
+      "Read(//mnt/**)",
+      "Read(//c/Users/nacho/**)",
+      "Bash(ls /skills/)",
+      "Read(//c//**)",
+      "Bash(python -c \"import sys,json; d=json.load\\(sys.stdin\\); print\\(json.dumps\\(d.get\\('scripts',{}\\), indent=2\\)\\)\")",
+      "Bash(npm list *)",
+      "Bash(npx supabase *)",
+      "Bash(curl *)",
+      "Bash(python3 *)",
+      "Bash(python *)"
+    ]
+  }
+}

@@ -1,0 +1,96 @@
+// POST /api/redeem
+// Body: { membership_id, prize_id, commerce_id, user_id }
+
+import { NextResponse } from 'next/server'
+import { createClient } from '@supabase/supabase-js'
+
+const supabaseAdmin = createClient(
+  process.env.NEXT_PUBLIC_SUPABASE_URL,
+  process.env.SUPABASE_SERVICE_ROLE_KEY
+)
+
+export async function POST(request) {
+  try {
+    const { membership_id, prize_id, commerce_id, user_id } = await request.json()
+
+    if (!membership_id || !prize_id || !commerce_id || !user_id) {
+      return NextResponse.json({ error: 'Faltan parámetros' }, { status: 400 })
+    }
+
+    // Obtener el premio
+    const { data: prize, error: prizeError } = await supabaseAdmin
+      .from('prizes')
+      .select('id, name, cost, active, stock')
+      .eq('id', prize_id)
+      .eq('commerce_id', commerce_id)
+      .single()
+
+    if (prizeError || !prize) {
+      return NextResponse.json({ error: 'Premio no encontrado' }, { status: 404 })
+    }
+    if (!prize.active) {
+      return NextResponse.json({ error: 'El premio no está activo' }, { status: 400 })
+    }
+    if (prize.stock !== null && prize.stock <= 0) {
+      return NextResponse.json({ error: 'Este premio ya no tiene stock disponible' }, { status: 400 })
+    }
+
+    // Tipo de programa del comercio (para saber qué columna debitar)
+    const { data: commerce } = await supabaseAdmin
+      .from('commerces').select('prog_type').eq('id', commerce_id).single()
+
+    const isStars    = commerce?.prog_type === 'stars'
+    const balanceCol = isStars ? 'stars' : 'points'
+
+    // Débito atómico: solo descuenta si hay saldo suficiente. Si dos canjes
+    // simultáneos llegan, solo uno cumple la condición; el otro afecta 0 filas.
+    // Implementado en supabase-migration-v11.sql como debit_membership_balance.
+    const { data: debited, error: debitErr } = await supabaseAdmin.rpc('debit_membership_balance', {
+      p_membership_id: membership_id,
+      p_amount:        prize.cost,
+      p_column:        balanceCol,
+    })
+    if (debitErr) throw debitErr
+
+    // RPC retorna [] si saldo insuficiente o membership_id no existe
+    if (!debited || debited.length === 0) {
+      return NextResponse.json({
+        error:  'Saldo insuficiente',
+        needed: prize.cost,
+      }, { status: 400 })
+    }
+
+    const newBalance = debited[0].new_balance
+
+    // Registrar canje
+    await supabaseAdmin.from('redemptions').insert({
+      membership_id,
+      commerce_id,
+      prize_id,
+      user_id,
+      points_spent: prize.cost,
+    })
+
+    // Descontar stock si aplica
+    let stockDepleted = false
+    if (prize.stock !== null) {
+      const newStock = prize.stock - 1
+      stockDepleted = newStock === 0
+      await supabaseAdmin.from('prizes')
+        .update({ stock: newStock, ...(stockDepleted ? { active: false } : {}) })
+        .eq('id', prize_id)
+    }
+
+    return NextResponse.json({
+      ok:             true,
+      prize_name:     prize.name,
+      points_spent:   prize.cost,
+      new_balance:    newBalance,
+      prog_type:      commerce?.prog_type,
+      stock_depleted: stockDepleted,
+    })
+  } catch (err) {
+    console.error('Redeem error:', err)
+    return NextResponse.json({ error: err.message || 'Error interno' }, { status: 500 })
+  }
+}
