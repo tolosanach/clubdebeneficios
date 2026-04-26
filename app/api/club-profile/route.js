@@ -50,6 +50,7 @@ export async function GET(request) {
   try {
     const supabase = await createSupabaseServer()
     const { data: { user } } = await supabase.auth.getUser()
+    console.log('[club-profile] user detectado:', user?.email || 'NINGUNO', 'commerce_id:', commerce.id)
     if (user) {
       const { data: mem } = await supabaseAdmin
         .from('memberships')
@@ -58,6 +59,7 @@ export async function GET(request) {
         .eq('commerce_id', commerce.id)
         .maybeSingle()
       membership = mem || null
+      console.log('[club-profile] membership found:', !!mem, 'status:', mem?.status)
 
       // Also fetch profile phone
       const { data: prof } = await supabaseAdmin
