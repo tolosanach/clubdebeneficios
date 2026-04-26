@@ -13,18 +13,36 @@ export async function GET(request) {
   const commerce_id = new URL(request.url).searchParams.get('commerce_id')
   if (!commerce_id) return NextResponse.json({ error: 'Falta commerce_id' }, { status: 400 })
 
+  // No hay FK directa de reviews.user_id → profiles.id (apunta a auth.users)
+  // así que Postgrest no resuelve el join implícito y devuelve 500. Hacemos
+  // las queries por separado y armamos el shape esperado.
   const { data: reviews, error } = await supabaseAdmin
     .from('reviews')
-    .select(`
-      id, rating, comment, created_at,
-      profile:profiles(name, avatar_url),
-      membership:memberships(visits_count)
-    `)
+    .select('id, rating, comment, created_at, user_id, membership_id')
     .eq('commerce_id', commerce_id)
     .order('created_at', { ascending: false })
     .limit(50)
 
   if (error) return NextResponse.json({ error: error.message }, { status: 500 })
+
+  if (reviews && reviews.length > 0) {
+    const userIds = [...new Set(reviews.map(r => r.user_id).filter(Boolean))]
+    const memIds  = [...new Set(reviews.map(r => r.membership_id).filter(Boolean))]
+    const [{ data: profiles }, { data: memberships }] = await Promise.all([
+      userIds.length
+        ? supabaseAdmin.from('profiles').select('id, name, avatar_url').in('id', userIds)
+        : Promise.resolve({ data: [] }),
+      memIds.length
+        ? supabaseAdmin.from('memberships').select('id, visits_count').in('id', memIds)
+        : Promise.resolve({ data: [] }),
+    ])
+    const profileMap = new Map((profiles || []).map(p => [p.id, p]))
+    const memMap     = new Map((memberships || []).map(m => [m.id, m]))
+    for (const r of reviews) {
+      r.profile    = profileMap.get(r.user_id)       || null
+      r.membership = memMap.get(r.membership_id)     || null
+    }
+  }
 
   const avg = reviews.length
     ? Math.round((reviews.reduce((s, r) => s + r.rating, 0) / reviews.length) * 10) / 10
@@ -41,7 +59,7 @@ export async function GET(request) {
         .select('id, rating, comment')
         .eq('commerce_id', commerce_id)
         .eq('user_id', user.id)
-        .single()
+        .maybeSingle()
       userReview = ur || null
     }
   } catch (_) {}
