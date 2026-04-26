@@ -1941,8 +1941,8 @@ function Navbar({ setView, cityName, user, profile, onLogin, onLogout, currentVi
             style={{ ...BTN, ...bs('admin'), cursor: currentView==='admin' ? 'default' : 'pointer' }}>
             <LayoutDashboard size={16} color={ic('admin')} />
           </button>
-          <button title="Mi cuenta" onClick={currentView==='client' ? undefined : () => setView('client')}
-            style={{ ...BTN, ...bs('client'), cursor: currentView==='client' ? 'default' : 'pointer' }}>
+          <button title="Mi cuenta" onClick={() => window.dispatchEvent(new CustomEvent('benefix:navigate', { detail: { view: 'client', tab: 'cuenta' } }))}
+            style={{ ...BTN, ...bs('client'), cursor: 'pointer' }}>
             <User size={16} color={ic('client')} />
           </button>
           <button title="Salir" onClick={onLogout} style={{ ...BTN, ...NEUTRAL, cursor:'pointer' }}>
@@ -1966,8 +1966,8 @@ function Navbar({ setView, cityName, user, profile, onLogin, onLogout, currentVi
             style={{ ...BTN, ...bs('commerce-settings'), cursor: currentView==='commerce-settings' ? 'default' : 'pointer' }}>
             <Store size={16} color={ic('commerce-settings')} strokeWidth={2} />
           </button>
-          <button title="Mi cuenta" onClick={currentView==='client' ? undefined : () => setView('client')}
-            style={{ ...BTN, ...bs('client'), cursor: currentView==='client' ? 'default' : 'pointer' }}>
+          <button title="Mi cuenta" onClick={() => window.dispatchEvent(new CustomEvent('benefix:navigate', { detail: { view: 'client', tab: 'cuenta' } }))}
+            style={{ ...BTN, ...bs('client'), cursor: 'pointer' }}>
             <User size={16} color={ic('client')} strokeWidth={2} />
           </button>
           <button title="Cerrar sesión" onClick={onLogout} style={{ ...BTN, ...NEUTRAL, cursor:'pointer' }}>
@@ -1980,8 +1980,8 @@ function Navbar({ setView, cityName, user, profile, onLogin, onLogout, currentVi
             style={{ ...BTN, ...bs('scanner','qr'), cursor: currentView==='scanner' ? 'default' : 'pointer' }}>
             <ScanLine size={16} color={ic('scanner')} strokeWidth={2} />
           </button>
-          <button title="Mi cuenta" onClick={currentView==='client' ? undefined : () => setView('client')}
-            style={{ ...BTN, ...bs('client'), cursor: currentView==='client' ? 'default' : 'pointer' }}>
+          <button title="Mi cuenta" onClick={() => window.dispatchEvent(new CustomEvent('benefix:navigate', { detail: { view: 'client', tab: 'cuenta' } }))}
+            style={{ ...BTN, ...bs('client'), cursor: 'pointer' }}>
             <User size={16} color={ic('client')} strokeWidth={2} />
           </button>
           <button title="Cerrar sesión" onClick={onLogout} style={{ ...BTN, ...NEUTRAL, cursor:'pointer' }}>
