@@ -709,6 +709,22 @@ export default function ClubProfilePage() {
   // Modal de confirmación para "dejar de ser parte del club"
   const [leaveConfirm, setLeaveConfirm] = useState(false)
   const [leaving,      setLeaving]      = useState(false)
+  // Spotlight: aparece SOLO la primera vez que el cliente entra a este club
+  // por QR. Después se persiste en localStorage para no volver a interrumpir.
+  const [spotlightSeen, setSpotlightSeen] = useState(true)
+  useEffect(() => {
+    if (typeof window === 'undefined') return
+    const slugParam = (typeof slug === 'string' ? slug : '') || ''
+    if (!slugParam) return
+    const fromQrFlag = searchParams?.get('from_qr') === '1'
+    const key = `benefix:spotlight_${slugParam}`
+    if (localStorage.getItem(key)) {
+      setSpotlightSeen(true)
+    } else {
+      setSpotlightSeen(false)
+      if (fromQrFlag) localStorage.setItem(key, '1')
+    }
+  }, [slug, searchParams])
 
   useEffect(() => {
     fetch(`/api/club-profile?slug=${slug}`)
@@ -891,23 +907,6 @@ export default function ClubProfilePage() {
   const activePrizes = prizes.filter(p => p.active)
   // Spotlight cuando el cliente entra escaneando el QR del negocio.
   const fromQr       = searchParams.get('from_qr') === '1'
-
-  // Spotlight: aparece SOLO la primera vez que el cliente entra a este club
-  // por QR. Después se persiste en localStorage para no volver a interrumpir.
-  // Inicializa en true para que arranque sin spotlight y se decida en useEffect.
-  const [spotlightSeen, setSpotlightSeen] = useState(true)
-  useEffect(() => {
-    if (typeof window === 'undefined' || !slug) return
-    const key = `benefix:spotlight_${slug}`
-    if (localStorage.getItem(key)) {
-      setSpotlightSeen(true)
-    } else {
-      setSpotlightSeen(false)
-      // Lo marcamos solo si efectivamente venimos del QR (de lo contrario
-      // alguien que entró por link directo no debería "consumir" el primer view).
-      if (fromQr) localStorage.setItem(key, '1')
-    }
-  }, [slug, fromQr])
 
   // URL "Cómo llegar" — siempre direcciones (con destino), no solo búsqueda.
   // Con coords es más preciso; sin coords usamos dirección + ciudad + provincia
