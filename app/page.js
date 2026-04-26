@@ -12103,10 +12103,15 @@ function ClientQRView({ user, profile, setView, headerExtra }) {
   }
 
   async function handleClientScan(text) {
-    if (processingRef.current) return
+    console.log('[handleClientScan] text recibido:', text)
+    if (processingRef.current) {
+      console.log('[handleClientScan] ya está procesando, ignoro')
+      return
+    }
 
     // El QR detectado no tiene formato de Benefix (no matchea /club/[slug] ni /join/[slug])
     const match = text.match(/\/(?:join|club)\/([^/?#\s]+)/)
+    console.log('[handleClientScan] match:', match)
     if (!match) {
       processingRef.current = true
       await stopCamera()
@@ -12118,8 +12123,10 @@ function ClientQRView({ user, profile, setView, headerExtra }) {
     await stopCamera()
 
     const slug = match[1]
+    console.log('[handleClientScan] slug detectado:', slug)
     const { data: commerce, error: cErr } = await supabase
       .from('commerces').select('id, name').eq('slug', slug).eq('active', true).single()
+    console.log('[handleClientScan] commerce:', commerce, 'error:', cErr)
 
     if (cErr || !commerce) {
       setDoneError('No encontramos el negocio del QR. Capaz el comercio cerró su club o el QR no está vigente.')
@@ -13432,8 +13439,12 @@ function AdminView({ cities: initialCities, profile }) {
 // ─── DEV TOOLBAR (solo en development) ───────────────────────────────────────
 function DevToolbar({ user, profile, onRoleChange }) {
   const [switching, setSwitching] = useState(null)
-  if (process.env.NODE_ENV !== 'development') return null
   if (!user) return null
+  // Solo arquitectotolosa@gmail.com puede ver el DevToolbar en producción.
+  // En desarrollo local (NODE_ENV=development) lo ven todos.
+  const ADMIN_EMAILS = ['arquitectotolosa@gmail.com']
+  const isAdminEmail = ADMIN_EMAILS.includes((user.email || '').toLowerCase())
+  if (!isAdminEmail && process.env.NODE_ENV !== 'development') return null
 
   const ROLES = [
     { id:'client',         label:'Cliente',   color:C.info },

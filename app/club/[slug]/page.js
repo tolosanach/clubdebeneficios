@@ -1112,13 +1112,35 @@ export default function ClubProfilePage() {
                 </div>
               )}
               <SlideToJoinButton
-                onJoin={() => {
+                onJoin={async () => {
                   // Si el usuario ya está logueado Y tiene teléfono cargado en
                   // su perfil → unirlo directo sin pedir nada de nuevo. El
                   // modal solo se muestra si falta auth o teléfono.
-                  const profilePhone = (userProfile?.phone || phone || '').trim()
-                  if (user && profilePhone) {
-                    handleJoin(profilePhone)
+                  // Hacemos un re-check del user por si el state local todavía
+                  // no se hidrató después de un full reload (redirect del scanner).
+                  let currentUser = user
+                  let currentPhone = (userProfile?.phone || phone || '').trim()
+                  if (!currentUser) {
+                    try {
+                      const sb = getSupabase()
+                      const { data } = await sb.auth.getUser()
+                      currentUser = data.user || null
+                      if (currentUser) {
+                        setUser(currentUser)
+                        // Re-fetch del teléfono si no lo teníamos
+                        if (!currentPhone) {
+                          const { data: prof } = await sb.from('profiles').select('phone').eq('id', currentUser.id).maybeSingle()
+                          if (prof?.phone) {
+                            currentPhone = prof.phone.trim()
+                            setUserProfile(p => ({ ...(p || {}), phone: prof.phone }))
+                          }
+                        }
+                      }
+                    } catch {}
+                  }
+
+                  if (currentUser && currentPhone) {
+                    handleJoin(currentPhone)
                   } else {
                     setShowModal(true)
                   }
