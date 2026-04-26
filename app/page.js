@@ -12,6 +12,7 @@ import PhoneInput from '../lib/PhoneInput'
 import SupportChat from '../lib/SupportChat'
 import SuggestionsInbox from '../lib/SuggestionsInbox'
 import InfoHint from '../lib/InfoHint'
+import JsQrScanner from '../lib/JsQrScanner'
 import { QRCodeSVG } from 'qrcode.react'
 import {
   Menu, QrCode, User, Home, LayoutDashboard, Users, Star, Gift,
@@ -12002,46 +12003,13 @@ function ClientQRView({ user, profile, setView, headerExtra }) {
     }).catch(() => {})
   }, [user?.id])
 
+  // Con jsQR el ciclo de vida del stream lo maneja el componente JsQrScanner.
+  // Esta función queda como noop para compat, pero ya no toca scannerRef ni
+  // arranca/detiene la cámara explícitamente — eso pasa al desmontar el scanner.
   async function stopCamera() {
-    try { if (scannerRef.current) { await scannerRef.current.stop(); scannerRef.current = null } } catch {}
+    // (mantengo la firma async porque el resto del código la await-ea)
+    return
   }
-
-  // Start camera when entering scanning mode
-  useEffect(() => {
-    if (mode !== 'scanning') return
-    let active = true
-    ;(async () => {
-      try {
-        const { Html5Qrcode } = await import('html5-qrcode')
-        const qr = new Html5Qrcode('client-qr-reader')
-        scannerRef.current = qr
-        await qr.start(
-          { facingMode: 'environment' },
-          {
-            fps: 10,
-            // qrbox dinámico: 70% del lado más corto del viewport del video.
-            // Antes era fijo en 240px y QRs grandes salían fuera del cuadrado.
-            qrbox: (vw, vh) => {
-              const min = Math.floor(Math.min(vw, vh) * 0.7)
-              return { width: min, height: min }
-            },
-            aspectRatio: 1.0,
-            // BarcodeDetector nativo del navegador. Mucho más rápido y confiable
-            // que el decoder JS interno, especialmente con QRs en pantalla.
-            experimentalFeatures: { useBarCodeDetectorIfSupported: true },
-          },
-          text => { if (active) handleClientScan(text) },
-          (err) => { if (typeof err === 'string' && !err.includes('NotFoundException')) console.warn('qr decode:', err) }
-        )
-      } catch (err) {
-        console.error('Client scanner start error:', err)
-        if (active) { setCameraError('No se pudo acceder a la cámara. Revisá los permisos.'); setMode('qr') }
-      }
-    })()
-    return () => { active = false; stopCamera() }
-  }, [mode])
-
-  useEffect(() => () => stopCamera(), [])
 
   async function handleClientScan(text) {
     if (processingRef.current) return
@@ -12085,13 +12053,18 @@ function ClientQRView({ user, profile, setView, headerExtra }) {
   // ── Scanning mode ────────────────────────────────────────────────────────
   if (mode === 'scanning') return (
     <div style={{ minHeight:'100vh', padding:'16px', maxWidth:480, margin:'0 auto', display:'flex', flexDirection:'column' }}>
-      <button onClick={() => { stopCamera(); setMode('qr') }}
+      <button onClick={() => setMode('qr')}
         style={{ alignSelf:'flex-start', display:'flex', alignItems:'center', gap:6, background:'none', border:'none', color:C.mist, fontSize:13, cursor:'pointer', fontFamily:FN, fontWeight:600, marginBottom:20, padding:'4px 0' }}>
         <ChevronLeft size={16} strokeWidth={2} /> Volver
       </button>
       <div style={{ fontFamily:FN, fontSize:20, fontWeight:800, color:C.white, marginBottom:6 }}>Escanear QR del negocio</div>
       <div style={{ fontSize:13, color:C.mist, lineHeight:1.6, marginBottom:24 }}>Apuntá la cámara al QR del negocio para sumarte a su club.</div>
-      <div id="client-qr-reader" style={{ borderRadius:16, overflow:'hidden', background:'#111' }} />
+      <div style={{ borderRadius:16, overflow:'hidden', background:'#111' }}>
+        <JsQrScanner
+          onDecode={(text) => handleClientScan(text)}
+          onError={() => { setCameraError('No se pudo acceder a la cámara. Revisá los permisos.'); setMode('qr') }}
+        />
+      </div>
     </div>
   )
 
@@ -12305,46 +12278,13 @@ function ScannerView({ user, profile, setView }) {
     setCameraError('')
     setResult(null)
     setScanGate(null)
-    try {
-      const { Html5Qrcode } = await import('html5-qrcode')
-      const qr = new Html5Qrcode('qr-reader')
-      scannerRef.current = qr
-      await qr.start(
-        { facingMode: 'environment' },
-        {
-          fps: 10,
-          // qrbox dinámico: 70% del lado más corto del viewport del video.
-          // Antes era fijo en 240px y QRs grandes (ej. en pantalla de PC)
-          // salían fuera del cuadrado de detección.
-          qrbox: (vw, vh) => {
-            const min = Math.floor(Math.min(vw, vh) * 0.7)
-            return { width: min, height: min }
-          },
-          aspectRatio: 1.0,
-          // BarcodeDetector nativo del navegador (Chrome/Edge desktop+mobile).
-          // Mucho más rápido y confiable para QRs en pantalla que el decoder
-          // JS interno (jsQR), que sufre con muaré y bordes blandos.
-          experimentalFeatures: { useBarCodeDetectorIfSupported: true },
-        },
-        (decodedText) => { handleScan(decodedText) },
-        // Logueamos errores reales de decode (no los "no encontró QR" rutinarios)
-        // para tener visibilidad si algo falla a futuro.
-        (err) => { if (typeof err === 'string' && !err.includes('NotFoundException')) console.warn('qr decode:', err) }
-      )
-      setCameraActive(true)
-    } catch (err) {
-      console.error('Scanner start error:', err)
-      setCameraError('No se pudo acceder a la cámara. Revisá los permisos.')
-    }
+    // Con el nuevo JsQrScanner el componente arranca la cámara solo cuando se
+    // monta (cameraActive=true). Sin imports dinámicos acá ni manejo manual del stream.
+    setCameraActive(true)
   }
 
   async function stopCamera() {
-    try {
-      if (scannerRef.current) {
-        await scannerRef.current.stop()
-        scannerRef.current = null
-      }
-    } catch {}
+    // El stream y el rAF loop los detiene el cleanup del JsQrScanner al desmontarse.
     setCameraActive(false)
   }
 
@@ -12640,7 +12580,12 @@ function ScannerView({ user, profile, setView }) {
 
       {/* Visor de cámara */}
       <PCard style={{ overflow:'hidden', marginBottom:14 }}>
-        <div id="qr-reader" style={{ width:'100%', background:'#000', minHeight: cameraActive ? 300 : 0 }} />
+        {cameraActive && (
+          <JsQrScanner
+            onDecode={(text) => handleScan(text)}
+            onError={() => setCameraError('No se pudo acceder a la cámara. Revisá los permisos.')}
+          />
+        )}
 
         {!cameraActive && !processing && (
           <div style={{ padding:24, textAlign:'center' }}>
