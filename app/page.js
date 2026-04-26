@@ -3954,7 +3954,7 @@ function CommerceView({ commerce:c, setView, user, onLoginRequired, onCommerceUp
               const cur = editValue || { category: '', customCategory: '' }
               const allFamilies = FAMILIES_DATA
               // Encontrar la familia que contiene la categoría actual
-              const currentFamily = allFamilies.find(f => f.subs.includes(cur.category))
+              const currentFamily = allFamilies.find(f => f.subs.some(s => s.name === cur.category))
                 ?? (cur.category === '__otro__' ? { id:'otro', name:'Otro' } : null)
               const [activeFamId, setActiveFamId] = [cur._famId || currentFamily?.id, (id) => setEditValue({ ...cur, _famId: id })]
               return (
@@ -3988,11 +3988,11 @@ function CommerceView({ commerce:c, setView, user, onLoginRequired, onCommerceUp
                     return (
                       <div style={{ display:'flex', flexWrap:'wrap', gap:6, paddingTop:6, borderTop:'1px solid rgba(255,255,255,0.08)' }}>
                         {fam.subs.map(sub => {
-                          const sel = cur.category === sub
+                          const sel = cur.category === sub.name
                           return (
-                            <button key={sub} onClick={() => setEditValue({ category: sub, customCategory: '', _famId: activeFamId })}
+                            <button key={sub.name} onClick={() => setEditValue({ category: sub.name, customCategory: '', _famId: activeFamId })}
                               style={{ padding:'7px 12px', borderRadius:99, background: sel ? G : 'rgba(255,255,255,0.06)', border:`1px solid ${sel ? 'transparent' : 'rgba(255,255,255,0.10)'}`, cursor:'pointer', fontSize:12, fontWeight:600, color: sel ? '#fff' : 'rgba(255,255,255,0.75)' }}>
-                              {sub}
+                              {sub.name}
                             </button>
                           )
                         })}
@@ -5595,7 +5595,7 @@ const SUB_ICONS = {
 const COMMERCE_FAMILIES = FAMILIES_DATA.map(f => ({
   ...f,
   Icon: FAMILY_ICONS[f.id],
-  subs: f.subs.map(name => ({ name, Icon: SUB_ICONS[name] })),
+  subs: f.subs.map(s => ({ name: s.name, aliases: s.aliases || [], Icon: SUB_ICONS[s.name] })),
 }))
 
 function findFamilyBySub(categoryName) {
@@ -5825,8 +5825,12 @@ function RegisterCommerceView({ setView, user, onProfileRefresh, onLoginRequired
           {step === 3 && (() => {
             const step3ok = form.category && (form.category !== '__otro__' || form.customCategory?.trim())
             const q = normalizeCat(catSearch.trim())
+            // Búsqueda mira nombre + aliases. Ej: "ropa" matchea Indumentaria.
             const searchResults = catSearch.trim() ? COMMERCE_FAMILIES.flatMap(fam =>
-              fam.subs.filter(s => normalizeCat(s.name).includes(q)).map(s => ({ fam, sub: s }))
+              fam.subs.filter(s =>
+                normalizeCat(s.name).includes(q) ||
+                (s.aliases || []).some(a => normalizeCat(a).includes(q))
+              ).map(s => ({ fam, sub: s }))
             ) : []
             const activeFam = catFamily ? COMMERCE_FAMILIES.find(f => f.id === catFamily) : null
 
@@ -6022,6 +6026,13 @@ function RegisterCommerceView({ setView, user, onProfileRefresh, onLoginRequired
               <div style={{ fontFamily:FN, fontSize:26, fontWeight:900, color:C.white, marginBottom:6, letterSpacing:'-.02em' }}>¿Cómo van a ganar premios?</div>
               <div style={{ fontSize:13, color:C.mist, marginBottom:20, lineHeight:1.5 }}>Después podés cambiarlo.</div>
 
+              {/* Pasos visibles solo en flow Estrellas (el de Puntos es 1 sólo paso) */}
+              {form.prog_type === 'stars' && (
+                <div style={{ fontFamily:FN, fontSize:10, fontWeight:700, color:'#8B5CF6', letterSpacing:'.10em', textTransform:'uppercase', marginBottom:8 }}>
+                  Paso 1 · Sistema
+                </div>
+              )}
+
               {/* Cards minimales — color por sistema (violeta stars / fucsia points)
                   para consistencia con el Tab Fidelización del panel y el listado
                   de premios. */}
@@ -6077,6 +6088,11 @@ function RegisterCommerceView({ setView, user, onProfileRefresh, onLoginRequired
               })()}
 
               {/* Compra mínima — acordeón colapsado por default. Solo stars. */}
+              {form.prog_type === 'stars' && (
+                <div style={{ fontFamily:FN, fontSize:10, fontWeight:700, color:'#8B5CF6', letterSpacing:'.10em', textTransform:'uppercase', marginBottom:8 }}>
+                  Paso 2 · Compra mínima
+                </div>
+              )}
               {form.prog_type === 'stars' && (
                 <div style={{ marginBottom:14, background:'rgba(255,255,255,0.04)', border:'1px solid rgba(255,255,255,0.10)', borderRadius:12, overflow:'hidden' }}>
                   <button type="button" onClick={() => setMinPurchaseOpen(o => !o)}
