@@ -964,73 +964,87 @@ async function getCroppedBlob(imageSrc, pixelCrop, outputSize = 512) {
   return blob
 }
 
+// Pre-procesamiento de imágenes con proporción extrema: genera un dataURL
+// cuadrado con la imagen centrada y el resto en transparente. Sirve para
+// logos de texto largo (ej "ENIGMA") que sin esto quedan recortados al centro.
+async function makeSquareWithPadding(imageSrc) {
+  const img = await _createCropImage(imageSrc)
+  const w = img.naturalWidth, h = img.naturalHeight
+  const ratio = w / h
+  // Si ya es ~cuadrada, no hacemos nada — devolvemos la original sin tocar.
+  if (ratio >= 0.85 && ratio <= 1.15) return { src: imageSrc, padded: false }
+  const size = Math.max(w, h)
+  const canvas = document.createElement('canvas')
+  canvas.width = canvas.height = size
+  const ctx = canvas.getContext('2d')
+  ctx.clearRect(0, 0, size, size)
+  const dx = (size - w) / 2
+  const dy = (size - h) / 2
+  ctx.drawImage(img, dx, dy, w, h)
+  return { src: canvas.toDataURL('image/png'), padded: true }
+}
+
 // ─── LOGO CROPPER MODAL ────────────────────────────────────────────────────────
 function LogoCropper({ imageSrc, onSave, onCancel }) {
   const [crop,      setCrop]      = useState({ x:0, y:0 })
   const [zoom,      setZoom]      = useState(1)
   const [pixelCrop, setPixelCrop] = useState(null)
   const [saving,    setSaving]    = useState(false)
-  // Proporción de la imagen original. Si es muy distinta de 1:1 (ej. logos
-  // de texto largo), arrancamos en modo "fit" con objectFit:'contain' para
-  // que toda la imagen se vea sin recortar — el resto queda padding transparente.
-  const [imageRatio, setImageRatio] = useState(1)
-  const isExtreme = imageRatio < 0.85 || imageRatio > 1.15
+  // Si la imagen no es cuadrada la pre-procesamos para meterla en un cuadrado
+  // con padding transparente. Eso evita el problema de "solo veo el centro"
+  // cuando subís un logo de texto largo, banner, etc.
+  const [processedSrc, setProcessedSrc] = useState(null)
+  const [wasPadded,    setWasPadded]    = useState(false)
+
+  useEffect(() => {
+    let cancelled = false
+    setProcessedSrc(null)
+    makeSquareWithPadding(imageSrc).then(({ src, padded }) => {
+      if (cancelled) return
+      setProcessedSrc(src)
+      setWasPadded(padded)
+      setCrop({ x:0, y:0 })
+      setZoom(1)
+    }).catch(() => { if (!cancelled) setProcessedSrc(imageSrc) })
+    return () => { cancelled = true }
+  }, [imageSrc])
 
   const onCropComplete = useCallback((_, px) => setPixelCrop(px), [])
-  const onMediaLoaded = useCallback((media) => {
-    const r = media.naturalWidth / media.naturalHeight
-    setImageRatio(r)
-    // Reseteamos crop y zoom al cargar una imagen nueva
-    setCrop({ x:0, y:0 })
-    setZoom(1)
-  }, [])
-
-  function autoFit() {
-    setCrop({ x:0, y:0 })
-    setZoom(1)
-  }
 
   async function handleSave() {
-    if (!pixelCrop) return
+    if (!pixelCrop || !processedSrc) return
     setSaving(true)
-    try { onSave(await getCroppedBlob(imageSrc, pixelCrop)) }
+    try { onSave(await getCroppedBlob(processedSrc, pixelCrop)) }
     finally { setSaving(false) }
   }
 
   return (
     <div style={{ position:'fixed', inset:0, zIndex:9999, background:'rgba(0,0,0,0.94)', display:'flex', flexDirection:'column', alignItems:'center', justifyContent:'center', padding:16 }}>
-      <div style={{ width:'100%', maxWidth:480, marginBottom:14, display:'flex', alignItems:'flex-start', justifyContent:'space-between', gap:12 }}>
-        <div style={{ flex:1, minWidth:0 }}>
-          <div style={{ fontFamily:FN, fontSize:17, fontWeight:800, color:C.white, marginBottom:4 }}>Ajustá tu logo</div>
-          <div style={{ fontSize:12, color:C.mist, lineHeight:1.5 }}>
-            {isExtreme
-              ? 'Tu logo no es cuadrado. Lo encuadramos con padding transparente.'
-              : 'Arrastrá y hacé zoom para encuadrar.'}
-          </div>
+      <div style={{ width:'100%', maxWidth:480, marginBottom:14 }}>
+        <div style={{ fontFamily:FN, fontSize:17, fontWeight:800, color:C.white, marginBottom:4 }}>Ajustá tu logo</div>
+        <div style={{ fontSize:12, color:C.mist, lineHeight:1.5 }}>
+          {wasPadded
+            ? 'Tu logo no era cuadrado, lo encuadramos automáticamente con bordes transparentes. Igual podés mover y zoom.'
+            : 'Arrastrá y hacé zoom para encuadrar. Todos los logos son cuadrados.'}
         </div>
-        <button onClick={autoFit} disabled={saving} type="button"
-          style={{ flexShrink:0, padding:'7px 12px', borderRadius:99, background:'rgba(139,92,246,0.15)', border:'1px solid rgba(139,92,246,0.40)', color:'#c4b5fd', fontSize:11, fontFamily:FN, fontWeight:700, cursor:'pointer' }}>
-          Ajustar auto
-        </button>
       </div>
       <div style={{ width:'100%', maxWidth:480, aspectRatio:'1/1', position:'relative', borderRadius:16, overflow:'hidden', background:'#111', border:`1px solid ${C.rim}` }}>
-        <Cropper
-          image={imageSrc} crop={crop} zoom={zoom} aspect={1}
-          cropShape="rect" showGrid={false}
-          // objectFit:'contain' permite ver TODA la imagen al zoom mínimo.
-          // restrictPosition:false evita que la lib fuerce a tapar todo el cropArea
-          // (modo "cover") cuando la imagen no es cuadrada.
-          objectFit="contain"
-          restrictPosition={false}
-          minZoom={1}
-          onCropChange={setCrop} onZoomChange={setZoom}
-          onCropComplete={onCropComplete}
-          onMediaLoaded={onMediaLoaded}
-          style={{
-            containerStyle: { borderRadius:16 },
-            cropAreaStyle: { border:'2px solid rgba(139,92,246,0.85)', borderRadius:10, boxShadow:'0 0 0 9999px rgba(0,0,0,0.55)' },
-          }}
-        />
+        {processedSrc && (
+          <Cropper
+            image={processedSrc} crop={crop} zoom={zoom} aspect={1}
+            cropShape="rect" showGrid={false} restrictPosition
+            onCropChange={setCrop} onZoomChange={setZoom} onCropComplete={onCropComplete}
+            style={{
+              containerStyle: { borderRadius:16 },
+              cropAreaStyle: { border:'2px solid rgba(139,92,246,0.85)', borderRadius:10, boxShadow:'0 0 0 9999px rgba(0,0,0,0.55)' },
+            }}
+          />
+        )}
+        {!processedSrc && (
+          <div style={{ position:'absolute', inset:0, display:'flex', alignItems:'center', justifyContent:'center', color:C.mist, fontSize:12 }}>
+            Procesando imagen…
+          </div>
+        )}
       </div>
       <div style={{ width:'100%', maxWidth:480, marginTop:16, display:'flex', alignItems:'center', gap:10 }}>
         <span style={{ fontSize:12, color:C.mist }}>−</span>
