@@ -4872,8 +4872,42 @@ function ClientView({ setView, user, profile, onLogout }) {
   const [acctForm,   setAcctForm]   = useState({ name: profile?.name || '', phone: profile?.phone || '' })
   const [acctSaving, setAcctSaving] = useState(false)
   const [acctStats,  setAcctStats]  = useState(null)
-  // Cartel desplegable de "¿Tenés un negocio?" — colapsado por defecto.
-  const [bizExpanded, setBizExpanded] = useState(false)
+  // Cartel "¿Tenés un negocio?" — máquina de estados con 2 ubicaciones:
+  //   top-collapsed  → arriba, primera vez, con Sí/No
+  //   top-expanded   → arriba, después de tocar Sí, con texto + link
+  //   hidden         → tocó No, oculto durante 1h
+  //   bottom-collapsed/expanded → abajo de "Guardar cambios", versión persistente
+  //                                con flecha desplegable (sin Sí/No)
+  // Persistencia: localStorage guarda answer ('yes'|'no') y dismissedAt.
+  const [bizState, setBizState] = useState(() => {
+    if (typeof window === 'undefined') return 'top-collapsed'
+    try {
+      const answer       = localStorage.getItem('benefix:bizAnswer')
+      const dismissedStr = localStorage.getItem('benefix:bizDismissedAt')
+      const dismissedAt  = dismissedStr ? parseInt(dismissedStr, 10) : 0
+      if (answer === 'yes') return 'bottom-collapsed'
+      if (answer === 'no') {
+        if (Date.now() - dismissedAt < 3600000) return 'hidden'
+        return 'bottom-collapsed'
+      }
+      return 'top-collapsed'
+    } catch { return 'top-collapsed' }
+  })
+
+  function bizAnswerYes() {
+    try { localStorage.setItem('benefix:bizAnswer', 'yes') } catch {}
+    setBizState('top-expanded')
+  }
+  function bizAnswerNo() {
+    try {
+      localStorage.setItem('benefix:bizAnswer', 'no')
+      localStorage.setItem('benefix:bizDismissedAt', String(Date.now()))
+    } catch {}
+    setBizState('hidden')
+  }
+  function bizToggleBottom() {
+    setBizState(s => s === 'bottom-expanded' ? 'bottom-collapsed' : 'bottom-expanded')
+  }
   const supabase = getSupabase()
 
   // Club filters
@@ -5292,6 +5326,61 @@ function ClientView({ setView, user, profile, onLogout }) {
             </div>
           </div>
 
+          {/* Cartel "¿Tenés un negocio?" — versión TOP (primera vista, con Sí/No).
+              Aparece solo si nunca respondió. Click en Sí → expande con texto + link.
+              Click en No → se oculta y reaparece en versión BOTTOM 1h después. */}
+          {profile?.role !== 'commerce_owner' && (bizState === 'top-collapsed' || bizState === 'top-expanded') && (
+            <div style={{
+              position:'relative', overflow:'hidden',
+              background:'linear-gradient(135deg, rgba(254,80,0,0.18) 0%, rgba(189,75,248,0.22) 100%)',
+              border:'1px solid rgba(189,75,248,0.32)',
+              borderRadius:16, marginBottom:12,
+            }}>
+              <div style={{
+                padding:'14px 18px',
+                display:'flex', alignItems:'center', gap:14,
+              }}>
+                <div style={{ width:46, height:46, borderRadius:12, background:G, display:'flex', alignItems:'center', justifyContent:'center', flexShrink:0, boxShadow:'0 4px 18px rgba(168,85,247,0.42)' }}>
+                  <Store size={22} color='#fff' strokeWidth={2} />
+                </div>
+                <div style={{ flex:1, minWidth:0, fontFamily:FN, fontSize:14, fontWeight:700, color:'#fff' }}>
+                  ¿Tenés un negocio?
+                </div>
+                {bizState === 'top-collapsed' && (
+                  <div style={{ display:'flex', alignItems:'center', gap:10, flexShrink:0 }}>
+                    <button onClick={bizAnswerYes}
+                      style={{ background:'transparent', border:'none', color:'#fff', fontFamily:FN, fontSize:14, fontWeight:700, cursor:'pointer', padding:'4px 6px' }}>
+                      Sí
+                    </button>
+                    <span style={{ color:'rgba(255,255,255,0.35)', fontSize:14, lineHeight:1 }}>|</span>
+                    <button onClick={bizAnswerNo}
+                      style={{ background:'transparent', border:'none', color:'rgba(255,255,255,0.78)', fontFamily:FN, fontSize:14, fontWeight:500, cursor:'pointer', padding:'4px 6px' }}>
+                      No
+                    </button>
+                  </div>
+                )}
+              </div>
+              {bizState === 'top-expanded' && (
+                <div style={{ padding:'0 18px 16px 78px' }}>
+                  <div style={{ fontSize:12, color:'rgba(255,255,255,0.65)', lineHeight:1.5, marginBottom:12 }}>
+                    Registralo y empezá a fidelizar tus clientes. Es la misma cuenta — seguís siendo cliente también.
+                  </div>
+                  <button onClick={() => setView('register-commerce')}
+                    style={{
+                      display:'inline-flex', alignItems:'center', gap:6,
+                      background:G, border:'none', borderRadius:10,
+                      padding:'9px 14px', color:'#fff', fontSize:13, fontWeight:700,
+                      cursor:'pointer', fontFamily:FN,
+                      boxShadow:'0 4px 14px rgba(168,85,247,0.35)',
+                    }}>
+                    Registrar mi negocio
+                    <ArrowRight size={14} strokeWidth={2.4} />
+                  </button>
+                </div>
+              )}
+            </div>
+          )}
+
           {/* Stats */}
           <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr 1fr', gap:8, marginBottom:12 }}>
             {[
@@ -5340,19 +5429,18 @@ function ClientView({ setView, user, profile, onLogout }) {
             </button>
           </div>
 
-          {/* Tarjeta CTA: registrar negocio — solo si todavía no es commerce_owner.
-              Para que un cliente que ya está logueado pueda agregar su negocio
-              sin tener que volver a la home a buscar el botón "Soy comercio". */}
-          {profile?.role !== 'commerce_owner' && (
+          {/* Cartel "¿Tenés un negocio?" — versión BOTTOM (compacta, persistente
+              después de la primera respuesta o tras el cooldown de 1h del "No").
+              Solo flecha desplegable, sin Sí/No. Ver bizState para la lógica. */}
+          {profile?.role !== 'commerce_owner' && (bizState === 'bottom-collapsed' || bizState === 'bottom-expanded') && (
             <div style={{
               position:'relative', overflow:'hidden',
               background:'linear-gradient(135deg, rgba(254,80,0,0.18) 0%, rgba(189,75,248,0.22) 100%)',
               border:'1px solid rgba(189,75,248,0.32)',
               borderRadius:16, marginBottom:12,
             }}>
-              {/* Header — siempre visible: ícono + título + chevron */}
               <button
-                onClick={() => setBizExpanded(e => !e)}
+                onClick={bizToggleBottom}
                 style={{
                   width:'100%', background:'transparent', border:'none', cursor:'pointer',
                   padding:'14px 18px',
@@ -5366,10 +5454,9 @@ function ClientView({ setView, user, profile, onLogout }) {
                   ¿Tenés un negocio?
                 </div>
                 <ChevronDown size={18} color='rgba(255,255,255,0.65)' strokeWidth={2.4}
-                  style={{ flexShrink:0, transform: bizExpanded ? 'rotate(180deg)' : 'rotate(0)', transition:'transform 220ms ease' }} />
+                  style={{ flexShrink:0, transform: bizState === 'bottom-expanded' ? 'rotate(180deg)' : 'rotate(0)', transition:'transform 220ms ease' }} />
               </button>
-              {/* Body — solo cuando expandido: texto + CTA */}
-              {bizExpanded && (
+              {bizState === 'bottom-expanded' && (
                 <div style={{ padding:'0 18px 16px 78px' }}>
                   <div style={{ fontSize:12, color:'rgba(255,255,255,0.65)', lineHeight:1.5, marginBottom:12 }}>
                     Registralo y empezá a fidelizar tus clientes. Es la misma cuenta — seguís siendo cliente también.
