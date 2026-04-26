@@ -4917,6 +4917,18 @@ function ClientView({ setView, user, profile, onLogout }) {
     setAcctForm({ name: profile?.name || '', phone: profile?.phone || '' })
   }, [profile])
 
+  // Escucha 'benefix:set-tab' — lo dispara el nav de pestañas montado en otras
+  // vistas (ej: ClientQRView dentro de view='scanner') para cambiar la pestaña
+  // del cliente al volver acá.
+  useEffect(() => {
+    function onSetTab(e) {
+      const next = e.detail?.tab
+      if (next) setTab(next)
+    }
+    window.addEventListener('benefix:set-tab', onSetTab)
+    return () => window.removeEventListener('benefix:set-tab', onSetTab)
+  }, [])
+
   // Load account stats when "cuenta" tab is first opened
   useEffect(() => {
     if (tab !== 'cuenta' || acctStats || !user) return
@@ -11699,12 +11711,31 @@ function ClientQRView({ user, profile, setView }) {
   )
 
   // ── Default: QR personal — mismo diseño BENEFIX PASS que el tab "mi qr" del bottom nav ─────
+  // Setup del nav de pestañas: marca "Mi QR" como activa y al tocar otra pestaña
+  // dispara navegación a view='client' con el tab elegido.
+  const handleNavTab = (next) => {
+    if (next === 'mi qr') return
+    window.dispatchEvent(new CustomEvent('benefix:navigate', {
+      detail: { view: 'client', tab: next },
+    }))
+  }
   return (
-    <div className="modal-in" style={{ display:'flex', flexDirection:'column', alignItems:'center', padding:'40px 16px 40px', maxWidth:420, margin:'0 auto' }}>
+    <>
+      <ClientBottomNav tab="mi qr" setTab={handleNavTab} profile={profile} setView={setView} />
+    <div className="modal-in" style={{ display:'flex', flexDirection:'column', alignItems:'center', padding:'58px 16px 40px', maxWidth:420, margin:'0 auto' }}>
 
       {cameraError && (
         <div style={{ fontSize:12, color:'#f87444', marginBottom:16, textAlign:'center' }}>{cameraError}</div>
       )}
+
+      {/* Botón scan QR negocio — arriba del pase, porque es la acción primaria de esta vista */}
+      <button
+        onClick={() => { setCameraError(''); processingRef.current = false; setMode('scanning') }}
+        style={{ display:'flex', alignItems:'center', gap:8, marginBottom:20, padding:'12px 24px', background:'rgba(255,255,255,0.07)', border:`1px solid ${C.rim}`, borderRadius:12, cursor:'pointer', fontSize:13, color:C.pearl, fontFamily:FN, fontWeight:600 }}
+      >
+        <Camera size={16} strokeWidth={1.8} />
+        Escanear QR de negocio
+      </button>
 
       {/* ── PASE VIP ── */}
       <div style={{ width:'100%', maxWidth:340, borderRadius:28, overflow:'hidden', boxShadow:'0 24px 64px rgba(189,75,248,0.30), 0 8px 24px rgba(0,0,0,0.50)' }}>
@@ -11780,15 +11811,8 @@ function ClientQRView({ user, profile, setView }) {
         ))}
       </div>
 
-      {/* Botón scan QR negocio — único feature exclusivo de esta vista (no está en el tab del bottom nav) */}
-      <button
-        onClick={() => { setCameraError(''); processingRef.current = false; setMode('scanning') }}
-        style={{ display:'flex', alignItems:'center', gap:8, marginTop:24, padding:'12px 24px', background:'rgba(255,255,255,0.07)', border:`1px solid ${C.rim}`, borderRadius:12, cursor:'pointer', fontSize:13, color:C.pearl, fontFamily:FN, fontWeight:600 }}
-      >
-        <Camera size={16} strokeWidth={1.8} />
-        Escanear QR de negocio
-      </button>
     </div>
+    </>
   )
 }
 
