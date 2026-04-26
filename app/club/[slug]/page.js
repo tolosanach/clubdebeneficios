@@ -730,7 +730,7 @@ export default function ClubProfilePage() {
     fetch(`/api/club-profile?slug=${slug}`)
       .then(r => r.json())
       .then(d => {
-        console.log('[club-profile] respuesta:', { ok: d.ok, hasMembership: !!d.membership, hasProfile: !!d.profile, profileEmail: d.profile?.email })
+        console.log('[club-profile] respuesta:', { ok: d.ok, hasMembership: !!d.membership, hasProfile: !!d.profile, debug: d._debug })
         if (!d.ok) {
           if (slug === 'cafe-berlin') { setData(CAFE_BERLIN_DEMO); setIsDemo(true); setPageState('ok'); return }
           setPageState('not_found'); return

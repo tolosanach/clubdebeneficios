@@ -50,7 +50,7 @@ export async function GET(request) {
   try {
     const supabase = await createSupabaseServer()
     const { data: { user } } = await supabase.auth.getUser()
-    console.log('[club-profile] user detectado:', user?.email || 'NINGUNO', 'commerce_id:', commerce.id)
+    console.log('[club-profile] user detectado:', user?.email || 'NINGUNO', 'user_id:', user?.id || 'null', 'commerce_id:', commerce.id)
     if (user) {
       const { data: mem } = await supabaseAdmin
         .from('memberships')
@@ -60,6 +60,14 @@ export async function GET(request) {
         .maybeSingle()
       membership = mem || null
       console.log('[club-profile] membership found:', !!mem, 'status:', mem?.status)
+      // Si NO encontramos membership, listamos las que tiene el user para debug
+      if (!mem) {
+        const { data: allMem } = await supabaseAdmin
+          .from('memberships')
+          .select('id, commerce_id, status')
+          .eq('user_id', user.id)
+        console.log('[club-profile] todas las memberships del user:', allMem)
+      }
 
       // Also fetch profile phone
       const { data: prof } = await supabaseAdmin
@@ -91,6 +99,8 @@ export async function GET(request) {
         membership,
         profile: prof || null,
         clientPromos,
+        // Debug temporal
+        _debug: { serverUserEmail: user.email, serverUserId: user.id, hasMembership: !!membership },
       })
     }
   } catch (_) {}
