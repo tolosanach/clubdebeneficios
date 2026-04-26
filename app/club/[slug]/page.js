@@ -1343,7 +1343,27 @@ export default function ClubProfilePage() {
               )
             })()}
 
-            {/* Catálogo */}
+            {/* Catálogo — visible siempre, con estado vacío cuando el comercio
+                aún no cargó premios. Antes lo escondíamos (length === 0) y la
+                tab Inicio quedaba sin esa sección, lo cual confundía. */}
+            {activePrizes.length === 0 && (
+              <div>
+                <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', marginBottom:14 }}>
+                  <h2 style={{ fontFamily:FN, fontSize:17, fontWeight:600, color:C.white, letterSpacing:'-0.02em', margin:0 }}>Catálogo</h2>
+                </div>
+                <div style={{ background:'rgba(255,255,255,0.04)', border:'1px solid rgba(255,255,255,0.08)', borderRadius:16, padding:'28px 20px', textAlign:'center' }}>
+                  <div style={{ display:'flex', justifyContent:'center', marginBottom:12 }}>
+                    <div style={{ width:54, height:54, borderRadius:14, background:'rgba(236,72,153,0.10)', border:'1px solid rgba(236,72,153,0.22)', display:'flex', alignItems:'center', justifyContent:'center' }}>
+                      <Gift size={24} strokeWidth={1.5} color='rgba(236,72,153,0.75)' />
+                    </div>
+                  </div>
+                  <div style={{ fontFamily:FN, fontSize:14, fontWeight:600, color:'rgba(255,255,255,0.85)', marginBottom:6 }}>Sin premios todavía</div>
+                  <div style={{ fontSize:12, color:'rgba(255,255,255,0.50)', lineHeight:1.55, maxWidth:260, margin:'0 auto' }}>
+                    {commerce.name} todavía no cargó premios. Cuando los cargue, los vas a ver acá.
+                  </div>
+                </div>
+              </div>
+            )}
             {activePrizes.length > 0 && (
               <div>
                 <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', marginBottom:14 }}>
