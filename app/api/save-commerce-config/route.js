@@ -16,7 +16,7 @@ export async function POST(request) {
 
   const body = await request.json()
   const {
-    commerce_id, name, category, customCategory, description, img_url, cover_image,
+    commerce_id, name, category, categories, customCategory, description, img_url, cover_image,
     phone, instagram, facebook, country, province, city_name, address, hours_structured, brand_color,
     prog_min_purchase,
   } = body
@@ -24,7 +24,7 @@ export async function POST(request) {
   if (!commerce_id) return NextResponse.json({ error: 'Falta commerce_id' }, { status: 400 })
 
   const { data: commerce, error: ownerErr } = await supabaseAdmin
-    .from('commerces').select('id, owner_id, lat, lng, address, category, name, name_changed_at').eq('id', commerce_id).single()
+    .from('commerces').select('id, owner_id, lat, lng, address, category, categories, name, name_changed_at').eq('id', commerce_id).single()
   if (ownerErr || !commerce) return NextResponse.json({ error: 'Comercio no encontrado' }, { status: 404 })
   if (commerce.owner_id !== user.id) return NextResponse.json({ error: 'Sin permiso' }, { status: 403 })
 
@@ -72,13 +72,45 @@ export async function POST(request) {
     } catch (_) {}
   }
 
+  // ── Categorías ──
+  // Soportamos dos formas: `category` (string, legacy/single) y `categories`
+  // (array, nuevo, multi). Si llegan ambos, prioriza `categories`.
+  // En la DB seguimos manteniendo ambos: `categories` como source of truth y
+  // `category` como espejo del primero (para que las queries y UIs viejas
+  // que filtran por una sola categoría sigan funcionando).
   let resolvedCategory = null
-  if (category !== undefined && category !== null) {
-    // Si la categoría enviada es exactamente la que ya está guardada en la DB,
-    // no hay cambio real — saltamos la validación. Esto evita rechazar guardadas
-    // de otros campos (ej: horarios) cuando el comercio tiene una categoría
-    // custom registrada vía "Otro" (ej: "Kinesiólogo") que no está en la lista
-    // predefinida y por lo tanto no pasaría el validador estricto.
+  let resolvedCategories = null
+
+  if (Array.isArray(categories)) {
+    const cleaned = []
+    const seen = new Set()
+    for (const c of categories) {
+      if (!c || typeof c !== 'string') continue
+      const trimmed = c.trim()
+      if (!trimmed || seen.has(trimmed.toLowerCase())) continue
+      // Si es la misma que ya tenía, la dejamos pasar sin re-validar (igual que
+      // hacía la lógica vieja para categorías custom de "Otro").
+      const wasInExisting = (commerce.categories || []).some(x => x === trimmed) || commerce.category === trimmed
+      if (wasInExisting) {
+        cleaned.push(trimmed)
+        seen.add(trimmed.toLowerCase())
+        continue
+      }
+      const catResult = validateCategoryInput({ category: trimmed, customCategory: trimmed }, user.id)
+      if (!catResult.valid) return NextResponse.json({ error: catResult.error }, { status: 400 })
+      cleaned.push(catResult.resolvedValue)
+      seen.add(catResult.resolvedValue.toLowerCase())
+    }
+    if (cleaned.length === 0) {
+      return NextResponse.json({ error: 'Necesitás al menos una categoría.' }, { status: 400 })
+    }
+    if (cleaned.length > 3) {
+      return NextResponse.json({ error: 'Máximo 3 categorías por comercio.' }, { status: 400 })
+    }
+    resolvedCategories = cleaned
+    resolvedCategory   = cleaned[0]   // espejo legacy
+  } else if (category !== undefined && category !== null) {
+    // Forma legacy: solo una categoría enviada como string.
     if (category === commerce.category) {
       resolvedCategory = commerce.category
     } else {
@@ -86,6 +118,7 @@ export async function POST(request) {
       if (!catResult.valid) return NextResponse.json({ error: catResult.error }, { status: 400 })
       resolvedCategory = catResult.resolvedValue
     }
+    resolvedCategories = [resolvedCategory]
   }
 
   // Solo incluir keys presentes en el body para evitar nullear campos
@@ -112,6 +145,7 @@ export async function POST(request) {
       prog_min_purchase: parseInt(prog_min_purchase) > 0 ? parseInt(prog_min_purchase) : null
     }),
     ...(resolvedCategory      !== null      && { category:         resolvedCategory }),
+    ...(resolvedCategories    !== null      && { categories:       resolvedCategories }),
     ...(nameChangedAtUpdate   !== undefined && { name_changed_at:  nameChangedAtUpdate }),
     onboarding_done: true,
     lat,

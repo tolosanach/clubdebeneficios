@@ -1001,10 +1001,18 @@ function validateImageFile(file) {
 }
 
 function checkImageDimensions(file) {
+  // Validación deliberadamente laxa: solo exige que el lado MÁS LARGO sea
+  // de al menos 400px. Antes era el lado más corto ≥ 400, lo que rechazaba
+  // imágenes con proporción rara (ej: 1500×300 logos panorámicos) que el
+  // LogoCropper justamente puede arreglar via makeSquareWithPadding.
   return new Promise(resolve => {
     const img = new Image()
     const url = URL.createObjectURL(file)
-    img.onload = () => { URL.revokeObjectURL(url); resolve(Math.min(img.naturalWidth, img.naturalHeight) >= 400 ? null : 'La imagen debe ser al menos 400×400 px.') }
+    img.onload = () => {
+      URL.revokeObjectURL(url)
+      const longestSide = Math.max(img.naturalWidth, img.naturalHeight)
+      resolve(longestSide >= 400 ? null : 'La imagen es muy chica. Necesitamos al menos 400 px en su lado más largo.')
+    }
     img.onerror = () => { URL.revokeObjectURL(url); resolve(null) }
     img.src = url
   })
@@ -3279,10 +3287,15 @@ function DirectoryView({ citySlug, cities, setView, setCommerce }) {
       .then(({ data }) => { setCommerces(data || []); setLoading(false) })
   }, [citySlug, cityData.id])
 
-  const list = commerces.filter(c =>
-    (cat === 'all' || c.category === cat) &&
-    c.name.toLowerCase().includes(search.toLowerCase())
-  )
+  // Filtro por categoría: matchea si la categoría seleccionada está en
+  // `categories` (nuevo, array) o si es la legacy `category` (string).
+  const list = commerces.filter(c => {
+    if (cat !== 'all') {
+      const cats = Array.isArray(c.categories) && c.categories.length > 0 ? c.categories : (c.category ? [c.category] : [])
+      if (!cats.includes(cat)) return false
+    }
+    return c.name.toLowerCase().includes(search.toLowerCase())
+  })
   const featured = list.filter(c => c.featured)
   const regular  = list.filter(c => !c.featured)
 
@@ -3443,12 +3456,27 @@ function CommerceView({ commerce:c, setView, user, onLoginRequired, onCommerceUp
       const localUpdate = {}
 
       if (editField.type === 'category') {
-        // editValue: { category, customCategory }
-        payload.category = editValue?.category || ''
-        payload.customCategory = editValue?.customCategory || ''
-        localUpdate.category = editValue?.category === '__otro__'
-          ? (editValue?.customCategory?.trim() || '')
-          : (editValue?.category || '')
+        // Soportamos dos formas:
+        //   { categories: string[] } (multi, nuevo)
+        //   { category, customCategory } (single, legacy)
+        if (Array.isArray(editValue?.categories)) {
+          if (editValue.categories.length === 0) {
+            showToast('error', 'Elegí al menos una categoría')
+            setEditSaving(false)
+            return
+          }
+          payload.categories     = editValue.categories
+          localUpdate.categories = editValue.categories
+          localUpdate.category   = editValue.categories[0]   // espejo legacy
+        } else {
+          payload.category       = editValue?.category || ''
+          payload.customCategory = editValue?.customCategory || ''
+          const resolvedSingle   = editValue?.category === '__otro__'
+            ? (editValue?.customCategory?.trim() || '')
+            : (editValue?.category || '')
+          localUpdate.category   = resolvedSingle
+          localUpdate.categories = resolvedSingle ? [resolvedSingle] : []
+        }
       } else if (editField.type === 'hours') {
         // editValue: { monday: {open, shifts}, ... }
         payload.hours_structured = editValue || null
@@ -3630,18 +3658,43 @@ function CommerceView({ commerce:c, setView, user, onLoginRequired, onCommerceUp
             </div>
           </div>
           <div style={{ display:'flex', gap:8, fontSize:12, color:'rgba(255,255,255,.85)', alignItems:'center', flexWrap:'wrap' }}>
-            {(c.category || isOwner) && (
-              <span style={{ background:'rgba(255,255,255,0.14)', borderRadius:99, padding:'3px 4px 3px 10px', textTransform:'capitalize', display:'inline-flex', alignItems:'center', gap:6 }}>
-                <span style={{ fontStyle: c.category ? 'normal' : 'italic', opacity: c.category ? 1 : 0.6 }}>{c.category || 'Sin categoría'}</span>
-                {isOwner && (
-                  <button onClick={() => openEdit({ key:'category', value:{ category: c.category || '', customCategory: '' }, label:'Categoría del negocio', type:'category' })}
-                    aria-label="Editar categoría"
-                    style={{ background:'rgba(0,0,0,0.4)', border:'none', borderRadius:99, width:18, height:18, padding:0, cursor:'pointer', color:'#fff', display:'inline-flex', alignItems:'center', justifyContent:'center' }}>
-                    <Pen size={9} strokeWidth={2.5} />
-                  </button>
-                )}
-              </span>
-            )}
+            {(() => {
+              // Soportamos categorías múltiples. Si hay categories array, las
+              // mostramos todas; si no, fallback a category (legacy single).
+              const cats = Array.isArray(c.categories) && c.categories.length > 0
+                ? c.categories
+                : (c.category ? [c.category] : [])
+              if (cats.length === 0 && !isOwner) return null
+              const initialCategories = cats
+              return (
+                <>
+                  {cats.map((cat, i) => (
+                    <span key={cat + i} style={{ background:'rgba(255,255,255,0.14)', borderRadius:99, padding:'3px 4px 3px 10px', textTransform:'capitalize', display:'inline-flex', alignItems:'center', gap:6 }}>
+                      <span>{cat}</span>
+                      {/* El botón de editar va solo en el último chip — abre el picker
+                          cargado con todas las categorías actuales. */}
+                      {isOwner && i === cats.length - 1 && (
+                        <button onClick={() => openEdit({ key:'categories', value:{ categories: initialCategories, customCategory: '' }, label:'Categorías del negocio', type:'category' })}
+                          aria-label="Editar categorías"
+                          style={{ background:'rgba(0,0,0,0.4)', border:'none', borderRadius:99, width:18, height:18, padding:0, cursor:'pointer', color:'#fff', display:'inline-flex', alignItems:'center', justifyContent:'center' }}>
+                          <Pen size={9} strokeWidth={2.5} />
+                        </button>
+                      )}
+                    </span>
+                  ))}
+                  {cats.length === 0 && isOwner && (
+                    <span style={{ background:'rgba(255,255,255,0.14)', borderRadius:99, padding:'3px 4px 3px 10px', display:'inline-flex', alignItems:'center', gap:6 }}>
+                      <span style={{ fontStyle:'italic', opacity:0.6 }}>Sin categoría</span>
+                      <button onClick={() => openEdit({ key:'categories', value:{ categories: [], customCategory: '' }, label:'Categorías del negocio', type:'category' })}
+                        aria-label="Editar categoría"
+                        style={{ background:'rgba(0,0,0,0.4)', border:'none', borderRadius:99, width:18, height:18, padding:0, cursor:'pointer', color:'#fff', display:'inline-flex', alignItems:'center', justifyContent:'center' }}>
+                        <Pen size={9} strokeWidth={2.5} />
+                      </button>
+                    </span>
+                  )}
+                </>
+              )
+            })()}
             {(() => {
               // Abierto / Cerrado en vivo según hours_structured
               const hs = c.hours_structured
@@ -4151,23 +4204,72 @@ function CommerceView({ commerce:c, setView, user, onLoginRequired, onCommerceUp
               )
             })()}
 
-            {/* Category picker — familias y subcategorías de FAMILIES_DATA, con
-                fallback "Otro" + texto libre. */}
+            {/* Category picker — multi-select. Hasta 3 categorías por comercio,
+                de FAMILIES_DATA o custom via "Otro" (texto libre). */}
             {editField.type === 'category' && (() => {
-              const cur = editValue || { category: '', customCategory: '' }
+              // editValue: { categories: string[], customCategory: string, _famId: string }
+              // Migración del formato viejo (single { category, customCategory }) → array.
+              const raw = editValue || {}
+              const initialArr = Array.isArray(raw.categories)
+                ? raw.categories
+                : (raw.category && raw.category !== '__otro__' ? [raw.category] : [])
+              const cur = { categories: initialArr, customCategory: raw.customCategory || '', _famId: raw._famId }
+              const MAX = 3
               const allFamilies = FAMILIES_DATA
-              // Encontrar la familia que contiene la categoría actual
-              const currentFamily = allFamilies.find(f => f.subs.some(s => s.name === cur.category))
-                ?? (cur.category === '__otro__' ? { id:'otro', name:'Otro' } : null)
-              const [activeFamId, setActiveFamId] = [cur._famId || currentFamily?.id, (id) => setEditValue({ ...cur, _famId: id })]
+              const activeFamId = cur._famId || (cur.categories[0]
+                ? (allFamilies.find(f => f.subs.some(s => s.name === cur.categories[0]))?.id)
+                : null)
+              const setActiveFamId = (id) => setEditValue({ ...cur, _famId: id })
+
+              const toggleCat = (name) => {
+                const has = cur.categories.includes(name)
+                let next
+                if (has) {
+                  next = cur.categories.filter(c => c !== name)
+                } else {
+                  if (cur.categories.length >= MAX) {
+                    showToast('error', `Máximo ${MAX} categorías`)
+                    return
+                  }
+                  next = [...cur.categories, name]
+                }
+                setEditValue({ ...cur, categories: next })
+              }
+              const removeCat = (name) => {
+                setEditValue({ ...cur, categories: cur.categories.filter(c => c !== name) })
+              }
+              const addOtroCat = (txt) => {
+                const t = (txt || '').trim()
+                if (!t) return
+                if (cur.categories.length >= MAX) {
+                  showToast('error', `Máximo ${MAX} categorías`)
+                  return
+                }
+                if (!cur.categories.includes(t)) {
+                  setEditValue({ ...cur, categories: [...cur.categories, t], customCategory: '' })
+                }
+              }
               return (
                 <div style={{ display:'flex', flexDirection:'column', gap:10 }}>
-                  {/* Si ya hay subcategoría seleccionada y la familia, mostrar "actual" */}
-                  {cur.category && cur.category !== '__otro__' && !cur._famId && (
-                    <div style={{ padding:'8px 12px', background:'rgba(189,75,248,0.14)', border:'1px solid rgba(189,75,248,0.30)', borderRadius:10, fontSize:12, color:C.white }}>
-                      Actual: <strong>{cur.category}</strong>
+                  {/* Chips seleccionadas */}
+                  {cur.categories.length > 0 && (
+                    <div style={{ display:'flex', flexWrap:'wrap', gap:6, padding:'8px 10px', background:'rgba(189,75,248,0.10)', border:'1px solid rgba(189,75,248,0.30)', borderRadius:10 }}>
+                      {cur.categories.map(cat => (
+                        <span key={cat} style={{ display:'inline-flex', alignItems:'center', gap:6, padding:'4px 6px 4px 10px', borderRadius:99, background:'rgba(255,255,255,0.10)', fontSize:12, color:C.white, fontWeight:600 }}>
+                          {cat}
+                          <button onClick={() => removeCat(cat)}
+                            aria-label={`Quitar ${cat}`}
+                            style={{ background:'rgba(0,0,0,0.4)', border:'none', borderRadius:'50%', width:18, height:18, padding:0, cursor:'pointer', color:'#fff', display:'inline-flex', alignItems:'center', justifyContent:'center' }}>
+                            <X size={10} strokeWidth={2.5} />
+                          </button>
+                        </span>
+                      ))}
+                      <span style={{ fontSize:10, color:C.mist, alignSelf:'center', marginLeft:'auto' }}>{cur.categories.length}/{MAX}</span>
                     </div>
                   )}
+                  <div style={{ fontSize:11, color:C.dust }}>
+                    Elegí hasta {MAX} categorías para tu negocio. Pueden venir de distintas familias.
+                  </div>
                   {/* Selector de familia */}
                   <div style={{ display:'grid', gridTemplateColumns:'repeat(auto-fill, minmax(110px, 1fr))', gap:6 }}>
                     {allFamilies.map(fam => {
@@ -4184,17 +4286,18 @@ function CommerceView({ commerce:c, setView, user, onLoginRequired, onCommerceUp
                       Otro
                     </button>
                   </div>
-                  {/* Subcategorías o input "Otro" */}
+                  {/* Subcategorías toggle (no exclusivas) */}
                   {activeFamId && activeFamId !== 'otro' && (() => {
                     const fam = allFamilies.find(f => f.id === activeFamId)
                     if (!fam) return null
                     return (
                       <div style={{ display:'flex', flexWrap:'wrap', gap:6, paddingTop:6, borderTop:'1px solid rgba(255,255,255,0.08)' }}>
                         {fam.subs.map(sub => {
-                          const sel = cur.category === sub.name
+                          const sel = cur.categories.includes(sub.name)
                           return (
-                            <button key={sub.name} onClick={() => setEditValue({ category: sub.name, customCategory: '', _famId: activeFamId })}
-                              style={{ padding:'7px 12px', borderRadius:99, background: sel ? G : 'rgba(255,255,255,0.06)', border:`1px solid ${sel ? 'transparent' : 'rgba(255,255,255,0.10)'}`, cursor:'pointer', fontSize:12, fontWeight:600, color: sel ? '#fff' : 'rgba(255,255,255,0.75)' }}>
+                            <button key={sub.name} onClick={() => toggleCat(sub.name)}
+                              style={{ padding:'7px 12px', borderRadius:99, background: sel ? G : 'rgba(255,255,255,0.06)', border:`1px solid ${sel ? 'transparent' : 'rgba(255,255,255,0.10)'}`, cursor:'pointer', fontSize:12, fontWeight:600, color: sel ? '#fff' : 'rgba(255,255,255,0.75)', display:'inline-flex', alignItems:'center', gap:5 }}>
+                              {sel && <Check size={11} strokeWidth={2.5} />}
                               {sub.name}
                             </button>
                           )
@@ -4204,11 +4307,18 @@ function CommerceView({ commerce:c, setView, user, onLoginRequired, onCommerceUp
                   })()}
                   {activeFamId === 'otro' && (
                     <div style={{ paddingTop:6, borderTop:'1px solid rgba(255,255,255,0.08)' }}>
-                      <label style={{ fontSize:11, color:C.dust, display:'block', marginBottom:6 }}>Describí tu rubro</label>
-                      <input type="text" maxLength={40} value={cur.customCategory || ''}
-                        onChange={e => setEditValue({ category:'__otro__', customCategory: e.target.value, _famId:'otro' })}
-                        placeholder="Ej: Kinesiólogo, Fotocopias..."
-                        style={{ width:'100%', padding:'10px 12px', background:'rgba(255,255,255,0.06)', border:'1px solid rgba(255,255,255,0.14)', borderRadius:10, color:C.white, fontSize:14, fontFamily:'inherit', boxSizing:'border-box' }} />
+                      <label style={{ fontSize:11, color:C.dust, display:'block', marginBottom:6 }}>Describí tu rubro y tocá agregar</label>
+                      <div style={{ display:'flex', gap:8 }}>
+                        <input type="text" maxLength={40} value={cur.customCategory || ''}
+                          onChange={e => setEditValue({ ...cur, customCategory: e.target.value, _famId:'otro' })}
+                          onKeyDown={e => { if (e.key === 'Enter') { e.preventDefault(); addOtroCat(cur.customCategory) } }}
+                          placeholder="Ej: Kinesiólogo, Fotocopias..."
+                          style={{ flex:1, padding:'10px 12px', background:'rgba(255,255,255,0.06)', border:'1px solid rgba(255,255,255,0.14)', borderRadius:10, color:C.white, fontSize:14, fontFamily:'inherit', boxSizing:'border-box' }} />
+                        <button onClick={() => addOtroCat(cur.customCategory)} disabled={!cur.customCategory?.trim()}
+                          style={{ padding:'10px 14px', background: cur.customCategory?.trim() ? G : 'rgba(255,255,255,0.06)', border:'none', borderRadius:10, color:'#fff', fontFamily:FN, fontSize:12, fontWeight:700, cursor: cur.customCategory?.trim() ? 'pointer' : 'default', flexShrink:0 }}>
+                          Agregar
+                        </button>
+                      </div>
                     </div>
                   )}
                 </div>
@@ -5002,64 +5112,91 @@ function FilterPills({ pills, selected, onSelect, label, size }) {
     if (e.key === 'ArrowLeft')  { e.preventDefault(); btns[(idx - 1 + btns.length) % btns.length]?.focus() }
   }
 
+  // Wrapper externo: ancho máximo igual al contenedor padre, clip + scroll
+  // horizontal forzado. Inner: width:max-content + flex-wrap:nowrap garantiza
+  // que los pills NO se distribuyan en varias filas — siempre una sola línea
+  // con scroll horizontal. Antes algunos navegadores (Safari iOS especialmente)
+  // permitían wrap en ciertos contextos cuando el padre era flex column.
   return (
-    <div
-      role="radiogroup"
-      aria-label={label}
-      ref={rowRef}
-      onKeyDown={handleKeyDown}
-      style={{ display:'flex', gap:6, overflowX:'auto', scrollbarWidth:'none', WebkitOverflowScrolling:'touch', paddingBottom:2, opacity: isLarge ? 1 : 0.82 }}
-    >
-      {pills.map(p => {
-        const active = p === selected
-        const text   = p !== 'Todos' && p.length > 20 ? p.slice(0, 19) + '…' : p
-        return (
-          <div
-            key={p}
-            role="radio"
-            aria-checked={active}
-            tabIndex={0}
-            onClick={() => onSelect(p)}
-            onKeyDown={e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); onSelect(p) } }}
-            style={{
-              flexShrink:   0,
-              padding:      isLarge ? '8px 14px' : '6px 12px',
-              borderRadius: isLarge ? 18 : 16,
-              fontSize:     isLarge ? 13 : 11,
-              fontFamily:   FN,
-              fontWeight:   active ? 700 : 500,
-              // Activo: outline + relleno fucsia tenue. Inactivo: outline gris
-              // sin relleno (mismo formato pero más sutil).
-              color:        active ? '#EC4899' : 'rgba(255,255,255,0.50)',
-              background:   active ? 'rgba(236,72,153,0.10)' : 'transparent',
-              border:       `1.5px solid ${active ? '#EC4899' : 'rgba(255,255,255,0.30)'}`,
-              cursor:       'pointer',
-              transition:   'all 150ms ease',
-              whiteSpace:   'nowrap',
-              lineHeight:   1,
-              display:      'inline-flex',
-              alignItems:   'center',
-              gap:          6,
-            }}
-          >
-            {text}
-            {/* ✕ solo en tags activos que NO sean "Todos". Click → vuelve a "Todos". */}
-            {active && p !== 'Todos' && (
-              <span
-                role="button"
-                aria-label="Quitar filtro"
-                onClick={e => { e.stopPropagation(); onSelect('Todos') }}
-                style={{
-                  display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
-                  width: isLarge ? 16 : 14, height: isLarge ? 16 : 14, borderRadius: '50%',
-                  background: 'rgba(236,72,153,0.20)', color: '#EC4899',
-                  fontSize: isLarge ? 11 : 9, fontWeight: 800, cursor: 'pointer', lineHeight: 1,
-                }}
-              >×</span>
-            )}
-          </div>
-        )
-      })}
+    <div style={{
+      width: '100%',
+      maxWidth: '100%',
+      overflowX: 'auto',
+      overflowY: 'hidden',
+      scrollbarWidth: 'none',
+      msOverflowStyle: 'none',
+      WebkitOverflowScrolling: 'touch',
+      // Scroll snap suave para que al deslizar quede algún chip alineado.
+      scrollSnapType: 'x proximity',
+    }}>
+      <div
+        role="radiogroup"
+        aria-label={label}
+        ref={rowRef}
+        onKeyDown={handleKeyDown}
+        style={{
+          display: 'flex',
+          flexWrap: 'nowrap',
+          gap: 6,
+          width: 'max-content',
+          minWidth: '100%',
+          paddingBottom: 4,
+          paddingRight: 4,
+          opacity: isLarge ? 1 : 0.82,
+        }}
+      >
+        {pills.map(p => {
+          const active = p === selected
+          const text   = p !== 'Todos' && p.length > 20 ? p.slice(0, 19) + '…' : p
+          return (
+            <div
+              key={p}
+              role="radio"
+              aria-checked={active}
+              tabIndex={0}
+              onClick={() => onSelect(p)}
+              onKeyDown={e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); onSelect(p) } }}
+              style={{
+                flexShrink:   0,
+                scrollSnapAlign: 'start',
+                padding:      isLarge ? '8px 14px' : '6px 12px',
+                borderRadius: isLarge ? 18 : 16,
+                fontSize:     isLarge ? 13 : 11,
+                fontFamily:   FN,
+                fontWeight:   active ? 700 : 500,
+                // Activo: outline + relleno fucsia tenue. Inactivo: outline gris
+                // sin relleno (mismo formato pero más sutil).
+                color:        active ? '#EC4899' : 'rgba(255,255,255,0.50)',
+                background:   active ? 'rgba(236,72,153,0.10)' : 'transparent',
+                border:       `1.5px solid ${active ? '#EC4899' : 'rgba(255,255,255,0.30)'}`,
+                cursor:       'pointer',
+                transition:   'all 150ms ease',
+                whiteSpace:   'nowrap',
+                lineHeight:   1,
+                display:      'inline-flex',
+                alignItems:   'center',
+                gap:          6,
+              }}
+            >
+              {text}
+              {/* ✕ solo en tags activos que NO sean "Todos". Click → vuelve a "Todos". */}
+              {active && p !== 'Todos' && (
+                <span
+                  role="button"
+                  aria-label="Quitar filtro"
+                  onClick={e => { e.stopPropagation(); onSelect('Todos') }}
+                  style={{
+                    display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
+                    width: isLarge ? 16 : 14, height: isLarge ? 16 : 14, borderRadius: '50%',
+                    background: 'rgba(236,72,153,0.20)', color: '#EC4899',
+                    fontSize: isLarge ? 11 : 9, fontWeight: 800, cursor: 'pointer', lineHeight: 1,
+                  }}
+                >×</span>
+              )}
+            </div>
+          )
+        })}
+      </div>
     </div>
   )
 }
@@ -5208,10 +5345,18 @@ function ClientView({ setView, user, profile, onLogout }) {
   const displayVisits      = isMockClient ? mockVisits      : visits
   const totalVisits        = displayVisits.length
 
-  // Filter pill data — derived from real (or mock) memberships
+  // Filter pill data — derived from real (or mock) memberships.
+  // Para categorías leemos `categories` (array, nuevo) con fallback a
+  // `category` (string, legacy). Un comercio con 3 categorías hace que las
+  // 3 aparezcan en los pills de filtro y que cualquiera lo matchee.
   const _baseForFilters = displayMemberships
   const _allCities   = _baseForFilters.map(m => m.commerce?.city_name).filter(Boolean)
-  const _allCats     = _baseForFilters.map(m => m.commerce?.category).filter(Boolean)
+  const _allCats     = _baseForFilters.flatMap(m => {
+    const arr = Array.isArray(m.commerce?.categories) && m.commerce.categories.length > 0
+      ? m.commerce.categories
+      : (m.commerce?.category ? [m.commerce.category] : [])
+    return arr
+  }).filter(Boolean)
   const _cityFreq    = {}; _allCities.forEach(c => { _cityFreq[c]  = (_cityFreq[c]  || 0) + 1 })
   const _catFreq     = {}; _allCats.forEach(c   => { _catFreq[c]   = (_catFreq[c]   || 0) + 1 })
   const _uniqueCities = [...new Set(_allCities)].sort((a,b) => (_cityFreq[b]||0) - (_cityFreq[a]||0))
@@ -5224,10 +5369,14 @@ function ClientView({ setView, user, profile, onLogout }) {
   const safeCategory= categoryPills && categoryPills.includes(filterCategory) ? filterCategory : 'Todos'
   const filtersActive = safeCity !== 'Todos' || safeCategory !== 'Todos'
 
-  // Filtered clubs for the wallet
+  // Filtered clubs for the wallet — el match de categoría busca en el array
+  // completo (un comercio matchea si CUALQUIERA de sus categorías coincide).
   const filteredMemberships = displayMemberships.filter(m => {
     const cityOk = safeCity === 'Todos' || m.commerce?.city_name === safeCity
-    const catOk  = safeCategory === 'Todos' || m.commerce?.category === safeCategory
+    const cats = Array.isArray(m.commerce?.categories) && m.commerce.categories.length > 0
+      ? m.commerce.categories
+      : (m.commerce?.category ? [m.commerce.category] : [])
+    const catOk  = safeCategory === 'Todos' || cats.includes(safeCategory)
     return cityOk && catOk
   })
 
@@ -6938,8 +7087,16 @@ function OnboardingView({ commerce, onComplete }) {
     onComplete()
   }
 
-  // ── WRAPPERS ──
-  const Wrap = ({ children }) => (
+  // ── WRAPPER ──
+  // BUG FIX: antes esto era `const Wrap = ({ children }) => (...)` y al
+  // estar declarado dentro de OnboardingView, React lo veía como un
+  // componente NUEVO en cada render (la referencia cambia). Eso provocaba
+  // que el árbol se desmontara y se remontara con cada cambio de state,
+  // haciendo que los inputs "se traben" (perdieran foco después de cada
+  // keystroke). Lo convertimos en una función helper que devuelve JSX
+  // directamente — React solo ve los nodos hijos, no un componente nuevo,
+  // y los inputs mantienen su identidad entre renders.
+  const wrap = (children) => (
     <div style={{ minHeight:'100vh', background:C.bg, display:'flex', flexDirection:'column', alignItems:'center', justifyContent:'flex-start', padding:'0 20px 60px' }}>
       {upgradeModal && (
         <UpgradeModal
@@ -6969,7 +7126,7 @@ function OnboardingView({ commerce, onComplete }) {
 
   // ── STEP 1: BIENVENIDA ──
   if (step === 1) return (
-    <Wrap>
+    wrap(<>
       <div style={{ textAlign:'center', paddingTop:20 }}>
         {commerce.emoji
           ? <div style={{ fontSize:56, marginBottom:20 }}>{commerce.emoji}</div>
@@ -7005,7 +7162,7 @@ function OnboardingView({ commerce, onComplete }) {
           Ya conozco el sistema, ir al panel
         </button>
       </div>
-    </Wrap>
+    </>)
   )
 
   // Cropper toma toda la pantalla mientras se edita
@@ -7013,7 +7170,7 @@ function OnboardingView({ commerce, onComplete }) {
 
   // ── STEP 2: LOGO DEL NEGOCIO ──
   if (step === 2) return (
-    <Wrap>
+    wrap(<>
       <div style={{ fontFamily:FN, fontSize:22, fontWeight:900, color:C.white, marginBottom:6 }}>La cara de tu negocio</div>
       <div style={{ fontSize:13, color:C.mist, marginBottom:28, lineHeight:1.6 }}>
         Tu logo aparece en las tarjetas de fidelización y en el directorio. Podés agregarlo ahora o después.
@@ -7046,12 +7203,12 @@ function OnboardingView({ commerce, onComplete }) {
       <GBtn onClick={next} disabled={uploadingLogo} style={{ width:'100%', justifyContent:'center', fontSize:14, padding:'13px' }}>
         {logoUrl ? 'Continuar →' : 'Continuar sin logo →'}
       </GBtn>
-    </Wrap>
+    </>)
   )
 
   // ── STEP 3: SISTEMA DE FIDELIZACIÓN ──
   if (step === 3) return (
-    <Wrap>
+    wrap(<>
       <div style={{ fontFamily:FN, fontSize:22, fontWeight:900, color:C.white, marginBottom:6 }}>¿Cómo recompensás a tus clientes?</div>
       <div style={{ fontSize:13, color:C.mist, marginBottom:28, lineHeight:1.6 }}>Podés cambiarlo después. Te recomendamos empezar con estrellas.</div>
       <div style={{ display:'flex', flexDirection:'column', gap:12, marginBottom:32 }}>
@@ -7076,12 +7233,12 @@ function OnboardingView({ commerce, onComplete }) {
       <GBtn onClick={saveSystem} disabled={saving} style={{ width:'100%', justifyContent:'center', fontSize:14, padding:'13px' }}>
         {saving ? '⟳ Guardando...' : 'Continuar →'}
       </GBtn>
-    </Wrap>
+    </>)
   )
 
   // ── STEP 4: PRIMER PREMIO ──
   if (step === 4) return (
-    <Wrap>
+    wrap(<>
       <div style={{ fontFamily:FN, fontSize:22, fontWeight:900, color:C.white, marginBottom:6 }}>Creá tu primera recompensa</div>
       <div style={{ fontSize:13, color:C.mist, marginBottom:24, lineHeight:1.6 }}>
         Esta es la recompensa que recibe el cliente al acumular {prize.cost || '?'} {unitLabel}. Ya dejamos todo listo para que sólo confirmes.
@@ -7108,12 +7265,12 @@ function OnboardingView({ commerce, onComplete }) {
       <GBtn onClick={savePrize} disabled={saving||!prize.name||!prize.cost} style={{ width:'100%', justifyContent:'center', fontSize:14, padding:'13px' }}>
         {saving ? 'Creando...' : 'Crear recompensa →'}
       </GBtn>
-    </Wrap>
+    </>)
   )
 
   // ── STEP 5: EXPLICACIÓN QR ──
   if (step === 5) return (
-    <Wrap>
+    wrap(<>
       <div style={{ fontFamily:FN, fontSize:22, fontWeight:900, color:C.white, marginBottom:6 }}>¿Cómo funciona el escaneo?</div>
       <div style={{ fontSize:13, color:C.mist, marginBottom:28, lineHeight:1.6 }}>
         Cada cliente tiene un QR único en su celular. Vos lo escaneás en caja y el sistema hace todo automáticamente.
@@ -7136,12 +7293,12 @@ function OnboardingView({ commerce, onComplete }) {
       <GBtn onClick={next} style={{ width:'100%', justifyContent:'center', fontSize:14, padding:'13px' }}>
         Simular un escaneo →
       </GBtn>
-    </Wrap>
+    </>)
   )
 
   // ── STEP 6: SIMULACIÓN ──
   if (step === 6) return (
-    <Wrap>
+    wrap(<>
       <div style={{ fontFamily:FN, fontSize:22, fontWeight:900, color:C.white, marginBottom:6 }}>Simulá un escaneo real</div>
       <div style={{ fontSize:13, color:C.mist, marginBottom:28, lineHeight:1.6 }}>
         Presioná el botón para ver cómo se ve cuando escaneás a un cliente.
@@ -7195,12 +7352,12 @@ function OnboardingView({ commerce, onComplete }) {
           Continuar →
         </GBtn>
       )}
-    </Wrap>
+    </>)
   )
 
   // ── STEP 7: RESULTADO / AHA MOMENT ──
   if (step === 7) return (
-    <Wrap>
+    wrap(<>
       <div style={{ textAlign:'center', marginBottom:28 }}>
         <div style={{ display:'flex', justifyContent:'center', marginBottom:12 }}>
           <div style={{ width:64, height:64, borderRadius:16, background:`${C.v}22`, border:`1px solid ${C.v}44`, display:'flex', alignItems:'center', justifyContent:'center' }}>
@@ -7242,12 +7399,12 @@ function OnboardingView({ commerce, onComplete }) {
       <GBtn onClick={next} style={{ width:'100%', justifyContent:'center', fontSize:14, padding:'13px' }}>
         Ver qué más podés hacer →
       </GBtn>
-    </Wrap>
+    </>)
   )
 
   // ── STEP 8: LÍMITES DEL PLAN ──
   if (step === 8) return (
-    <Wrap>
+    wrap(<>
       <div style={{ fontFamily:FN, fontSize:22, fontWeight:900, color:C.white, marginBottom:6 }}>Tu plan actual</div>
       <div style={{ fontSize:13, color:C.mist, marginBottom:24, lineHeight:1.6 }}>
         Tu negocio está en el plan <strong style={{ color:PLANS.free.color }}>FREE</strong>. Cuando crezcas, podés desbloquear más funciones.
@@ -7279,12 +7436,12 @@ function OnboardingView({ commerce, onComplete }) {
       <GBtn onClick={next} style={{ width:'100%', justifyContent:'center', fontSize:14, padding:'13px' }}>
         Continuar →
       </GBtn>
-    </Wrap>
+    </>)
   )
 
   // ── STEP 9: PROMOCIONES (TRIGGER DE CONVERSIÓN) ──
   if (step === 9) return (
-    <Wrap>
+    wrap(<>
       <div style={{ fontFamily:FN, fontSize:22, fontWeight:900, color:C.white, marginBottom:6 }}>Una función que multiplica visitas</div>
       <div style={{ fontSize:13, color:C.mist, marginBottom:24, lineHeight:1.6 }}>
         Con promociones activas, tus clientes vuelven más seguido. Disponible en STARTER.
@@ -7334,12 +7491,12 @@ function OnboardingView({ commerce, onComplete }) {
         style={{ width:'100%', padding:'11px', background:'transparent', border:`1px solid ${C.rim}`, borderRadius:12, color:C.mist, fontFamily:FN, fontSize:13, fontWeight:600, cursor:'pointer' }}>
         Ahora no, ir al panel →
       </button>
-    </Wrap>
+    </>)
   )
 
   // ── STEP 10: FINAL ──
   if (step === 10) return (
-    <Wrap>
+    wrap(<>
       <div style={{ textAlign:'center', paddingTop:10 }}>
         <div style={{ display:'flex', justifyContent:'center', marginBottom:16 }}>
           <div style={{ width:64, height:64, borderRadius:'50%', background:`${C.ok}22`, border:`2px solid ${C.ok}`, display:'flex', alignItems:'center', justifyContent:'center' }}>
@@ -7374,7 +7531,7 @@ function OnboardingView({ commerce, onComplete }) {
           Desde el panel podés escanear tu primer cliente real con la cámara.
         </div>
       </div>
-    </Wrap>
+    </>)
   )
 
   return null
