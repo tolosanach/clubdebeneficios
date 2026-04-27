@@ -4480,11 +4480,16 @@ function ClientBottomNav({ tab, setTab, profile, setView }) {
   // Nav superior de la vista cliente. Va fijo justo abajo del Navbar global.
   // Solo 3 pestañas porque "Mi Cuenta" y "Mi Negocio" ya tienen su botón
   // dedicado en el Navbar global de arriba.
+  // "Mi QR" ya no es una pestaña del sub-nav — el QR personal se accede
+  // desde el ícono "Escanear" del navbar superior > "Mostrar QR personal".
+  // En su lugar va "Perfil" (antes accedido solo desde el ícono User del
+  // navbar). Así el ícono User del navbar y la pestaña "Perfil" del sub-nav
+  // son dos rutas equivalentes al mismo contenido.
   const TABS = [
     { id: 'mis clubs', label: 'Mi billetera' },
     { id: 'premios',   label: 'Premios'   },
     { id: 'historial', label: 'Historial' },
-    { id: 'mi qr',     label: 'Mi QR'     },
+    { id: 'cuenta',    label: 'Perfil'    },
   ]
 
   return (
@@ -5381,9 +5386,10 @@ function ClientView({ setView, user, profile, onLogout }) {
   // Load account stats when "cuenta" tab is first opened
   useEffect(() => {
     if (tab !== 'cuenta' || acctStats || !user) return
-    fetch('/api/user/profile').then(r => r.json()).then(d => {
-      if (d.ok) setAcctStats(d.profile)
-    })
+    fetch('/api/user/profile')
+      .then(r => r.ok ? r.json() : null)
+      .then(d => { if (d?.ok) setAcctStats(d.profile) })
+      .catch(() => {})  // silencioso — si falla, simplemente no se cargan los stats
   }, [tab, user])
 
   const initials = profile?.name ? profile.name.split(' ').map(w=>w[0]).join('').slice(0,2).toUpperCase() : '??'
@@ -5483,6 +5489,10 @@ function ClientView({ setView, user, profile, onLogout }) {
       details: <>Cada fila te dice cuándo, en qué local y qué pasó (ganaste estrellas/puntos, canjeaste un premio o usaste un descuento).</>,
     },
     'mi qr': {
+      // Pestaña deprecada (ya no aparece en el sub-nav). Se mantiene el
+      // entry por si algún user tiene 'mi qr' guardado en localStorage —
+      // así no falla el render. El QR personal ahora se accede desde el
+      // ícono "Escanear" del navbar > "Mostrar QR personal".
       id:    'client-mi-qr',
       title: 'Tu QR personal',
       body:  'Único e igual para todos los clubes. Mostralo en caja para sumar visita.',
@@ -5490,7 +5500,7 @@ function ClientView({ setView, user, profile, onLogout }) {
     },
     'cuenta': {
       id:    'client-cuenta',
-      title: 'Tu cuenta',
+      title: 'Tu perfil',
       body:  'Tus datos personales, resumen de actividad y opciones de la cuenta.',
       details: <>Cambiá tu nombre, agregá tu teléfono (te reconocen comercios donde tenías saldo precargado), cerrá sesión o eliminá tu cuenta. Más abajo está el botón para volver a ver todos los carteles de ayuda.</>,
     },
@@ -8643,6 +8653,48 @@ function CommerceSettingsView({ user, profile, setView, onLogout, onOwnerProfile
     if (form.category === 'Otro' && !form.customCategory?.trim()) errs.customCategory = 'Ingresá tu rubro personalizado'
     if (form.phone && form.phone.replace(/\D/g,'').length < 10) errs.phone = 'Ingresá al menos 10 dígitos'
     return errs
+  }
+
+  // Eliminar el comercio — acción destructiva. Doble confirmación con
+  // advertencia detallada de qué se va a borrar (clientes, premios,
+  // historial). Después llama al endpoint que hace el cascade delete y
+  // redirige al user a home con reload completo.
+  async function deleteCommerce() {
+    if (!commerce?.id) return
+    const ok = await showConfirm({
+      title: '¿Eliminar tu negocio?',
+      message:
+        'Esta acción NO se puede deshacer. Vamos a borrar para siempre:\n\n' +
+        '• Toda la información del comercio (nombre, foto, dirección, horarios)\n' +
+        '• Tu base de clientes y todas sus visitas registradas\n' +
+        '• Premios cargados y promociones activas\n' +
+        '• Historial completo de canjes y descuentos\n\n' +
+        'Tu cuenta de usuario NO se elimina — vas a poder seguir usando la app como cliente o registrar un negocio nuevo después.',
+      confirmText: 'Sí, eliminar todo',
+      cancelText: 'Cancelar',
+      danger: true,
+    })
+    if (!ok) return
+    try {
+      const res = await fetch('/api/delete-commerce', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ commerce_id: commerce.id }),
+      })
+      const data = await res.json()
+      if (!data.ok) {
+        showToast('error', data.error || 'No se pudo eliminar el negocio')
+        return
+      }
+      showToast('success', 'Tu negocio fue eliminado')
+      // Reload completo para limpiar todo el state — el user queda sin
+      // comercio asociado y la app arranca desde cero como si fuera cliente.
+      if (typeof window !== 'undefined') {
+        window.location.replace('/')
+      }
+    } catch (e) {
+      showToast('error', e?.message || 'Error de red')
+    }
   }
 
   async function saveConfiguracion() {
@@ -12844,6 +12896,37 @@ function CommerceSettingsView({ user, profile, setView, onLogout, onOwnerProfile
               <ConfigAccordion id="horarios" Icon={Clock} label="Horarios de atención">
                 {hoursForm && <HoursEditor value={hoursForm} onChange={v => { setHoursForm(v); setIsDirty(true) }} />}
               </ConfigAccordion>
+
+              {/* Botón "Eliminar mi negocio" — acción destructiva al fondo
+                  de la pestaña Configuración. Visualmente separado de las
+                  cards de configuración (en rojo translúcido) y bien lejos
+                  del botón "Guardar cambios" para evitar clicks accidentales. */}
+              <button
+                onClick={deleteCommerce}
+                style={{
+                  marginTop: 28,
+                  width: '100%',
+                  padding: '14px 16px',
+                  background: 'rgba(248,116,68,0.06)',
+                  border: '1px solid rgba(248,116,68,0.30)',
+                  borderRadius: 12,
+                  color: '#f87444',
+                  fontFamily: FN, fontSize: 13, fontWeight: 700,
+                  cursor: 'pointer',
+                  display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8,
+                  transition: 'background 160ms ease, border-color 160ms ease',
+                }}
+                onMouseEnter={e => {
+                  e.currentTarget.style.background = 'rgba(248,116,68,0.12)'
+                  e.currentTarget.style.borderColor = 'rgba(248,116,68,0.55)'
+                }}
+                onMouseLeave={e => {
+                  e.currentTarget.style.background = 'rgba(248,116,68,0.06)'
+                  e.currentTarget.style.borderColor = 'rgba(248,116,68,0.30)'
+                }}>
+                <Trash2 size={14} strokeWidth={2.2} />
+                Eliminar mi negocio
+              </button>
 
               {/* Sticky save bar */}
               <div style={{ position:'fixed', bottom:0, left: isMobile ? 0 : 210, right:0, zIndex:100, background:'rgba(5,3,15,0.92)', backdropFilter:'blur(20px)', WebkitBackdropFilter:'blur(20px)', borderTop:`1px solid ${C.rim}`, padding:'12px 20px', display:'flex', alignItems:'center', justifyContent:'space-between', gap:12 }}>
