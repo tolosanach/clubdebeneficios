@@ -2021,10 +2021,17 @@ function Navbar({ setView, cityName, user, profile, onLogin, onLogout, currentVi
             <Eye size={16} color={currentView==='commerce' ? '#fff' : 'rgba(255,255,255,0.70)'} strokeWidth={2} />
           </button>
           {/* "Mi Negocio" — solo se enciende con gradient cuando es la vista activa,
-              igual que el resto de los botones del navbar. Consistencia visual. */}
+              igual que el resto de los botones del navbar. Consistencia visual.
+              Cada click (esté o no en commerce-settings) re-dispara el intent
+              picker: el dueño re-tappea el icono cuando arranca un nuevo flow
+              en el local (un nuevo cliente entró, una nueva compra recién
+              arrancó), así que el picker tiene que aparecer cada vez. */}
           <button title="Mi Negocio"
-            onClick={currentView==='commerce-settings' ? undefined : () => setView('commerce-settings')}
-            style={{ ...BTN, ...bs('commerce-settings'), cursor: currentView==='commerce-settings' ? 'default' : 'pointer' }}>
+            onClick={() => {
+              if (currentView !== 'commerce-settings') setView('commerce-settings')
+              window.dispatchEvent(new CustomEvent('benefix:merchant-intent'))
+            }}
+            style={{ ...BTN, ...bs('commerce-settings'), cursor: 'pointer' }}>
             <Store size={16} color={ic('commerce-settings')} strokeWidth={2} />
           </button>
           <button title="Mi cuenta" onClick={() => window.dispatchEvent(new CustomEvent('benefix:navigate', { detail: { view: 'client', tab: 'cuenta' } }))}
@@ -4261,6 +4268,7 @@ function ClientBottomNav({ tab, setTab, profile, setView }) {
     { id: 'mis clubs', label: 'Mis Clubs' },
     { id: 'premios',   label: 'Premios'   },
     { id: 'historial', label: 'Historial' },
+    { id: 'mi qr',     label: 'Mi QR'     },
   ]
 
   return (
@@ -7874,7 +7882,29 @@ function CommerceSettingsView({ user, profile, setView, onLogout, onOwnerProfile
   const [loadingSegments, setLoadingSegments] = useState(true)
   const [configErrors, setConfigErrors]       = useState({})
 
+  // intentPickerActive: pantalla inicial del panel comerciante. Cada vez que
+  // el dueño entra a "Mi Negocio" (sea por primera vez o re-clickeando el
+  // icono del navbar), arranca en true y muestra dos botones grandes:
+  // "Sumar nuevo cliente" (mostrar QR del local) o "Registrar compra"
+  // (escanear QR del cliente). Una vez que elige una opción, queda en false
+  // hasta el próximo click en el icono "Mi Negocio" del navbar.
+  const [intentPickerActive, setIntentPickerActive] = useState(true)
+  // showBusinessQrModal: modal fullscreen con el QR del local. Se abre desde
+  // el intent picker ("Sumar un nuevo cliente al club") y desde otros lugares
+  // del panel. Vive global (fuera de cualquier tab) para que no dependa de
+  // qué pestaña está activa.
+  const [showBusinessQrModal, setShowBusinessQrModal] = useState(false)
+
   const supabase = getSupabase()
+
+  // Listener para el evento "benefix:merchant-intent" — disparado por el
+  // botón "Mi Negocio" del navbar (incluso si ya estás en commerce-settings)
+  // para reabrir el intent picker.
+  useEffect(() => {
+    const onIntent = () => setIntentPickerActive(true)
+    window.addEventListener('benefix:merchant-intent', onIntent)
+    return () => window.removeEventListener('benefix:merchant-intent', onIntent)
+  }, [])
 
   // Restore last tab on mount
   useEffect(() => {
@@ -8707,6 +8737,99 @@ function CommerceSettingsView({ user, profile, setView, onLogout, onOwnerProfile
       <div style={{ fontFamily:FN, fontSize:16, fontWeight:900, color:C.white }}>Solo para dueños de comercio</div>
     </div>
   )
+
+  // ── PANTALLA INICIAL: INTENT PICKER ──────────────────────────────────────
+  // Saludo + dos botones grandes con las dos acciones más comunes que un
+  // dueño hace al entrar al panel: mostrar el QR del local (para que se
+  // sume un nuevo cliente) o escanear el QR de un cliente (después de una
+  // compra para sumarle puntos/estrellas). Cualquier otra cosa (ver clientes,
+  // configurar premios, etc.) sigue accesible una vez que descarta el picker.
+  if (intentPickerActive) {
+    const INTENT_OPTS = [
+      {
+        id: 'show-business-qr',
+        title: 'Sumar un nuevo cliente al club',
+        desc: 'Mostrale el QR de tu negocio para que se una desde su celular en segundos.',
+        Icon: QrCode,
+        // Violeta — la marca del club. El QR del local lleva ese color.
+        bg:         'linear-gradient(135deg, rgba(124,58,237,0.18), rgba(139,92,246,0.10))',
+        border:     'rgba(139,92,246,0.42)',
+        iconBg:     'linear-gradient(135deg, #7C3AED, #A855F7)',
+        shadow:     '0 6px 22px rgba(139,92,246,0.40)',
+        descColor:  'rgba(229,221,255,0.78)',
+        arrowColor: 'rgba(196,181,253,0.85)',
+        onClick: () => {
+          // Cierra el picker y abre el modal grande del QR para que el dueño
+          // pueda mostrárselo a un cliente sin tener que hacer otro tap. El
+          // modal vive global (fuera de cualquier tab), así que no necesitamos
+          // cambiar de pestaña — la del usuario queda intacta.
+          setIntentPickerActive(false)
+          setShowBusinessQrModal(true)
+        },
+      },
+      {
+        id: 'scan-customer',
+        title: 'Registrar la compra de un cliente',
+        desc: 'Escaneá su QR para sumarle visita, estrellas o puntos y aplicar los beneficios configurados.',
+        Icon: ScanLine,
+        // Naranja → violeta — gradiente de marca, refuerza que es la acción primaria.
+        bg:         'linear-gradient(135deg, rgba(254,80,0,0.18), rgba(189,75,248,0.12))',
+        border:     'rgba(189,75,248,0.42)',
+        iconBg:     'linear-gradient(135deg, #FE5000, #BD4BF8)',
+        shadow:     '0 6px 22px rgba(254,80,0,0.36)',
+        descColor:  'rgba(255,228,222,0.78)',
+        arrowColor: 'rgba(252,200,180,0.88)',
+        onClick: () => {
+          // No bajamos el flag: si vuelve atrás del scanner, queremos que
+          // el picker siga ahí. setView('scanner') deja la otra vista activa.
+          setView('scanner')
+        },
+      },
+    ]
+    return (
+      <div style={{ maxWidth:520, margin:'0 auto', padding: isMobile ? '40px 18px 80px' : '52px 28px 80px' }}>
+        <DynamicGreeting name={commerce.name} type="commerce" style={{ marginBottom:6 }} />
+        <div style={{ fontSize:13, color:C.mist, marginBottom:26 }}>¿Qué querés hacer?</div>
+
+        <div style={{ display:'flex', flexDirection:'column', gap:14 }}>
+          {INTENT_OPTS.map(opt => (
+            <button key={opt.id} onClick={opt.onClick}
+              style={{
+                width:'100%', textAlign:'left',
+                padding:'20px 20px',
+                background: opt.bg,
+                border: `1px solid ${opt.border}`,
+                borderRadius:18,
+                cursor:'pointer',
+                display:'flex', alignItems:'center', gap:16,
+                fontFamily:'inherit',
+                transition:'transform 160ms ease, border-color 160ms ease',
+              }}
+              onMouseDown={e => e.currentTarget.style.transform = 'scale(0.98)'}
+              onMouseUp={e => e.currentTarget.style.transform = 'scale(1)'}
+              onMouseLeave={e => e.currentTarget.style.transform = 'scale(1)'}>
+              <div style={{ width:54, height:54, borderRadius:14, background: opt.iconBg, display:'flex', alignItems:'center', justifyContent:'center', flexShrink:0, boxShadow: opt.shadow }}>
+                <opt.Icon size={24} color='#fff' strokeWidth={2.2} />
+              </div>
+              <div style={{ flex:1, minWidth:0 }}>
+                <div style={{ fontFamily:FN, fontSize:15, fontWeight:800, color:'#fff', marginBottom:4 }}>{opt.title}</div>
+                <div style={{ fontSize:12.5, color: opt.descColor, lineHeight:1.5 }}>{opt.desc}</div>
+              </div>
+              <ArrowRight size={20} color={opt.arrowColor} strokeWidth={2.2} style={{ flexShrink:0 }} />
+            </button>
+          ))}
+        </div>
+
+        {/* Salida discreta: si el dueño no quiere ninguna acción rápida,
+            puede saltar al panel completo. La tipografía es chica y opaca
+            para no competir con las dos opciones principales. */}
+        <button onClick={() => setIntentPickerActive(false)}
+          style={{ marginTop:22, background:'transparent', border:'none', color:C.mist, fontSize:11.5, fontFamily:FN, fontWeight:600, cursor:'pointer', opacity:0.7, padding:'4px 0' }}>
+          Saltar al panel →
+        </button>
+      </div>
+    )
+  }
 
   function saveAutoConfigs(next) {
     setAutoConfigs(next)
@@ -12122,6 +12245,41 @@ function CommerceSettingsView({ user, profile, setView, onLogout, onOwnerProfile
 
       </div>
       {cropSrc && <LogoCropper imageSrc={cropSrc} onSave={handleLogoCropSave} onCancel={() => setCropSrc(null)} />}
+
+      {/* ── Modal global: QR del negocio fullscreen ──
+          Se abre desde el intent picker ("Sumar un nuevo cliente") y desde
+          cualquier otro CTA. Vive acá afuera (no nested en un tab) para que
+          se pueda invocar siempre. */}
+      {showBusinessQrModal && (() => {
+        const joinUrl = `${typeof window !== 'undefined' ? window.location.origin : ''}/club/${commerce?.slug || commerce?.id || ''}?from_qr=1`
+        return (
+          <div style={{ position:'fixed', inset:0, zIndex:9999, background:'rgba(0,0,0,0.82)', backdropFilter:'blur(10px)', WebkitBackdropFilter:'blur(10px)', display:'flex', alignItems:'center', justifyContent:'center', padding:20 }}
+            onClick={() => setShowBusinessQrModal(false)}>
+            <div style={{ background:C.card, border:`1px solid ${C.rim}`, borderRadius:24, padding:'28px 24px 24px', maxWidth:380, width:'100%', textAlign:'center', position:'relative' }}
+              onClick={e => e.stopPropagation()}>
+              <button onClick={() => setShowBusinessQrModal(false)}
+                style={{ position:'absolute', top:12, right:12, background:'transparent', border:'none', color:C.mist, cursor:'pointer', padding:6, display:'flex', alignItems:'center', justifyContent:'center' }}>
+                <X size={18} strokeWidth={2.2} />
+              </button>
+              <div style={{ fontFamily:FN, fontSize:10, fontWeight:800, color:C.v, letterSpacing:'.14em', textTransform:'uppercase', marginBottom:6 }}>QR de tu negocio</div>
+              <div style={{ fontFamily:FN, fontSize:20, fontWeight:900, color:C.white, marginBottom:6 }}>{commerce?.name}</div>
+              <div style={{ fontSize:12.5, color:C.mist, marginBottom:22, lineHeight:1.5 }}>
+                Mostralo a un cliente para que se sume al club escaneándolo desde su celular.
+              </div>
+              <div style={{ display:'inline-flex', background:'#ffffff', borderRadius:18, padding:18, marginBottom:14, boxShadow:'0 12px 32px rgba(189,75,248,0.20)' }}>
+                <QRCodeSVG value={joinUrl} size={260} bgColor="#ffffff" fgColor="#000000" level="M" />
+              </div>
+              <div style={{ fontSize:11, color:C.dust, fontFamily:FI, marginBottom:18, wordBreak:'break-all' }}>
+                {joinUrl.replace(/^https?:\/\//,'')}
+              </div>
+              <button onClick={() => setShowBusinessQrModal(false)}
+                style={{ width:'100%', padding:'12px', background:'rgba(255,255,255,0.05)', border:`1px solid ${C.rim}`, borderRadius:12, color:C.pearl, fontFamily:FN, fontSize:13, fontWeight:700, cursor:'pointer' }}>
+                Listo
+              </button>
+            </div>
+          </div>
+        )
+      })()}
     </div>
   )
 }
@@ -12610,7 +12768,7 @@ function ScannerView({ user, profile, setView }) {
         title: 'Registrar visita de cliente',
         desc: 'Escaneá el QR personal de un cliente para sumarle visita o canjear un premio.',
         Icon: ScanLine,
-        // Violeta
+        // Violeta — acción del dueño
         bg:         'linear-gradient(135deg, rgba(124,58,237,0.16), rgba(139,92,246,0.10))',
         border:     'rgba(139,92,246,0.40)',
         iconBg:     'linear-gradient(135deg, #7C3AED, #8B5CF6)',
@@ -12619,11 +12777,24 @@ function ScannerView({ user, profile, setView }) {
         arrowColor: 'rgba(196,181,253,0.85)',
       },
       {
+        id: 'show-my-qr',
+        title: 'Mostrar mi QR',
+        desc: 'Mostrale tu QR personal al comerciante para que te sume visita en su local.',
+        Icon: QrCode,
+        // Naranja — acción del owner como cliente (mostrar)
+        bg:         'linear-gradient(135deg, rgba(254,80,0,0.16), rgba(251,113,133,0.10))',
+        border:     'rgba(251,113,133,0.40)',
+        iconBg:     'linear-gradient(135deg, #FE5000, #FB7185)',
+        shadow:     '0 4px 18px rgba(254,80,0,0.40)',
+        descColor:  'rgba(255,228,222,0.78)',
+        arrowColor: 'rgba(252,165,165,0.85)',
+      },
+      {
         id: 'join-club',
         title: 'Quiero sumarme a un club',
         desc: 'Sumate como cliente a otro comercio escaneando su QR.',
-        Icon: QrCode,
-        // Fucsia
+        Icon: ScanLine,
+        // Fucsia — acción del owner como cliente (escanear)
         bg:         'linear-gradient(135deg, rgba(219,39,119,0.16), rgba(236,72,153,0.10))',
         border:     'rgba(236,72,153,0.40)',
         iconBg:     'linear-gradient(135deg, #DB2777, #EC4899)',
@@ -12739,6 +12910,57 @@ function ScannerView({ user, profile, setView }) {
             </div>
           )}
         </PCard>
+      </div>
+    )
+  }
+
+  // Modo "show-my-qr" — el dueño quiere mostrar su QR personal (BENEFIX PASS)
+  // a OTRO comerciante para que le sume visita en su local. Es la misma lógica
+  // que el cliente: el QR codifica CLUB-{userId} y el otro comercio lo escanea
+  // con su scanner para registrar visita en SU sistema.
+  if (scanMode === 'show-my-qr') {
+    const passQrValue = `CLUB-${user?.id || 'demo'}`
+    const displayName = profile?.full_name || profile?.name || 'Tu cuenta'
+    return (
+      <div style={{ maxWidth:440, margin:'0 auto', padding:'30px 18px 80px' }}>
+        {backToPicker}
+        <div style={{ fontFamily:FN, fontSize:10, color:C.o, fontWeight:800, letterSpacing:'.15em', textTransform:'uppercase', marginBottom:8 }}>✦ Escáner QR</div>
+        <h1 style={{ fontFamily:FN, fontSize:'clamp(22px,4vw,32px)', fontWeight:900, color:C.white, marginBottom:4 }}>Mostrá tu QR</h1>
+        <p style={{ fontSize:13, color:C.mist, marginBottom:22 }}>Mostrale este código al comerciante para que te sume visita en su local.</p>
+
+        <div style={{ display:'flex', justifyContent:'center', marginBottom:18 }}>
+          <div style={{ width:'100%', maxWidth:340, borderRadius:28, overflow:'hidden', boxShadow:'0 24px 64px rgba(189,75,248,0.30), 0 8px 24px rgba(0,0,0,0.50)' }}>
+            <div style={{ background:'linear-gradient(145deg, #7c3aed 0%, #a855f7 45%, #ec4899 100%)', padding:'24px 24px 28px', position:'relative', overflow:'hidden' }}>
+              <div style={{ position:'absolute', top:-32, right:-32, width:120, height:120, borderRadius:'50%', background:'rgba(255,255,255,0.10)', filter:'blur(24px)', pointerEvents:'none' }} />
+              <div style={{ position:'absolute', bottom:-24, left:-16, width:90, height:90, borderRadius:'50%', background:'rgba(236,72,153,0.25)', filter:'blur(20px)', pointerEvents:'none' }} />
+              <div style={{ display:'flex', alignItems:'flex-start', justifyContent:'space-between', marginBottom:24, position:'relative' }}>
+                <div>
+                  <div style={{ fontFamily:FN, fontSize:22, fontWeight:900, color:'#fff', letterSpacing:'-.01em', lineHeight:1 }}>BENEFIX PASS</div>
+                  <div style={{ fontFamily:FI, fontSize:12, color:'rgba(255,255,255,0.65)', marginTop:4 }}>Tu pase de beneficios</div>
+                </div>
+                <div style={{ width:38, height:38, borderRadius:12, background:'rgba(255,255,255,0.18)', display:'flex', alignItems:'center', justifyContent:'center', border:'1px solid rgba(255,255,255,0.25)' }}>
+                  <QrCode size={18} color="white" strokeWidth={2} />
+                </div>
+              </div>
+              <div style={{ display:'flex', justifyContent:'center', position:'relative' }}>
+                <div style={{ background:'#fff', borderRadius:14, padding:14 }}>
+                  <QRCodeSVG value={passQrValue} size={200} bgColor="#ffffff" fgColor="#000000" level="M" />
+                </div>
+              </div>
+              <div style={{ textAlign:'center', marginTop:22, position:'relative' }}>
+                <div style={{ fontFamily:FN, fontSize:17, fontWeight:800, color:'#fff', letterSpacing:'-.01em' }}>{displayName}</div>
+                <div style={{ fontFamily:'monospace', fontSize:10, color:'rgba(255,255,255,0.50)', marginTop:5, letterSpacing:'.12em', textTransform:'uppercase' }}>
+                  CLUB · {(user?.id || '').slice(0,8).toUpperCase()}
+                </div>
+              </div>
+            </div>
+            <div style={{ background:'linear-gradient(to bottom right, #4c1d95, #3b0764)', padding:'14px 24px 16px', textAlign:'center' }}>
+              <div style={{ fontFamily:FI, fontSize:11, color:'rgba(255,255,255,0.55)', letterSpacing:'.04em' }}>
+                Mostrá este código en caja para acumular beneficios
+              </div>
+            </div>
+          </div>
+        </div>
       </div>
     )
   }
