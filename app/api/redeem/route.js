@@ -3,6 +3,7 @@
 
 import { NextResponse } from 'next/server'
 import { createClient } from '@supabase/supabase-js'
+import { notifyBoth } from '../../../lib/notify-server'
 
 const supabaseAdmin = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL,
@@ -37,7 +38,7 @@ export async function POST(request) {
 
     // Tipo de programa del comercio (para saber qué columna debitar)
     const { data: commerce } = await supabaseAdmin
-      .from('commerces').select('prog_type').eq('id', commerce_id).single()
+      .from('commerces').select('prog_type, owner_id, name, slug').eq('id', commerce_id).single()
 
     const isStars    = commerce?.prog_type === 'stars'
     const balanceCol = isStars ? 'stars' : 'points'
@@ -79,6 +80,38 @@ export async function POST(request) {
       await supabaseAdmin.from('prizes')
         .update({ stock: newStock, ...(stockDepleted ? { active: false } : {}) })
         .eq('id', prize_id)
+    }
+
+    // ─── NOTIFICACIONES ──────────────────────────────────────────────────
+    // Aviso al cliente y al dueño del comercio sobre el canje del premio.
+    try {
+      const { data: clientProfile } = await supabaseAdmin
+        .from('profiles').select('full_name').eq('id', user_id).single()
+      const clientFirstName = (clientProfile?.full_name || 'Cliente').split(' ')[0]
+      const commerceName = commerce?.name || 'el negocio'
+      const isStars = commerce?.prog_type === 'stars'
+      const unitTxt = isStars ? `${prize.cost} estrellas` : `${prize.cost} puntos`
+      const clubLink = commerce?.slug ? `/club/${commerce.slug}` : '/'
+      await notifyBoth({
+        clientUserId: user_id,
+        ownerUserId:  commerce?.owner_id,
+        client: {
+          type:  'prize_redeem',
+          title: `Canjeaste "${prize.name}" en ${commerceName}`,
+          body:  `Gastaste ${unitTxt}. Saldo restante: ${newBalance}.`,
+          link:  clubLink,
+          metadata: { commerce_id, kind: 'prize_redeem', prize_id },
+        },
+        owner: {
+          type:  'prize_redeem',
+          title: `${clientFirstName} canjeó "${prize.name}"`,
+          body:  `Le descontaste ${unitTxt}.`,
+          link:  '/',
+          metadata: { commerce_id, user_id, kind: 'prize_redeem', prize_id },
+        },
+      })
+    } catch (e) {
+      console.error('[redeem] error enviando notificaciones:', e)
     }
 
     return NextResponse.json({

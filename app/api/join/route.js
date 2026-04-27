@@ -3,6 +3,7 @@ import { NextResponse } from 'next/server'
 import { createClient } from '@supabase/supabase-js'
 import { createSupabaseServer } from '../../../lib/supabase-server'
 import { applyPendingGrant } from '../../../lib/applyPendingGrant'
+import { notifyBoth } from '../../../lib/notify-server'
 
 const supabaseAdmin = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL,
@@ -22,7 +23,7 @@ export async function POST(request) {
     // Verificar que el comercio existe
     const { data: commerce } = await supabaseAdmin
       .from('commerces')
-      .select('id, name, plan')
+      .select('id, name, plan, owner_id, slug')
       .eq('id', commerce_id)
       .eq('active', true)
       .single()
@@ -86,6 +87,35 @@ export async function POST(request) {
         // No bloquear el join si falla el grant; loggear y seguir.
         console.error('applyPendingGrant failed:', e)
       }
+    }
+
+    // ─── NOTIFICACIONES ──────────────────────────────────────────────────
+    // Cliente nuevo se unió al club: aviso a ambas partes.
+    try {
+      const { data: clientProfile } = await supabaseAdmin
+        .from('profiles').select('full_name').eq('id', user.id).single()
+      const clientFirstName = (clientProfile?.full_name || 'Un nuevo cliente').split(' ')[0]
+      const clubLink = commerce.slug ? `/club/${commerce.slug}` : '/'
+      await notifyBoth({
+        clientUserId: user.id,
+        ownerUserId:  commerce.owner_id,
+        client: {
+          type:  'join',
+          title: `¡Te uniste al club de ${commerce.name}!`,
+          body:  'Ya podés sumar visitas y canjear premios.',
+          link:  clubLink,
+          metadata: { commerce_id, kind: 'join' },
+        },
+        owner: {
+          type:  'join',
+          title: `${clientFirstName} se sumó a tu club`,
+          body:  'Acabás de tener un nuevo cliente.',
+          link:  '/',
+          metadata: { commerce_id, user_id: user.id, kind: 'join' },
+        },
+      })
+    } catch (e) {
+      console.error('[join] error enviando notificaciones:', e)
     }
 
     return NextResponse.json({

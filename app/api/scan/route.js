@@ -5,6 +5,7 @@ import { NextResponse } from 'next/server'
 import { createClient } from '@supabase/supabase-js'
 import { createSupabaseServer } from '../../../lib/supabase-server'
 import { applyPendingGrant } from '../../../lib/applyPendingGrant'
+import { notifyBoth } from '../../../lib/notify-server'
 
 const supabaseAdmin = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL,
@@ -45,7 +46,7 @@ export async function POST(request) {
     // Obtener configuración del comercio (incluye owner_id para validar autoría).
     const { data: commerce, error: commerceError } = await supabaseAdmin
       .from('commerces')
-      .select('prog_type, prog_pts, prog_goal, plan, owner_id, prog_min_purchase')
+      .select('prog_type, prog_pts, prog_goal, plan, owner_id, prog_min_purchase, name, slug')
       .eq('id', commerce_id)
       .single()
 
@@ -195,7 +196,7 @@ export async function POST(request) {
     if (membership?.id) {
       const { data: existingCoupons } = await supabaseAdmin
         .from('client_promotions')
-        .select('id, promotion_id, expires_at, status, granted_at, promotions:promotions(id, type, expires_at)')
+        .select('id, promotion_id, expires_at, status, granted_at, promotions:promotions(id, type, value, expires_at)')
         .eq('membership_id', membership.id)
         .eq('status', 'active')
       const activeDiscount = (existingCoupons || []).find(cp =>
@@ -210,12 +211,53 @@ export async function POST(request) {
           promo_id:   activeDiscount.promotion_id,
           expires_at: activeDiscount.expires_at,
         }
+
+        // Registrar el canje de descuento en `redemptions` para que aparezca
+        // junto a los canjes de premios en el historial. kind='discount' lo
+        // distingue del kind='prize' del catálogo.
+        try {
+          // Buscar el value (% off) de la promo para guardarlo en discount_value.
+          const promoValue = activeDiscount.promotions?.value
+            ?? validPromos.find(p => p.id === activeDiscount.promotion_id)?.value
+            ?? null
+          await supabaseAdmin.from('redemptions').insert({
+            user_id,
+            commerce_id,
+            membership_id:  membership.id,
+            kind:           'discount',
+            promotion_id:   activeDiscount.promotion_id,
+            discount_value: promoValue,
+            points_spent:   0,
+          })
+        } catch (e) {
+          console.error('Error registrando canje de descuento:', e)
+        }
       }
     }
 
-    // Otorgar promos de descuento activas al cliente (si no las tiene ya)
+    // Otorgar promos de descuento activas al cliente (si NO las tiene ya y
+    // si NO acaba de canjear esa misma promo en esta visita).
+    //
+    // BUG FIX (decisión del dueño): antes el backend re-otorgaba el cupón
+    // discount_next inmediatamente después de marcarlo como `used`. Con eso,
+    // si el cashier después decía "No renovar" en el modal del frontend,
+    // ya era tarde — el cliente conservaba el cupón. Ahora la renovación
+    // queda 100% en manos del frontend (renewDiscountForCustomer), que solo
+    // se dispara si el dueño confirma "Sí" en el modal.
+    //
+    // Importante: clientes NUEVOS (sin cupón previo) sí reciben el cupón
+    // automáticamente, porque la promo es la "recompensa" que el comercio
+    // ofrece por venir. Solo se omite la renovación de la promo que el
+    // cliente acaba de canjear en este mismo scan.
+    const justRedeemedPromoIds = new Set()
+    if (discountRedeemed?.promo_id) justRedeemedPromoIds.add(discountRedeemed.promo_id)
+
     const discountPromos = validPromos.filter(p => p.type === 'discount_next')
     for (const promo of discountPromos) {
+      // No re-otorgar la promo que el cliente acaba de canjear en esta visita.
+      // El dueño decide si renovarla o no via el modal del frontend.
+      if (justRedeemedPromoIds.has(promo.id)) continue
+
       const { data: existing } = await supabaseAdmin
         .from('client_promotions')
         .select('id')
@@ -254,6 +296,75 @@ export async function POST(request) {
       .order('cost', { ascending: true })
       .limit(1)
       .single()
+
+    // ─── NOTIFICACIONES ─────────────────────────────────────────────────────
+    // Mandamos siempre 2 notifs cruzadas: una al cliente y una al dueño.
+    // Cliente: "sumaste X en Y", Dueño: "registraste visita de Z".
+    // Si además se canjeó un descuento, notificamos eso también.
+    try {
+      const commerceName = commerce.name || 'el negocio'
+      const clientFirstName = (profile.full_name || 'Cliente').split(' ')[0]
+      const clubLink = commerce.slug ? `/club/${commerce.slug}` : '/'
+      const isStars = commerce.prog_type === 'stars'
+      const unitLabel = isStars ? 'estrella' : 'punto'
+      const earned = isStars ? (skip_star ? 0 : 1) : ptsPerVisit
+
+      // Visita registrada (no notificamos si skip_star y no hay descuento — el evento es invisible)
+      if (earned > 0 || discountRedeemed) {
+        const earnedTxt = earned > 0
+          ? `Sumaste ${earned} ${unitLabel}${earned !== 1 ? (isStars ? 's' : 's') : ''}`
+          : 'Tu visita quedó registrada'
+        await notifyBoth({
+          clientUserId: user_id,
+          ownerUserId:  commerce.owner_id,
+          client: {
+            type:  'visit',
+            title: `${earnedTxt} en ${commerceName}`,
+            body:  isStars
+              ? `Llevás ${newTotal} estrella${newTotal !== 1 ? 's' : ''} en este club.`
+              : `Tu saldo: ${newTotal} puntos.`,
+            link:  clubLink,
+            metadata: { commerce_id, kind: 'visit' },
+          },
+          owner: {
+            type:  'visit',
+            title: `Registraste una visita de ${clientFirstName}`,
+            body:  isStars
+              ? `Le sumaste ${earned > 0 ? '1 estrella' : '0 estrellas'} (lleva ${newTotal} en total).`
+              : `Le sumaste ${ptsPerVisit} puntos (saldo: ${newTotal}).`,
+            link:  '/',
+            metadata: { commerce_id, user_id, kind: 'visit' },
+          },
+        })
+      }
+
+      // Canje de descuento (si aplicó uno en esta visita)
+      if (discountRedeemed) {
+        const promo = (validPromos || []).find(p => p.id === discountRedeemed.promo_id)
+        const value = promo?.value
+        const valueTxt = value ? `${value}% OFF` : 'tu descuento'
+        await notifyBoth({
+          clientUserId: user_id,
+          ownerUserId:  commerce.owner_id,
+          client: {
+            type:  'discount_redeem',
+            title: `Aplicaste ${valueTxt} en ${commerceName}`,
+            body:  '¡Aprovechaste tu cupón de descuento de próxima compra!',
+            link:  clubLink,
+            metadata: { commerce_id, kind: 'discount_redeem', promotion_id: discountRedeemed.promo_id },
+          },
+          owner: {
+            type:  'discount_redeem',
+            title: `${clientFirstName} usó su descuento`,
+            body:  `Le aplicaste ${valueTxt}. Si querés renovárselo, hacelo desde el escaneo.`,
+            link:  '/',
+            metadata: { commerce_id, user_id, kind: 'discount_redeem', promotion_id: discountRedeemed.promo_id },
+          },
+        })
+      }
+    } catch (e) {
+      console.error('[scan] error enviando notificaciones:', e)
+    }
 
     return NextResponse.json({
       ok:            true,

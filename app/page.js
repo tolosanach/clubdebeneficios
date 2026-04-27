@@ -11,6 +11,8 @@ import { FAMILIES_DATA } from '../lib/commerce-families-data'
 import PhoneInput from '../lib/PhoneInput'
 import SupportChat from '../lib/SupportChat'
 import SuggestionsInbox from '../lib/SuggestionsInbox'
+import NotificationsBell from '../lib/NotificationsBell'
+import EnablePushPrompt from '../lib/EnablePushPrompt'
 import InfoHint from '../lib/InfoHint'
 import JsQrScanner from '../lib/JsQrScanner'
 import { QRCodeSVG } from 'qrcode.react'
@@ -32,7 +34,7 @@ import {
   Shirt, Footprints, Sofa,
   WashingMachine, Wrench,
   GraduationCap, Languages, Music, MoreHorizontal, Wallet,
-  MessageCircle, ArrowUpDown,
+  MessageCircle, ArrowUpDown, Percent,
 } from 'lucide-react'
 
 const MENU_ICONS = {
@@ -8015,7 +8017,7 @@ function CommerceSettingsView({ user, profile, setView, onLogout, onOwnerProfile
       setDashStats({ monthVisits:(mv||[]).length, activeThisWeek: new Set((wv||[]).map(v=>v.user_id)).size })
     })
     supabase.from('redemptions')
-      .select('id, created_at, points_spent, prize:prizes(name), user:profiles(name, full_name)')
+      .select('id, created_at, points_spent, kind, discount_value, prize:prizes(name), promotion:promotions(value, description), user:profiles(name, full_name)')
       .eq('commerce_id', commerce.id)
       .order('created_at', { ascending:false })
       .limit(5)
@@ -9545,27 +9547,42 @@ function CommerceSettingsView({ user, profile, setView, onLogout, onOwnerProfile
                   </div>
                   <button onClick={() => setTab('historial')} style={{ background:'transparent', border:'none', color:C.v, fontSize:11, cursor:'pointer', fontWeight:600 }}>Ver todos →</button>
                 </div>
-                {recentCanjes.map(r => (
-                  <div key={r.id} style={{ display:'flex', alignItems:'center', justifyContent:'space-between', padding:'7px 0', borderBottom:`1px solid ${C.rim}` }}>
-                    <div style={{ display:'flex', alignItems:'center', gap:8, minWidth:0 }}>
-                      <div style={{ width:28, height:28, borderRadius:8, background:`${C.ok}18`, border:`1px solid ${C.ok}33`, display:'flex', alignItems:'center', justifyContent:'center', flexShrink:0 }}>
-                        <Gift size={13} color={C.ok} strokeWidth={2} />
-                      </div>
-                      <div style={{ minWidth:0 }}>
-                        <div style={{ fontSize:12, color:C.pearl, fontWeight:600, overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>
-                          {r.user?.name || r.user?.full_name || 'Cliente'}
+                {recentCanjes.map(r => {
+                  // kind='discount' → cliente usó un cupón discount_next.
+                  // kind='prize' (default) → canje del catálogo de premios.
+                  const isDiscount = r.kind === 'discount'
+                  const discountVal = r.discount_value ?? r.promotion?.value
+                  const itemLabel = isDiscount
+                    ? `Descuento ${discountVal ? discountVal + '% OFF' : 'aplicado'}`
+                    : (r.prize?.name || '–')
+                  const Icon = isDiscount ? Percent : Gift
+                  const tagColor = isDiscount ? C.o : C.ok
+                  return (
+                    <div key={r.id} style={{ display:'flex', alignItems:'center', justifyContent:'space-between', padding:'7px 0', borderBottom:`1px solid ${C.rim}` }}>
+                      <div style={{ display:'flex', alignItems:'center', gap:8, minWidth:0 }}>
+                        <div style={{ width:28, height:28, borderRadius:8, background:`${tagColor}18`, border:`1px solid ${tagColor}33`, display:'flex', alignItems:'center', justifyContent:'center', flexShrink:0 }}>
+                          <Icon size={13} color={tagColor} strokeWidth={2} />
                         </div>
-                        <div style={{ fontSize:10, color:C.dust }}>{r.prize?.name || '–'}</div>
+                        <div style={{ minWidth:0 }}>
+                          <div style={{ fontSize:12, color:C.pearl, fontWeight:600, overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>
+                            {r.user?.name || r.user?.full_name || 'Cliente'}
+                          </div>
+                          <div style={{ fontSize:10, color:C.dust }}>{itemLabel}</div>
+                        </div>
+                      </div>
+                      <div style={{ textAlign:'right', flexShrink:0, marginLeft:8 }}>
+                        {isDiscount ? (
+                          <div style={{ fontSize:11, color:C.o, fontWeight:700 }}>{discountVal ? `${discountVal}%` : 'OFF'}</div>
+                        ) : (
+                          <div style={{ fontSize:11, color:'#f87444', fontWeight:700 }}>−{r.points_spent}</div>
+                        )}
+                        <div style={{ fontSize:9, color:C.dust }}>
+                          {new Date(r.created_at).toLocaleDateString('es-AR', { day:'2-digit', month:'short' })}
+                        </div>
                       </div>
                     </div>
-                    <div style={{ textAlign:'right', flexShrink:0, marginLeft:8 }}>
-                      <div style={{ fontSize:11, color:'#f87444', fontWeight:700 }}>−{r.points_spent}</div>
-                      <div style={{ fontSize:9, color:C.dust }}>
-                        {new Date(r.created_at).toLocaleDateString('es-AR', { day:'2-digit', month:'short' })}
-                      </div>
-                    </div>
-                  </div>
-                ))}
+                  )
+                })}
               </PCard>
             )}
           </div>
@@ -14101,8 +14118,17 @@ export default function App() {
           El buzón de sugerencias va apilado encima del botón del chat. */}
       {user && view !== 'home' && view !== 'directory' && (
         <>
-          <SuggestionsInbox />
+          {/* Stack de botones flotantes (bottom-right):
+              - SupportChat   → bottom: 90  (más cercano al borde inferior)
+              - NotificationsBell → bottom: 156 (apilado encima del chat)
+              - SuggestionsInbox → bottom: 222 (apilado encima de la campana)
+              Mantienen 66px de gap vertical para no superponerse en mobile. */}
+          <SuggestionsInbox bottom={222} />
+          <NotificationsBell bottom={156} role={view === 'commerce-settings' ? 'merchant' : 'client'} />
           <SupportChat role={view === 'commerce-settings' ? 'merchant' : 'client'} />
+          {/* Banner para activar push del navegador. Solo aparece la 1a vez
+              (después de ~4s de entrar) y se descarta o acepta. */}
+          <EnablePushPrompt />
         </>
       )}
       <DevToolbar user={user} profile={profile} onRoleChange={() => loadProfile(user.id)} />

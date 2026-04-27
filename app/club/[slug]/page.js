@@ -9,7 +9,7 @@ import {
   Flame, Star, Gem, Sparkles,
   Coffee, Scissors, Utensils, ShoppingBag, Wrench, Building2,
   Shield, MessageCircle, ArrowRight, Check, Smartphone,
-  ScanLine, LogOut,
+  ScanLine, LogOut, Percent,
 } from 'lucide-react'
 import PhoneInput from '../../../lib/PhoneInput'
 
@@ -475,9 +475,9 @@ function ClubHistory({ user, commerceId, unitLabel, unitColor, UnitIcon, unitIco
             .eq('user_id', user.id).eq('commerce_id', commerceId)
             .order('scanned_at', { ascending: false }).limit(50),
           sb.from('redemptions')
-            .select('id, redeemed_at, points_spent, prize:prizes(name)')
+            .select('id, redeemed_at, created_at, points_spent, kind, discount_value, prize:prizes(name), promotion:promotions(value, description)')
             .eq('user_id', user.id).eq('commerce_id', commerceId)
-            .order('redeemed_at', { ascending: false }).limit(50),
+            .order('created_at', { ascending: false }).limit(50),
         ])
         if (!cancelled) {
           setVisits(vData || [])
@@ -493,7 +493,20 @@ function ClubHistory({ user, commerceId, unitLabel, unitColor, UnitIcon, unitIco
 
   const items = [
     ...visits.map(v => ({ kind:'visit', date: v.scanned_at, points: v.points_earned, amount: v.amount_spent, id: 'v-'+v.id })),
-    ...redemptions.map(r => ({ kind:'redeem', date: r.redeemed_at, points: r.points_spent, prizeName: r.prize?.name, id: 'r-'+r.id })),
+    ...redemptions.map(r => {
+      const isDiscount = r.kind === 'discount'
+      // discount_value es el % off, prefiero leer del propio registro para
+      // que el historial mantenga el dato aunque la promo se haya editado.
+      const discountVal = r.discount_value ?? r.promotion?.value
+      return {
+        kind: isDiscount ? 'discount' : 'redeem',
+        date: r.redeemed_at || r.created_at,
+        points: r.points_spent,
+        prizeName: r.prize?.name,
+        discountVal,
+        id: 'r-'+r.id,
+      }
+    }),
   ].sort((a,b) => new Date(b.date) - new Date(a.date))
 
   if (loading) {
@@ -529,19 +542,29 @@ function ClubHistory({ user, commerceId, unitLabel, unitColor, UnitIcon, unitIco
             border:'1px solid rgba(255,255,255,0.08)',
             borderRadius:12, padding:'12px 14px',
           }}>
-            <div style={{ width:38, height:38, borderRadius:10, background: isVisit ? 'rgba(168,85,247,0.12)' : 'rgba(236,72,153,0.12)', display:'flex', alignItems:'center', justifyContent:'center', flexShrink:0 }}>
+            <div style={{ width:38, height:38, borderRadius:10, background: isVisit ? 'rgba(168,85,247,0.12)' : it.kind === 'discount' ? 'rgba(254,80,0,0.14)' : 'rgba(236,72,153,0.12)', display:'flex', alignItems:'center', justifyContent:'center', flexShrink:0 }}>
               {isVisit
                 ? <UnitIcon size={16} {...unitIconProps} color={unitColor} />
-                : <Gift size={16} color="#EC4899" strokeWidth={2} />}
+                : it.kind === 'discount'
+                  ? <Percent size={16} color="#FE5000" strokeWidth={2} />
+                  : <Gift size={16} color="#EC4899" strokeWidth={2} />}
             </div>
             <div style={{ flex:1, minWidth:0 }}>
               <div style={{ fontFamily:FN, fontSize:13, fontWeight:600, color:C.white, marginBottom:2 }}>
-                {isVisit ? `Visita registrada` : `Canje: ${it.prizeName || 'Premio'}`}
+                {isVisit
+                  ? 'Visita registrada'
+                  : it.kind === 'discount'
+                    ? `Descuento aplicado${it.discountVal ? ` · ${it.discountVal}% OFF` : ''}`
+                    : `Canje: ${it.prizeName || 'Premio'}`}
               </div>
               <div style={{ fontSize:11, color:C.mist }}>{dateStr} · {timeStr}{isVisit && it.amount > 0 ? ` · $${Number(it.amount).toLocaleString('es-AR')}` : ''}</div>
             </div>
-            <div style={{ flexShrink:0, fontFamily:FN, fontSize:13, fontWeight:700, color: isVisit ? unitColor : '#EC4899' }}>
-              {isVisit ? `+${it.points || 1}` : `-${it.points || 0}`} {unitLabel === 'estrellas' ? '★' : 'pts'}
+            <div style={{ flexShrink:0, fontFamily:FN, fontSize:13, fontWeight:700, color: isVisit ? unitColor : it.kind === 'discount' ? '#FE5000' : '#EC4899' }}>
+              {isVisit
+                ? `+${it.points || 1} ${unitLabel === 'estrellas' ? '★' : 'pts'}`
+                : it.kind === 'discount'
+                  ? (it.discountVal ? `${it.discountVal}%` : 'OFF')
+                  : `-${it.points || 0} ${unitLabel === 'estrellas' ? '★' : 'pts'}`}
             </div>
           </div>
         )
