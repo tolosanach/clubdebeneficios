@@ -44,7 +44,7 @@ export async function GET(request) {
         commerce_id,
         points_earned,
         created_at,
-        profiles:user_id(id, full_name, email)
+        profiles:user_id(id, full_name, name, email)
       `)
       .eq('commerce_id', commerce_id)
       .order('created_at', { ascending: false })
@@ -68,7 +68,7 @@ export async function GET(request) {
       id: visit.id,
       fecha: new Date(visit.created_at).toLocaleDateString('es-AR'),
       hora: new Date(visit.created_at).toLocaleTimeString('es-AR'),
-      cliente: visit.profiles?.full_name || 'Desconocido',
+      cliente: visit.profiles?.full_name || visit.profiles?.name || 'Desconocido',
       email: visit.profiles?.email || '-',
       puntos: visit.points_earned || 1,
       unidad: commerce.prog_type === 'stars' ? '⭐' : '💎',

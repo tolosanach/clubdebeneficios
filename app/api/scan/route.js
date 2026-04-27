@@ -32,10 +32,13 @@ export async function POST(request) {
 
     const user_id = qr_code.replace('CLUB-', '')
 
-    // Verificar que el usuario existe
+    // Verificar que el usuario existe.
+    // Algunos profiles tienen el nombre en `name` (Google OAuth lo guarda
+    // ahí) y otros en `full_name`. Traemos los dos y elegimos el primero
+    // disponible.
     const { data: profile, error: profileError } = await supabaseAdmin
       .from('profiles')
-      .select('id, full_name')
+      .select('id, full_name, name')
       .eq('id', user_id)
       .single()
 
@@ -296,7 +299,7 @@ export async function POST(request) {
     // Si además se canjeó un descuento, notificamos eso también.
     try {
       const commerceName = commerce.name || 'el negocio'
-      const clientFirstName = (profile.full_name || 'Cliente').split(' ')[0]
+      const clientFirstName = (profile.full_name || profile.name || 'Cliente').split(' ')[0]
       const clubLink = commerce.slug ? `/club/${commerce.slug}` : '/'
       const isStars = commerce.prog_type === 'stars'
       const unitLabel = isStars ? 'estrella' : 'punto'
@@ -361,7 +364,7 @@ export async function POST(request) {
 
     return NextResponse.json({
       ok:            true,
-      member_name:   profile.full_name || 'Cliente',
+      member_name:   profile.full_name || profile.name || 'Cliente',
       visit_count:   newVisits,
       points_now:    newTotal,
       points_earned: ptsPerVisit,

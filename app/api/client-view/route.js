@@ -26,7 +26,7 @@ export async function GET(request) {
       { data: prizes },
       { data: promos },
     ] = await Promise.all([
-      supabaseAdmin.from('profiles').select('full_name').eq('id', user_id).single(),
+      supabaseAdmin.from('profiles').select('full_name, name').eq('id', user_id).single(),
       supabaseAdmin.from('commerces')
         .select('name, img_url, prog_type, prog_pts, prog_goal')
         .eq('id', commerce_id).single(),
@@ -55,7 +55,7 @@ export async function GET(request) {
 
     return NextResponse.json({
       ok: true,
-      profile:    { full_name: profile.full_name },
+      profile:    { full_name: profile.full_name || profile.name || null },
       commerce:   { name: commerce.name, img_url: commerce.img_url, prog_type: commerce.prog_type },
       membership: membership
         ? { id: membership.id, balance, visits_count: membership.visits_count || 0 }

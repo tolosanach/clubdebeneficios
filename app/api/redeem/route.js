@@ -86,8 +86,8 @@ export async function POST(request) {
     // Aviso al cliente y al dueño del comercio sobre el canje del premio.
     try {
       const { data: clientProfile } = await supabaseAdmin
-        .from('profiles').select('full_name').eq('id', user_id).single()
-      const clientFirstName = (clientProfile?.full_name || 'Cliente').split(' ')[0]
+        .from('profiles').select('full_name, name').eq('id', user_id).single()
+      const clientFirstName = (clientProfile?.full_name || clientProfile?.name || 'Cliente').split(' ')[0]
       const commerceName = commerce?.name || 'el negocio'
       const isStars = commerce?.prog_type === 'stars'
       const unitTxt = isStars ? `${prize.cost} estrellas` : `${prize.cost} puntos`

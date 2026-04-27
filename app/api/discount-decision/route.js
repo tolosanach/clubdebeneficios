@@ -66,8 +66,8 @@ export async function POST(request) {
 
     // Datos para las notifs
     const { data: clientProfile } = await supabaseAdmin
-      .from('profiles').select('full_name').eq('id', membership.user_id).single()
-    const clientFirstName = (clientProfile?.full_name || 'Cliente').split(' ')[0]
+      .from('profiles').select('full_name, name').eq('id', membership.user_id).single()
+    const clientFirstName = (clientProfile?.full_name || clientProfile?.name || 'Cliente').split(' ')[0]
     const clubLink = commerce.slug ? `/club/${commerce.slug}` : '/'
 
     // Datos de la promo

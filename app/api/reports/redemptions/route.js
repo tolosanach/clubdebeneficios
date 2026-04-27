@@ -45,7 +45,7 @@ export async function GET(request) {
         prize_id,
         points_spent,
         created_at,
-        profiles:user_id(id, full_name, email),
+        profiles:user_id(id, full_name, name, email),
         prizes:prize_id(id, name, cost)
       `)
       .eq('commerce_id', commerce_id)
@@ -70,7 +70,7 @@ export async function GET(request) {
       id: redemption.id,
       fecha: new Date(redemption.created_at).toLocaleDateString('es-AR'),
       hora: new Date(redemption.created_at).toLocaleTimeString('es-AR'),
-      cliente: redemption.profiles?.full_name || 'Desconocido',
+      cliente: redemption.profiles?.full_name || redemption.profiles?.name || 'Desconocido',
       email: redemption.profiles?.email || '-',
       premio: redemption.prizes?.name || 'Desconocido',
       puntos_gastados: redemption.points_spent || 0,

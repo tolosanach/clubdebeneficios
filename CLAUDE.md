@@ -14,6 +14,14 @@ App argentina de fidelización para comercios. Cada comercio crea un "club" dond
 Variables de entorno críticas en `.env.local` y Vercel:
 - `NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_ANON_KEY`, `SUPABASE_SERVICE_ROLE_KEY`
 - `ANTHROPIC_API_KEY` (chat de soporte con Claude Haiku 4.5)
+- `VAPID_PUBLIC_KEY`, `VAPID_PRIVATE_KEY`, `VAPID_SUBJECT` (web push del navegador). Las keys se generaron el 2026-04-26. Si faltan, las notifs in-app igual funcionan, solo no se dispara el push del SW.
+
+Dependencias clave en `package.json`:
+- `web-push` (server, para enviar pushes desde `lib/notify-server.js`)
+- `qrcode.react`, `qrcode` (genera QRs del local y del cliente)
+- `jsqr` (decoder de QR via canvas — reemplazo de html5-qrcode que fallaba en iOS Safari)
+- `react-easy-crop` (cropper del logo)
+- `@supabase/ssr` (auth con cookies)
 
 ## Conceptos clave
 
@@ -84,6 +92,10 @@ Schema actual en producción (proyecto `wcqhapsgwjivtzdseqjz`, "Club-de-benefici
 - `commerces.prog_min_purchase` (integer, nullable) — compra mínima para sumar estrella
 - `commerces.name_changed_at` (timestamptz) — lock de 20 días para cambio de nombre
 - `support_conversations`, `support_messages` — chat de soporte con IA, RLS por user
+- `redemptions.kind` (text, NOT NULL, default 'prize', check prize|discount), `redemptions.promotion_id` (uuid FK ON DELETE SET NULL), `redemptions.discount_value` (integer) — para que los canjes incluyan los descuentos `discount_next` aplicados, no solo los premios del catálogo. Index GIN en `kind` y `promotion_id`. `prize_id` quedó nullable.
+- `notifications` (id, user_id FK ON DELETE CASCADE, type, title, body, link, metadata jsonb, read_at, created_at). RLS: select/update solo del propio user. Índices: por user+created y un partial donde read_at IS NULL para no-leídas.
+- `push_subscriptions` (id, user_id FK CASCADE, endpoint UNIQUE, p256dh, auth, user_agent, last_used). RLS: select/insert/delete solo del propio user.
+- `commerces.categories` (text[], default null, populada con `ARRAY[category]` para filas viejas) — soporta múltiples categorías por comercio (max 3). Index GIN en `categories`. La columna `category` (string singular) se mantiene como espejo del primer ítem para compat con código viejo.
 
 ## Soporte IA (chat)
 
@@ -114,6 +126,100 @@ Schema actual en producción (proyecto `wcqhapsgwjivtzdseqjz`, "Club-de-benefici
 2. RAG: tabla `support_docs` con embeddings (pgvector ya disponible en Supabase)
 3. Tools / function calling: que la IA consulte estado del comercio en vivo
 4. Dashboard interno con conversaciones para mejorar respuestas
+
+## Cambios recientes (sprint abr 2026)
+
+Tanda grande de features. Lo que cambió de raíz:
+
+### Notificaciones in-app + web push del navegador
+- Tabla `notifications` y helper `lib/notify-server.js` con `notify({ userId, type, title, body, link, metadata })` y `notifyBoth({ clientUserId, ownerUserId, client, owner })`.
+- Hookpoints: `/api/scan`, `/api/redeem`, `/api/join`, `/api/discount-decision`, `/api/grant-promotion` — cada evento dispara 2 notifs cruzadas (cliente + dueño).
+- Tipos en uso: `visit`, `join`, `prize_redeem`, `discount_redeem`, `discount_renewed`, `discount_declined`, `discount_granted`. El componente UI mapea cada uno a un ícono+color (Star, UserPlus, Gift, Percent, RefreshCw, Ban, Sparkles).
+- Endpoints API:
+  - `GET /api/notifications` — lista paginada + count de unread
+  - `PATCH /api/notifications` — marca todas como leídas
+  - `PATCH /api/notifications/[id]` — marca una como leída
+  - `GET /api/push/vapid` — devuelve la VAPID public key al cliente
+  - `POST /api/push/subscribe` — guarda PushSubscription
+  - `DELETE /api/push/subscribe` — desuscribe
+- Frontend: `lib/NotificationsBell.js` (campana flotante UNIFICADA con dos pestañas: **Movimientos** = notifs transaccionales / **Sistema** = sugerencias del SuggestionsInbox absorbidas adentro). Stack flotante actual: SupportChat (bottom 90) + NotificationsBell (bottom 156). El SuggestionsInbox NO se monta más — su archivo queda pero todo su contenido vive ahora dentro de NotificationsBell.
+- Service worker: `public/sw-push.js` con `install`/`activate`/`fetch`/`push`/`notificationclick`. Tiene un fetch handler vacío para que el navegador considere al sitio "instalable" como PWA. Lo registra `lib/sw-register.js` SIEMPRE al cargar la app (no solo cuando el user da permiso de push). El registro siempre era requisito para que `beforeinstallprompt` se dispare.
+- Cliente push: `lib/push-client.js` con `registerPushIfPossible()`, `requestPushPermissionAndSubscribe()`, `unsubscribePush()`, `attachServiceWorkerMessageListener()`. El último escucha mensajes del SW y dispara `benefix:notifications-refresh` para refrescar el drawer al toque cuando llega un push.
+- Banner "Activá las notificaciones" en `lib/EnablePushPrompt.js` — aparece a los 4s, se descarta vía localStorage `benefix:push-banner-dismissed`.
+
+### Flujo del descuento "próxima compra" (discount_next)
+**Bug raíz que se arregló**: antes `/api/scan` re-otorgaba el cupón `discount_next` automáticamente apenas lo marcaba como `used`. Si el cashier después decía "No renovar" en el modal, ya era tarde — el cliente conservaba el cupón.
+
+**Flujo nuevo**:
+1. Cliente se suma al club → `/api/join` le otorga UNA SOLA VEZ todas las `discount_next` activas del comercio (con `expires_at` calculado según `expiration_type`: `relative` → `today + expiration_days`, `fixed` → `expiration_date`).
+2. Cliente vuelve, comercio escanea → `/api/scan` solo MARCA COMO `used` el cupón activo y devuelve `discount_redeemed: { promo_id, value, expires_at }` (también inserta una fila en `redemptions` con `kind='discount'`, `promotion_id`, `discount_value`).
+3. Modal "¿Renovar?" en `ScannerView` → llama `/api/discount-decision { commerce_id, membership_id, promotion_id, decision: 'renew'|'decline' }`.
+4. `decision='renew'` → upsert `client_promotions` con status `active` + `notifyBoth("renovado")`.
+5. `decision='decline'` (incluye X y backdrop del modal) → no toca DB + `notifyBoth("no renovado")`.
+6. El loop de auto-otorgar del scan ya NO existe — la única fuente de cupones nuevos es `/api/join` o `/api/discount-decision` con `renew` o `/api/grant-promotion` (otorgamiento manual del dueño).
+
+### Otorgamiento manual de beneficios desde la ficha del cliente
+- En el panel comerciante, ficha del cliente seleccionado, hay una card colapsable "Otorgar beneficio" con icono Sparkles. Al expandir lista todas las `discount_next` activas y vigentes del comercio. Cada una con su % OFF, descripción y vencimiento.
+- Endpoint `POST /api/grant-promotion { commerce_id, membership_id, promotion_id }`. Solo permite `discount_next` (las `double_points` aplican al comercio, no al cliente). Auth: dueño/admin. Hace upsert con status `active` y notifica a ambas partes (`type='discount_granted'`).
+
+### Lista de clientes — fix nombres
+- **Bug doble**: (1) los profiles tienen el nombre en `profiles.name` (Google OAuth lo populaba ahí), pero el código leía solo `full_name`. (2) la RLS de `profiles` solo permite ver el propio profile, así que el JOIN del frontend devolvía `null` para todos los clientes.
+- **Fix**: nuevo endpoint `GET /api/commerce-clients?commerce_id=X` que usa service role para bypass de RLS y trae los memberships con profile join (incluye `name`, `full_name`, `email`, `phone`, `avatar_url`). Devuelve un campo `display_name` calculado (`full_name || name`).
+- En todo `app/page.js` el patrón de lectura del nombre cambió de `m.profiles?.full_name` a `(m.profiles?.display_name || m.profiles?.full_name || m.profiles?.name)`. Mismo fallback aplicado en `/api/scan`, `/api/redeem`, `/api/discount-decision`, `/api/grant-promotion`, `/api/join`, reportes y segments.
+
+### Cartel narrativo post-scan
+Reemplaza el "¡Visita registrada!" plano por una lista de "narrativeLines" — cada línea es un mini-card con icono coloreado + texto que cuenta la historia:
+- "Juan ganó **1 estrella** por su compra" / "Juan ganó **200 puntos** por su compra (×2 hoy)"
+- "Juan canjeó **30% OFF** que tenía guardado" + "Le **renovaste** el descuento" / "**No le renovaste** el descuento"
+- "Le quedan **N cupones pendientes**: 30% OFF, 15% OFF" — filtra el que se acaba de canjear si no lo renovaron
+- "Puede canjear **3 premios**: Café Gratis (5★), ..." / "Le faltan **2★** para canjear **Café Gratis**"
+
+El backend `/api/scan` ahora devuelve adicional: `active_coupons` (los que le quedan al cliente vigentes), `available_prizes` (los que puede canjear con su balance actualizado), `next_prize` (próximo premio + cuánto le falta). Ya no devuelve solo `cheapestPrize`. El estado `discountDecisionResult` (`'renewed'|'declined'|null`) se rastrea en el frontend para sincronizar la decisión del modal con el cartel.
+
+### Categorías múltiples por comercio
+- Comercios pueden tener hasta 3 categorías (en `categories text[]`). El picker de la pestaña Configuración es multi-select con chips removibles + "Otro" para custom; toggle por click en sub-categoría.
+- `/api/save-commerce-config` acepta `categories` array (preferido) o `category` string (legacy). Guarda ambas — `category` queda como espejo del primer ítem.
+- En el directorio público: filtro matchea si CUALQUIERA de las categorías del comercio coincide con el filtro elegido. En "Mis Clubes" del cliente: los pills de filtro de rubro se generan desde el array completo (no solo del campo legacy).
+
+### Mis Clubes — auto-refresh
+`ClientView` agregó listener de `visibilitychange` + `focus` + mensajes del SW que dispara `setRefreshTick(t+1)`. Cuando el cliente vuelve a la app después de tenerla en background, las cards reflejan el balance/cupones reales sin tener que recargar.
+
+También se reforzó el filtro de cupones en `WalletCard`: solo cuenta como activo si `status='active'` Y `expires_at > now`.
+
+### UI: cambios visuales destacados
+- **Pantalla "¿Qué querés hacer?" del scanner**: dos secciones agrupadas con header (barrita gradient + texto uppercase): **"Abrir escáner"** (Registrar visita + Sumarme a un club) y **"Mostrar QR"** (mi QR personal).
+- **Pantalla inicial del panel comerciante (intent picker)**: aparece cada vez que se entra a "Mi Negocio". Greeting + dos botones grandes: "Sumar nuevo cliente al club" (abre modal global con QR del local) y "Registrar la compra de un cliente" (lleva al scanner). State `intentPickerActive` resetea con cada click en el icono "Mi Negocio" del navbar via evento `benefix:merchant-intent`.
+- **Coachmark del rail lateral**: cuando el dueño cierra el rail por primera vez, a los 5s aparece un cartel naranja-violeta apuntando a la solapa. Se descarta con X. Persiste en localStorage `benefix:rail-hint-seen`.
+- **Coachmark del intent picker**: a los 5s de inactividad, debajo de "Saltar al panel →" aparece un coachmark CHIQUITO alineado a la izquierda con flecha curva (CornerLeftUp) apuntando a "Saltar al panel" + texto "Tocá 'Saltar al panel' para ir a configuraciones". X chiquita para cerrar. Persiste en `benefix:panel-hint-seen`.
+- **Banner "Instalá la app"** (`InstallPrompt`): el botón X está arriba-izquierda en posición absoluta para no cruzarse con los flotantes del bottom-right. El banner usa `right: 86` para no llegar a la columna de los flotantes. Detecta iOS y muestra mini-tutorial manual (Compartir → Añadir a inicio).
+- **Botón flotante de soporte (`SupportChat`)**: gradiente violeta puro `#7C3AED → #A855F7 → #BD4BF8`, ícono `HelpCircle` (signo de pregunta). Antes era naranja-violeta con `MessageCircle`.
+- **FilterPills de "Mis Clubes"**: refactor robusto — wrapper externo con `overflow-x: auto` + inner con `width: max-content` y `flex-wrap: nowrap`, garantiza una sola línea por filtro (ciudad y rubro) con scroll horizontal. Antes en Safari iOS podía wrapearse a varias líneas.
+
+### Onboarding del comerciante — bugs resueltos
+- **Input que se trababa después de una letra**: el componente `Wrap` se redeclaraba en cada render dentro de `OnboardingView`, React lo veía como nuevo y desmontaba el árbol con cada keystroke. Convertido a función helper `wrap(children)` que devuelve JSX directamente. Cada `<Wrap>...</Wrap>` se cambió a `wrap(<>...</>)`. Los inputs ya no pierden foco.
+- **Validación de imagen muy estricta**: `checkImageDimensions` rechazaba imágenes donde el lado MÁS CORTO era menor a 400px. Eso bloqueaba logos panorámicos (1500×300) que el cropper SÍ podría arreglar. Ahora pide solo que el lado MÁS LARGO sea ≥400, así pasa al cropper y `makeSquareWithPadding` los cuadra.
+
+### Endpoints API nuevos (referencia rápida)
+- `GET /api/notifications`, `PATCH /api/notifications`, `PATCH /api/notifications/[id]`
+- `GET /api/push/vapid`, `POST /api/push/subscribe`, `DELETE /api/push/subscribe`
+- `POST /api/discount-decision { decision: 'renew'|'decline' }`
+- `POST /api/grant-promotion { commerce_id, membership_id, promotion_id }`
+- `GET /api/commerce-clients?commerce_id=X` (lista de clientes del dueño con profiles via service role)
+
+### Eventos custom DOM en uso
+- `benefix:navigate { view, tab }` — navegación cross-vista
+- `benefix:set-tab { tab }` — cambia tab del CommerceSettingsView desde otros componentes
+- `benefix:merchant-intent` — fuerza re-aparición del intent picker
+- `benefix:notifications-refresh` — refresca el drawer de notifs
+- `benefix:client-tab-changed`, `benefix:inbox-open`, `benefix:support-chat-open` (legacy, todavía usados en algunos cleanups)
+
+### LocalStorage flags
+- `benefix:commerceTab` — tab activo del panel
+- `benefix:push-banner-dismissed` — banner de push descartado
+- `benefix:rail-hint-seen` — coachmark del rail visto
+- `benefix:panel-hint-seen` — coachmark del intent picker visto
+- `install_dismissed` (sessionStorage) — banner instalá la app descartado en esta sesión
+- `cb_auto_<commerce_id>`, `cb_sent_<commerce_id>` — configs de automatizaciones
 
 ## Cómo trabaja el dueño (Nacho)
 

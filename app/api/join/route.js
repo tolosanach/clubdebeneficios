@@ -136,8 +136,8 @@ export async function POST(request) {
     // Cliente nuevo se unió al club: aviso a ambas partes.
     try {
       const { data: clientProfile } = await supabaseAdmin
-        .from('profiles').select('full_name').eq('id', user.id).single()
-      const clientFirstName = (clientProfile?.full_name || 'Un nuevo cliente').split(' ')[0]
+        .from('profiles').select('full_name, name').eq('id', user.id).single()
+      const clientFirstName = (clientProfile?.full_name || clientProfile?.name || 'Un nuevo cliente').split(' ')[0]
       const clubLink = commerce.slug ? `/club/${commerce.slug}` : '/'
       await notifyBoth({
         clientUserId: user.id,

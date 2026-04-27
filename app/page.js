@@ -10,7 +10,6 @@ import { hashToCardColor, cardColors } from '../lib/cardColors'
 import { FAMILIES_DATA } from '../lib/commerce-families-data'
 import PhoneInput from '../lib/PhoneInput'
 import SupportChat from '../lib/SupportChat'
-import SuggestionsInbox from '../lib/SuggestionsInbox'
 import NotificationsBell from '../lib/NotificationsBell'
 import EnablePushPrompt from '../lib/EnablePushPrompt'
 import SwRegister from '../lib/sw-register'
@@ -25,7 +24,7 @@ import {
   Mail, Phone, CheckCircle, Lock, RefreshCw, Trash2, UserPlus, ScanLine,
   Package, Rocket, Clock, Bell, Camera, MapPin, Search,
   Copy, AlertTriangle, AlertCircle, Smartphone, Palette,
-  Activity, TrendingUp, TrendingDown, Download, Ban, Check, Plus, Globe, Printer, ArrowRight, ArrowLeft, Upload,
+  Activity, TrendingUp, TrendingDown, Download, Ban, Check, Plus, Globe, Printer, ArrowRight, ArrowLeft, ArrowUp, CornerLeftUp, Upload,
   Coffee, UtensilsCrossed, Wine, Croissant, IceCream, Pizza,
   Beer, Drumstick, Truck,
   Scissors, Sparkles, Hand, Pen,
@@ -390,8 +389,19 @@ function InstallPrompt() {
 
   return (
     <>
-      <div className="modal-in" style={{ position:'fixed', bottom:88, left:16, right:16, zIndex:190, background:'rgba(18,10,32,0.97)', backdropFilter:'blur(24px)', WebkitBackdropFilter:'blur(24px)', border:'1px solid rgba(189,75,248,0.35)', borderRadius:18, padding:'14px 16px', boxShadow:'0 8px 40px rgba(0,0,0,0.5)', display:'flex', alignItems:'center', gap:12 }}>
-        <div style={{ width:42, height:42, borderRadius:12, background:G, display:'flex', alignItems:'center', justifyContent:'center', flexShrink:0 }}>
+      {/* El banner flota a `right:86` (no a 16) para que su borde derecho NO
+          se cruce con los botones flotantes (chat + campana, ambos a right:18
+          con width:52, ocupan hasta right:70). Así la X de cerrar nunca queda
+          tapada por nada. En desktop (donde sobra ancho) queda igual de
+          legible; en mobile el banner se ve un poco más angosto pero entero. */}
+      <div className="modal-in" style={{ position:'fixed', bottom:88, left:16, right:86, zIndex:190, background:'rgba(18,10,32,0.97)', backdropFilter:'blur(24px)', WebkitBackdropFilter:'blur(24px)', border:'1px solid rgba(189,75,248,0.35)', borderRadius:18, padding:'14px 16px', boxShadow:'0 8px 40px rgba(0,0,0,0.5)', display:'flex', alignItems:'center', gap:12 }}>
+        {/* X de cerrar — esquina superior izquierda, fuera de la trayectoria
+            de los botones flotantes que están a la derecha. */}
+        <button onClick={dismiss} aria-label="Cerrar"
+          style={{ position:'absolute', top:6, left:6, width:24, height:24, borderRadius:'50%', background:'rgba(255,255,255,0.08)', border:'none', display:'flex', alignItems:'center', justifyContent:'center', cursor:'pointer', padding:0, zIndex:1 }}>
+          <X size={11} color={C.mist} strokeWidth={2.4} />
+        </button>
+        <div style={{ width:42, height:42, borderRadius:12, background:G, display:'flex', alignItems:'center', justifyContent:'center', flexShrink:0, marginLeft:12 }}>
           <svg width="22" height="22" viewBox="0 0 28 28" fill="none">
             <path d="M14 4C8.477 4 4 8.477 4 14s4.477 10 10 10" stroke="white" strokeWidth="3" strokeLinecap="round"/>
             <rect x="16" y="5.5" width="8" height="5" rx="2.5" fill="white" opacity=".9"/>
@@ -407,9 +417,6 @@ function InstallPrompt() {
         <button onClick={install} style={{ padding:'8px 14px', borderRadius:10, background:G, border:'none', color:'#fff', fontFamily:FN, fontSize:12, fontWeight:700, cursor:'pointer', display:'flex', alignItems:'center', gap:5, flexShrink:0, boxShadow:'0 4px 16px rgba(254,80,0,0.35)' }}>
           <Download size={13} strokeWidth={2} />
           {iosMode ? 'Cómo' : 'Instalar'}
-        </button>
-        <button onClick={dismiss} style={{ width:28, height:28, borderRadius:'50%', background:'rgba(255,255,255,0.08)', border:'none', display:'flex', alignItems:'center', justifyContent:'center', cursor:'pointer', flexShrink:0 }}>
-          <X size={13} color={C.mist} strokeWidth={2} />
         </button>
       </div>
 
@@ -8139,6 +8146,27 @@ function CommerceSettingsView({ user, profile, setView, onLogout, onOwnerProfile
   // Una vez colapsado se queda como "pestaña" delgada al borde hasta la próxima
   // entrada al panel.
   const [railExpanded, setRailExpanded]   = useState(true)
+  // showRailHint: tooltip "Recordá que tocando esta solapa..." que aparece 5
+  // segundos después de la primera vez que el user cierra el rail expandido.
+  // Solo se muestra UNA VEZ por user (persistido en localStorage). El user lo
+  // descarta tocando la X. Sirve como onboarding para que descubra la solapa
+  // delgada como punto de re-entrada al menú.
+  const [showRailHint, setShowRailHint] = useState(false)
+  const railHintFired = useRef(false)
+  useEffect(() => {
+    if (railExpanded || railHintFired.current) return
+    if (typeof window === 'undefined') return
+    try {
+      if (localStorage.getItem('benefix:rail-hint-seen')) return
+    } catch {}
+    railHintFired.current = true
+    const t = setTimeout(() => setShowRailHint(true), 5000)
+    return () => clearTimeout(t)
+  }, [railExpanded])
+  function dismissRailHint() {
+    setShowRailHint(false)
+    try { localStorage.setItem('benefix:rail-hint-seen', '1') } catch {}
+  }
   const [hoursForm, setHoursForm]         = useState(null)
   const [isDirty, setIsDirty]             = useState(false)
   // Sincroniza con flag global usada por setTab (wrapper) y beforeunload.
@@ -8183,6 +8211,23 @@ function CommerceSettingsView({ user, profile, setView, onLogout, onOwnerProfile
   // (escanear QR del cliente). Una vez que elige una opción, queda en false
   // hasta el próximo click en el icono "Mi Negocio" del navbar.
   const [intentPickerActive, setIntentPickerActive] = useState(true)
+  // showPanelHint: tooltip que aparece a los 5 segundos de inactividad sobre
+  // el intent picker, sugiriendo ir al panel completo. Solo aparece la primera
+  // vez (persistido en localStorage).
+  const [showPanelHint, setShowPanelHint] = useState(false)
+  useEffect(() => {
+    if (!intentPickerActive) { setShowPanelHint(false); return }
+    if (typeof window === 'undefined') return
+    try {
+      if (localStorage.getItem('benefix:panel-hint-seen')) return
+    } catch {}
+    const t = setTimeout(() => setShowPanelHint(true), 5000)
+    return () => clearTimeout(t)
+  }, [intentPickerActive])
+  function dismissPanelHint() {
+    setShowPanelHint(false)
+    try { localStorage.setItem('benefix:panel-hint-seen', '1') } catch {}
+  }
   // showBusinessQrModal: modal fullscreen con el QR del local. Se abre desde
   // el intent picker ("Sumar un nuevo cliente al club") y desde otros lugares
   // del panel. Vive global (fuera de cualquier tab) para que no dependa de
@@ -8288,11 +8333,13 @@ function CommerceSettingsView({ user, profile, setView, onLogout, onOwnerProfile
         locality: commerce.city_name || '',
       }))
     }
-    supabase.from('memberships')
-      .select('*, profiles(full_name, avatar_url, email, phone)')
-      .eq('commerce_id', commerce.id)
-      .order('last_visit', { ascending:false })
-      .then(({ data }) => setMembers(data || []))
+    // /api/commerce-clients usa service role para traer el join con profiles
+    // bypaseando la RLS (que solo deja a cada user ver su propio profile).
+    // Sin esto, los nombres de los clientes vienen como null en el panel.
+    fetch(`/api/commerce-clients?commerce_id=${commerce.id}`, { cache: 'no-store' })
+      .then(r => r.json())
+      .then(d => setMembers(d.items || []))
+      .catch(() => setMembers([]))
     // Cargar configs de automatizaciones desde localStorage
     try {
       const saved = localStorage.getItem(`cb_auto_${commerce.id}`)
@@ -8904,7 +8951,7 @@ function CommerceSettingsView({ user, profile, setView, onLogout, onOwnerProfile
       if (data.stock_depleted) {
         setPrizes(ps => ps.map(p => p.id === prize.id ? { ...p, active: false, stock: 0 } : p))
       }
-      logActivity('prize_redeemed', `Premio "${data.prize_name}" canjeado por ${member.profiles?.full_name || 'cliente'}`)
+      logActivity('prize_redeemed', `Premio "${data.prize_name}" canjeado por ${(member.profiles?.display_name || member.profiles?.full_name || member.profiles?.name) || 'cliente'}`)
     } else {
       setRedeemError(data.error || 'Error al canjear')
     }
@@ -8933,9 +8980,9 @@ function CommerceSettingsView({ user, profile, setView, onLogout, onOwnerProfile
         const promoName = promos.find(p => p.id === promoId)?.value
           ? `${promos.find(p => p.id === promoId).value}% OFF`
           : 'beneficio'
-        showToast('success', `Le otorgaste ${promoName} a ${selectedMember.profiles?.full_name?.split(' ')[0] || 'el cliente'}`)
+        showToast('success', `Le otorgaste ${promoName} a ${(selectedMember.profiles?.display_name || selectedMember.profiles?.full_name || selectedMember.profiles?.name)?.split(' ')[0] || 'el cliente'}`)
         setGrantPanelOpen(false)
-        logActivity('promo_granted', `${promoName} otorgado manualmente a ${selectedMember.profiles?.full_name || 'cliente'}`)
+        logActivity('promo_granted', `${promoName} otorgado manualmente a ${(selectedMember.profiles?.display_name || selectedMember.profiles?.full_name || selectedMember.profiles?.name) || 'cliente'}`)
       } else {
         setGrantError(data.error || 'No se pudo otorgar el beneficio')
       }
@@ -9156,6 +9203,54 @@ function CommerceSettingsView({ user, profile, setView, onLogout, onOwnerProfile
           style={{ marginTop:22, background:'transparent', border:'none', color:C.mist, fontSize:11.5, fontFamily:FN, fontWeight:600, cursor:'pointer', opacity:0.7, padding:'4px 0' }}>
           Saltar al panel →
         </button>
+
+        {/* ── Coachmark hacia "Saltar al panel" ──
+            Versión chica y delicada: alineada a la izquierda, flecha curva
+            que apunta arriba-izquierda hacia el link "Saltar al panel →"
+            (que queda justo arriba), con texto secundario en regular case
+            (sin uppercase, peso medio). La idea es que se lea como un
+            susurro del UI, no como un cartel grande. */}
+        {showPanelHint && (
+          <div style={{
+            marginTop: 10,
+            display: 'inline-flex', alignItems: 'center', gap: 8,
+            paddingLeft: 4,
+            animation: 'panel-hint-in 360ms cubic-bezier(0.16, 1, 0.3, 1)',
+          }}>
+            <CornerLeftUp size={18} color="rgba(255,255,255,0.55)" strokeWidth={2}
+              style={{ flexShrink:0, animation: 'panel-hint-arrow 1.6s ease-in-out infinite' }} />
+            <button onClick={() => { dismissPanelHint(); setIntentPickerActive(false) }}
+              style={{
+                background: 'transparent', border: 'none', cursor: 'pointer',
+                padding: 0, fontFamily: 'inherit',
+                fontSize: 11.5, color: 'rgba(255,255,255,0.65)',
+                lineHeight: 1.4, textAlign: 'left',
+              }}>
+              Tocá <span style={{ color: '#fff', fontWeight: 600 }}>"Saltar al panel"</span> para ir a configuraciones
+            </button>
+            <button onClick={dismissPanelHint} aria-label="Cerrar"
+              style={{
+                flexShrink: 0,
+                width: 18, height: 18, borderRadius: '50%',
+                background: 'rgba(255,255,255,0.06)',
+                border: 'none', color: 'rgba(255,255,255,0.50)',
+                cursor: 'pointer', padding: 0, marginLeft: 2,
+                display: 'flex', alignItems: 'center', justifyContent: 'center',
+              }}>
+              <X size={9} strokeWidth={2.4} />
+            </button>
+            <style>{`
+              @keyframes panel-hint-in {
+                from { opacity: 0; transform: translateX(-6px); }
+                to   { opacity: 1; transform: translateX(0); }
+              }
+              @keyframes panel-hint-arrow {
+                0%, 100% { transform: translate(0, 0); }
+                50%      { transform: translate(-3px, -3px); }
+              }
+            `}</style>
+          </div>
+        )}
       </div>
     )
   }
@@ -9175,7 +9270,7 @@ function CommerceSettingsView({ user, profile, setView, onLogout, onOwnerProfile
     return ts && (Date.now() - ts) < 48 * 3600 * 1000
   }
   function buildAutoMessage(type, member) {
-    const firstName = (member.profiles?.full_name || 'cliente').split(' ')[0]
+    const firstName = ((member.profiles?.display_name || member.profiles?.full_name || member.profiles?.name) || 'cliente').split(' ')[0]
     const bal       = isAutoStars ? (member.stars||0) : (member.points||0)
     const unit      = isAutoStars ? 'estrella(s)' : 'punto(s)'
     const biz       = commerce?.name || ''
@@ -9211,7 +9306,7 @@ function CommerceSettingsView({ user, profile, setView, onLogout, onOwnerProfile
   // ── DETALLE DE CLIENTE ──
   if (selectedMember) {
     const m          = selectedMember
-    const name       = m.profiles?.full_name || 'Cliente'
+    const name       = (m.profiles?.display_name || m.profiles?.full_name || m.profiles?.name) || 'Cliente'
     const val        = form?.prog_type === 'stars' ? (m.stars||0) : (m.points||0)
     const goal       = minPrizeCost
     const canRedeem  = val >= goal
@@ -9702,6 +9797,61 @@ function CommerceSettingsView({ user, profile, setView, onLogout, onOwnerProfile
                 `}</style>
               </>
             )}
+
+            {/* ── Coachmark "Recordá que tocando esta solapa..." ──
+                Aparece a los 5 segundos DESPUÉS de la primera vez que el user
+                cierra el rail. Apunta hacia la solapa colapsada con un chevron.
+                Una sola vez por user (localStorage). Tap en la X lo descarta. */}
+            {showRailHint && !railExpanded && (
+              <div style={{
+                position:'fixed',
+                left: 30, top: '50%', transform: 'translateY(-50%)',
+                zIndex: 197,
+                maxWidth: 'min(280px, calc(100vw - 60px))',
+                background: 'linear-gradient(135deg, rgba(254,80,0,0.96), rgba(189,75,248,0.96))',
+                borderRadius: 14,
+                padding: '12px 14px 12px 12px',
+                boxShadow: '0 14px 40px rgba(189,75,248,0.45), 0 0 0 1px rgba(255,255,255,0.10)',
+                display: 'flex', alignItems: 'flex-start', gap: 10,
+                animation: 'rail-hint-in 380ms cubic-bezier(0.16, 1, 0.3, 1)',
+              }}>
+                {/* Triángulo apuntando a la solapa (a la izquierda) */}
+                <div style={{
+                  position: 'absolute',
+                  left: -7, top: '50%', transform: 'translateY(-50%)',
+                  width: 0, height: 0,
+                  borderTop: '8px solid transparent',
+                  borderBottom: '8px solid transparent',
+                  borderRight: '8px solid #FE5000',
+                }} />
+                <ChevronLeft size={22} color="#fff" strokeWidth={2.6}
+                  style={{ flexShrink:0, marginTop:1, animation:'rail-hint-arrow 1.2s ease-in-out infinite' }} />
+                <div style={{ flex:1, fontFamily:FN, fontSize:12.5, fontWeight:600, color:'#fff', lineHeight:1.4, paddingTop:1 }}>
+                  Recordá que tocando esta solapa podés acceder a todas las configuraciones.
+                </div>
+                <button onClick={dismissRailHint} aria-label="Cerrar"
+                  style={{
+                    flexShrink:0,
+                    width:24, height:24, borderRadius:'50%',
+                    background:'rgba(255,255,255,0.20)',
+                    border:'none', color:'#fff',
+                    cursor:'pointer', padding:0,
+                    display:'flex', alignItems:'center', justifyContent:'center',
+                  }}>
+                  <X size={13} strokeWidth={2.5} />
+                </button>
+                <style>{`
+                  @keyframes rail-hint-in {
+                    from { opacity: 0; transform: translateY(-50%) translateX(-20px); }
+                    to   { opacity: 1; transform: translateY(-50%) translateX(0); }
+                  }
+                  @keyframes rail-hint-arrow {
+                    0%, 100% { transform: translateX(0); }
+                    50%      { transform: translateX(-4px); }
+                  }
+                `}</style>
+              </div>
+            )}
             <aside className="liquid-glass-strong"
               onClick={e => { if (!railExpanded) { e.stopPropagation(); setRailExpanded(true) } }}
               style={{
@@ -10005,14 +10155,14 @@ function CommerceSettingsView({ user, profile, setView, onLogout, onOwnerProfile
 
           const filtered = q
             ? members.filter(m =>
-                norm(m.profiles?.full_name).includes(q) ||
+                norm((m.profiles?.display_name || m.profiles?.full_name || m.profiles?.name)).includes(q) ||
                 norm(m.profiles?.email).includes(q) ||
                 norm(m.profiles?.phone).includes(q)
               )
             : members
 
           const sorted = [...filtered].sort((a,b) => {
-            if (memberSort === 'name')   return (a.profiles?.full_name||'').localeCompare(b.profiles?.full_name||'','es')
+            if (memberSort === 'name')   return ((a.profiles?.display_name || a.profiles?.full_name || a.profiles?.name)||'').localeCompare((b.profiles?.display_name || b.profiles?.full_name || b.profiles?.name)||'','es')
             if (memberSort === 'points') return (isStars?(b.stars||0):(b.points||0)) - (isStars?(a.stars||0):(a.points||0))
             if (memberSort === 'joined') return new Date(b.joined_at||0) - new Date(a.joined_at||0)
             return new Date(b.last_visit||0) - new Date(a.last_visit||0)
@@ -10125,7 +10275,7 @@ function CommerceSettingsView({ user, profile, setView, onLogout, onOwnerProfile
 
                   {/* Lista */}
                   {sorted.map(m => {
-                    const name      = m.profiles?.full_name || 'Cliente'
+                    const name      = (m.profiles?.display_name || m.profiles?.full_name || m.profiles?.name) || 'Cliente'
                     const phone     = m.profiles?.phone || ''
                     const val       = isStars ? (m.stars||0) : (m.points||0)
                     const lastVisit = m.last_visit ? new Date(m.last_visit).toLocaleDateString('es-AR',{day:'2-digit',month:'short'}) : '–'
@@ -11457,13 +11607,13 @@ function CommerceSettingsView({ user, profile, setView, onLogout, onOwnerProfile
             matchesSearch(r.cliente, r.email, '') && matchesDate(r.fecha)
           )
           const filteredClients = baseClients.filter(m =>
-            matchesSearch(m.profiles?.full_name, m.profiles?.email, m.profiles?.phone)
+            matchesSearch((m.profiles?.display_name || m.profiles?.full_name || m.profiles?.name), m.profiles?.email, m.profiles?.phone)
             && matchesDateISO(m.joined_at)
           )
 
           // ── Export ──────────────────────────────────────────────────
           const exportClientRows = filteredClients.map(m => ({
-            'Nombre':        m.profiles?.full_name || '–',
+            'Nombre':        (m.profiles?.display_name || m.profiles?.full_name || m.profiles?.name) || '–',
             'Email':         m.profiles?.email     || '–',
             'Teléfono':      m.profiles?.phone      || '–',
             'Fecha de alta': m.joined_at ? new Date(m.joined_at).toLocaleDateString('es-AR', { day:'2-digit', month:'2-digit', year:'numeric' }) : '–',
@@ -11607,7 +11757,7 @@ function CommerceSettingsView({ user, profile, setView, onLogout, onOwnerProfile
                             const ultima = m.last_visit ? new Date(m.last_visit).toLocaleDateString('es-AR', { day:'2-digit', month:'2-digit', year:'numeric' }) : '–'
                             return (
                               <tr key={i} style={{ borderBottom:`1px solid ${C.rim}`, background: i%2 === 0 ? 'transparent' : `${C.bg3}30` }}>
-                                <td style={{ padding:'10px 12px', color:C.white, fontWeight:600, whiteSpace:'nowrap' }}>{m.profiles?.full_name || '–'}</td>
+                                <td style={{ padding:'10px 12px', color:C.white, fontWeight:600, whiteSpace:'nowrap' }}>{(m.profiles?.display_name || m.profiles?.full_name || m.profiles?.name) || '–'}</td>
                                 <td style={{ padding:'10px 12px', color:C.mist }}>{m.profiles?.email || <span style={{ color:C.dust }}>–</span>}</td>
                                 <td style={{ padding:'10px 12px', color:C.mist, whiteSpace:'nowrap' }}>{m.profiles?.phone || <span style={{ color:C.dust }}>–</span>}</td>
                                 <td style={{ padding:'10px 12px', color:C.dust, whiteSpace:'nowrap' }}>{alta}</td>
@@ -12538,7 +12688,7 @@ function CommerceSettingsView({ user, profile, setView, onLogout, onOwnerProfile
                 )}
                 <div style={{ display:'flex', flexDirection:'column', gap:10 }}>
                   {clients.map(m => {
-                    const name      = m.profiles?.full_name || 'Cliente'
+                    const name      = (m.profiles?.display_name || m.profiles?.full_name || m.profiles?.name) || 'Cliente'
                     const email     = m.profiles?.email
                     const sent      = wasSentRecently(autoDetail, m.user_id)
                     const msg       = buildAutoMessage(autoDetail, m)
@@ -13197,19 +13347,21 @@ function ScannerView({ user, profile, setView }) {
   const unitLabel = result?.prog_type === 'stars' ? 'estrellas' : 'puntos'
   const unitColor = result?.prog_type === 'stars' ? '#8B5CF6' : '#EC4899'
 
-  // Pantalla inicial — dos botones grandes apilados verticalmente para que
-  // el owner elija qué quiere hacer. Solo se ve cuando todavía no eligió modo.
+  // Pantalla inicial — opciones agrupadas en dos secciones según la acción
+  // que requieren del usuario:
+  //   1) ABRIR ESCÁNER: el user apunta su cámara a un QR (de un cliente o
+  //      de un comercio). Junta "Registrar visita" + "Sumarme a un club".
+  //   2) MOSTRAR QR:    el user muestra su propio QR personal a un comercio
+  //      para que se lo escaneen. Solo "Mostrar mi QR".
+  // El agrupamiento ayuda a que el flow mental sea claro: "¿voy a escanear
+  // o me van a escanear?" antes de elegir la acción específica.
   if (!modeSelected) {
-    // Cada opción usa una variante del esquema violeta/fucsia para que se vea
-    // claramente que son acciones distintas. Violeta = acción del dueño
-    // (registrar visita); Fucsia = acción del dueño-como-cliente (sumarse a otro club).
-    const OPTIONS = [
+    const SCAN_GROUP = [
       {
         id: 'register-visit',
         title: 'Registrar visita de cliente',
         desc: 'Escaneá el QR personal de un cliente para sumarle visita o canjear un premio.',
         Icon: ScanLine,
-        // Violeta — acción del dueño
         bg:         'linear-gradient(135deg, rgba(124,58,237,0.16), rgba(139,92,246,0.10))',
         border:     'rgba(139,92,246,0.40)',
         iconBg:     'linear-gradient(135deg, #7C3AED, #8B5CF6)',
@@ -13218,24 +13370,10 @@ function ScannerView({ user, profile, setView }) {
         arrowColor: 'rgba(196,181,253,0.85)',
       },
       {
-        id: 'show-my-qr',
-        title: 'Mostrar mi QR',
-        desc: 'Mostrale tu QR personal al comerciante para que te sume visita en su local.',
-        Icon: QrCode,
-        // Naranja — acción del owner como cliente (mostrar)
-        bg:         'linear-gradient(135deg, rgba(254,80,0,0.16), rgba(251,113,133,0.10))',
-        border:     'rgba(251,113,133,0.40)',
-        iconBg:     'linear-gradient(135deg, #FE5000, #FB7185)',
-        shadow:     '0 4px 18px rgba(254,80,0,0.40)',
-        descColor:  'rgba(255,228,222,0.78)',
-        arrowColor: 'rgba(252,165,165,0.85)',
-      },
-      {
         id: 'join-club',
         title: 'Quiero sumarme a un club',
         desc: 'Sumate como cliente a otro comercio escaneando su QR.',
         Icon: ScanLine,
-        // Fucsia — acción del owner como cliente (escanear)
         bg:         'linear-gradient(135deg, rgba(219,39,119,0.16), rgba(236,72,153,0.10))',
         border:     'rgba(236,72,153,0.40)',
         iconBg:     'linear-gradient(135deg, #DB2777, #EC4899)',
@@ -13244,40 +13382,96 @@ function ScannerView({ user, profile, setView }) {
         arrowColor: 'rgba(251,182,206,0.85)',
       },
     ]
+    const SHOW_GROUP = [
+      {
+        id: 'show-my-qr',
+        title: 'Mostrar mi QR',
+        desc: 'Mostrale tu QR personal al comerciante para que te sume visita en su local.',
+        Icon: QrCode,
+        bg:         'linear-gradient(135deg, rgba(254,80,0,0.16), rgba(251,113,133,0.10))',
+        border:     'rgba(251,113,133,0.40)',
+        iconBg:     'linear-gradient(135deg, #FE5000, #FB7185)',
+        shadow:     '0 4px 18px rgba(254,80,0,0.40)',
+        descColor:  'rgba(255,228,222,0.78)',
+        arrowColor: 'rgba(252,165,165,0.85)',
+      },
+    ]
+
+    // Header reutilizable de cada sección — mismo formato (título uppercase
+    // con tracking + color blanco + barrita decorativa al lado), así "Abrir
+    // escáner" y "Mostrar QR" se leen como hermanos.
+    const SectionHeader = ({ children }) => (
+      <div style={{
+        display:'flex', alignItems:'center', gap:10,
+        padding:'0 4px 10px',
+        marginBottom:2,
+      }}>
+        <div style={{ width:3, height:14, borderRadius:99, background:'linear-gradient(135deg, #FE5000, #BD4BF8)' }} />
+        <div style={{
+          fontFamily:FN, fontSize:11.5, fontWeight:800,
+          color:'rgba(255,255,255,0.85)',
+          letterSpacing:'.10em', textTransform:'uppercase',
+        }}>{children}</div>
+      </div>
+    )
+
+    const renderOption = opt => (
+      <button key={opt.id}
+        onClick={() => { setScanMode(opt.id); setModeSelected(true) }}
+        style={{
+          width:'100%', textAlign:'left',
+          padding:'18px 18px',
+          background: opt.bg,
+          border: `1px solid ${opt.border}`,
+          borderRadius:16,
+          cursor:'pointer',
+          display:'flex', alignItems:'center', gap:14,
+          fontFamily:'inherit',
+          transition:'transform 160ms ease, border-color 160ms ease',
+        }}
+        onMouseDown={e => e.currentTarget.style.transform = 'scale(0.98)'}
+        onMouseUp={e => e.currentTarget.style.transform = 'scale(1)'}
+        onMouseLeave={e => e.currentTarget.style.transform = 'scale(1)'}>
+        <div style={{ width:48, height:48, borderRadius:12, background: opt.iconBg, display:'flex', alignItems:'center', justifyContent:'center', flexShrink:0, boxShadow: opt.shadow }}>
+          <opt.Icon size={22} color='#fff' strokeWidth={2.2} />
+        </div>
+        <div style={{ flex:1, minWidth:0 }}>
+          <div style={{ fontFamily:FN, fontSize:14, fontWeight:700, color:'#fff', marginBottom:3 }}>{opt.title}</div>
+          <div style={{ fontSize:12, color: opt.descColor, lineHeight:1.45 }}>{opt.desc}</div>
+        </div>
+        <ArrowRight size={18} color={opt.arrowColor} strokeWidth={2.2} style={{ flexShrink:0 }} />
+      </button>
+    )
+
     return (
       <div style={{ maxWidth:440, margin:'0 auto', padding:'40px 18px 80px' }}>
         <div style={{ fontFamily:FN, fontSize:10, color:C.o, fontWeight:800, letterSpacing:'.15em', textTransform:'uppercase', marginBottom:8 }}>✦ Escáner QR</div>
         <h1 style={{ fontFamily:FN, fontSize:'clamp(22px,4vw,32px)', fontWeight:900, color:C.white, marginBottom:6 }}>¿Qué querés hacer?</h1>
         <p style={{ fontSize:13, color:C.mist, marginBottom:28 }}>Elegí una opción para empezar.</p>
 
-        <div style={{ display:'flex', flexDirection:'column', gap:12 }}>
-          {OPTIONS.map(opt => (
-            <button key={opt.id}
-              onClick={() => { setScanMode(opt.id); setModeSelected(true) }}
-              style={{
-                width:'100%', textAlign:'left',
-                padding:'18px 18px',
-                background: opt.bg,
-                border: `1px solid ${opt.border}`,
-                borderRadius:16,
-                cursor:'pointer',
-                display:'flex', alignItems:'center', gap:14,
-                fontFamily:'inherit',
-                transition:'transform 160ms ease, border-color 160ms ease',
-              }}
-              onMouseDown={e => e.currentTarget.style.transform = 'scale(0.98)'}
-              onMouseUp={e => e.currentTarget.style.transform = 'scale(1)'}
-              onMouseLeave={e => e.currentTarget.style.transform = 'scale(1)'}>
-              <div style={{ width:48, height:48, borderRadius:12, background: opt.iconBg, display:'flex', alignItems:'center', justifyContent:'center', flexShrink:0, boxShadow: opt.shadow }}>
-                <opt.Icon size={22} color='#fff' strokeWidth={2.2} />
-              </div>
-              <div style={{ flex:1, minWidth:0 }}>
-                <div style={{ fontFamily:FN, fontSize:14, fontWeight:700, color:'#fff', marginBottom:3 }}>{opt.title}</div>
-                <div style={{ fontSize:12, color: opt.descColor, lineHeight:1.45 }}>{opt.desc}</div>
-              </div>
-              <ArrowRight size={18} color={opt.arrowColor} strokeWidth={2.2} style={{ flexShrink:0 }} />
-            </button>
-          ))}
+        {/* Grupo 1 — Abrir escáner (las dos opciones que prenden la cámara) */}
+        <SectionHeader>Abrir escáner</SectionHeader>
+        <div style={{
+          padding:'14px 12px',
+          background:'rgba(255,255,255,0.025)',
+          border:'1px solid rgba(255,255,255,0.08)',
+          borderRadius:18,
+          marginBottom:22,
+          display:'flex', flexDirection:'column', gap:10,
+        }}>
+          {SCAN_GROUP.map(renderOption)}
+        </div>
+
+        {/* Grupo 2 — Mostrar QR (la única que NO prende cámara, mostrás el tuyo) */}
+        <SectionHeader>Mostrar QR</SectionHeader>
+        <div style={{
+          padding:'14px 12px',
+          background:'rgba(255,255,255,0.025)',
+          border:'1px solid rgba(255,255,255,0.08)',
+          borderRadius:18,
+          display:'flex', flexDirection:'column', gap:10,
+        }}>
+          {SHOW_GROUP.map(renderOption)}
         </div>
       </div>
     )
@@ -14680,11 +14874,12 @@ export default function App() {
       {user && view !== 'home' && view !== 'directory' && (
         <>
           {/* Stack de botones flotantes (bottom-right):
-              - SupportChat   → bottom: 90  (más cercano al borde inferior)
-              - NotificationsBell → bottom: 156 (apilado encima del chat)
-              - SuggestionsInbox → bottom: 222 (apilado encima de la campana)
-              Mantienen 66px de gap vertical para no superponerse en mobile. */}
-          <SuggestionsInbox bottom={222} />
+              - SupportChat       → bottom: 90  (chat de soporte con IA)
+              - NotificationsBell → bottom: 156 (campana unificada con dos tabs:
+                                                 Movimientos + Sistema)
+              66px de gap vertical entre ambos para no superponerse en mobile.
+              SuggestionsInbox quedó absorbido dentro de NotificationsBell
+              como tab "Sistema" — un solo ícono = menos ruido visual. */}
           <NotificationsBell bottom={156} role={view === 'commerce-settings' ? 'merchant' : 'client'} />
           <SupportChat role={view === 'commerce-settings' ? 'merchant' : 'client'} />
           {/* Banner para activar push del navegador. Solo aparece la 1a vez

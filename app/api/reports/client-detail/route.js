@@ -38,7 +38,7 @@ export async function GET(request) {
     // Obtener datos del cliente
     const { data: profile } = await supabaseAdmin
       .from('profiles')
-      .select('id, full_name, email, created_at')
+      .select('id, full_name, name, email, created_at')
       .eq('id', user_id)
       .single()
 
@@ -99,7 +99,7 @@ export async function GET(request) {
       ok: true,
       cliente: {
         id: profile?.id,
-        nombre: profile?.full_name || 'Desconocido',
+        nombre: profile?.full_name || profile?.name || 'Desconocido',
         email: profile?.email || '-',
         unido: new Date(profile?.created_at).toLocaleDateString('es-AR'),
       },

@@ -51,7 +51,7 @@ export async function GET(request, { params }) {
         points,
         stars,
         last_visit,
-        profiles:user_id(id, full_name, email, created_at)
+        profiles:user_id(id, full_name, name, email, created_at)
       `)
       .eq('commerce_id', commerce_id)
 
@@ -74,7 +74,7 @@ export async function GET(request, { params }) {
       .slice(0, limit)
       .map(m => ({
         id: m.user_id,
-        nombre: m.profiles?.full_name || 'Desconocido',
+        nombre: m.profiles?.full_name || m.profiles?.name || 'Desconocido',
         email: m.profiles?.email || '-',
         unido: new Date(m.profiles?.created_at).toLocaleDateString('es-AR'),
         visitas: m.visits_count || 0,

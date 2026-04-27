@@ -115,8 +115,8 @@ export async function POST(request) {
     // Notif al cliente y al dueño (confirmación de la acción)
     try {
       const { data: clientProfile } = await supabaseAdmin
-        .from('profiles').select('full_name').eq('id', membership.user_id).single()
-      const clientFirstName = (clientProfile?.full_name || 'Cliente').split(' ')[0]
+        .from('profiles').select('full_name, name').eq('id', membership.user_id).single()
+      const clientFirstName = (clientProfile?.full_name || clientProfile?.name || 'Cliente').split(' ')[0]
       const valueTxt = promo.value ? `${promo.value}% OFF` : 'un descuento'
       const clubLink = commerce.slug ? `/club/${commerce.slug}` : '/'
 
