@@ -2072,10 +2072,13 @@ function Navbar({ setView, cityName, user, profile, onLogin, onLogout, currentVi
   function ic(targetView) {
     return currentView === targetView ? '#fff' : 'rgba(255,255,255,0.70)'
   }
-  // Botón "Mi cuenta" se prende SOLO cuando el cliente está en el tab cuenta —
-  // el resto de los tabs del nav inferior (mis clubs, historial, mi qr) tienen
-  // su propio highlight ahí abajo. Coordinación entre nav superior y nav inferior.
-  const accountActive = currentView === 'client' && clientTab === 'cuenta'
+  // Botón "Mi cuenta" se prende cuando el user está en CUALQUIER pestaña de
+  // ClientView (Mi billetera / Premios / Historial / Mi QR / Cuenta). Todas
+  // son parte del "área del cliente" desde el punto de vista del usuario,
+  // así que tiene sentido que el ícono del navbar quede destacado mientras
+  // navega entre ellas. El sub-nav abajo se encarga de marcar cuál tab está
+  // activa adentro.
+  const accountActive = currentView === 'client'
   const bsAccount     = accountActive ? GRAD_ACTIVE : NEUTRAL
   const icAccount     = accountActive ? '#fff' : 'rgba(255,255,255,0.70)'
 
@@ -4488,18 +4491,22 @@ function ClientBottomNav({ tab, setTab, profile, setView }) {
     <nav style={{
       // Pegado al fondo del Navbar global. El Navbar es una "isla" fixed top:10
       // con altura 52, así que termina en y=62 — ahí arranca este nav, sin gap.
+      // Estilo discreto: fondo casi transparente con borde inferior sutil para
+      // que el navbar superior (con gradient de marca) sea el protagonista.
+      // La pestaña activa se marca con un underline gradient + texto blanco.
       position: 'fixed', top: 62, left: 0, right: 0, zIndex: 200,
-      background: 'linear-gradient(135deg, #FE5000, #BD4BF8)',
-      boxShadow: '0 8px 24px -8px rgba(0,0,0,0.45)',
+      background: 'rgba(10, 10, 10, 0.75)',
+      backdropFilter: 'blur(14px)',
+      WebkitBackdropFilter: 'blur(14px)',
+      borderBottom: '1px solid rgba(255,255,255,0.08)',
     }}>
       <div style={{
         maxWidth: 520, margin: '0 auto',
         display: 'flex', alignItems: 'stretch', justifyContent: 'center',
-        padding: '12px 16px',
+        padding: '8px 16px 0',
       }}>
-        {TABS.map(({ id, label }, i) => {
+        {TABS.map(({ id, label }) => {
           const active = tab === id
-          const isLast = i === TABS.length - 1
           return (
             <button key={id}
               onClick={() => setTab(id)}
@@ -4510,18 +4517,25 @@ function ClientBottomNav({ tab, setTab, profile, setView }) {
                 flex: 1,
                 background: 'transparent',
                 border: 'none',
-                borderRight: isLast ? 'none' : '1px solid rgba(255,255,255,0.35)',
-                color: '#fff',
+                color: active ? '#fff' : 'rgba(255,255,255,0.55)',
                 fontFamily: FN,
                 fontSize: 13,
                 fontWeight: active ? 700 : 500,
                 letterSpacing: '.02em',
-                opacity: active ? 1 : 0.78,
-                padding: '4px 8px',
+                padding: '10px 8px 12px',
                 cursor: 'pointer',
-                transition: 'opacity 180ms ease, font-weight 180ms ease, transform 160ms cubic-bezier(0.23,1,0.32,1)',
+                transition: 'color 180ms ease, font-weight 180ms ease, transform 160ms cubic-bezier(0.23,1,0.32,1)',
+                position: 'relative',
               }}>
               {label}
+              {/* Underline gradient sutil solo para la pestaña activa */}
+              {active && (
+                <span style={{
+                  position:'absolute', bottom:-1, left:'25%', right:'25%',
+                  height: 2, borderRadius: 2,
+                  background:'linear-gradient(135deg, #FE5000, #BD4BF8)',
+                }} />
+              )}
             </button>
           )
         })}
@@ -15350,7 +15364,14 @@ export default function App() {
     }
     await supabase.auth.signInWithOAuth({
       provider: 'google',
-      options: { redirectTo: `${window.location.origin}/auth/callback` }
+      options: {
+        redirectTo: `${window.location.origin}/auth/callback`,
+        // queryParams.prompt='select_account' fuerza a Google a mostrar
+        // SIEMPRE el picker de cuentas, en lugar de auto-loguear con la
+        // última usada. Sin esto, después de un logout el user que quería
+        // entrar con otro mail volvía a caer automáticamente con el viejo.
+        queryParams: { prompt: 'select_account' },
+      },
     })
   }
 

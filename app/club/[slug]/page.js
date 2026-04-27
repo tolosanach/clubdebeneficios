@@ -585,17 +585,20 @@ function ClubTopNav({ tab, setTab, prizesCount }) {
   ]
   return (
     <nav style={{
-      background: 'linear-gradient(135deg, #FE5000, #BD4BF8)',
-      boxShadow: '0 8px 24px -8px rgba(0,0,0,0.45)',
+      // Estilo discreto: fondo casi transparente con borde inferior sutil,
+      // así el navbar superior (con gradient de marca) sigue siendo el
+      // protagonista visual. La pestaña activa se marca con un underline
+      // gradient violeta y peso de fuente más fuerte.
+      background: 'rgba(255,255,255,0.025)',
+      borderBottom: '1px solid rgba(255,255,255,0.08)',
     }}>
       <div style={{
         maxWidth: 520, margin: '0 auto',
         display: 'flex', alignItems: 'stretch', justifyContent: 'center',
-        padding: '12px 16px',
+        padding: '8px 16px 0',
       }}>
         {TABS.map(({ id, label, badge }, i) => {
           const active = tab === id
-          const isLast = i === TABS.length - 1
           return (
             <button key={id}
               onClick={() => setTab(id)}
@@ -606,27 +609,33 @@ function ClubTopNav({ tab, setTab, prizesCount }) {
                 flex: 1,
                 background: 'transparent',
                 border: 'none',
-                borderRight: isLast ? 'none' : '1px solid rgba(255,255,255,0.35)',
-                color: '#fff',
+                color: active ? '#fff' : 'rgba(255,255,255,0.55)',
                 fontFamily: FN,
                 fontSize: 13,
                 fontWeight: active ? 700 : 500,
                 letterSpacing: '.02em',
-                opacity: active ? 1 : 0.78,
-                padding: '4px 8px',
+                padding: '10px 8px 12px',
                 cursor: 'pointer',
-                transition: 'opacity 180ms ease, font-weight 180ms ease, transform 160ms cubic-bezier(0.23,1,0.32,1)',
+                transition: 'color 180ms ease, font-weight 180ms ease, transform 160ms cubic-bezier(0.23,1,0.32,1)',
                 position: 'relative',
               }}>
               {label}
               {badge > 0 && (
                 <span style={{
-                  position:'absolute', top:-6, right: isLast ? 0 : 6,
-                  background:'rgba(255,255,255,0.95)', color:'#7C3AED',
+                  position:'absolute', top:2, right: 2,
+                  background:'rgba(189,75,248,0.85)', color:'#fff',
                   fontSize:9, fontWeight:800, fontFamily:FN,
                   borderRadius:9999, padding:'1px 5px',
                   minWidth:16, textAlign:'center', lineHeight:1.5,
                 }}>{badge}</span>
+              )}
+              {/* Underline gradient sutil solo para la pestaña activa */}
+              {active && (
+                <span style={{
+                  position:'absolute', bottom:-1, left:'25%', right:'25%',
+                  height: 2, borderRadius: 2,
+                  background:'linear-gradient(135deg, #FE5000, #BD4BF8)',
+                }} />
               )}
             </button>
           )
@@ -889,7 +898,13 @@ export default function ClubProfilePage() {
       provider:'google',
       // Pasamos por /auth/callback (server-side exchange del code) y le decimos
       // a dónde volver con ?next=. Encodeamos porque el next contiene ? y =.
-      options:{ redirectTo:`${window.location.origin}/auth/callback?next=${encodeURIComponent(`/club/${slug}?auto_join=1`)}` },
+      // queryParams.prompt='select_account' fuerza a Google a mostrar el
+      // picker de cuentas siempre — evita que después de un logout te re-loguee
+      // automáticamente con el último mail.
+      options:{
+        redirectTo:`${window.location.origin}/auth/callback?next=${encodeURIComponent(`/club/${slug}?auto_join=1`)}`,
+        queryParams:{ prompt:'select_account' },
+      },
     })
   }
 
