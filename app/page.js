@@ -2082,6 +2082,28 @@ function Navbar({ setView, cityName, user, profile, onLogin, onLogout, currentVi
   const bsAccount     = accountActive ? GRAD_ACTIVE : NEUTRAL
   const icAccount     = accountActive ? '#fff' : 'rgba(255,255,255,0.70)'
 
+  // Tour del icono "Mi cuenta": al tocarlo, recorre las 4 pestañas del
+  // ClientView (Mi billetera → Premios → Historial → Perfil) mostrando cada
+  // una un segundo. Termina en Perfil. Da una idea de qué hay en cada tab
+  // al usuario que recién toca el ícono. Si el user vuelve a tocar el
+  // ícono mientras el tour está corriendo, se cancela el anterior y arranca
+  // uno nuevo.
+  const tourTimeoutsRef = useRef([])
+  function runAccountTour() {
+    // Cancelar tour previo si quedó en curso
+    tourTimeoutsRef.current.forEach(t => clearTimeout(t))
+    tourTimeoutsRef.current = []
+    const sequence = ['mis clubs', 'premios', 'historial', 'cuenta']
+    sequence.forEach((tab, i) => {
+      const t = setTimeout(() => {
+        window.dispatchEvent(new CustomEvent('benefix:navigate', {
+          detail: { view: 'client', tab },
+        }))
+      }, i * 1000)
+      tourTimeoutsRef.current.push(t)
+    })
+  }
+
   const NAV = { position:'fixed', top:10, left:10, right:10, zIndex:200, borderRadius:14, height:52, display:'flex', alignItems:'center', justifyContent:'space-between' }
 
   // ── No logged-in user ─────────────────────────────────────────────────────
@@ -2109,7 +2131,7 @@ function Navbar({ setView, cityName, user, profile, onLogin, onLogout, currentVi
             style={{ ...BTN, ...bs('admin'), cursor: currentView==='admin' ? 'default' : 'pointer' }}>
             <LayoutDashboard size={16} color={ic('admin')} />
           </button>
-          <button title="Mi cuenta" onClick={() => window.dispatchEvent(new CustomEvent('benefix:navigate', { detail: { view: 'client', tab: 'cuenta' } }))}
+          <button title="Mi cuenta" onClick={runAccountTour}
             style={{ ...BTN, ...bsAccount, cursor: 'pointer' }}>
             <User size={16} color={icAccount} />
           </button>
@@ -2141,7 +2163,7 @@ function Navbar({ setView, cityName, user, profile, onLogin, onLogout, currentVi
             style={{ ...BTN, ...bs('commerce-settings'), cursor: 'pointer' }}>
             <Store size={16} color={ic('commerce-settings')} strokeWidth={2} />
           </button>
-          <button title="Mi cuenta" onClick={() => window.dispatchEvent(new CustomEvent('benefix:navigate', { detail: { view: 'client', tab: 'cuenta' } }))}
+          <button title="Mi cuenta" onClick={runAccountTour}
             style={{ ...BTN, ...bsAccount, cursor: 'pointer' }}>
             <User size={16} color={icAccount} strokeWidth={2} />
           </button>
@@ -2155,7 +2177,7 @@ function Navbar({ setView, cityName, user, profile, onLogin, onLogout, currentVi
             style={{ ...BTN, ...bs('scanner','qr'), cursor: currentView==='scanner' ? 'default' : 'pointer' }}>
             <ScanLine size={16} color={ic('scanner')} strokeWidth={2} />
           </button>
-          <button title="Mi cuenta" onClick={() => window.dispatchEvent(new CustomEvent('benefix:navigate', { detail: { view: 'client', tab: 'cuenta' } }))}
+          <button title="Mi cuenta" onClick={runAccountTour}
             style={{ ...BTN, ...bsAccount, cursor: 'pointer' }}>
             <User size={16} color={icAccount} strokeWidth={2} />
           </button>
@@ -8687,6 +8709,21 @@ function CommerceSettingsView({ user, profile, setView, onLogout, onOwnerProfile
         return
       }
       showToast('success', 'Tu negocio fue eliminado')
+      // Limpieza de flags locales para que la app arranque "fresh" como si
+      // fuera un cliente nuevo:
+      //  - benefix:bizAnswer: si la borramos, el cartel "¿Tenés un negocio?"
+      //    vuelve a aparecer en su versión prominente (top-collapsed) en
+      //    Perfil, ofreciendo registrar un comercio de nuevo.
+      //  - benefix:commerceTab / lastView: el user ya no tiene panel.
+      //  - benefix:rail-hint-seen / panel-hint-seen: si vuelve a registrarse,
+      //    los coachmarks reaparecen.
+      try {
+        localStorage.removeItem('benefix:bizAnswer')
+        localStorage.removeItem('benefix:commerceTab')
+        localStorage.removeItem('benefix:lastView')
+        localStorage.removeItem('benefix:rail-hint-seen')
+        localStorage.removeItem('benefix:panel-hint-seen')
+      } catch (_) {}
       // Reload completo para limpiar todo el state — el user queda sin
       // comercio asociado y la app arranca desde cero como si fuera cliente.
       if (typeof window !== 'undefined') {
@@ -9536,7 +9573,12 @@ function CommerceSettingsView({ user, profile, setView, onLogout, onOwnerProfile
                   e.currentTarget.style.borderColor = 'rgba(168,85,247,0.45)'
                 }}>
                 Ir
-                <ArrowRight size={14} color="#D8B4FE" strokeWidth={2.4} />
+                <ArrowRight
+                  size={14}
+                  color="#D8B4FE"
+                  strokeWidth={2.4}
+                  style={{ animation: 'ir-arrow-nudge 1.4s ease-in-out infinite' }}
+                />
               </button>
             </div>
           )}
@@ -9583,6 +9625,12 @@ function CommerceSettingsView({ user, profile, setView, onLogout, onOwnerProfile
           @keyframes intent-accordion-in {
             from { opacity: 0; transform: translateY(-4px); }
             to   { opacity: 1; transform: translateY(0); }
+          }
+          /* Flechita del botón "Ir" — pequeño nudge horizontal para invitar
+             al toque. Se mueve 4px a la derecha y vuelve, en loop suave. */
+          @keyframes ir-arrow-nudge {
+            0%, 100% { transform: translateX(0); }
+            50%      { transform: translateX(4px); }
           }
         `}</style>
       </div>
@@ -9745,11 +9793,11 @@ function CommerceSettingsView({ user, profile, setView, onLogout, onOwnerProfile
             if (p.expires_at && new Date(p.expires_at) <= new Date()) return false
             return true
           })
-          // Si el cliente ya tiene un cupón activo de la misma promo, lo marcamos
-          // para mostrar "Ya tiene activo" en vez de permitir doble grant.
-          // memberRedemptions no nos sirve acá, así que hacemos best-effort:
-          // mostramos el botón igual y el endpoint resuelve el conflicto via upsert.
-          if (grantablePromos.length === 0) return null
+          const hasPromos = grantablePromos.length > 0
+          // La card SIEMPRE se muestra. Si no hay promos vigentes, se ve
+          // un estado "vacío" con CTA para configurar una. Antes la card
+          // simplemente desaparecía si no había promos, lo que confundía
+          // a usuarios que veían el botón en una cuenta y no en otra.
           return (
             <PCard style={{
               padding:16, marginBottom:12,
@@ -9794,35 +9842,51 @@ function CommerceSettingsView({ user, profile, setView, onLogout, onOwnerProfile
                       {grantError}
                     </div>
                   )}
-                  <div style={{ display:'flex', flexDirection:'column', gap:8 }}>
-                    {grantablePromos.map(p => {
-                      const valueTxt = p.value ? `${p.value}% OFF` : 'Descuento'
-                      const expiresTxt = p.expiration_type === 'relative'
-                        ? `Vale ${p.expiration_days || 7} día${(p.expiration_days||7) === 1 ? '' : 's'} desde que lo regales`
-                        : (p.expiration_date ? `Vence el ${new Date(p.expiration_date).toLocaleDateString('es-AR')}` : 'Sin vencimiento configurado')
-                      const busy = grantingPromoId === p.id
-                      return (
-                        <div key={p.id} style={{ display:'flex', alignItems:'center', justifyContent:'space-between', background:C.bg3, borderRadius:10, padding:'10px 14px', gap:10 }}>
-                          <div style={{ minWidth:0, flex:1 }}>
-                            <div style={{ display:'flex', alignItems:'center', gap:6, marginBottom:2 }}>
-                              <Percent size={11} color={C.v} strokeWidth={2.5} />
-                              <span style={{ fontFamily:FN, fontSize:13, fontWeight:700, color:C.white }}>{valueTxt}</span>
-                            </div>
-                            {p.description && (
-                              <div style={{ fontSize:11, color:C.mist, marginBottom:2, overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>
-                                {p.description}
+                  {/* Estado vacío: no hay promos vigentes para otorgar.
+                      Le explicamos al user qué falta y le damos un atajo
+                      para configurar una promo desde Recompensas. */}
+                  {!hasPromos && (
+                    <div style={{ padding:'14px 12px', background:C.bg3, border:`1px dashed ${C.rim}`, borderRadius:10, textAlign:'center' }}>
+                      <div style={{ fontSize:12, color:C.mist, marginBottom:10, lineHeight:1.5 }}>
+                        Todavía no tenés promociones vigentes para otorgar manualmente. Configurá un cupón de descuento para próxima compra desde <strong style={{ color:C.white }}>Recompensas</strong> y después podés regalarlo desde acá.
+                      </div>
+                      <button onClick={() => { setSelectedMember(null); setTab('recompensas') }}
+                        style={{ background:'transparent', border:`1px solid ${C.v}`, color:C.v, fontFamily:FN, fontSize:12, fontWeight:700, padding:'7px 14px', borderRadius:8, cursor:'pointer', display:'inline-flex', alignItems:'center', gap:6 }}>
+                        Ir a Recompensas <ArrowRight size={12} strokeWidth={2.5} />
+                      </button>
+                    </div>
+                  )}
+                  {hasPromos && (
+                    <div style={{ display:'flex', flexDirection:'column', gap:8 }}>
+                      {grantablePromos.map(p => {
+                        const valueTxt = p.value ? `${p.value}% OFF` : 'Descuento'
+                        const expiresTxt = p.expiration_type === 'relative'
+                          ? `Vale ${p.expiration_days || 7} día${(p.expiration_days||7) === 1 ? '' : 's'} desde que lo regales`
+                          : (p.expiration_date ? `Vence el ${new Date(p.expiration_date).toLocaleDateString('es-AR')}` : 'Sin vencimiento configurado')
+                        const busy = grantingPromoId === p.id
+                        return (
+                          <div key={p.id} style={{ display:'flex', alignItems:'center', justifyContent:'space-between', background:C.bg3, borderRadius:10, padding:'10px 14px', gap:10 }}>
+                            <div style={{ minWidth:0, flex:1 }}>
+                              <div style={{ display:'flex', alignItems:'center', gap:6, marginBottom:2 }}>
+                                <Percent size={11} color={C.v} strokeWidth={2.5} />
+                                <span style={{ fontFamily:FN, fontSize:13, fontWeight:700, color:C.white }}>{valueTxt}</span>
                               </div>
-                            )}
-                            <div style={{ fontSize:10, color:C.dust }}>{expiresTxt}</div>
+                              {p.description && (
+                                <div style={{ fontSize:11, color:C.mist, marginBottom:2, overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>
+                                  {p.description}
+                                </div>
+                              )}
+                              <div style={{ fontSize:10, color:C.dust }}>{expiresTxt}</div>
+                            </div>
+                            <button onClick={() => grantPromoToMember(p.id)} disabled={!!grantingPromoId}
+                              style={{ background:GV, border:'none', borderRadius:8, padding:'8px 14px', color:'#fff', fontFamily:FN, fontSize:11, fontWeight:700, cursor: grantingPromoId ? 'wait' : 'pointer', opacity: busy ? 0.7 : 1, flexShrink:0 }}>
+                              {busy ? '⟳' : 'Otorgar'}
+                            </button>
                           </div>
-                          <button onClick={() => grantPromoToMember(p.id)} disabled={!!grantingPromoId}
-                            style={{ background:GV, border:'none', borderRadius:8, padding:'8px 14px', color:'#fff', fontFamily:FN, fontSize:11, fontWeight:700, cursor: grantingPromoId ? 'wait' : 'pointer', opacity: busy ? 0.7 : 1, flexShrink:0 }}>
-                            {busy ? '⟳' : 'Otorgar'}
-                          </button>
-                        </div>
-                      )
-                    })}
-                  </div>
+                        )
+                      })}
+                    </div>
+                  )}
                 </div>
               )}
             </PCard>

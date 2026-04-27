@@ -81,6 +81,23 @@ export async function POST(request) {
     const { error: delErr } = await supabaseAdmin.from('commerces').delete().eq('id', commerce_id)
     if (delErr) throw delErr
 
+    // Bajar el role del dueño a 'client' — no tiene más comercio asociado.
+    // Solo si el role era 'commerce_owner' (no tocamos admins). Esto hace
+    // que al recargar la app, el navbar oculte los botones del ojo y "Mi
+    // Negocio", y el scanner deje de mostrar las opciones de owner
+    // (registrar visita, mostrar QR del negocio).
+    if (commerce.owner_id === user.id) {
+      try {
+        const { data: prof } = await supabaseAdmin
+          .from('profiles').select('role').eq('id', user.id).single()
+        if (prof?.role === 'commerce_owner') {
+          await supabaseAdmin.from('profiles').update({ role: 'client' }).eq('id', user.id)
+        }
+      } catch (e) {
+        console.error('[delete-commerce] no pude bajar role a client:', e)
+      }
+    }
+
     return NextResponse.json({ ok: true, name: commerce.name })
   } catch (err) {
     console.error('[delete-commerce]', err)
