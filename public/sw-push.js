@@ -15,6 +15,15 @@ self.addEventListener('activate', (event) => {
   event.waitUntil(self.clients.claim())
 })
 
+// Fetch passthrough — no cacheamos nada (no es un PWA offline-first), pero
+// los criterios de "installable PWA" de Chrome/Edge requieren que el SW
+// tenga al menos un fetch handler registrado. Sin esto, el evento
+// `beforeinstallprompt` nunca se dispara y no aparece el cartel "Instalar app".
+self.addEventListener('fetch', (event) => {
+  // No-op: dejamos que el browser maneje la request normalmente.
+  return
+})
+
 self.addEventListener('push', (event) => {
   let data = {}
   try {

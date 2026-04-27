@@ -13,6 +13,7 @@ import SupportChat from '../lib/SupportChat'
 import SuggestionsInbox from '../lib/SuggestionsInbox'
 import NotificationsBell from '../lib/NotificationsBell'
 import EnablePushPrompt from '../lib/EnablePushPrompt'
+import SwRegister from '../lib/sw-register'
 import InfoHint from '../lib/InfoHint'
 import JsQrScanner from '../lib/JsQrScanner'
 import { QRCodeSVG } from 'qrcode.react'
@@ -311,28 +312,75 @@ function PullToRefresh({ onRefresh, children }) {
 }
 
 // ─── INSTALL PROMPT ───────────────────────────────────────────────────────────
+//
+// Banner "Instalá la app" para que el user la guarde en la pantalla de inicio.
+// Maneja dos casos según el navegador:
+//
+// 1. Chrome / Edge / Samsung Internet (Android + desktop): el navegador dispara
+//    el evento `beforeinstallprompt` cuando considera que el sitio es
+//    instalable. Nosotros lo capturamos, lo guardamos, y al click en "Instalar"
+//    le pedimos al navegador que muestre el dialog nativo.
+//
+// 2. iOS Safari: NO dispara `beforeinstallprompt` (Apple no lo soporta). En
+//    iPhone hay que abrir el menú "Compartir" y tocar "Añadir a inicio" a
+//    mano. Detectamos iOS y mostramos un mini-tutorial con esa instrucción.
+//
+// Si el user ya está corriendo la app instalada (display-mode standalone),
+// no mostramos nada — ya está instalada.
 function InstallPrompt() {
   const [deferredPrompt, setDeferredPrompt] = useState(null)
   const [visible,        setVisible]        = useState(false)
+  const [iosMode,        setIosMode]        = useState(false)
+  const [showIosHelp,    setShowIosHelp]    = useState(false)
 
   useEffect(() => {
     if (typeof window === 'undefined') return
     if (sessionStorage.getItem('install_dismissed')) return
+
+    // Si ya corre como app instalada, no mostrar nada.
+    const isStandalone =
+      window.matchMedia?.('(display-mode: standalone)').matches ||
+      window.navigator.standalone === true
+    if (isStandalone) return
+
+    // Detectar iOS (Safari + Chrome para iOS también, todos sin BIP).
+    const ua = navigator.userAgent || ''
+    const isIos = /iPad|iPhone|iPod/.test(ua) && !window.MSStream
+    if (isIos) {
+      setIosMode(true)
+      // En iOS no esperamos evento — mostramos el banner a los 6s.
+      const t = setTimeout(() => setVisible(true), 6000)
+      return () => clearTimeout(t)
+    }
+
+    // Resto: esperar el evento beforeinstallprompt y mostrar al toque (3s).
     const handler = e => {
       e.preventDefault()
       setDeferredPrompt(e)
-      const t = setTimeout(() => setVisible(true), 45000)
-      return () => clearTimeout(t)
+      setTimeout(() => setVisible(true), 3000)
     }
     window.addEventListener('beforeinstallprompt', handler)
-    return () => window.removeEventListener('beforeinstallprompt', handler)
+
+    // Si el user instala la app desde el menú del navegador, ocultar.
+    const onInstalled = () => {
+      sessionStorage.setItem('install_dismissed', '1')
+      setVisible(false)
+    }
+    window.addEventListener('appinstalled', onInstalled)
+
+    return () => {
+      window.removeEventListener('beforeinstallprompt', handler)
+      window.removeEventListener('appinstalled', onInstalled)
+    }
   }, [])
 
-  if (!visible || !deferredPrompt) return null
+  if (!visible) return null
+  if (!iosMode && !deferredPrompt) return null
 
-  function dismiss() { sessionStorage.setItem('install_dismissed', '1'); setVisible(false) }
+  function dismiss() { sessionStorage.setItem('install_dismissed', '1'); setVisible(false); setShowIosHelp(false) }
 
   async function install() {
+    if (iosMode) { setShowIosHelp(true); return }
     deferredPrompt.prompt()
     const { outcome } = await deferredPrompt.userChoice
     sessionStorage.setItem('install_dismissed', '1')
@@ -341,26 +389,64 @@ function InstallPrompt() {
   }
 
   return (
-    <div className="modal-in" style={{ position:'fixed', bottom:88, left:16, right:16, zIndex:190, background:'rgba(18,10,32,0.97)', backdropFilter:'blur(24px)', WebkitBackdropFilter:'blur(24px)', border:'1px solid rgba(189,75,248,0.35)', borderRadius:18, padding:'14px 16px', boxShadow:'0 8px 40px rgba(0,0,0,0.5)', display:'flex', alignItems:'center', gap:12 }}>
-      <div style={{ width:42, height:42, borderRadius:12, background:G, display:'flex', alignItems:'center', justifyContent:'center', flexShrink:0 }}>
-        <svg width="22" height="22" viewBox="0 0 28 28" fill="none">
-          <path d="M14 4C8.477 4 4 8.477 4 14s4.477 10 10 10" stroke="white" strokeWidth="3" strokeLinecap="round"/>
-          <rect x="16" y="5.5" width="8" height="5" rx="2.5" fill="white" opacity=".9"/>
-          <rect x="16" y="12" width="9" height="5.5" rx="2.75" fill="white"/>
-        </svg>
+    <>
+      <div className="modal-in" style={{ position:'fixed', bottom:88, left:16, right:16, zIndex:190, background:'rgba(18,10,32,0.97)', backdropFilter:'blur(24px)', WebkitBackdropFilter:'blur(24px)', border:'1px solid rgba(189,75,248,0.35)', borderRadius:18, padding:'14px 16px', boxShadow:'0 8px 40px rgba(0,0,0,0.5)', display:'flex', alignItems:'center', gap:12 }}>
+        <div style={{ width:42, height:42, borderRadius:12, background:G, display:'flex', alignItems:'center', justifyContent:'center', flexShrink:0 }}>
+          <svg width="22" height="22" viewBox="0 0 28 28" fill="none">
+            <path d="M14 4C8.477 4 4 8.477 4 14s4.477 10 10 10" stroke="white" strokeWidth="3" strokeLinecap="round"/>
+            <rect x="16" y="5.5" width="8" height="5" rx="2.5" fill="white" opacity=".9"/>
+            <rect x="16" y="12" width="9" height="5.5" rx="2.75" fill="white"/>
+          </svg>
+        </div>
+        <div style={{ flex:1, minWidth:0 }}>
+          <div style={{ fontFamily:FN, fontSize:13, fontWeight:700, color:C.white, marginBottom:2 }}>Instalá la app</div>
+          <div style={{ fontSize:11, color:C.mist, lineHeight:1.4 }}>
+            {iosMode ? 'Sumala a tu pantalla de inicio en 2 toques.' : 'Accedé más rápido desde tu pantalla de inicio.'}
+          </div>
+        </div>
+        <button onClick={install} style={{ padding:'8px 14px', borderRadius:10, background:G, border:'none', color:'#fff', fontFamily:FN, fontSize:12, fontWeight:700, cursor:'pointer', display:'flex', alignItems:'center', gap:5, flexShrink:0, boxShadow:'0 4px 16px rgba(254,80,0,0.35)' }}>
+          <Download size={13} strokeWidth={2} />
+          {iosMode ? 'Cómo' : 'Instalar'}
+        </button>
+        <button onClick={dismiss} style={{ width:28, height:28, borderRadius:'50%', background:'rgba(255,255,255,0.08)', border:'none', display:'flex', alignItems:'center', justifyContent:'center', cursor:'pointer', flexShrink:0 }}>
+          <X size={13} color={C.mist} strokeWidth={2} />
+        </button>
       </div>
-      <div style={{ flex:1, minWidth:0 }}>
-        <div style={{ fontFamily:FN, fontSize:13, fontWeight:700, color:C.white, marginBottom:2 }}>Instalá la app</div>
-        <div style={{ fontSize:11, color:C.mist, lineHeight:1.4 }}>Accedé más rápido desde tu pantalla de inicio.</div>
-      </div>
-      <button onClick={install} style={{ padding:'8px 14px', borderRadius:10, background:G, border:'none', color:'#fff', fontFamily:FN, fontSize:12, fontWeight:700, cursor:'pointer', display:'flex', alignItems:'center', gap:5, flexShrink:0, boxShadow:'0 4px 16px rgba(254,80,0,0.35)' }}>
-        <Download size={13} strokeWidth={2} />
-        Instalar
-      </button>
-      <button onClick={dismiss} style={{ width:28, height:28, borderRadius:'50%', background:'rgba(255,255,255,0.08)', border:'none', display:'flex', alignItems:'center', justifyContent:'center', cursor:'pointer', flexShrink:0 }}>
-        <X size={13} color={C.mist} strokeWidth={2} />
-      </button>
-    </div>
+
+      {/* Mini-tutorial para iOS — Safari no permite prompt programático. */}
+      {iosMode && showIosHelp && (
+        <div onClick={() => setShowIosHelp(false)}
+          style={{ position:'fixed', inset:0, zIndex:9998, background:'rgba(0,0,0,0.78)', backdropFilter:'blur(10px)', WebkitBackdropFilter:'blur(10px)', display:'flex', alignItems:'center', justifyContent:'center', padding:20 }}>
+          <div onClick={e => e.stopPropagation()}
+            style={{ background:C.card, border:`1px solid ${C.rim}`, borderRadius:20, padding:'24px 22px', maxWidth:340, width:'100%', position:'relative' }}>
+            <button onClick={() => setShowIosHelp(false)} aria-label="Cerrar"
+              style={{ position:'absolute', top:12, right:12, width:30, height:30, borderRadius:'50%', background:'rgba(0,0,0,0.4)', border:`1px solid ${C.rim}`, color:'#fff', cursor:'pointer', display:'flex', alignItems:'center', justifyContent:'center' }}>
+              <X size={14} strokeWidth={2.5} />
+            </button>
+            <div style={{ fontFamily:FN, fontSize:11, fontWeight:800, color:C.v, letterSpacing:'.10em', textTransform:'uppercase', marginBottom:6 }}>iPhone / iPad</div>
+            <div style={{ fontFamily:FN, fontSize:18, fontWeight:900, color:C.white, marginBottom:14, lineHeight:1.3 }}>Sumá Benefix a tu inicio</div>
+            <div style={{ display:'flex', flexDirection:'column', gap:14 }}>
+              <div style={{ display:'flex', alignItems:'flex-start', gap:12 }}>
+                <div style={{ width:28, height:28, borderRadius:'50%', background:`${C.v}22`, color:C.v, fontFamily:FN, fontWeight:800, fontSize:13, display:'flex', alignItems:'center', justifyContent:'center', flexShrink:0 }}>1</div>
+                <div style={{ fontSize:13, color:C.pearl, lineHeight:1.5 }}>Tocá el botón <strong style={{ color:C.white }}>Compartir</strong> en la barra de Safari (cuadrado con flecha hacia arriba).</div>
+              </div>
+              <div style={{ display:'flex', alignItems:'flex-start', gap:12 }}>
+                <div style={{ width:28, height:28, borderRadius:'50%', background:`${C.v}22`, color:C.v, fontFamily:FN, fontWeight:800, fontSize:13, display:'flex', alignItems:'center', justifyContent:'center', flexShrink:0 }}>2</div>
+                <div style={{ fontSize:13, color:C.pearl, lineHeight:1.5 }}>Bajá y tocá <strong style={{ color:C.white }}>"Añadir a inicio"</strong> (o "Add to Home Screen").</div>
+              </div>
+              <div style={{ display:'flex', alignItems:'flex-start', gap:12 }}>
+                <div style={{ width:28, height:28, borderRadius:'50%', background:`${C.v}22`, color:C.v, fontFamily:FN, fontWeight:800, fontSize:13, display:'flex', alignItems:'center', justifyContent:'center', flexShrink:0 }}>3</div>
+                <div style={{ fontSize:13, color:C.pearl, lineHeight:1.5 }}>Confirmá tocando <strong style={{ color:C.white }}>"Añadir"</strong>. Listo, ya la tenés en el inicio.</div>
+              </div>
+            </div>
+            <button onClick={dismiss}
+              style={{ marginTop:20, width:'100%', padding:'12px', background:G, border:'none', borderRadius:12, color:'#fff', fontFamily:FN, fontSize:13, fontWeight:700, cursor:'pointer' }}>
+              Listo, lo hice
+            </button>
+          </div>
+        </div>
+      )}
+    </>
   )
 }
 
@@ -14096,6 +14182,7 @@ export default function App() {
       <ToastContainer />
       <ConfirmModal />
       <LoginPromptModal />
+      <SwRegister />
       <InstallPrompt />
       {showTerms && user && (
         <TermsAcceptance user={user} onAccept={handleTermsAccepted} />
