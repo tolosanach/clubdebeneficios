@@ -235,57 +235,13 @@ export async function POST(request) {
       }
     }
 
-    // Otorgar promos de descuento activas al cliente (si NO las tiene ya y
-    // si NO acaba de canjear esa misma promo en esta visita).
-    //
-    // BUG FIX (decisión del dueño): antes el backend re-otorgaba el cupón
-    // discount_next inmediatamente después de marcarlo como `used`. Con eso,
-    // si el cashier después decía "No renovar" en el modal del frontend,
-    // ya era tarde — el cliente conservaba el cupón. Ahora la renovación
-    // queda 100% en manos del frontend (renewDiscountForCustomer), que solo
-    // se dispara si el dueño confirma "Sí" en el modal.
-    //
-    // Importante: clientes NUEVOS (sin cupón previo) sí reciben el cupón
-    // automáticamente, porque la promo es la "recompensa" que el comercio
-    // ofrece por venir. Solo se omite la renovación de la promo que el
-    // cliente acaba de canjear en este mismo scan.
-    const justRedeemedPromoIds = new Set()
-    if (discountRedeemed?.promo_id) justRedeemedPromoIds.add(discountRedeemed.promo_id)
-
-    const discountPromos = validPromos.filter(p => p.type === 'discount_next')
-    for (const promo of discountPromos) {
-      // No re-otorgar la promo que el cliente acaba de canjear en esta visita.
-      // El dueño decide si renovarla o no via el modal del frontend.
-      if (justRedeemedPromoIds.has(promo.id)) continue
-
-      const { data: existing } = await supabaseAdmin
-        .from('client_promotions')
-        .select('id')
-        .eq('promotion_id', promo.id)
-        .eq('membership_id', membership.id)
-        .eq('status', 'active')
-        .maybeSingle()
-      if (existing) continue  // ya la tiene activa, no duplicar
-
-      let expiresAt
-      if (promo.expiration_type === 'relative') {
-        const d = new Date()
-        d.setDate(d.getDate() + (promo.expiration_days || 7))
-        d.setHours(23, 59, 59, 999)
-        expiresAt = d.toISOString()
-      } else {
-        expiresAt = promo.expiration_date || promo.expires_at
-      }
-      if (!expiresAt) continue  // sin fecha de vencimiento definida, no otorgar
-
-      await supabaseAdmin.from('client_promotions').upsert({
-        promotion_id:  promo.id,
-        membership_id: membership.id,
-        granted_at:    new Date().toISOString(),
-        expires_at:    expiresAt,
-        status:        'active',
-      }, { onConflict: 'promotion_id,membership_id', ignoreDuplicates: true })
-    }
+    // ── Otorgamiento de discount_next ──
+    // Se hace UNA SOLA vez en /api/join (cuando el cliente se suma al club).
+    // El scan solo MARCA COMO USED la promo activa que el cliente trajera.
+    // La renovación de un cupón ya canjeado pasa por /api/discount-decision
+    // disparado por el modal "¿Renovar?" del frontend. Esto le da al dueño
+    // control total: si dice "no renovar", el cliente NO recibe el cupón
+    // de nuevo en visitas posteriores.
 
     // Premio más barato para saber si puede canjear
     const { data: cheapestPrize } = await supabaseAdmin

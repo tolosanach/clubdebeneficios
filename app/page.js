@@ -12747,23 +12747,32 @@ function ScannerView({ user, profile, setView }) {
     setTimeout(() => startCamera(), 50)
   }
 
-  // Renueva un descuento al cliente — re-otorga la promo discount_next con
-  // la misma fecha de vencimiento ya configurada.
-  async function renewDiscountForCustomer() {
+  // Decisión del dueño sobre el cupón canjeado: renovar o no.
+  // Llama a /api/discount-decision (que dispara las notifs cruzadas) y cierra
+  // el modal. Si el dueño cierra con X o backdrop, se interpreta como "decline"
+  // para que el cliente igual reciba el aviso de que no le renovaron.
+  async function submitDiscountDecision(decision) {
     if (!renewDiscountPromo) return
+    const { promoId, membershipId } = renewDiscountPromo
     try {
-      const { promoId, expiresAt, membershipId } = renewDiscountPromo
-      // Insert nuevo client_promotion (la upsert onConflict ya existe en la tabla)
-      await supabase.from('client_promotions').upsert({
-        promotion_id:  promoId,
-        membership_id: membershipId,
-        granted_at:    new Date().toISOString(),
-        expires_at:    expiresAt,
-        status:        'active',
-      }, { onConflict: 'promotion_id,membership_id' })
-      showToast('success', 'Descuento renovado')
+      const res = await fetch('/api/discount-decision', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          commerce_id:   commerceId,
+          membership_id: membershipId,
+          promotion_id:  promoId,
+          decision,
+        }),
+      })
+      const data = await res.json()
+      if (data.ok) {
+        showToast('success', decision === 'renew' ? 'Descuento renovado' : 'Descuento no renovado')
+      } else {
+        showToast('error', data.message || data.error || 'No se pudo procesar')
+      }
     } catch (e) {
-      showToast('error', e.message || 'No se pudo renovar')
+      showToast('error', e.message || 'Error de red')
     } finally {
       setRenewDiscountPromo(null)
     }
@@ -13080,13 +13089,15 @@ function ScannerView({ user, profile, setView }) {
         </div>
       )}
 
-      {/* ── POST-SCAN MODAL: renovar descuento usado ── */}
+      {/* ── POST-SCAN MODAL: renovar descuento usado ──
+          X y backdrop disparan 'decline' (igual que el botón "No") para que
+          el cliente reciba siempre el aviso del resultado de la decisión. */}
       {renewDiscountPromo && (
-        <div onClick={() => setRenewDiscountPromo(null)}
+        <div onClick={() => submitDiscountDecision('decline')}
           style={{ position:'fixed', inset:0, zIndex:9999, background:'rgba(0,0,0,0.82)', backdropFilter:'blur(12px)', WebkitBackdropFilter:'blur(12px)', display:'flex', alignItems:'center', justifyContent:'center', padding:20 }}>
           <div onClick={e => e.stopPropagation()}
             style={{ position:'relative', borderRadius:20, padding:'24px 22px', width:'100%', maxWidth:360, background:'linear-gradient(180deg, rgba(189,75,248,0.18) 0%, rgba(189,75,248,0.04) 60%, rgba(0,0,0,0.4) 100%)', border:'1px solid rgba(189,75,248,0.40)', boxShadow:'0 32px 80px rgba(189,75,248,0.25)' }}>
-            <button onClick={() => setRenewDiscountPromo(null)} aria-label="Cerrar"
+            <button onClick={() => submitDiscountDecision('decline')} aria-label="Cerrar"
               style={{ position:'absolute', top:14, right:14, width:30, height:30, borderRadius:'50%', background:'rgba(0,0,0,0.40)', border:'1px solid rgba(255,255,255,0.18)', color:'#fff', display:'flex', alignItems:'center', justifyContent:'center', cursor:'pointer', padding:0 }}>
               <X size={14} strokeWidth={2.5} />
             </button>
@@ -13099,9 +13110,9 @@ function ScannerView({ user, profile, setView }) {
             </div>
             <div style={{ fontSize:12, color:C.mist, marginBottom:18, lineHeight:1.55 }}>El cliente acaba de usar su descuento. Si renovás, le queda otro cupón activo con la misma fecha de vencimiento.</div>
             <div style={{ display:'flex', gap:10 }}>
-              <button onClick={() => setRenewDiscountPromo(null)}
+              <button onClick={() => submitDiscountDecision('decline')}
                 style={{ flex:1, padding:'12px', background:'rgba(255,255,255,0.06)', border:'1px solid rgba(255,255,255,0.14)', borderRadius:12, color:C.pearl, fontFamily:FN, fontSize:13, fontWeight:600, cursor:'pointer' }}>No</button>
-              <button onClick={renewDiscountForCustomer}
+              <button onClick={() => submitDiscountDecision('renew')}
                 style={{ flex:1, padding:'12px', background:GV, border:'none', borderRadius:12, color:'#fff', fontFamily:FN, fontSize:13, fontWeight:700, cursor:'pointer' }}>Sí, renovar</button>
             </div>
           </div>

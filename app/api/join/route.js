@@ -89,6 +89,49 @@ export async function POST(request) {
       }
     }
 
+    // ── Otorgar al nuevo cliente todas las promos discount_next activas ──
+    // El cupón "descuento próxima compra" es el beneficio inicial que el
+    // comercio ofrece a quien se suma al club. Se otorga UNA SOLA vez al
+    // momento del join. Después, la renovación queda 100% en manos del
+    // dueño cuando lo escanea (modal "¿Renovar?" → /api/discount-decision).
+    let grantedDiscounts = []
+    if (newMem?.id) {
+      try {
+        const nowIso = new Date().toISOString()
+        const { data: promos } = await supabaseAdmin
+          .from('promotions')
+          .select('id, value, expiration_type, expiration_date, expiration_days, expires_at')
+          .eq('commerce_id', commerce_id)
+          .eq('active', true)
+          .eq('type', 'discount_next')
+        const validPromos = (promos || []).filter(p => !p.expires_at || p.expires_at > nowIso)
+
+        for (const promo of validPromos) {
+          let expiresAt
+          if (promo.expiration_type === 'relative') {
+            const d = new Date()
+            d.setDate(d.getDate() + (promo.expiration_days || 7))
+            d.setHours(23, 59, 59, 999)
+            expiresAt = d.toISOString()
+          } else {
+            expiresAt = promo.expiration_date || promo.expires_at
+          }
+          if (!expiresAt) continue
+
+          await supabaseAdmin.from('client_promotions').upsert({
+            promotion_id:  promo.id,
+            membership_id: newMem.id,
+            granted_at:    nowIso,
+            expires_at:    expiresAt,
+            status:        'active',
+          }, { onConflict: 'promotion_id,membership_id', ignoreDuplicates: true })
+          grantedDiscounts.push({ promotion_id: promo.id, value: promo.value, expires_at: expiresAt })
+        }
+      } catch (e) {
+        console.error('[join] error otorgando discount_next:', e)
+      }
+    }
+
     // ─── NOTIFICACIONES ──────────────────────────────────────────────────
     // Cliente nuevo se unió al club: aviso a ambas partes.
     try {
