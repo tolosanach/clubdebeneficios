@@ -10,8 +10,10 @@ import {
   Coffee, Scissors, Utensils, ShoppingBag, Wrench, Building2,
   Shield, MessageCircle, ArrowRight, Check, Smartphone,
   ScanLine, LogOut, Percent,
+  Eye, Store, LayoutDashboard, DoorOpen,
 } from 'lucide-react'
 import PhoneInput from '../../../lib/PhoneInput'
+import HelpBanner from '../../../lib/HelpBanner'
 
 // Feature flag — sistema de reseñas/rating apagado hasta tener masa crítica.
 // Sincronizado con el flag del mismo nombre en app/page.js.
@@ -959,31 +961,101 @@ export default function ClubProfilePage() {
         <Splash commerce={commerce} UnitIcon={UnitIcon} unitIconProps={unitIconProps} unitLabel={unitLabel} onClose={() => setShowSplash(false)} />
       )}
 
-      {/* ── NAVBAR FIJO ── */}
+      {/* ── NAVBAR FIJO ──
+            Espejamos el set completo de botones del navbar de la app principal
+            (app/page.js) según el role del user. Si no, al venir desde "Mis
+            Clubes" el dueño/admin perdía Vista pública / Mi Negocio / Panel
+            admin y la barra superior se sentía "rota". El role viene de
+            /api/club-profile (profile.role). */}
       <div style={{ position:'fixed', top:0, left:0, right:0, zIndex:200 }}>
         <nav style={{ background:'rgba(0,0,0,0.75)', backdropFilter:'blur(24px)', WebkitBackdropFilter:'blur(24px)', borderBottom:`1px solid ${C.rim}`, padding:'0 16px', display:'flex', alignItems:'center', justifyContent:'space-between', height:58 }}>
           <Logo />
           <div style={{ display:'flex', gap:6, alignItems:'center' }}>
-            {/* Escanear QR — atajo a la cámara */}
-            <a href="/?view=scanner" title="Escanear QR" style={{ display:'flex', alignItems:'center', justifyContent:'center', width:34, height:34, borderRadius:9, background:'rgba(255,255,255,0.06)', border:`1px solid ${C.rim}`, cursor:'pointer', color:'rgba(255,255,255,0.78)', textDecoration:'none' }}>
-              <ScanLine size={15} strokeWidth={2} />
-            </a>
-            {/* Mi cuenta */}
-            <a href="/?view=client" title="Mi cuenta" style={{ display:'flex', alignItems:'center', justifyContent:'center', width:34, height:34, borderRadius:9, background:G, border:'none', cursor:'pointer', color:'#fff', boxShadow:'0 4px 14px #FE500033', textDecoration:'none' }}>
-              <User size={15} strokeWidth={2} />
-            </a>
-            {/* Cerrar sesión — solo si hay user */}
-            {user && (
-              <button title="Cerrar sesión"
-                onClick={async () => {
-                  const sb = getSupabase()
-                  await sb.auth.signOut()
-                  if (typeof window !== 'undefined') window.location.href = '/'
-                }}
-                style={{ display:'flex', alignItems:'center', justifyContent:'center', width:34, height:34, borderRadius:9, background:'transparent', border:'none', cursor:'pointer', color:'rgba(255,255,255,0.70)', padding:0 }}>
-                <LogOut size={15} strokeWidth={2} />
-              </button>
-            )}
+            {(() => {
+              // Estilos locales: NEUTRAL (default), ACTIVE (gradient G como en
+              // el navbar principal de app/page.js cuando un botón coincide
+              // con la vista actual), TRANSP (logout, sin fondo).
+              const NEUTRAL = { display:'flex', alignItems:'center', justifyContent:'center', width:34, height:34, borderRadius:9, background:'rgba(255,255,255,0.06)', border:`1px solid ${C.rim}`, cursor:'pointer', color:'rgba(255,255,255,0.78)', textDecoration:'none' }
+              const ACTIVE  = { display:'flex', alignItems:'center', justifyContent:'center', width:34, height:34, borderRadius:9, background:G, border:'none', cursor:'default', color:'#fff', boxShadow:'0 2px 10px rgba(168,85,247,0.42)', textDecoration:'none' }
+              const PRIMARY = { display:'flex', alignItems:'center', justifyContent:'center', width:34, height:34, borderRadius:9, background:G, border:'none', cursor:'pointer', color:'#fff', boxShadow:'0 4px 14px #FE500033', textDecoration:'none' }
+              const TRANSP  = { display:'flex', alignItems:'center', justifyContent:'center', width:34, height:34, borderRadius:9, background:'transparent', border:'none', cursor:'pointer', color:'rgba(255,255,255,0.70)', padding:0 }
+
+              const role = userProfile?.role
+              // ¿El club que se está viendo es el del propio dueño? Si sí,
+              // iluminamos el botón "Vista pública" porque esta página ES
+              // exactamente esa vista.
+              const isOwnerOfThisClub = role === 'commerce_owner' && user?.id && commerce?.owner_id && user.id === commerce.owner_id
+              const eyeStyle = isOwnerOfThisClub ? ACTIVE : NEUTRAL
+              const eyeColor = isOwnerOfThisClub ? '#fff' : 'rgba(255,255,255,0.78)'
+
+              const doLogout = async () => {
+                const sb = getSupabase()
+                await sb.auth.signOut()
+                if (typeof window !== 'undefined') window.location.href = '/'
+              }
+
+              if (role === 'admin') {
+                return (
+                  <>
+                    <a href="/?view=admin" title="Panel admin" style={NEUTRAL}>
+                      <LayoutDashboard size={15} strokeWidth={2} />
+                    </a>
+                    <a href="/?view=client" title="Mi cuenta" style={PRIMARY}>
+                      <User size={15} strokeWidth={2} />
+                    </a>
+                    <button title="Salir" onClick={doLogout} style={TRANSP}>
+                      <DoorOpen size={15} strokeWidth={2} />
+                    </button>
+                  </>
+                )
+              }
+
+              if (role === 'commerce_owner') {
+                return (
+                  <>
+                    <a href="/?view=scanner" title="Escanear QR" style={NEUTRAL}>
+                      <ScanLine size={15} strokeWidth={2} />
+                    </a>
+                    {isOwnerOfThisClub ? (
+                      <span title="Vista pública de mi club" style={eyeStyle} aria-current="page">
+                        <Eye size={15} strokeWidth={2} color={eyeColor} />
+                      </span>
+                    ) : (
+                      <a href="/?view=commerce" title="Vista pública de mi club" style={NEUTRAL}>
+                        <Eye size={15} strokeWidth={2} />
+                      </a>
+                    )}
+                    <a href="/?view=commerce-settings" title="Mi Negocio" style={NEUTRAL}>
+                      <Store size={15} strokeWidth={2} />
+                    </a>
+                    <a href="/?view=client" title="Mi cuenta" style={PRIMARY}>
+                      <User size={15} strokeWidth={2} />
+                    </a>
+                    <button title="Cerrar sesión" onClick={doLogout} style={TRANSP}>
+                      <LogOut size={15} strokeWidth={2} />
+                    </button>
+                  </>
+                )
+              }
+
+              // Cliente regular (con o sin sesión). Sin user no mostramos
+              // logout; el resto se mantiene como atajos.
+              return (
+                <>
+                  <a href="/?view=scanner" title="Escanear QR" style={NEUTRAL}>
+                    <ScanLine size={15} strokeWidth={2} />
+                  </a>
+                  <a href="/?view=client" title="Mi cuenta" style={PRIMARY}>
+                    <User size={15} strokeWidth={2} />
+                  </a>
+                  {user && (
+                    <button title="Cerrar sesión" onClick={doLogout} style={TRANSP}>
+                      <LogOut size={15} strokeWidth={2} />
+                    </button>
+                  )}
+                </>
+              )
+            })()}
           </div>
         </nav>
         {/* ── NAV DE PESTAÑAS (Inicio / Premios / Mi QR) — pegado abajo del navbar
@@ -1188,6 +1260,12 @@ export default function ClubProfilePage() {
         {/* ━━━ TAB: INICIO ━━━ */}
         {tab === 'inicio' && (
           <div style={{ animation:'fadeUp .35s ease', padding:'16px 16px 0', display:'flex', flexDirection:'column', gap:16 }}>
+
+            <HelpBanner
+              id="club-inicio"
+              title="Conociste un club nuevo"
+              body="Esta es la página pública del comercio. Acá ves cómo funciona su sistema de recompensas, qué premios ofrece, sus datos y cómo sumarte. Si te sumás, vas a poder acumular y canjear directamente desde tu billetera."
+            />
 
             {/* Card de progreso (miembro) */}
             {isMember && (
@@ -1603,6 +1681,11 @@ export default function ClubProfilePage() {
         {/* ━━━ TAB: PREMIOS ━━━ */}
         {tab === 'premios' && (
           <div style={{ margin:'16px 16px 0', animation:'fadeUp .3s ease' }}>
+            <HelpBanner
+              id="club-premios"
+              title="Catálogo del club"
+              body="Estos son los premios que el comercio ofrece a cambio de sus puntos o estrellas. Si todavía no sos socio, sumate primero — los podés canjear cuando juntes lo necesario."
+            />
             <h2 style={{ fontFamily:FN, fontSize:20, fontWeight:700, color:C.white, marginBottom:4, letterSpacing:'-0.02em' }}>Catálogo</h2>
             <div style={{ fontSize:13, color:C.mist, marginBottom:20, display:'flex', alignItems:'center', gap:5 }}>
               {isMember

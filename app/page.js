@@ -14,6 +14,7 @@ import NotificationsBell from '../lib/NotificationsBell'
 import EnablePushPrompt from '../lib/EnablePushPrompt'
 import SwRegister from '../lib/sw-register'
 import InfoHint from '../lib/InfoHint'
+import HelpBanner, { resetAllHelpBanners } from '../lib/HelpBanner'
 import JsQrScanner from '../lib/JsQrScanner'
 import { QRCodeSVG } from 'qrcode.react'
 import {
@@ -3597,16 +3598,23 @@ function CommerceView({ commerce:c, setView, user, onLoginRequired, onCommerceUp
 
   return (
     <div style={{ maxWidth:760, margin:'0 auto', paddingBottom:80 }}>
-      <button onClick={()=>setView('directory')} style={{ background:'transparent', border:'none', color:C.mist, fontSize:12, padding:'18px 18px 6px', display:'block', cursor:'pointer' }}>← Volver</button>
+      {/* "← Volver" — solo visible para clientes que llegaron desde el directorio.
+          Para el dueño previsualizando su propio club no tiene sentido (ya tiene
+          el navbar arriba con todos los accesos). */}
+      {user?.id !== c?.owner_id && (
+        <button onClick={()=>setView('directory')} style={{ background:'transparent', border:'none', color:C.mist, fontSize:12, padding:'18px 18px 6px', display:'block', cursor:'pointer' }}>← Volver</button>
+      )}
       {user?.id === c?.owner_id && (
-        <div style={{ margin:'0 18px 12px', padding:'10px 16px', background:`${C.v}18`, border:`1px solid ${C.v}44`, borderRadius:10, display:'flex', alignItems:'center', justifyContent:'space-between', gap:12, flexWrap:'wrap' }}>
-          <span style={{ fontSize:12, color:C.mist, display:'flex', alignItems:'center', gap:6 }}>
-            <Eye size={13} color={C.v} strokeWidth={2} />
-            Así ven tu club los clientes
-          </span>
-          <button onClick={() => setView('commerce-settings')} style={{ background:'transparent', border:'none', color:C.v, fontSize:12, fontWeight:700, fontFamily:FN, cursor:'pointer', padding:0, display:'flex', alignItems:'center', gap:4 }}>
-            Editar mi club <ArrowRight size={12} strokeWidth={2.5} />
-          </button>
+        <div style={{ margin:'0 18px 12px' }}>
+          <HelpBanner
+            id="commerce-public-preview"
+            title="Vista pública de tu club"
+            body="Esta es la página que ven tus clientes cuando escanean el QR o entran al directorio."
+            details={<>
+              Acá se muestran tu portada, logo, nombre, categorías, horarios, ubicación, premios disponibles y promos activas. Cualquier dato vacío o sin imagen se nota — usá los lapicitos del propio preview para corregir, o tocá el ícono <strong style={{ color:'#fff' }}>"Mi Negocio"</strong> del navbar para ir al panel completo.<br/><br/>
+              Recordá que el slider <strong style={{ color:'#fff' }}>"Deslizá para unirte"</strong> aparece solo cuando un cliente nuevo abre la página, no cuando vos previsualizás.
+            </>}
+          />
         </div>
       )}
       {/* Header con portada de fondo. Si no hay cover_image, se ve un gradient
@@ -5436,8 +5444,51 @@ function ClientView({ setView, user, profile, onLogout }) {
     </div>
   )
 
+  // ── HelpBanner por tab ──
+  // El cartel siempre va inmediatamente debajo del navbar (antes del header
+  // card con avatar/nombre), por eso lo declaramos arriba y centralizamos
+  // el copy por pestaña. Cuando hay `details` aparece "Ver más" inline al
+  // final de la 2da línea; sino se muestra solo el body en 1-2 líneas.
+  const TAB_HELP = {
+    'mis clubs': {
+      id:    'client-mis-clubs',
+      title: 'Tu billetera',
+      body:  'Cada tarjeta es un negocio donde sos socio.',
+      details: <>Tocá una para ver puntos, premios y promos. Si tenés varias usá los chips de arriba para filtrar por ciudad o rubro.</>,
+    },
+    'premios': {
+      id:    'client-premios',
+      title: 'Tus premios',
+      body:  'Lista de todo lo que podés canjear con tu saldo en cada club.',
+      details: <>Aparecen ordenados por "más cerca de canjear". Tocá uno para ver el detalle y el saldo que te queda después.</>,
+    },
+    'historial': {
+      id:    'client-historial',
+      title: 'Historial',
+      body:  'Todas tus visitas, canjes y descuentos en un solo lugar.',
+      details: <>Cada fila te dice cuándo, en qué local y qué pasó (ganaste estrellas/puntos, canjeaste un premio o usaste un descuento).</>,
+    },
+    'mi qr': {
+      id:    'client-mi-qr',
+      title: 'Tu QR personal',
+      body:  'Único e igual para todos los clubes. Mostralo en caja para sumar visita.',
+      details: <>El comerciante lo escanea desde su panel y queda registrada la visita en su sistema. No hace falta una tarjeta por club.</>,
+    },
+    'cuenta': {
+      id:    'client-cuenta',
+      title: 'Tu cuenta',
+      body:  'Tus datos personales, resumen de actividad y opciones de la cuenta.',
+      details: <>Cambiá tu nombre, agregá tu teléfono (te reconocen comercios donde tenías saldo precargado), cerrá sesión o eliminá tu cuenta. Más abajo está el botón para volver a ver todos los carteles de ayuda.</>,
+    },
+  }
+  const helpForTab = TAB_HELP[tab]
+
   return (
     <div style={{ maxWidth:520, margin:'0 auto', padding:'58px 15px 24px' }}>
+
+      {/* Cartel de ayuda — SIEMPRE primero, inmediatamente debajo del navbar.
+          Cambia su contenido según la pestaña activa. */}
+      {helpForTab && <HelpBanner {...helpForTab} />}
 
       {/* Header card — oculto en la pestaña "Mi Cuenta" (esa pestaña tiene
           su propio bloque de avatar + email, duplicar info acá molesta).
@@ -5479,6 +5530,7 @@ function ClientView({ setView, user, profile, onLogout }) {
               'Si tenés varios clubes podés filtrarlos por ciudad o categoría con los chips de arriba.'
             } />
           </div>
+          {/* HelpBanner movido al tope (TAB_HELP['mis clubs']) — ya no va acá */}
 
           {displayMemberships.length === 0 ? (
             /* Empty wallet state */
@@ -5567,6 +5619,7 @@ function ClientView({ setView, user, profile, onLogout }) {
       {/* ── Premios — lista combinada de premios disponibles en todos los clubs del cliente ── */}
       {!loading && tab === 'premios' && (
         <div>
+          {/* HelpBanner movido al tope (TAB_HELP['premios']) — ya no va acá */}
           {(() => {
             // Junto todos los premios activos de todos los commerces, mantengo
             // el balance del cliente (stars o points según prog_type) y ordeno
@@ -5658,6 +5711,7 @@ function ClientView({ setView, user, profile, onLogout }) {
       {/* ── Historial ── */}
       {!loading && tab === 'historial' && (
         <div>
+          {/* HelpBanner movido al tope (TAB_HELP['historial']) — ya no va acá */}
           {isMockClient && (
             <div style={{ marginBottom:12, padding:'9px 13px', background:'rgba(255,255,255,0.04)', border:'1px solid rgba(255,255,255,0.10)', borderRadius:10, fontSize:11, color:'rgba(255,255,255,0.5)', display:'flex', alignItems:'center', gap:7 }}>
               <Eye size={13} strokeWidth={2} color="rgba(255,255,255,0.5)" />
@@ -5716,6 +5770,7 @@ function ClientView({ setView, user, profile, onLogout }) {
       {/* ── Mi QR ── */}
       {tab === 'mi qr' && (
         <div className="modal-in" style={{ display:'flex', flexDirection:'column', alignItems:'center', paddingBottom:8 }}>
+          {/* HelpBanner movido al tope (TAB_HELP['mi qr']) — ya no va acá */}
 
           {/* ── PASE VIP ── */}
           <div style={{ width:'100%', maxWidth:340, borderRadius:28, overflow:'hidden', boxShadow:'0 24px 64px rgba(189,75,248,0.30), 0 8px 24px rgba(0,0,0,0.50)' }}>
@@ -5806,6 +5861,8 @@ function ClientView({ setView, user, profile, onLogout }) {
       {/* ── Mi cuenta ── */}
       {!loading && tab === 'cuenta' && (
         <div className="fu" style={{ paddingBottom:8 }}>
+
+          {/* HelpBanner movido al tope (TAB_HELP['cuenta']) — ya no va acá */}
 
           {/* Avatar + email */}
           <div style={{ ...glass, padding:'18px', marginBottom:12, display:'flex', alignItems:'center', gap:14 }}>
@@ -5984,6 +6041,21 @@ function ClientView({ setView, user, profile, onLogout }) {
               )}
             </div>
           )}
+
+          {/* Volver a ver carteles de ayuda — resetea todos los flags
+              `benefix:help:*` del localStorage. Útil si descartó los carteles
+              y quiere volver a verlos. */}
+          <div style={{ ...glass, overflow:'hidden', borderRadius:16, marginBottom:12 }}>
+            <button
+              onClick={() => {
+                const n = resetAllHelpBanners()
+                showToast('success', n > 0 ? `Listo — vas a volver a ver los carteles de ayuda (${n})` : 'No hay carteles para reactivar')
+              }}
+              style={{ width:'100%', display:'flex', alignItems:'center', gap:12, padding:'15px 18px', background:'transparent', border:'none', color:'rgba(255,255,255,0.70)', cursor:'pointer', fontFamily:FI, fontSize:13, textAlign:'left' }}>
+              <Sparkles size={16} strokeWidth={2} color="rgba(189,75,248,0.80)" />
+              Volver a ver los carteles de ayuda
+            </button>
+          </div>
 
           {/* Cerrar sesión / Eliminar cuenta */}
           <div style={{ ...glass, overflow:'hidden', borderRadius:16 }}>
@@ -8152,6 +8224,11 @@ function CommerceSettingsView({ user, profile, setView, onLogout, onOwnerProfile
   // descarta tocando la X. Sirve como onboarding para que descubra la solapa
   // delgada como punto de re-entrada al menú.
   const [showRailHint, setShowRailHint] = useState(false)
+  // railTabHandSeen: cuando el user toca la solapa fucsia, la manito que la
+  // señala desaparece. NO persiste — cada vez que el user vuelve a entrar al
+  // intent picker (vía el ícono "Mi Negocio"), la manito reaparece para
+  // recordarle que la solapa abre el menú.
+  const [railTabHandSeen, setRailTabHandSeen] = useState(false)
   const railHintFired = useRef(false)
   useEffect(() => {
     if (railExpanded || railHintFired.current) return
@@ -8195,6 +8272,10 @@ function CommerceSettingsView({ user, profile, setView, onLogout, onOwnerProfile
   const [reportsSearch, setReportsSearch] = useState('')
   const [reportsDateFrom, setReportsDateFrom] = useState('')
   const [reportsDateTo, setReportsDateTo]   = useState('')
+  // Accordion: panel "Búsqueda" colapsable de la pestaña Análisis. Empieza
+  // cerrado para no ocupar espacio. Si hay filtros aplicados se nota un
+  // chip "FILTRADO" en el header así no se "olvida" oculto.
+  const [analysisFiltersOpen, setAnalysisFiltersOpen] = useState(false)
   const [dateStart, setDateStart]         = useState('')
   const [dateEnd, setDateEnd]             = useState('')
   // Segmentación
@@ -8238,9 +8319,13 @@ function CommerceSettingsView({ user, profile, setView, onLogout, onOwnerProfile
 
   // Listener para el evento "benefix:merchant-intent" — disparado por el
   // botón "Mi Negocio" del navbar (incluso si ya estás en commerce-settings)
-  // para reabrir el intent picker.
+  // para reabrir el intent picker. Cada re-entrada también resetea la manito
+  // de la solapa fucsia para que vuelva a aparecer guiando al user.
   useEffect(() => {
-    const onIntent = () => setIntentPickerActive(true)
+    const onIntent = () => {
+      setIntentPickerActive(true)
+      setRailTabHandSeen(false)
+    }
     window.addEventListener('benefix:merchant-intent', onIntent)
     return () => window.removeEventListener('benefix:merchant-intent', onIntent)
   }, [])
@@ -9114,6 +9199,93 @@ function CommerceSettingsView({ user, profile, setView, onLogout, onOwnerProfile
     </div>
   )
 
+  // ── Solapa fucsia que abre el menú lateral ──
+  // Helper compartido: la usa tanto el intent picker como el panel completo.
+  // Se asoma desde el borde izquierdo, está animada (tease horizontal +
+  // ruedita girando en bursts) y mientras el user no la haya tocado nunca
+  // tiene una manito de lucide superpuesta tocando insistentemente. Al
+  // tocarla, marcamos `railTabHandSeen` y la manito ya no vuelve.
+  const renderRailTab = (onActivate) => (
+    <button
+      onClick={() => {
+        if (!railTabHandSeen) setRailTabHandSeen(true)
+        onActivate()
+      }}
+      aria-label="Abrir menú de configuraciones"
+      style={{
+        position: 'fixed',
+        left: -14,
+        top: '50%',
+        transform: 'translateY(-50%)',
+        zIndex: 200,
+        // Forma más fina y alargada — pestaña vertical estilo "lengüeta"
+        // que asoma del borde izquierdo. Width angosto, height alto.
+        width: 36,
+        height: 84,
+        padding: 0,
+        border: 'none',
+        borderRadius: '0 12px 12px 0',
+        background: 'linear-gradient(135deg, #DB2777 0%, #EC4899 60%, #F472B6 100%)',
+        boxShadow: '4px 0 18px rgba(236,72,153,0.55), inset -1px 0 0 rgba(255,255,255,0.15)',
+        color: '#fff',
+        cursor: 'pointer',
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'flex-end',
+        paddingRight: 6,
+        animation: 'rail-tab-tease 2.2s ease-in-out infinite',
+        // overflow visible para que la manito que sale por la derecha no se corte
+        overflow: 'visible',
+      }}
+    >
+      <Settings
+        size={18}
+        strokeWidth={2.4}
+        color="#fff"
+        style={{ animation: 'rail-tab-spin-burst 3.5s ease-in-out infinite' }}
+      />
+      {/* Manito apuntando con el dedo a la solapa, asomada desde la derecha.
+          Solo se muestra mientras el user no haya tocado la solapa nunca. */}
+      {!railTabHandSeen && (
+        <Hand
+          size={26}
+          strokeWidth={2}
+          color="#fff"
+          style={{
+            position: 'absolute',
+            left: '100%',
+            top: '50%',
+            marginLeft: 6,
+            transform: 'translateY(-50%) rotate(-90deg)',
+            filter: 'drop-shadow(0 3px 8px rgba(0,0,0,0.55))',
+            animation: 'rail-tab-hand 1.4s ease-in-out infinite',
+            pointerEvents: 'none',
+          }}
+        />
+      )}
+      <style>{`
+        @keyframes rail-tab-tease {
+          0%, 100% { transform: translate(-2px, -50%); }
+          50%      { transform: translate(6px,  -50%); }
+        }
+        /* Burst: hace un giro completo en ~1.2s acelerando y
+           desacelerando (cubic-bezier ease-in-out implícito), después
+           se queda quieto ~2.3s, y vuelve a girar. */
+        @keyframes rail-tab-spin-burst {
+          0%   { transform: rotate(0deg); }
+          35%  { transform: rotate(360deg); }
+          100% { transform: rotate(360deg); }
+        }
+        /* Manito tocando: se acerca a la solapa (translateX hacia la izquierda)
+           y se aleja, rotation -90 la deja con el dedo apuntando hacia la izq. */
+        @keyframes rail-tab-hand {
+          0%, 100% { transform: translate(0, -50%) rotate(-90deg) scale(1);   opacity: 0.95; }
+          50%      { transform: translate(-10px, -50%) rotate(-90deg) scale(0.92); opacity: 1; }
+        }
+      `}</style>
+    </button>
+  )
+
   // ── PANTALLA INICIAL: INTENT PICKER ──────────────────────────────────────
   // Saludo + dos botones grandes con las dos acciones más comunes que un
   // dueño hace al entrar al panel: mostrar el QR del local (para que se
@@ -9163,9 +9335,20 @@ function CommerceSettingsView({ user, profile, setView, onLogout, onOwnerProfile
       },
     ]
     return (
-      <div style={{ maxWidth:520, margin:'0 auto', padding: isMobile ? '40px 18px 80px' : '52px 28px 80px' }}>
+      <div style={{ maxWidth:520, margin:'0 auto', padding: isMobile ? '24px 18px 80px' : '32px 28px 80px' }}>
+        {/* Cartel de ayuda — primero, inmediatamente debajo del navbar */}
+        <HelpBanner
+          id="merchant-intent"
+          title="Tu base de operaciones"
+          body="Desde acá hacés lo más rápido del día y entrás al panel completo del negocio."
+          details={<>
+            Las dos acciones más comunes son <strong style={{ color:'#fff' }}>sumar un cliente nuevo</strong> al club (le mostrás el QR de tu negocio para que escanee) y <strong style={{ color:'#fff' }}>registrar una compra</strong> (escaneás el QR del cliente para sumarle visita o canjes).<br/><br/>
+            Para todo lo demás — clientes, premios, promos, automatizaciones, planes — tocá <strong style={{ color:'#fff' }}>"Saltar al panel"</strong> abajo.
+          </>}
+        />
+
         <DynamicGreeting name={commerce.name} type="commerce" style={{ marginBottom:6 }} />
-        <div style={{ fontSize:13, color:C.mist, marginBottom:26 }}>¿Qué querés hacer?</div>
+        <div style={{ fontSize:13, color:C.mist, marginBottom:18 }}>¿Qué querés hacer?</div>
 
         <div style={{ display:'flex', flexDirection:'column', gap:14 }}>
           {INTENT_OPTS.map(opt => (
@@ -9196,13 +9379,18 @@ function CommerceSettingsView({ user, profile, setView, onLogout, onOwnerProfile
           ))}
         </div>
 
-        {/* Salida discreta: si el dueño no quiere ninguna acción rápida,
-            puede saltar al panel completo. La tipografía es chica y opaca
-            para no competir con las dos opciones principales. */}
+        {/* Salida al panel completo. Más visible que antes (blanco bold 14px)
+            porque la solapa fucsia del borde izquierdo es la nueva forma
+            principal de abrir el menú, pero el link textual sigue funcionando
+            como atajo discreto. */}
         <button onClick={() => setIntentPickerActive(false)}
-          style={{ marginTop:22, background:'transparent', border:'none', color:C.mist, fontSize:11.5, fontFamily:FN, fontWeight:600, cursor:'pointer', opacity:0.7, padding:'4px 0' }}>
+          style={{ marginTop:22, background:'transparent', border:'none', color:'#fff', fontSize:14, fontFamily:FN, fontWeight:700, cursor:'pointer', padding:'4px 0', letterSpacing:'.01em' }}>
           Saltar al panel →
         </button>
+
+        {/* La solapa fucsia se renderiza vía renderRailTab() — definido más
+            abajo y compartido con el resto del panel para que sea consistente. */}
+        {renderRailTab(() => { setIntentPickerActive(false); setRailExpanded(true) })}
 
         {/* ── Coachmark hacia "Saltar al panel" ──
             Versión chica y delicada: alineada a la izquierda, flecha curva
@@ -9852,29 +10040,26 @@ function CommerceSettingsView({ user, profile, setView, onLogout, onOwnerProfile
                 `}</style>
               </div>
             )}
-            <aside className="liquid-glass-strong"
-              onClick={e => { if (!railExpanded) { e.stopPropagation(); setRailExpanded(true) } }}
-              style={{
-                position:'fixed', top:70, bottom:14, left:8, width:railW, zIndex:199,
-                borderRadius: railExpanded ? 14 : '0 10px 10px 0',
-                overflow:'hidden',
-                display:'flex', flexDirection:'column', alignItems:'center', gap: railExpanded ? 4 : 0, padding: railExpanded ? '8px 6px' : 0,
-                boxShadow: railExpanded ? '0 8px 32px rgba(0,0,0,0.5)' : '0 4px 12px rgba(0,0,0,0.4)',
-                cursor: railExpanded ? 'default' : 'pointer',
-                transition:'width 280ms cubic-bezier(0.32, 0.72, 0, 1), border-radius 280ms ease, padding 280ms ease, gap 280ms ease, box-shadow 280ms ease',
-              }}>
+            {/* Cuando el rail está COLAPSADO, no renderizamos el aside angosto
+                de antes — la solapa fucsia (renderRailTab) lo reemplaza y se
+                renderiza más abajo. El aside con los items solo aparece cuando
+                el user ya expandió el rail tocando la solapa. */}
+            {!railExpanded && renderRailTab(() => setRailExpanded(true))}
+            {railExpanded && (
+              <aside className="liquid-glass-strong"
+                style={{
+                  position:'fixed', top:70, bottom:14, left:8, width:expandedW, zIndex:199,
+                  borderRadius: 14,
+                  overflow:'hidden',
+                  display:'flex', flexDirection:'column', alignItems:'center', gap:4, padding:'8px 6px',
+                  boxShadow:'0 8px 32px rgba(0,0,0,0.5)',
+                  cursor:'default',
+                  transition:'box-shadow 280ms ease',
+                }}>
 
-              {/* Indicador de "pestaña" cuando colapsado — chevron sutil + barra de marca */}
-              {!railExpanded && (
-                <div style={{ position:'absolute', inset:0, display:'flex', alignItems:'center', justifyContent:'center', pointerEvents:'none' }}>
-                  <div style={{ width:3, height:32, borderRadius:99, background:G, opacity:0.85, boxShadow:'0 0 8px rgba(168,85,247,0.55)' }} />
-                </div>
-              )}
-
-              {/* Items del rail — solo visibles cuando expandido (fade-in para evitar squishing al colapsar).
-                  Contenedor con scroll vertical para que en pantallas chicas se puedan ver todas
-                  las pestañas sin tener que abrir el drawer. */}
-              {railExpanded && (
+                {/* Items del rail — solo visibles cuando expandido (fade-in para evitar squishing al colapsar).
+                    Contenedor con scroll vertical para que en pantallas chicas se puedan ver todas
+                    las pestañas sin tener que abrir el drawer. */}
                 <>
                   <div className="rail-scroll" style={{
                     flex:1, width:'100%',
@@ -9934,8 +10119,8 @@ function CommerceSettingsView({ user, profile, setView, onLogout, onOwnerProfile
                     <Menu size={18} color="rgba(255,255,255,0.85)" strokeWidth={2} />
                   </button>
                 </>
-              )}
-            </aside>
+              </aside>
+            )}
           </>
         )
       })()}
@@ -9948,6 +10133,16 @@ function CommerceSettingsView({ user, profile, setView, onLogout, onOwnerProfile
           <div>
             <DynamicGreeting name={commerce.name} type="commerce" style={{ marginBottom:4 }} />
             <div style={{ fontSize:12, color:C.mist, marginBottom:18 }}>Así va tu negocio hoy.</div>
+
+            <HelpBanner
+              id="merchant-dashboard"
+              title="Tu panel de control"
+              body="Resumen del día + accesos rápidos. Las secciones del panel viven en el menú lateral."
+              details={<>
+                Tocá la <strong style={{ color:'#fff' }}>solapa angosta del lado izquierdo</strong> para abrir el menú con todas las secciones: clientes, recompensas, premios, mensajes, análisis, historial, configuración y planes.<br/><br/>
+                Si querés volver a la pantalla inicial con los dos botones grandes ("Sumar nuevo cliente" / "Registrar compra"), tocá el ícono <strong style={{ color:'#fff' }}>Mi Negocio</strong> del navbar de arriba.
+              </>}
+            />
 
             {/* Banner de completitud del perfil — solo si está incompleto.
                 Lleva al tab Configuración. Le mete presión al dueño desde dashboard. */}
@@ -10146,6 +10341,13 @@ function CommerceSettingsView({ user, profile, setView, onLogout, onOwnerProfile
 
         {/* ── CLIENTES ── */}
         {tab === 'clientes' && (() => {
+          const _helpClientes = (
+            <HelpBanner
+              id="merchant-clientes"
+              title="Tus clientes"
+              body="Cada vez que alguien escanea tu QR queda anotado acá. Podés buscarlo, ordenar la lista, abrir su ficha para ver su actividad y otorgarle un beneficio manualmente. Mientras más visitas, más detalle vas a ver."
+            />
+          )
           const sysColor = form?.prog_type === 'stars' ? '#8B5CF6' : '#EC4899'
           const isStars  = form?.prog_type === 'stars'
           const norm     = s => (s||'').toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g,'')
@@ -10171,6 +10373,8 @@ function CommerceSettingsView({ user, profile, setView, onLogout, onOwnerProfile
           return (
             <div style={{ position:'relative', paddingBottom: hasClients && isMobile ? 84 : 0 }}
               onClick={() => openMenuId && setOpenMenuId(null)}>
+
+              {_helpClientes}
 
               {/* Header */}
               <div style={{ display:'flex', alignItems:'flex-start', justifyContent:'space-between', gap:10, marginBottom: hasClients ? 4 : 0 }}>
@@ -10478,6 +10682,14 @@ function CommerceSettingsView({ user, profile, setView, onLogout, onOwnerProfile
 
         {/* ── RECOMPENSAS — pestaña unificada con 3 secciones ── */}
         {savingSystem && <FullscreenLoader message="Actualizando sistema..." />}
+
+        {tab === 'recompensas' && (
+          <HelpBanner
+            id="merchant-recompensas"
+            title="Cómo recompensás a tus clientes"
+            body="Acá elegís el sistema (estrellas o puntos), cargás los premios que querés ofrecer y, si tu plan lo permite, sumás promociones extra. Todo lo que configures se ve reflejado en la tarjeta digital de tus clientes."
+          />
+        )}
 
         {/* Botón "← Volver a previsualización pública" cuando el dueño llegó desde
             el preview público (ej: tocó el lápiz del banner de descuento). */}
@@ -10800,6 +11012,11 @@ function CommerceSettingsView({ user, profile, setView, onLogout, onOwnerProfile
         {/* ── PREMIOS ── */}
         {tab === 'premios' && (
           <div>
+            <HelpBanner
+              id="merchant-premios"
+              title="Tu catálogo de premios"
+              body="Estos son los premios que tus clientes pueden canjear con sus estrellas o puntos. Cada uno tiene un costo, stock y se puede pausar sin borrarlo. Tocá ‘Crear premio’ para agregar uno nuevo."
+            />
             {/* Botón "← Volver a recompensas" si el usuario vino de ahí. */}
             {cameFromTab === 'recompensas' && (
               <button onClick={() => setTab('recompensas')}
@@ -11523,21 +11740,20 @@ function CommerceSettingsView({ user, profile, setView, onLogout, onOwnerProfile
           </button>
         )}
 
-        {/* ── REPORTES ── */}
-        {/* Header de la pestaña ANÁLISIS — solo se muestra una vez al tope. */}
+        {/* ── REPORTES ──
+            Saqué el header grande "ANÁLISIS / Cómo va tu negocio..." y el
+            sub-header "REPORTES" en mayúsculas — el HelpBanner ya cuenta de
+            qué se trata la pestaña, y abajo viene el sub-titulo "Reportes"
+            con el subtitle "Historial de visitas, canjes y base de clientes". */}
         {tab === 'analisis' && (
-          <div style={{ marginBottom:18 }}>
-            <div style={{ fontFamily:FN, fontSize:18, fontWeight:900, color:C.white, marginBottom:4, letterSpacing:'.08em', textTransform:'uppercase' }}>Análisis</div>
-            <div style={{ fontSize:12, color:C.mist }}>Cómo va tu negocio + comportamiento de tus clientes.</div>
-          </div>
-        )}
-
-        {/* SECCIÓN A: Reportes */}
-        {tab === 'analisis' && (
-          <div style={{ display:'flex', alignItems:'center', gap:10, marginBottom:12 }}>
-            <span style={{ fontSize:13, fontWeight:800, color:C.white, letterSpacing:'.10em', textTransform:'uppercase' }}>Reportes</span>
-            <div style={{ flex:1, height:1, background:'rgba(255,255,255,0.06)' }} />
-          </div>
+          <HelpBanner
+            id="merchant-analisis"
+            title="Cómo lee tu negocio"
+            body="Reportes de visitas, canjes y descuentos + mapa de clientes por nivel de actividad."
+            details={<>
+              Te sirve para detectar quiénes vienen mucho, quiénes se enfriaron y dónde está tu mejor oportunidad. Usá los filtros (fecha, tipo de evento, segmento) para enfocarte en el dato que te importa, y el botón <strong style={{ color:'#fff' }}>"Descargar CSV / Excel"</strong> si querés trabajarlo en otro lado.
+            </>}
+          />
         )}
         {tab === 'analisis' && (() => {
           const today = new Date().toISOString().split('T')[0]
@@ -11668,50 +11884,90 @@ function CommerceSettingsView({ user, profile, setView, onLogout, onOwnerProfile
                 ))}
               </div>
 
-              {/* Filtros */}
-              <PCard style={{ padding:'14px 16px', marginBottom:16 }}>
-                <div style={{ fontSize:10, color:C.dust, fontWeight:700, letterSpacing:'.08em', textTransform:'uppercase', marginBottom:10 }}>Filtros</div>
-                {/* Búsqueda por texto */}
-                <div style={{ position:'relative', marginBottom:10 }}>
-                  <span style={{ position:'absolute', left:10, top:'50%', transform:'translateY(-50%)', pointerEvents:'none', display:'flex', alignItems:'center' }}><Search size={12} color={C.dust} strokeWidth={2} /></span>
-                  <input
-                    type="text"
-                    value={reportsSearch}
-                    onChange={e => setReportsSearch(e.target.value)}
-                    placeholder="Buscar por nombre, email o teléfono..."
-                    style={{ width:'100%', background:C.bg3, border:`1px solid ${C.rim}`, borderRadius:9, padding:'9px 30px 9px 30px', fontSize:12, color:C.pearl, fontFamily:FI, outline:'none', boxSizing:'border-box' }}
-                  />
-                  {reportsSearch && (
-                    <button onClick={() => setReportsSearch('')}
-                      style={{ position:'absolute', right:8, top:'50%', transform:'translateY(-50%)', background:'transparent', border:'none', color:C.dust, fontSize:13, cursor:'pointer', lineHeight:1 }}>✕</button>
-                  )}
-                </div>
-                {/* Rango de fechas */}
-                <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:8 }}>
-                  <div>
-                    <div style={{ fontSize:9, color:C.dust, marginBottom:4, textTransform:'uppercase', letterSpacing:'.06em' }}>Desde</div>
-                    <input type="date" value={reportsDateFrom} onChange={e => setReportsDateFrom(e.target.value)}
-                      style={{ width:'100%', background:C.bg3, border:`1px solid ${C.rim}`, borderRadius:9, padding:'8px 10px', fontSize:12, color: reportsDateFrom ? C.pearl : C.dust, fontFamily:FI, outline:'none', boxSizing:'border-box' }} />
-                  </div>
-                  <div>
-                    <div style={{ fontSize:9, color:C.dust, marginBottom:4, textTransform:'uppercase', letterSpacing:'.06em' }}>Hasta</div>
-                    <input type="date" value={reportsDateTo} onChange={e => setReportsDateTo(e.target.value)}
-                      style={{ width:'100%', background:C.bg3, border:`1px solid ${C.rim}`, borderRadius:9, padding:'8px 10px', fontSize:12, color: reportsDateTo ? C.pearl : C.dust, fontFamily:FI, outline:'none', boxSizing:'border-box' }} />
-                  </div>
-                </div>
-                {(reportsSearch || reportsDateFrom || reportsDateTo) && (
-                  <button onClick={() => { setReportsSearch(''); setReportsDateFrom(''); setReportsDateTo('') }}
-                    style={{ marginTop:10, background:'transparent', border:`1px solid ${C.rim}`, borderRadius:8, padding:'6px 14px', color:C.dust, fontSize:11, cursor:'pointer', fontFamily:FN, fontWeight:600 }}>
-                    ✕ Limpiar filtros
-                  </button>
-                )}
-              </PCard>
+              {/* Filtros — colapsable. Header con ícono lupa + título "Búsqueda";
+                  click expande el panel con search, fechas y limpiar. Si el user
+                  tiene filtros aplicados se muestra un chip "FILTRADO" en el
+                  header para que no quede "oculto" lo que se está filtrando. */}
+              {(() => {
+                const hasFilters = !!(reportsSearch || reportsDateFrom || reportsDateTo)
+                return (
+                  <PCard style={{ padding:0, marginBottom:16, overflow:'hidden' }}>
+                    <button
+                      onClick={() => setAnalysisFiltersOpen(o => !o)}
+                      style={{
+                        width:'100%',
+                        display:'flex', alignItems:'center', justifyContent:'space-between', gap:10,
+                        padding:'12px 16px',
+                        background:'transparent', border:'none', cursor:'pointer',
+                        fontFamily:'inherit',
+                      }}>
+                      <div style={{ display:'flex', alignItems:'center', gap:9 }}>
+                        <div style={{ width:26, height:26, borderRadius:7, background:'rgba(255,255,255,0.05)', border:`1px solid ${C.rim}`, display:'flex', alignItems:'center', justifyContent:'center', flexShrink:0 }}>
+                          <Search size={13} color={C.mist} strokeWidth={2} />
+                        </div>
+                        <span style={{ fontFamily:FN, fontSize:13, fontWeight:700, color:C.white, letterSpacing:'.02em' }}>Búsqueda</span>
+                        {hasFilters && (
+                          <span style={{ fontSize:9, fontWeight:800, color:C.v, background:`${C.v}22`, border:`1px solid ${C.v}40`, padding:'2px 7px', borderRadius:99, letterSpacing:'.06em' }}>FILTRADO</span>
+                        )}
+                      </div>
+                      {analysisFiltersOpen
+                        ? <ChevronUp size={15} color={C.mist} strokeWidth={2.2} />
+                        : <ChevronDown size={15} color={C.mist} strokeWidth={2.2} />}
+                    </button>
+                    {analysisFiltersOpen && (
+                      <div style={{ padding:'4px 16px 14px', borderTop:`1px solid ${C.rim}` }}>
+                        {/* Búsqueda por texto */}
+                        <div style={{ position:'relative', margin:'12px 0 10px' }}>
+                          <span style={{ position:'absolute', left:10, top:'50%', transform:'translateY(-50%)', pointerEvents:'none', display:'flex', alignItems:'center' }}><Search size={12} color={C.dust} strokeWidth={2} /></span>
+                          <input
+                            type="text"
+                            value={reportsSearch}
+                            onChange={e => setReportsSearch(e.target.value)}
+                            placeholder="Buscar por nombre, email o teléfono..."
+                            style={{ width:'100%', background:C.bg3, border:`1px solid ${C.rim}`, borderRadius:9, padding:'9px 30px 9px 30px', fontSize:12, color:C.pearl, fontFamily:FI, outline:'none', boxSizing:'border-box' }}
+                          />
+                          {reportsSearch && (
+                            <button onClick={() => setReportsSearch('')}
+                              style={{ position:'absolute', right:8, top:'50%', transform:'translateY(-50%)', background:'transparent', border:'none', color:C.dust, fontSize:13, cursor:'pointer', lineHeight:1 }}>✕</button>
+                          )}
+                        </div>
+                        {/* Rango de fechas */}
+                        <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:8 }}>
+                          <div>
+                            <div style={{ fontSize:9, color:C.dust, marginBottom:4, textTransform:'uppercase', letterSpacing:'.06em' }}>Desde</div>
+                            <input type="date" value={reportsDateFrom} onChange={e => setReportsDateFrom(e.target.value)}
+                              style={{ width:'100%', background:C.bg3, border:`1px solid ${C.rim}`, borderRadius:9, padding:'8px 10px', fontSize:12, color: reportsDateFrom ? C.pearl : C.dust, fontFamily:FI, outline:'none', boxSizing:'border-box' }} />
+                          </div>
+                          <div>
+                            <div style={{ fontSize:9, color:C.dust, marginBottom:4, textTransform:'uppercase', letterSpacing:'.06em' }}>Hasta</div>
+                            <input type="date" value={reportsDateTo} onChange={e => setReportsDateTo(e.target.value)}
+                              style={{ width:'100%', background:C.bg3, border:`1px solid ${C.rim}`, borderRadius:9, padding:'8px 10px', fontSize:12, color: reportsDateTo ? C.pearl : C.dust, fontFamily:FI, outline:'none', boxSizing:'border-box' }} />
+                          </div>
+                        </div>
+                        {hasFilters && (
+                          <button onClick={() => { setReportsSearch(''); setReportsDateFrom(''); setReportsDateTo('') }}
+                            style={{ marginTop:10, background:'transparent', border:`1px solid ${C.rim}`, borderRadius:8, padding:'6px 14px', color:C.dust, fontSize:11, cursor:'pointer', fontFamily:FN, fontWeight:600 }}>
+                            ✕ Limpiar filtros
+                          </button>
+                        )}
 
-              {/* Stats */}
-              <div style={{ display:'grid', gridTemplateColumns:'repeat(2,1fr)', gap:12, marginBottom:20 }}>
-                <PCard style={{ padding:14 }}><div style={{ fontSize:10, color:C.dust, marginBottom:4 }}>Resultados</div><div style={{ fontFamily:FN, fontSize:20, fontWeight:900, color:C.white }}>{stats.total}</div></PCard>
-                <PCard style={{ padding:14 }}><div style={{ fontSize:10, color:C.dust, marginBottom:4 }}>Período</div><div style={{ fontFamily:FN, fontSize:13, fontWeight:700, color:C.white }}>{stats.periodo}</div></PCard>
-              </div>
+                        {/* Stats — dentro del accordion para mantener todo
+                            lo "informativo de la búsqueda" agrupado en un mismo lugar. */}
+                        <div style={{ display:'grid', gridTemplateColumns:'repeat(2,1fr)', gap:10, marginTop:14 }}>
+                          <div style={{ background:C.bg3, border:`1px solid ${C.rim}`, borderRadius:10, padding:'10px 12px' }}>
+                            <div style={{ fontSize:9, color:C.dust, marginBottom:3, textTransform:'uppercase', letterSpacing:'.06em' }}>Resultados</div>
+                            <div style={{ fontFamily:FN, fontSize:18, fontWeight:900, color:C.white, lineHeight:1.1 }}>{stats.total}</div>
+                          </div>
+                          <div style={{ background:C.bg3, border:`1px solid ${C.rim}`, borderRadius:10, padding:'10px 12px' }}>
+                            <div style={{ fontSize:9, color:C.dust, marginBottom:3, textTransform:'uppercase', letterSpacing:'.06em' }}>Período</div>
+                            <div style={{ fontFamily:FN, fontSize:12, fontWeight:700, color:C.white, lineHeight:1.3 }}>{stats.periodo}</div>
+                          </div>
+                        </div>
+                      </div>
+                    )}
+                  </PCard>
+                )
+              })()}
 
               {/* Export buttons */}
               <div style={{ display:'flex', gap:10, marginBottom:20 }}>
@@ -12043,6 +12299,11 @@ function CommerceSettingsView({ user, profile, setView, onLogout, onOwnerProfile
             <div>
               <div style={{ fontFamily:FN, fontSize:18, fontWeight:900, color:C.white, marginBottom:4, letterSpacing:'.08em', textTransform:'uppercase' }}>Historial</div>
               <div style={{ fontSize:12, color:C.mist, marginBottom:20 }}>Cambios recientes en tu negocio.</div>
+              <HelpBanner
+                id="merchant-historial"
+                title="Línea de tiempo de tu club"
+                body="Cada cambio importante queda registrado: cuando creás o pausás un premio, cambiás el sistema de recompensas, agregás una promoción o se suma un cliente nuevo. Te sirve para tener trazabilidad de lo que hiciste."
+              />
               {activity.length === 0 ? (
                 <div style={{ textAlign:'center', padding:'40px 0', color:C.dust, fontSize:13 }}>
                   Aún no hay actividad registrada.<br/>
@@ -12197,6 +12458,12 @@ function CommerceSettingsView({ user, profile, setView, onLogout, onOwnerProfile
 
           return (
             <div style={{ paddingBottom:72 }}>
+
+              <HelpBanner
+                id="merchant-configuracion"
+                title="Configurás tu negocio"
+                body="Acá completás los datos que ven tus clientes (foto, descripción, dirección, horarios), elegís el plan, configurás el sistema y manejás tu cuenta. Cada sección abre y cierra como un acordeón — tocá la que quieras editar."
+              />
 
               {/* Onboarding banner */}
               {showOnboardingBanner && (
@@ -12759,6 +13026,11 @@ function CommerceSettingsView({ user, profile, setView, onLogout, onOwnerProfile
                   'Disponible en plan PRO.'
                 } />
               </div>
+              <HelpBanner
+                id="merchant-mensajes"
+                title="Tus mensajes para clientes"
+                body="Acá la app detecta automáticamente clientes que se merecen un mensaje (los que no vienen hace tiempo, los que están cerca de un premio, los recién llegados) y te arma el WhatsApp listo. Vos lo revisás y lo mandás con un click. Disponible en plan PRO."
+              />
               <div style={{ fontSize:13, color:C.mist, marginBottom:20 }}>Mensajes listos para enviar a tus clientes.</div>
 
               <div style={{ display:'flex', flexDirection:'column', gap:10 }}>
@@ -13444,10 +13716,19 @@ function ScannerView({ user, profile, setView }) {
     )
 
     return (
-      <div style={{ maxWidth:440, margin:'0 auto', padding:'40px 18px 80px' }}>
-        <div style={{ fontFamily:FN, fontSize:10, color:C.o, fontWeight:800, letterSpacing:'.15em', textTransform:'uppercase', marginBottom:8 }}>✦ Escáner QR</div>
-        <h1 style={{ fontFamily:FN, fontSize:'clamp(22px,4vw,32px)', fontWeight:900, color:C.white, marginBottom:6 }}>¿Qué querés hacer?</h1>
-        <p style={{ fontSize:13, color:C.mist, marginBottom:28 }}>Elegí una opción para empezar.</p>
+      <div style={{ maxWidth:440, margin:'0 auto', padding:'24px 18px 80px' }}>
+        {/* Cartel de ayuda — primero, inmediatamente debajo del navbar.
+            Reemplaza al header "Escáner QR / ¿Qué querés hacer?" — el cartel
+            ya cuenta de qué se trata la pantalla, no hace falta repetirlo. */}
+        <HelpBanner
+          id="scanner-overview"
+          title="¿Qué hacés acá?"
+          body="O escaneás un QR (de un cliente o de otro local), o mostrás el tuyo para que alguien te lo escanee."
+          details={<>
+            <strong style={{ color:'#fff' }}>Abrir escáner</strong> prende la cámara — usalo para registrar la visita de un cliente que vino a tu local, o para sumarte vos mismo como cliente a otro club escaneando su QR.<br/><br/>
+            <strong style={{ color:'#fff' }}>Mostrar QR</strong> muestra tu QR personal en pantalla para que un comerciante lo escanee y te sume visita en su sistema.
+          </>}
+        />
 
         {/* Grupo 1 — Abrir escáner (las dos opciones que prenden la cámara) */}
         <SectionHeader>Abrir escáner</SectionHeader>
@@ -13606,6 +13887,12 @@ function ScannerView({ user, profile, setView }) {
       <div style={{ fontFamily:FN, fontSize:10, color:C.o, fontWeight:800, letterSpacing:'.15em', textTransform:'uppercase', marginBottom:8 }}>✦ Escáner QR</div>
       <h1 style={{ fontFamily:FN, fontSize:'clamp(22px,4vw,32px)', fontWeight:900, color:C.white, marginBottom:4 }}>Registrar visita</h1>
       <p style={{ fontSize:13, color:C.mist, marginBottom:22 }}>Apuntá la cámara al QR del socio.</p>
+
+      <HelpBanner
+        id="merchant-scanner"
+        title="Escaneás a un cliente"
+        body="Pedile al cliente que abra su QR (en su app, en Mi QR) y enfocá con la cámara. Si tu sistema es por puntos, primero ingresá el monto de la compra. Cuando el QR se reconoce, suma la visita y, si tiene un cupón guardado, te avisamos para aplicarlo."
+      />
 
       {/* Selector de comercio */}
       {myCommerces.length > 1 && (

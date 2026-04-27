@@ -65,7 +65,7 @@ export async function GET(request) {
       // Also fetch profile phone
       const { data: prof } = await supabaseAdmin
         .from('profiles')
-        .select('phone, name, avatar_url')
+        .select('phone, name, avatar_url, role')
         .eq('id', user.id)
         .maybeSingle()
 
