@@ -4742,8 +4742,15 @@ function WalletCardBack({ club, colors, onFlip, userId }) {
   const activePromo = (commerce?.promotions || []).find(p =>
     p.active && (!p.expires_at || new Date(p.expires_at) > now)
   )
+  // Cupón del cliente — solo cuenta si status='active' Y todavía no venció.
+  // Si quedó como 'used' o 'declined' (porque el dueño no le renovó tras
+  // canjearlo), o si pasó la fecha, el badge desaparece.
   const clientPromo = activePromo
-    ? (client_promotions || []).find(cp => cp.promotion_id === activePromo?.id && cp.status === 'active')
+    ? (client_promotions || []).find(cp =>
+        cp.promotion_id === activePromo?.id
+        && cp.status === 'active'
+        && (!cp.expires_at || new Date(cp.expires_at) > now)
+      )
     : null
   const promoExpiry = (clientPromo?.expires_at || activePromo?.expires_at)
     ? new Date(clientPromo?.expires_at || activePromo.expires_at).toLocaleDateString('es-AR', { day:'2-digit', month:'2-digit', year:'2-digit' })
@@ -5279,7 +5286,7 @@ function ClientView({ setView, user, profile, onLogout }) {
     if (!user) return
     setLoading(true)
     Promise.all([
-      supabase.from('memberships').select('*, commerce:commerces(id,name,img_url,slug,prog_type,prog_goal,category,city_name,brand_color,rating,promotions(id,type,value,description,days,expires_at,active,expiration_type,expiration_days),prizes(id,name,cost,img_url,system_type,active,stock)), client_promotions(id,promotion_id,expires_at,granted_at,status)').eq('user_id', user.id),
+      supabase.from('memberships').select('*, commerce:commerces(id,name,img_url,slug,prog_type,prog_goal,category,city_name,brand_color,rating,promotions(id,type,value,description,days,expires_at,active,expiration_type,expiration_days),prizes(id,name,cost,img_url,system_type,active,stock)), client_promotions(id,promotion_id,expires_at,granted_at,used_at,status)').eq('user_id', user.id),
       supabase.from('visits').select('*, commerce:commerces(name, img_url)').eq('user_id', user.id).order('scanned_at', { ascending:false }).limit(20),
     ]).then(([{ data:m }, { data:v }]) => {
       setMemberships(m || [])
@@ -5287,6 +5294,37 @@ function ClientView({ setView, user, profile, onLogout }) {
       setLoading(false)
     })
   }, [user, refreshTick])
+
+  // Auto-refresh: cuando la pestaña vuelve a estar visible (el cliente
+  // minimizó la app, atendió otro cliente, volvió), refrescamos los clubs
+  // para que los cupones, balance y descuentos reflejen lo que pasó mientras
+  // tanto. Dispara el refreshTick que reactiva el useEffect de arriba.
+  useEffect(() => {
+    if (!user) return
+    function maybeRefresh() {
+      if (typeof document !== 'undefined' && document.visibilityState === 'visible') {
+        setRefreshTick(t => t + 1)
+      }
+    }
+    document.addEventListener('visibilitychange', maybeRefresh)
+    window.addEventListener('focus', maybeRefresh)
+    // También escuchamos las notificaciones-push del SW: cuando llega un push
+    // (visita registrada, descuento canjeado, etc.) seguramente algo cambió
+    // en la DB, así que refrescamos.
+    function onSwMsg(e) {
+      if (e.data?.type === 'benefix:notification') setRefreshTick(t => t + 1)
+    }
+    if (typeof navigator !== 'undefined' && navigator.serviceWorker) {
+      navigator.serviceWorker.addEventListener('message', onSwMsg)
+    }
+    return () => {
+      document.removeEventListener('visibilitychange', maybeRefresh)
+      window.removeEventListener('focus', maybeRefresh)
+      if (typeof navigator !== 'undefined' && navigator.serviceWorker) {
+        navigator.serviceWorker.removeEventListener('message', onSwMsg)
+      }
+    }
+  }, [user])
 
   // Sync form when profile prop updates
   useEffect(() => {
@@ -8058,6 +8096,17 @@ function CommerceSettingsView({ user, profile, setView, onLogout, onOwnerProfile
   const [memberRedemptions, setMemberRedemptions] = useState([])
   const [redeemingPrize, setRedeemingPrize] = useState(null)  // prize id being redeemed
   const [redeemError, setRedeemError]     = useState('')
+  // Otorgar beneficio: panel desplegable en la ficha de cliente que lista las
+  // promos discount_next activas y permite regalárselas con un click.
+  const [grantPanelOpen, setGrantPanelOpen] = useState(false)
+  const [grantingPromoId, setGrantingPromoId] = useState(null)
+  const [grantError, setGrantError]         = useState('')
+  // Resetear el panel cuando cambia el cliente seleccionado
+  useEffect(() => {
+    setGrantPanelOpen(false)
+    setGrantingPromoId(null)
+    setGrantError('')
+  }, [selectedMember?.id])
   // Historial
   const [activity, setActivity]           = useState([])
   // Canjes recientes (dashboard)
@@ -8862,6 +8911,41 @@ function CommerceSettingsView({ user, profile, setView, onLogout, onOwnerProfile
     setRedeemingPrize(null)
   }
 
+  // Otorgar manualmente una promo configurada al cliente seleccionado.
+  // Llama al endpoint /api/grant-promotion que hace upsert de client_promotion
+  // con status='active' y notifica a ambas partes.
+  async function grantPromoToMember(promoId) {
+    if (!selectedMember || grantingPromoId) return
+    setGrantError('')
+    setGrantingPromoId(promoId)
+    try {
+      const res = await fetch('/api/grant-promotion', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          commerce_id:   commerce.id,
+          membership_id: selectedMember.id,
+          promotion_id:  promoId,
+        }),
+      })
+      const data = await res.json()
+      if (data.ok) {
+        const promoName = promos.find(p => p.id === promoId)?.value
+          ? `${promos.find(p => p.id === promoId).value}% OFF`
+          : 'beneficio'
+        showToast('success', `Le otorgaste ${promoName} a ${selectedMember.profiles?.full_name?.split(' ')[0] || 'el cliente'}`)
+        setGrantPanelOpen(false)
+        logActivity('promo_granted', `${promoName} otorgado manualmente a ${selectedMember.profiles?.full_name || 'cliente'}`)
+      } else {
+        setGrantError(data.error || 'No se pudo otorgar el beneficio')
+      }
+    } catch (e) {
+      setGrantError(e?.message || 'Error de red')
+    } finally {
+      setGrantingPromoId(null)
+    }
+  }
+
   if (loading) return <div style={{ padding:40 }}><Spinner /></div>
   if (!commerce) return (
     <div style={{ maxWidth:480, margin:'0 auto', padding:'60px 20px', textAlign:'center' }}>
@@ -9219,6 +9303,85 @@ function CommerceSettingsView({ user, profile, setView, onLogout, onOwnerProfile
             </div>
           </PCard>
         )}
+
+        {/* ── Otorgar beneficio manualmente ── */}
+        {/* Lista todas las promos discount_next ACTIVAS y NO vencidas del comercio.
+            El dueño elige una y se la regala al cliente con un click — el endpoint
+            hace upsert en client_promotions con status='active'. Útil para casos
+            especiales (cliente VIP, compensación por algo, etc.). */}
+        {(() => {
+          const grantablePromos = (promos || []).filter(p => {
+            if (!p.active) return false
+            if (p.type !== 'discount_next') return false
+            if (p.expires_at && new Date(p.expires_at) <= new Date()) return false
+            return true
+          })
+          // Si el cliente ya tiene un cupón activo de la misma promo, lo marcamos
+          // para mostrar "Ya tiene activo" en vez de permitir doble grant.
+          // memberRedemptions no nos sirve acá, así que hacemos best-effort:
+          // mostramos el botón igual y el endpoint resuelve el conflicto via upsert.
+          if (grantablePromos.length === 0) return null
+          return (
+            <PCard style={{ padding:16, marginBottom:12, border:`1px solid ${C.v}33` }}>
+              <button onClick={() => setGrantPanelOpen(o => !o)}
+                style={{ width:'100%', display:'flex', alignItems:'center', justifyContent:'space-between', background:'transparent', border:'none', padding:0, cursor:'pointer', fontFamily:'inherit' }}>
+                <div style={{ display:'flex', alignItems:'center', gap:10 }}>
+                  <div style={{ width:32, height:32, borderRadius:10, background:`${C.v}22`, display:'flex', alignItems:'center', justifyContent:'center', flexShrink:0 }}>
+                    <Sparkles size={15} color={C.v} strokeWidth={2} />
+                  </div>
+                  <div style={{ textAlign:'left' }}>
+                    <div style={{ fontFamily:FN, fontSize:13, fontWeight:700, color:C.white }}>Otorgar beneficio</div>
+                    <div style={{ fontSize:11, color:C.dust, marginTop:2 }}>
+                      Regalale un cupón de descuento desde tus promos vigentes
+                    </div>
+                  </div>
+                </div>
+                {grantPanelOpen
+                  ? <ChevronUp size={16} color={C.mist} strokeWidth={2} />
+                  : <ChevronDown size={16} color={C.mist} strokeWidth={2} />}
+              </button>
+
+              {grantPanelOpen && (
+                <div style={{ marginTop:14, paddingTop:14, borderTop:`1px solid ${C.rim}` }}>
+                  {grantError && (
+                    <div style={{ fontSize:11, color:'#f87444', marginBottom:10, padding:'7px 10px', background:'rgba(248,116,68,0.10)', border:'1px solid rgba(248,116,68,0.30)', borderRadius:8 }}>
+                      {grantError}
+                    </div>
+                  )}
+                  <div style={{ display:'flex', flexDirection:'column', gap:8 }}>
+                    {grantablePromos.map(p => {
+                      const valueTxt = p.value ? `${p.value}% OFF` : 'Descuento'
+                      const expiresTxt = p.expiration_type === 'relative'
+                        ? `Vale ${p.expiration_days || 7} día${(p.expiration_days||7) === 1 ? '' : 's'} desde que lo regales`
+                        : (p.expiration_date ? `Vence el ${new Date(p.expiration_date).toLocaleDateString('es-AR')}` : 'Sin vencimiento configurado')
+                      const busy = grantingPromoId === p.id
+                      return (
+                        <div key={p.id} style={{ display:'flex', alignItems:'center', justifyContent:'space-between', background:C.bg3, borderRadius:10, padding:'10px 14px', gap:10 }}>
+                          <div style={{ minWidth:0, flex:1 }}>
+                            <div style={{ display:'flex', alignItems:'center', gap:6, marginBottom:2 }}>
+                              <Percent size={11} color={C.v} strokeWidth={2.5} />
+                              <span style={{ fontFamily:FN, fontSize:13, fontWeight:700, color:C.white }}>{valueTxt}</span>
+                            </div>
+                            {p.description && (
+                              <div style={{ fontSize:11, color:C.mist, marginBottom:2, overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>
+                                {p.description}
+                              </div>
+                            )}
+                            <div style={{ fontSize:10, color:C.dust }}>{expiresTxt}</div>
+                          </div>
+                          <button onClick={() => grantPromoToMember(p.id)} disabled={!!grantingPromoId}
+                            style={{ background:GV, border:'none', borderRadius:8, padding:'8px 14px', color:'#fff', fontFamily:FN, fontSize:11, fontWeight:700, cursor: grantingPromoId ? 'wait' : 'pointer', opacity: busy ? 0.7 : 1, flexShrink:0 }}>
+                            {busy ? '⟳' : 'Otorgar'}
+                          </button>
+                        </div>
+                      )
+                    })}
+                  </div>
+                </div>
+              )}
+            </PCard>
+          )
+        })()}
 
         {/* Historial combinado: visitas + canjes */}
         <PCard style={{ padding:16 }}>
@@ -12820,6 +12983,11 @@ function ScannerView({ user, profile, setView }) {
   const [hasActiveDiscount, setHasActiveDiscount] = useState(false)  // ¿comercio tiene discount_next activo?
   // Post-scan: si el cliente usó un descuento, preguntar si renovarlo.
   const [renewDiscountPromo, setRenewDiscountPromo] = useState(null)  // { promoId, expiresAt, membershipId } | null
+  // discountDecisionResult: rastrea la decisión que tomó el dueño en el modal
+  // de "¿Renovar?" — null mientras el modal está abierto, 'renewed' si dijo sí,
+  // 'declined' si dijo no o cerró con X. Se usa en el cartel narrativo
+  // post-scan para contar la historia completa al cashier.
+  const [discountDecisionResult, setDiscountDecisionResult] = useState(null)
   // Canje
   const [redeemStep,    setRedeemStep]    = useState(null)  // null | 'selecting' | 'confirming' | 'done'
   const [redeemPrizes,  setRedeemPrizes]  = useState([])
@@ -12960,6 +13128,7 @@ function ScannerView({ user, profile, setView }) {
     setSkipStar(false)
     setScanGate(null)
     setRenewDiscountPromo(null)
+    setDiscountDecisionResult(null)
     startCamera()
   }
 
@@ -13011,6 +13180,9 @@ function ScannerView({ user, profile, setView }) {
       const data = await res.json()
       if (data.ok) {
         showToast('success', decision === 'renew' ? 'Descuento renovado' : 'Descuento no renovado')
+        // Guardamos la decisión para que el cartel post-scan la pueda contar
+        // ("Le renovaste el descuento" / "No le renovaste el descuento").
+        setDiscountDecisionResult(decision === 'renew' ? 'renewed' : 'declined')
       } else {
         showToast('error', data.message || data.error || 'No se pudo procesar')
       }
@@ -13400,52 +13572,186 @@ function ScannerView({ user, profile, setView }) {
         )}
       </PCard>
 
-      {/* ── RESULTADO ESCANEO ── */}
+      {/* ── RESULTADO ESCANEO ──
+          Cartel narrativo que cuenta la historia completa de lo que pasó:
+          quién es el cliente, qué ganó (estrellas/puntos), si canjeó descuento,
+          si vos lo renovaste o no, etc. La idea es que el cashier lea de un
+          vistazo y sepa qué decirle al cliente sin tener que interpretar nada. */}
       {result && !redeemStep && (
         <PCard style={{ padding:20, background:result.ok?`${C.ok}12`:`${C.o}10`, border:`1px solid ${result.ok?`${C.ok}55`:`${C.o}55`}` }}>
-          {result.ok ? (
-            <>
-              <div style={{ fontFamily:FN, fontSize:18, fontWeight:700, color:C.ok, marginBottom:10, display:'flex', alignItems:'center', gap:6 }}><CheckCircle size={18} color={C.ok} strokeWidth={2} /> ¡Visita registrada!</div>
-              {result.double_active && (
-                <div style={{ background:`${C.v}22`, border:`1px solid ${C.v}44`, borderRadius:8, padding:'7px 12px', fontSize:12, color:C.v, fontWeight:600, marginBottom:10, display:'flex', alignItems:'center', gap:6 }}>
-                  <RefreshCw size={12} color={C.v} strokeWidth={2} /> Suma doble activa hoy · +{result.points_earned}
-                </div>
-              )}
-              <div style={{ fontSize:15, color:C.white, fontFamily:FN, fontWeight:700, marginBottom:12 }}>{result.member_name}</div>
-              <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:8, marginBottom:14 }}>
-                <div style={{ background:C.bg3, borderRadius:10, padding:'10px 12px', textAlign:'center' }}>
-                  <div style={{ fontFamily:FN, fontSize:22, fontWeight:700, color:C.o }}>{result.visit_count}</div>
-                  <div style={{ fontSize:10, color:C.dust }}>visitas totales</div>
-                </div>
-                <div style={{ background:C.bg3, borderRadius:10, padding:'10px 12px', textAlign:'center' }}>
-                  <div style={{ fontFamily:FN, fontSize:22, fontWeight:700, color:unitColor }}>{unitIcon} {result.points_now}</div>
-                  <div style={{ fontSize:10, color:C.dust }}>{unitLabel}</div>
-                </div>
-              </div>
+          {result.ok ? (() => {
+            const firstName = (result.member_name || 'Cliente').split(' ')[0]
+            const isStars   = result.prog_type === 'stars'
+            const earned    = result.points_earned || 0
+            // Líneas narrativas — cada item es { icon, color, text }
+            const narrativeLines = []
 
-              {/* CTA de canje si puede */}
-              {result.can_redeem ? (
-                <div style={{ background:`${C.ok}18`, border:`1px solid ${C.ok}55`, borderRadius:12, padding:'14px 16px', marginBottom:14 }}>
-                  <div style={{ fontFamily:FN, fontSize:13, fontWeight:700, color:C.ok, marginBottom:6, display:'flex', alignItems:'center', gap:6 }}><CheckCircle size={13} color={C.ok} strokeWidth={2} /> ¡Listo para canjear un premio!</div>
-                  <div style={{ fontSize:12, color:C.mist, marginBottom:12 }}>
-                    {result.member_name} tiene {result.points_now} {unitLabel} y puede canjear.
+            // 1. Sumó (o no) estrellas/puntos
+            if (result.star_skipped) {
+              narrativeLines.push({
+                icon: AlertCircle,
+                color: C.o,
+                text: <>La compra no alcanzó el mínimo, así que <strong>no se le sumó estrella</strong>.</>,
+              })
+            } else if (earned > 0) {
+              if (isStars) {
+                narrativeLines.push({
+                  icon: Star,
+                  color: '#8B5CF6',
+                  text: <><strong>{firstName}</strong> ganó <strong>{earned} estrella{earned !== 1 ? 's' : ''}</strong> por su compra.</>,
+                })
+              } else {
+                narrativeLines.push({
+                  icon: Gem,
+                  color: '#EC4899',
+                  text: <><strong>{firstName}</strong> ganó <strong>{earned} punto{earned !== 1 ? 's' : ''}</strong> por su compra{result.double_active ? <> <span style={{ color:C.v, fontWeight:700 }}>(×2 hoy)</span></> : null}.</>,
+                })
+              }
+            }
+
+            // 2. Canje de descuento (si aplicó)
+            if (result.discount_redeemed) {
+              const dv = result.discount_redeemed.value
+              const valueTxt = dv ? `${dv}% OFF` : 'su descuento'
+              narrativeLines.push({
+                icon: Percent,
+                color: C.o,
+                text: <><strong>{firstName}</strong> canjeó <strong>{valueTxt}</strong> de descuento que tenía guardado.</>,
+              })
+              // Sub-resultado: depende de si el dueño ya decidió renovar/no.
+              if (discountDecisionResult === 'renewed') {
+                narrativeLines.push({
+                  icon: RefreshCw,
+                  color: C.ok,
+                  text: <>Le <strong>renovaste el descuento</strong> para su próxima compra.</>,
+                })
+              } else if (discountDecisionResult === 'declined') {
+                narrativeLines.push({
+                  icon: Ban,
+                  color: 'rgba(255,255,255,0.55)',
+                  text: <><strong>No le renovaste el descuento</strong>. Ya no tiene cupón pendiente.</>,
+                })
+              }
+              // Si discountDecisionResult es null, el modal todavía está abierto
+              // o se cerró antes de decidir — no agregamos sub-mensaje.
+            }
+
+            // 3. Suma doble (si aplica y aún no se mencionó)
+            if (result.double_active && !isStars && earned === 0) {
+              narrativeLines.push({
+                icon: Zap,
+                color: C.v,
+                text: <>Hoy hay <strong>doble suma</strong> activa.</>,
+              })
+            }
+
+            // 4. Cupones discount_next que le quedan al cliente.
+            //    Si justo acabó de canjear uno y NO se renovó, no aparece nada.
+            //    Si tiene otros activos (ej: el dueño le otorgó manualmente
+            //    desde la ficha), los listamos.
+            const remainingCoupons = result.active_coupons || []
+            // Filtramos el que se acaba de canjear si el dueño NO lo renovó —
+            // en ese caso ese cupón NO debería contarse como "lo que le queda".
+            const visibleCoupons = remainingCoupons.filter(c => {
+              if (!result.discount_redeemed) return true
+              if (c.promotion_id !== result.discount_redeemed.promo_id) return true
+              // Misma promo que se canjeó: solo lo mostramos si el dueño la renovó.
+              return discountDecisionResult === 'renewed'
+            })
+            if (visibleCoupons.length > 0) {
+              const list = visibleCoupons.map(c => c.value ? `${c.value}% OFF` : 'descuento').join(', ')
+              narrativeLines.push({
+                icon: Percent,
+                color: C.v,
+                text: <>Le {visibleCoupons.length === 1 ? 'queda' : 'quedan'} <strong>{visibleCoupons.length} cupón{visibleCoupons.length !== 1 ? 'es' : ''} pendiente{visibleCoupons.length !== 1 ? 's' : ''}</strong>: {list}.</>,
+              })
+            } else if (result.discount_redeemed && discountDecisionResult === 'declined') {
+              // Caso explícito: canjeó y no le renovaste, no le queda nada.
+              // Esto ya está cubierto por el bloque #2, no duplicamos línea.
+            } else if (!result.discount_redeemed) {
+              // No tenía cupón este scan ni le quedó ninguno activo. Solo lo
+              // mencionamos si el comercio TIENE promos discount_next activas
+              // (sino la línea es ruido).
+              // No tenemos esa info en `result`, así que omitimos para evitar
+              // un mensaje confuso. La ausencia de cupones se infiere del cartel.
+            }
+
+            // 5. Premios del catálogo que puede canjear
+            const availablePrizes = result.available_prizes || []
+            if (availablePrizes.length > 0) {
+              const top3 = availablePrizes.slice(0, 3)
+              const list = top3.map(p => `${p.name} (${p.cost}${unitIcon})`).join(', ')
+              const more = availablePrizes.length > 3 ? ` y ${availablePrizes.length - 3} más` : ''
+              narrativeLines.push({
+                icon: Gift,
+                color: C.ok,
+                text: <>Puede canjear <strong>{availablePrizes.length} premio{availablePrizes.length !== 1 ? 's' : ''}</strong>: {list}{more}.</>,
+              })
+            } else if (result.next_prize) {
+              // No puede canjear nada todavía, pero hay premios — le decimos cuánto le falta.
+              const np = result.next_prize
+              narrativeLines.push({
+                icon: Target,
+                color: C.dust,
+                text: <>Le faltan <strong>{np.missing}{unitIcon}</strong> para canjear <strong>{np.name}</strong>.</>,
+              })
+            }
+
+            return (
+              <>
+                <div style={{ fontFamily:FN, fontSize:18, fontWeight:700, color:C.ok, marginBottom:14, display:'flex', alignItems:'center', gap:6 }}>
+                  <CheckCircle size={18} color={C.ok} strokeWidth={2} /> Visita registrada
+                </div>
+
+                {/* Narrativa de eventos */}
+                <div style={{ display:'flex', flexDirection:'column', gap:10, marginBottom:14 }}>
+                  {narrativeLines.map((line, i) => {
+                    const Icon = line.icon
+                    return (
+                      <div key={i} style={{ display:'flex', alignItems:'flex-start', gap:10, padding:'10px 12px', background:'rgba(255,255,255,0.03)', border:`1px solid ${line.color}33`, borderRadius:10 }}>
+                        <div style={{ width:24, height:24, borderRadius:7, background:`${line.color}22`, display:'flex', alignItems:'center', justifyContent:'center', flexShrink:0 }}>
+                          <Icon size={13} color={line.color} strokeWidth={2.2} />
+                        </div>
+                        <div style={{ fontSize:13, color:C.pearl, lineHeight:1.45, paddingTop:1 }}>
+                          {line.text}
+                        </div>
+                      </div>
+                    )
+                  })}
+                </div>
+
+                {/* Stats — visitas totales + balance actual */}
+                <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:8, marginBottom:14 }}>
+                  <div style={{ background:C.bg3, borderRadius:10, padding:'10px 12px', textAlign:'center' }}>
+                    <div style={{ fontFamily:FN, fontSize:22, fontWeight:700, color:C.o }}>{result.visit_count}</div>
+                    <div style={{ fontSize:10, color:C.dust }}>visitas totales</div>
                   </div>
-                  <GBtn onClick={openRedeem} style={{ width:'100%', justifyContent:'center', fontSize:13 }}>
-                    <Gift size={13} strokeWidth={2} /> Canjear premio
-                  </GBtn>
+                  <div style={{ background:C.bg3, borderRadius:10, padding:'10px 12px', textAlign:'center' }}>
+                    <div style={{ fontFamily:FN, fontSize:22, fontWeight:700, color:unitColor }}>{unitIcon} {result.points_now}</div>
+                    <div style={{ fontSize:10, color:C.dust }}>{unitLabel}</div>
+                  </div>
                 </div>
-              ) : (
-                <div style={{ fontSize:12, color:C.dust, marginBottom:14, textAlign:'center' }}>
-                  Acumula {unitIcon} para canjear premios
-                </div>
-              )}
 
-              <button onClick={resetAll}
-                style={{ width:'100%', padding:'10px', background:'transparent', border:`1px solid ${C.rim}`, borderRadius:10, color:C.mist, fontFamily:FN, fontSize:12, fontWeight:600, cursor:'pointer' }}>
-                Escanear otro cliente
-              </button>
-            </>
-          ) : (
+                {/* CTA de canje si puede */}
+                {result.can_redeem ? (
+                  <div style={{ background:`${C.ok}18`, border:`1px solid ${C.ok}55`, borderRadius:12, padding:'14px 16px', marginBottom:14 }}>
+                    <div style={{ fontFamily:FN, fontSize:13, fontWeight:700, color:C.ok, marginBottom:6, display:'flex', alignItems:'center', gap:6 }}><CheckCircle size={13} color={C.ok} strokeWidth={2} /> ¡Listo para canjear un premio!</div>
+                    <div style={{ fontSize:12, color:C.mist, marginBottom:12 }}>
+                      {firstName} tiene {result.points_now} {unitLabel} y puede canjear.
+                    </div>
+                    <GBtn onClick={openRedeem} style={{ width:'100%', justifyContent:'center', fontSize:13 }}>
+                      <Gift size={13} strokeWidth={2} /> Canjear premio
+                    </GBtn>
+                  </div>
+                ) : null}
+
+                <button onClick={resetAll}
+                  style={{ width:'100%', padding:'10px', background:'transparent', border:`1px solid ${C.rim}`, borderRadius:10, color:C.mist, fontFamily:FN, fontSize:12, fontWeight:600, cursor:'pointer' }}>
+                  Escanear otro cliente
+                </button>
+              </>
+            )
+          })() : (
             <>
               <div style={{ fontFamily:FN, fontSize:16, fontWeight:900, color:C.o, marginBottom:6 }}>⚠ Error</div>
               <div style={{ fontSize:13, color:C.mist, marginBottom:12 }}>{result.error}</div>

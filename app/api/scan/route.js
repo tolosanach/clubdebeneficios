@@ -207,9 +207,14 @@ export async function POST(request) {
         await supabaseAdmin.from('client_promotions')
           .update({ status: 'used', used_at: new Date().toISOString() })
           .eq('id', activeDiscount.id)
+        // Buscar el value (% off) — primero en el join, sino en validPromos.
+        const promoValueForRedeemed = activeDiscount.promotions?.value
+          ?? validPromos.find(p => p.id === activeDiscount.promotion_id)?.value
+          ?? null
         discountRedeemed = {
           promo_id:   activeDiscount.promotion_id,
           expires_at: activeDiscount.expires_at,
+          value:      promoValueForRedeemed,
         }
 
         // Registrar el canje de descuento en `redemptions` para que aparezca
@@ -243,15 +248,47 @@ export async function POST(request) {
     // control total: si dice "no renovar", el cliente NO recibe el cupón
     // de nuevo en visitas posteriores.
 
-    // Premio más barato para saber si puede canjear
-    const { data: cheapestPrize } = await supabaseAdmin
+    // ── Premios del catálogo ──
+    // Traemos TODOS los premios activos del comercio para que el frontend
+    // pueda contarle al cashier qué puede canjear el cliente con su balance
+    // actualizado y cuánto le falta para el próximo. Filtramos por system_type
+    // para que solo aparezcan los del sistema actual (stars o points).
+    const { data: allPrizes } = await supabaseAdmin
       .from('prizes')
-      .select('cost')
+      .select('id, name, cost, system_type, img_url, stock')
       .eq('commerce_id', commerce_id)
       .eq('active', true)
       .order('cost', { ascending: true })
-      .limit(1)
-      .single()
+    const prizesForSystem = (allPrizes || []).filter(p =>
+      (p.system_type || commerce.prog_type) === commerce.prog_type
+    )
+    const availablePrizes = prizesForSystem.filter(p => p.cost <= newTotal)
+    const nextPrize = prizesForSystem.find(p => p.cost > newTotal) || null
+    const cheapestPrize = prizesForSystem[0] || null
+
+    // ── Cupones activos restantes del cliente ──
+    // Después de marcar como `used` el cupón canjeado en este scan, traemos
+    // los cupones discount_next que le QUEDAN activos al cliente. Esto le
+    // permite al frontend contarle al cashier: "Le quedan X cupones activos"
+    // o "Ya no tiene cupones pendientes".
+    const { data: remainingCoupons } = await supabaseAdmin
+      .from('client_promotions')
+      .select('id, promotion_id, expires_at, granted_at, status, promotions:promotions(id, type, value, description, expires_at, active)')
+      .eq('membership_id', membership.id)
+      .eq('status', 'active')
+    const nowIso = new Date().toISOString()
+    const activeCoupons = (remainingCoupons || [])
+      .filter(cp =>
+        cp.promotions?.type === 'discount_next'
+        && cp.promotions?.active
+        && (!cp.expires_at || cp.expires_at > nowIso)
+      )
+      .map(cp => ({
+        promotion_id: cp.promotion_id,
+        value:        cp.promotions?.value ?? null,
+        description:  cp.promotions?.description ?? null,
+        expires_at:   cp.expires_at,
+      }))
 
     // ─── NOTIFICACIONES ─────────────────────────────────────────────────────
     // Mandamos siempre 2 notifs cruzadas: una al cliente y una al dueño.
@@ -334,9 +371,24 @@ export async function POST(request) {
       visit_id:      visit.id,
       membership_id: membership.id,
       user_id:       user_id,
-      // discount_redeemed: { promo_id, expires_at } cuando el cliente acaba de
-      // canjear un cupón de descuento — el frontend ofrece "renovar?".
+      // discount_redeemed: { promo_id, expires_at, value } cuando el cliente
+      // acaba de canjear un cupón de descuento — el frontend ofrece "renovar?".
       discount_redeemed: discountRedeemed,
+      // active_coupons: cupones discount_next que le QUEDAN al cliente después
+      // de este scan (excluye el que se acaba de usar). El frontend los cuenta
+      // en el cartel para que el cashier sepa qué le queda en el bolsillo.
+      active_coupons: activeCoupons,
+      // available_prizes: premios del catálogo del comercio que el cliente ya
+      // puede canjear con su nuevo balance. Lista ordenada por costo asc.
+      available_prizes: availablePrizes.map(p => ({
+        id: p.id, name: p.name, cost: p.cost, img_url: p.img_url || null,
+      })),
+      // next_prize: el próximo premio que NO puede canjear todavía + cuánto le
+      // falta. Sirve para "Le faltan 2 estrellas para Café Gratis".
+      next_prize: nextPrize ? {
+        id: nextPrize.id, name: nextPrize.name, cost: nextPrize.cost,
+        missing: nextPrize.cost - newTotal,
+      } : null,
       // skip_star: que el frontend pueda mostrar "no se sumó estrella" si aplica.
       star_skipped:  commerce.prog_type === 'stars' && !!skip_star,
     })
