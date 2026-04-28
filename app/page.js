@@ -2082,26 +2082,15 @@ function Navbar({ setView, cityName, user, profile, onLogin, onLogout, currentVi
   const bsAccount     = accountActive ? GRAD_ACTIVE : NEUTRAL
   const icAccount     = accountActive ? '#fff' : 'rgba(255,255,255,0.70)'
 
-  // Tour del icono "Mi cuenta": al tocarlo, recorre las 4 pestañas del
-  // ClientView (Mi billetera → Premios → Historial → Perfil) mostrando cada
-  // una un segundo. Termina en Perfil. Da una idea de qué hay en cada tab
-  // al usuario que recién toca el ícono. Si el user vuelve a tocar el
-  // ícono mientras el tour está corriendo, se cancela el anterior y arranca
-  // uno nuevo.
-  const tourTimeoutsRef = useRef([])
-  function runAccountTour() {
-    // Cancelar tour previo si quedó en curso
-    tourTimeoutsRef.current.forEach(t => clearTimeout(t))
-    tourTimeoutsRef.current = []
-    const sequence = ['mis clubs', 'premios', 'historial', 'cuenta']
-    sequence.forEach((tab, i) => {
-      const t = setTimeout(() => {
-        window.dispatchEvent(new CustomEvent('benefix:navigate', {
-          detail: { view: 'client', tab },
-        }))
-      }, i * 1000)
-      tourTimeoutsRef.current.push(t)
-    })
+  // Click en el icono "Mi cuenta": navega a ClientView en la pestaña Perfil.
+  // Independiente de la vista actual (home, scanner, commerce-settings, etc.),
+  // el ClientBottomNav del cliente queda visible con sus 4 pestañas (Mi
+  // billetera, Premios, Historial, Perfil) y el sub-nav marca Perfil como
+  // activa.
+  function goToAccount() {
+    window.dispatchEvent(new CustomEvent('benefix:navigate', {
+      detail: { view: 'client', tab: 'cuenta' },
+    }))
   }
 
   const NAV = { position:'fixed', top:10, left:10, right:10, zIndex:200, borderRadius:14, height:52, display:'flex', alignItems:'center', justifyContent:'space-between' }
@@ -2131,7 +2120,7 @@ function Navbar({ setView, cityName, user, profile, onLogin, onLogout, currentVi
             style={{ ...BTN, ...bs('admin'), cursor: currentView==='admin' ? 'default' : 'pointer' }}>
             <LayoutDashboard size={16} color={ic('admin')} />
           </button>
-          <button title="Mi cuenta" onClick={runAccountTour}
+          <button title="Mi cuenta" onClick={goToAccount}
             style={{ ...BTN, ...bsAccount, cursor: 'pointer' }}>
             <User size={16} color={icAccount} />
           </button>
@@ -2163,7 +2152,7 @@ function Navbar({ setView, cityName, user, profile, onLogin, onLogout, currentVi
             style={{ ...BTN, ...bs('commerce-settings'), cursor: 'pointer' }}>
             <Store size={16} color={ic('commerce-settings')} strokeWidth={2} />
           </button>
-          <button title="Mi cuenta" onClick={runAccountTour}
+          <button title="Mi cuenta" onClick={goToAccount}
             style={{ ...BTN, ...bsAccount, cursor: 'pointer' }}>
             <User size={16} color={icAccount} strokeWidth={2} />
           </button>
@@ -2177,7 +2166,7 @@ function Navbar({ setView, cityName, user, profile, onLogin, onLogout, currentVi
             style={{ ...BTN, ...bs('scanner','qr'), cursor: currentView==='scanner' ? 'default' : 'pointer' }}>
             <ScanLine size={16} color={ic('scanner')} strokeWidth={2} />
           </button>
-          <button title="Mi cuenta" onClick={runAccountTour}
+          <button title="Mi cuenta" onClick={goToAccount}
             style={{ ...BTN, ...bsAccount, cursor: 'pointer' }}>
             <User size={16} color={icAccount} strokeWidth={2} />
           </button>
