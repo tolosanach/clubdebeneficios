@@ -205,6 +205,14 @@ function Splash({ commerce, UnitIcon, unitIconProps, unitLabel, onClose }) {
         position:'relative', overflow:'hidden',
         boxShadow:'0 40px 100px rgba(0,0,0,0.5), inset 0 1px 0 rgba(255,255,255,0.1)',
       }} onClick={e => e.stopPropagation()}>
+        {/* X cerrar — antes solo se cerraba con tap en el backdrop o con
+            el CTA "Ver el club" del fondo. Algunos clientes no encontraban
+            cómo descartar el modal sin entrar al club, así que agregamos
+            la cruz arriba a la derecha como salida explícita. */}
+        <button onClick={close} aria-label="Cerrar" title="Cerrar"
+          style={{ position:'absolute', top:12, right:12, zIndex:5, width:32, height:32, borderRadius:'50%', background:'rgba(0,0,0,0.35)', border:'1px solid rgba(255,255,255,0.15)', color:'#fff', cursor:'pointer', display:'flex', alignItems:'center', justifyContent:'center', padding:0, backdropFilter:'blur(8px)', WebkitBackdropFilter:'blur(8px)' }}>
+          <X size={16} strokeWidth={2.4} />
+        </button>
         <div style={{ position:'absolute', top:-60, right:-40, width:200, height:200, borderRadius:'50%', background:'rgba(168,85,247,0.12)', filter:'blur(50px)', pointerEvents:'none' }} />
         <div style={{ position:'absolute', bottom:-40, left:-30, width:160, height:160, borderRadius:'50%', background:'rgba(236,72,153,0.10)', filter:'blur(40px)', pointerEvents:'none' }} />
 
@@ -1210,6 +1218,131 @@ function ClubHistory({ user, commerceId, unitLabel, unitColor, UnitIcon, unitIco
 
 // Nav de pestañas — pegado arriba abajo del navbar global, con gradient
 // naranja-violeta. Mismo formato que el nav cliente (Mis Clubs / Historial / Mi QR).
+// CoverSlideshowAutoAdvance — wrapper que solo monta un useEffect con
+// setInterval para llamar onAdvance cada 4.5s. Se separa del HERO
+// para mantener los hooks contenidos en su propio componente y evitar
+// que un re-render del HERO reinicie el timer.
+function CoverSlideshowAutoAdvance({ count, onAdvance }) {
+  useEffect(() => {
+    if (count < 2) return
+    const id = setInterval(onAdvance, 4500)
+    return () => clearInterval(id)
+  }, [count, onAdvance])
+  return null
+}
+
+// CoverLightboxGallery — lightbox full-screen con scroll horizontal +
+// scroll-snap entre todas las portadas del comercio. Antes era una sola
+// imagen estática y el cliente tenía que cerrar para ver la siguiente; ahora
+// puede swipear entre todas en zoom, igual que en Instagram. La imagen
+// inicial se selecciona con scrollLeft = startIdx * vw apenas se monta.
+function CoverLightboxGallery({ covers, startIdx, onClose, scrollRef }) {
+  const [activeIdx, setActiveIdx] = useState(startIdx)
+  const innerRef = scrollRef || useRef(null)
+
+  // Posicionamos el scroll en la imagen inicial al montar.
+  useEffect(() => {
+    const el = innerRef.current
+    if (!el) return
+    requestAnimationFrame(() => {
+      el.scrollLeft = startIdx * el.clientWidth
+    })
+  }, [startIdx, innerRef])
+
+  // Trackear cuál imagen está visible para los dots de paginación.
+  function onScroll() {
+    const el = innerRef.current
+    if (!el) return
+    const idx = Math.round(el.scrollLeft / el.clientWidth)
+    if (idx !== activeIdx) setActiveIdx(idx)
+  }
+
+  return (
+    <div
+      onClick={onClose}
+      style={{
+        position: 'fixed', inset: 0, zIndex: 9999,
+        background: 'rgba(0,0,0,0.94)',
+        backdropFilter: 'blur(8px)', WebkitBackdropFilter: 'blur(8px)',
+        animation: 'fadeIn 220ms ease',
+      }}
+    >
+      {/* Track scrolleable horizontal con scroll-snap por imagen */}
+      <div
+        ref={innerRef}
+        onScroll={onScroll}
+        onClick={e => e.stopPropagation()}
+        style={{
+          width: '100%', height: '100%',
+          display: 'flex',
+          overflowX: 'auto',
+          overflowY: 'hidden',
+          scrollSnapType: 'x mandatory',
+          WebkitOverflowScrolling: 'touch',
+          scrollbarWidth: 'none',
+        }}
+      >
+        {covers.map((url, i) => (
+          <div key={url + i} style={{
+            flex: '0 0 100%', height: '100%',
+            scrollSnapAlign: 'center',
+            display: 'flex', alignItems: 'center', justifyContent: 'center',
+            padding: 20, boxSizing: 'border-box',
+          }}>
+            <img
+              src={url}
+              alt=""
+              style={{
+                maxWidth: '100%', maxHeight: '100%',
+                objectFit: 'contain',
+                borderRadius: 14,
+                boxShadow: '0 24px 60px rgba(0,0,0,0.65)',
+                userSelect: 'none',
+                pointerEvents: 'none', // para que el tap caiga en el contenedor (close)
+              }}
+            />
+          </div>
+        ))}
+      </div>
+
+      {/* Cerrar */}
+      <button
+        onClick={onClose}
+        aria-label="Cerrar"
+        style={{
+          position: 'absolute', top: 24, right: 24, zIndex: 2,
+          width: 40, height: 40, borderRadius: '50%',
+          background: 'rgba(255,255,255,0.10)',
+          border: '1px solid rgba(255,255,255,0.20)',
+          color: '#fff', cursor: 'pointer', padding: 0,
+          display: 'flex', alignItems: 'center', justifyContent: 'center',
+        }}
+      >
+        <X size={18} strokeWidth={2.4} />
+      </button>
+
+      {/* Dots de paginación */}
+      {covers.length > 1 && (
+        <div style={{
+          position: 'absolute', bottom: 30, left: '50%',
+          transform: 'translateX(-50%)',
+          display: 'flex', gap: 6, zIndex: 2,
+        }}>
+          {covers.map((_, i) => (
+            <span key={i} style={{
+              width: i === activeIdx ? 24 : 8, height: 8,
+              borderRadius: 99,
+              background: i === activeIdx ? '#fff' : 'rgba(255,255,255,0.40)',
+              transition: 'width 280ms ease, background 280ms ease',
+              boxShadow: i === activeIdx ? '0 0 8px rgba(255,255,255,0.55)' : 'none',
+            }} />
+          ))}
+        </div>
+      )}
+    </div>
+  )
+}
+
 // LimitedTimeBenefitsSlider — slider auto-rotatorio que muestra las promos
 // activas del comercio en la pestaña Catálogo. Estilo marketinero, gradient
 // fuerte, ícono grande, contador de días con barra de progreso. Se cicla
@@ -1219,13 +1352,16 @@ function ClubHistory({ user, commerceId, unitLabel, unitColor, UnitIcon, unitIco
 function LimitedTimeBenefitsSlider({ promos, unitLabel, editMode = false }) {
   const AUTOSCROLL_MS  = 3500
   const SWIPE_THRESHOLD = 40       // px mínimo para considerar swipe
+  const WHEEL_THRESHOLD = 30       // delta acumulado mínimo para avanzar/retroceder con trackpad
   const [idx, setIdx]   = useState(0)
   const list  = promos || []
   const count = list.length
 
-  // Touch refs para swipe manual
+  // Touch refs para swipe manual + wheel acumulado para trackpad horizontal.
   const touchStartXRef = useRef(0)
   const touchEndXRef   = useRef(0)
+  const wheelAccumRef  = useRef(0)
+  const wheelLockRef   = useRef(false)
 
   // Auto-advance CONTINUO. No se pausa nunca.
   useEffect(() => {
@@ -1236,13 +1372,46 @@ function LimitedTimeBenefitsSlider({ promos, unitLabel, editMode = false }) {
     return () => clearInterval(id)
   }, [count])
 
+  // Touch / swipe — el delta finger‑pos lo interpretamos como "el usuario
+  // está empujando la card en esa dirección". Si arrastra a la DERECHA
+  // (dx > 0), está empujando la card actual hacia la derecha → la siguiente
+  // entra desde la izquierda → idx anterior. Si arrastra a la IZQUIERDA
+  // (dx < 0), idx siguiente. El reporte original ("se comporta al revés")
+  // venía de tener invertida esta convención mental: nuestro slider con
+  // auto‑rotación empuja a la izquierda para mostrar la próxima, así que
+  // lo natural es replicar ese mismo gesto con el dedo.
   const onTouchStart = (e) => { touchStartXRef.current = e.touches[0].clientX; touchEndXRef.current = e.touches[0].clientX }
   const onTouchMove  = (e) => { touchEndXRef.current   = e.touches[0].clientX }
   const onTouchEnd   = () => {
     const dx = touchEndXRef.current - touchStartXRef.current
     if (Math.abs(dx) < SWIPE_THRESHOLD) return
-    if (dx < 0) setIdx(i => (i + 1) % count)              // swipe izquierda → siguiente
-    else        setIdx(i => (i - 1 + count) % count)      // swipe derecha  → anterior
+    if (dx > 0) setIdx(i => (i + 1) % count)              // swipe derecha → siguiente
+    else        setIdx(i => (i - 1 + count) % count)      // swipe izquierda → anterior
+  }
+
+  // Wheel horizontal (trackpad / mouse de Apple / shift+wheel). Acumulamos
+  // el deltaX y al pasar el threshold avanzamos/retrocedemos con un lock
+  // chiquito para no saltar varias cards de un pase. La dirección sigue la
+  // misma convención que el swipe arriba: "empujar hacia la derecha" =
+  // siguiente card. Solo escuchamos cuando el gesto es predominantemente
+  // horizontal — sino dejamos pasar el scroll vertical normal de la página.
+  const onWheel = (e) => {
+    if (count < 2) return
+    if (Math.abs(e.deltaX) < Math.abs(e.deltaY)) return
+    e.preventDefault()
+    if (wheelLockRef.current) return
+    wheelAccumRef.current += e.deltaX
+    if (wheelAccumRef.current > WHEEL_THRESHOLD) {
+      setIdx(i => (i + 1) % count)
+      wheelLockRef.current = true
+      wheelAccumRef.current = 0
+      setTimeout(() => { wheelLockRef.current = false }, 350)
+    } else if (wheelAccumRef.current < -WHEEL_THRESHOLD) {
+      setIdx(i => (i - 1 + count) % count)
+      wheelLockRef.current = true
+      wheelAccumRef.current = 0
+      setTimeout(() => { wheelLockRef.current = false }, 350)
+    }
   }
 
   if (count === 0) return null
@@ -1409,7 +1578,31 @@ function LimitedTimeBenefitsSlider({ promos, unitLabel, editMode = false }) {
                           0 4px 22px rgba(189,75,248,0.40);
                       }
                     }
+                    @keyframes wave-rise {
+                      from { background-position: 0 0; }
+                      to   { background-position: 0 -200px; }
+                    }
                   `}</style>
+
+                  {/* ── Capa de líneas onduladas que suben lento ──
+                      Patrón SVG inline con tres curvas verticales que tilea
+                      vertical (200px de alto). Lo animamos con
+                      background-position-y para que se sienta un flujo
+                      continuo "subiendo" detrás del contenido, encima del
+                      glow violeta del fondo. preserveAspectRatio='none' lo
+                      estira al ancho de la card; la altura tilea para loop
+                      seamless. */}
+                  <div aria-hidden style={{
+                    position: 'absolute', inset: 0,
+                    backgroundImage: "url(\"data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 80 200' width='80' height='200' preserveAspectRatio='none'><g fill='none' stroke='rgba(255,255,255,0.13)' stroke-width='1'><path d='M10,0 C25,15 30,35 30,50 C30,65 25,85 10,100 C-5,115 -10,135 -10,150 C-10,165 -5,185 10,200'/><path d='M40,0 C55,15 60,35 60,50 C60,65 55,85 40,100 C25,115 20,135 20,150 C20,165 25,185 40,200'/><path d='M70,0 C85,15 90,35 90,50 C90,65 85,85 70,100 C55,115 50,135 50,150 C50,165 55,185 70,200'/></g></svg>\")",
+                    backgroundRepeat: 'repeat',
+                    backgroundSize: '80px 200px',
+                    animation: 'wave-rise 18s linear infinite',
+                    pointerEvents: 'none',
+                    zIndex: 0,
+                    opacity: 0.85,
+                    mixBlendMode: 'screen',
+                  }} />
 
                   {/* Lápiz de edición — solo en modo previsualización del
                       dueño (editMode=true). Posicionado ADENTRO de la
@@ -1420,15 +1613,7 @@ function LimitedTimeBenefitsSlider({ promos, unitLabel, editMode = false }) {
                       gestiona discount_next y double_points). */}
                   {editMode && (
                     <button
-                      onClick={(e) => {
-                        e.stopPropagation()
-                        try {
-                          sessionStorage.setItem('benefix:edit-section', 'promociones')
-                          sessionStorage.setItem('benefix:loginNext', 'commerce-settings')
-                          sessionStorage.setItem('benefix:nextTab', 'recompensas')
-                        } catch {}
-                        if (typeof window !== 'undefined') window.location.href = '/?view=commerce-settings&tab=recompensas&section=promociones'
-                      }}
+                      onClick={(e) => { e.stopPropagation(); navigateEditField('promo') }}
                       title="Editar promoción"
                       aria-label="Editar promoción"
                       style={{
@@ -1471,7 +1656,7 @@ function LimitedTimeBenefitsSlider({ promos, unitLabel, editMode = false }) {
                     // discreto. Ambos viven en la misma posición.
                     const prominentDays = isDouble && hasDays
                     return (
-                      <div style={{ position: 'relative', textAlign: 'center', marginBottom: 18 }}>
+                      <div style={{ position: 'relative', textAlign: 'center', marginBottom: 18, zIndex: 1 }}>
                         <div style={{
                           display: 'inline-flex', alignItems: 'center', gap: 6,
                           padding: prominentDays ? '7px 16px' : '5px 12px',
@@ -1497,7 +1682,7 @@ function LimitedTimeBenefitsSlider({ promos, unitLabel, editMode = false }) {
                       tipografía display heavy para impacto visual.
                       Estilo del reference (85%, 23%): bold pesado, blanco
                       sobre el fondo glow violeta. */}
-                  <div style={{ position: 'relative', textAlign: 'center', marginBottom: 4 }}>
+                  <div style={{ position: 'relative', textAlign: 'center', marginBottom: 4, zIndex: 1 }}>
                     <div style={{
                       fontFamily: FN,
                       fontSize: bigDisplay.length <= 3 ? 78 : bigDisplay.length <= 4 ? 64 : 52,
@@ -1523,7 +1708,7 @@ function LimitedTimeBenefitsSlider({ promos, unitLabel, editMode = false }) {
 
                   {/* Subtítulo descriptivo. Los días ya viven arriba en el tag,
                       así que acá no se duplican. */}
-                  <div style={{ position: 'relative', textAlign: 'center', marginTop: 10, marginBottom: 16 }}>
+                  <div style={{ position: 'relative', textAlign: 'center', marginTop: 10, marginBottom: 16, zIndex: 1 }}>
                     <div style={{
                       fontSize: 12, fontWeight: 500,
                       color: 'rgba(255,255,255,0.72)',
@@ -1533,80 +1718,15 @@ function LimitedTimeBenefitsSlider({ promos, unitLabel, editMode = false }) {
                     </div>
                   </div>
 
-                  {/* ── Termómetro de urgencia (paleta restringida) ──
-                      Solo blanco + violeta. La urgencia se transmite por:
-                      el llenado de la barra, el pulse, y el microcopy.
-                      Sin colores tier. */}
-                  {urgency && (
-                    <div style={{ position: 'relative', background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.10)', borderRadius: 12, padding: '10px 14px' }}>
-                      <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-                        {/* Contador grande — siempre blanco */}
-                        <div style={{
-                          flexShrink: 0,
-                          display: 'flex', flexDirection: 'column', alignItems: 'center',
-                          minWidth: 56,
-                        }}>
-                          <div style={{
-                            fontFamily: FN,
-                            fontSize: urgency.bigText.length <= 2 ? 26 : urgency.bigText.length <= 3 ? 22 : 16,
-                            fontWeight: 900,
-                            color: '#fff',
-                            lineHeight: 0.95,
-                            letterSpacing: '-.02em',
-                          }}>
-                            {urgency.bigText}
-                          </div>
-                          {urgency.bigUnit && (
-                            <div style={{ fontSize: 9, fontWeight: 700, color: '#fff', marginTop: 2, textTransform: 'uppercase', letterSpacing: '.10em', opacity: 0.70 }}>
-                              {urgency.bigUnit}
-                            </div>
-                          )}
-                        </div>
-
-                        {/* Barra + microcopy */}
-                        <div style={{ flex: 1, minWidth: 0 }}>
-                          <div style={{ display: 'flex', alignItems: 'center', gap: 5, marginBottom: 5 }}>
-                            <Clock size={10} strokeWidth={2.4} color="#fff" />
-                            <span style={{ fontSize: 10, fontWeight: 700, color: '#fff', textTransform: 'uppercase', letterSpacing: '.06em', opacity: 0.85 }}>
-                              {urgency.subtext}
-                            </span>
-                          </div>
-                          {/* Track violeta + fill blanco. Mientras más urgente, más llena. */}
-                          <div style={{ height: 6, borderRadius: 99, background: 'rgba(189,75,248,0.20)', overflow: 'hidden', position: 'relative' }}>
-                            <div style={{
-                              height: '100%',
-                              width: `${urgency.urgencyPct}%`,
-                              background: '#ffffff',
-                              borderRadius: 99,
-                              transition: 'width 700ms cubic-bezier(0.22,1,0.36,1)',
-                              boxShadow: '0 0 8px rgba(255,255,255,0.55)',
-                            }} />
-                            {/* Shimmer en cards urgentes */}
-                            {urgency.pulse && (
-                              <div style={{
-                                position: 'absolute', inset: 0, borderRadius: 99,
-                                background: 'linear-gradient(90deg, transparent 0%, rgba(255,255,255,0.6) 50%, transparent 100%)',
-                                backgroundSize: '40% 100%',
-                                backgroundRepeat: 'no-repeat',
-                                animation: 'urgency-shimmer 1.6s linear infinite',
-                                pointerEvents: 'none',
-                              }} />
-                            )}
-                          </div>
-                          {urgency.expiryLabel && (
-                            <div style={{ fontSize: 10, color: 'rgba(255,255,255,0.75)', marginTop: 5, fontWeight: 600 }}>
-                              {urgency.expiryLabel}
-                            </div>
-                          )}
-                          {urgency.mode === 'relative' && (
-                            <div style={{ fontSize: 10, color: 'rgba(255,255,255,0.78)', marginTop: 5, fontWeight: 500, fontStyle: 'italic' }}>
-                              {urgency.subtext}
-                            </div>
-                          )}
-                        </div>
-                      </div>
-                    </div>
-                  )}
+                  {/* ── Termómetro de urgencia eliminado del slider público ──
+                      Antes mostrábamos contador + barra + "Hasta el DD/MM" /
+                      "X días desde activación". Pero el slider del catálogo
+                      es para promocionar el beneficio (qué % OFF, en qué
+                      días aplica), NO para apurar al cliente con un timer.
+                      La vigencia del cupón se muestra solo en la tarjeta
+                      personal (WalletCard) cuando el cliente ya lo tiene
+                      otorgado — ahí sí tiene sentido la fecha porque es
+                      info útil que afecta al titular. */}
                 </div>
               </div>
             )
@@ -1762,6 +1882,20 @@ export default function ClubProfilePage() {
   const [joinError, setJoinError]     = useState('')
 
   const [showHours, setShowHours]     = useState(false)
+  // Slideshow de portadas: cuando el comercio tiene varias fotos
+  // (commerce.cover_images), las cyclamos automáticamente con fade
+  // suave entre ellas. coverIdx = índice visible actual. coverLightbox
+  // = URL ampliada (modal) cuando el cliente tappea para ver más grande.
+  const [coverIdx, setCoverIdx]           = useState(0)
+  // coverLightbox: número (idx de la cover abierta) o null. Antes guardaba la
+  // URL como string; ahora idx para que el lightbox pueda navegar entre todas
+  // las portadas (swipe / scroll horizontal en zoom).
+  const [coverLightbox, setCoverLightbox] = useState(null)
+  // Refs de touch para el swipe horizontal entre portadas en el HERO.
+  const heroTouchStartXRef = useRef(0)
+  const heroTouchEndXRef   = useRef(0)
+  // Refs y estado del lightbox: scroll-snap de las imágenes ampliadas.
+  const lightboxScrollRef  = useRef(null)
   // showAboutBusiness state removido — la info "Sobre el negocio" ahora
   // vive adentro del expandable de la card principal del negocio,
   // controlado por `cardOpen` (chevron al pie de la card).
@@ -2107,25 +2241,43 @@ export default function ClubProfilePage() {
   // Excepción: 'hours' usa un editor de horarios muy complejo (7 días con
   // múltiples turnos) que no tendría sentido replicar en miniatura, así
   // que ese pencil sí navega al panel completo.
-  const editPencil = (field, label = 'Editar', extra = {}) => editMode ? (
+  // Mapeo de field → tab + section del panel de configuración. Cada lápiz
+  // del modo edición redirige al panel del comercio, abriendo el accordion
+  // correspondiente al campo que se quiere editar. Antes algunos lápices
+  // abrían modales inline sobre la previsualización; ahora todos navegan
+  // al panel completo así el dueño edita en el contexto correcto y no
+  // pelea con previews chiquitos.
+  const FIELD_NAV_MAP = {
+    name:         { tab: 'configuracion', section: 'basica' },
+    description:  { tab: 'configuracion', section: 'basica' },
+    img_url:      { tab: 'configuracion', section: 'basica' },
+    cover:        { tab: 'configuracion', section: 'basica' },
+    cover_images: { tab: 'configuracion', section: 'basica' },
+    category:     { tab: 'configuracion', section: 'basica' },
+    hours:        { tab: 'configuracion', section: 'horarios' },
+    address:      { tab: 'configuracion', section: 'ubicacion' },
+    phone:        { tab: 'configuracion', section: 'contacto' },
+    instagram:    { tab: 'configuracion', section: 'contacto' },
+    facebook:     { tab: 'configuracion', section: 'contacto' },
+    prize:        { tab: 'premios',       section: null },
+    promo:        { tab: 'recompensas',   section: 'promociones' },
+  }
+  const navigateEditField = (field) => {
+    const mapping = FIELD_NAV_MAP[field] || { tab: 'configuracion', section: null }
+    try {
+      sessionStorage.setItem('benefix:loginNext', 'commerce-settings')
+      sessionStorage.setItem('benefix:nextTab', mapping.tab)
+      if (mapping.section) sessionStorage.setItem('benefix:edit-section', mapping.section)
+      else sessionStorage.removeItem('benefix:edit-section')
+    } catch {}
+    if (typeof window !== 'undefined') {
+      const sectionParam = mapping.section ? `&section=${mapping.section}` : ''
+      window.location.href = `/?view=commerce-settings&tab=${mapping.tab}${sectionParam}`
+    }
+  }
+  const editPencil = (field, label = 'Editar') => editMode ? (
     <button
-      onClick={(e) => {
-        e.stopPropagation()
-        // eslint-disable-next-line no-console
-        console.log('[editPencil] tap', { field, label, editMode, hasInlineSetter: typeof setInlineEdit === 'function' })
-        if (field === 'hours') {
-          try {
-            sessionStorage.setItem('benefix:edit-section', 'horarios')
-            sessionStorage.setItem('benefix:loginNext', 'commerce-settings')
-            sessionStorage.setItem('benefix:nextTab', 'configuracion')
-          } catch {}
-          if (typeof window !== 'undefined') window.location.href = '/?view=commerce-settings&tab=configuracion'
-          return
-        }
-        // eslint-disable-next-line no-console
-        console.log('[editPencil] opening inline modal for', field)
-        setInlineEdit({ field, ...extra })
-      }}
+      onClick={(e) => { e.stopPropagation(); navigateEditField(field) }}
       title={label}
       aria-label={label}
       style={{
@@ -2400,31 +2552,130 @@ export default function ClubProfilePage() {
         </div>
       )}
 
-      {/* ── 2. HERO - portada ── */}
-      <section style={{ position:'relative', width:'100%', height:'35vh', minHeight:240, overflow:'hidden' }}>
-        {commerce.cover_image
-          ? <img src={commerce.cover_image} alt="" style={{ position:'absolute', inset:0, width:'100%', height:'100%', objectFit:'cover' }} />
-          : <div
-              className="animate-gradient-slow"
-              style={{ position:'absolute', inset:0, background:'linear-gradient(135deg, #1a1a2e, #2d1f3d, #1a1a2e)' }}>
-              <div style={{ position:'absolute', top:'20%', left:'10%', width:240, height:240, borderRadius:'50%', background:'rgba(236,72,153,0.18)', filter:'blur(70px)' }} />
-              <div style={{ position:'absolute', bottom:'10%', right:'8%', width:200, height:200, borderRadius:'50%', background:'rgba(168,85,247,0.22)', filter:'blur(60px)' }} />
-            </div>
+      {/* ── 2. HERO - portada (slideshow con fade) ──
+          Soporta hasta 5 fotos en `commerce.cover_images`. Si solo hay
+          una (o solo el legacy `cover_image`), se renderiza como
+          imagen estática. Si hay varias, se hace un fade automático
+          cada 4.5s entre ellas. Click en la portada → abre el
+          lightbox con la imagen actual ampliada. */}
+      {(() => {
+        const covers = (Array.isArray(commerce.cover_images) && commerce.cover_images.length > 0)
+          ? commerce.cover_images
+          : (commerce.cover_image ? [commerce.cover_image] : [])
+        // Auto-advance del slideshow — solo activo si hay 2+ fotos.
+        // Touch handlers permiten al cliente swipear horizontalmente entre
+        // portadas en mobile además de dejar correr el fade automático.
+        const onHeroTouchStart = (e) => {
+          heroTouchStartXRef.current = e.touches[0].clientX
+          heroTouchEndXRef.current   = e.touches[0].clientX
         }
-        <div style={{ position:'absolute', inset:0, background:'linear-gradient(to top, #0a0a0f 0%, rgba(10,10,15,0.55) 50%, transparent 100%)' }} />
-        <button
-          onClick={() => typeof window !== 'undefined' && window.history.back()}
-          style={{ position:'absolute', top:16, left:16, zIndex:20, width:40, height:40, borderRadius:'50%', background:'rgba(0,0,0,0.50)', backdropFilter:'blur(12px)', WebkitBackdropFilter:'blur(12px)', border:'1px solid rgba(255,255,255,0.15)', display:'flex', alignItems:'center', justifyContent:'center', cursor:'pointer', color:'#fff' }}>
-          <ChevronLeft size={20} />
-        </button>
-        {/* Campanita de notificaciones del club — sobre la portada en la
-            esquina sup-derecha. Visible siempre (en las 3 pestañas) porque
-            vive en el HERO, no adentro de un tab. Solo se renderiza si hay
-            user logueado y commerce válido (la API enforza auth). */}
-        {user?.id && commerce?.id && (
-          <ClubNotifyBell commerceId={commerce.id} />
-        )}
-      </section>
+        const onHeroTouchMove = (e) => {
+          heroTouchEndXRef.current = e.touches[0].clientX
+        }
+        const onHeroTouchEnd = () => {
+          if (covers.length < 2) return
+          const dx = heroTouchEndXRef.current - heroTouchStartXRef.current
+          if (Math.abs(dx) < 40) return
+          if (dx < 0) setCoverIdx(i => (i + 1) % covers.length)
+          else        setCoverIdx(i => (i - 1 + covers.length) % covers.length)
+        }
+        return (
+          <>
+            {covers.length > 1 && (
+              <CoverSlideshowAutoAdvance
+                count={covers.length}
+                onAdvance={() => setCoverIdx(i => (i + 1) % covers.length)}
+              />
+            )}
+            <section
+              onTouchStart={onHeroTouchStart}
+              onTouchMove={onHeroTouchMove}
+              onTouchEnd={onHeroTouchEnd}
+              style={{ position:'relative', width:'100%', height:'35vh', minHeight:240, overflow:'hidden' }}>
+              {covers.length === 0 && (
+                <div
+                  className="animate-gradient-slow"
+                  style={{ position:'absolute', inset:0, background:'linear-gradient(135deg, #1a1a2e, #2d1f3d, #1a1a2e)' }}>
+                  <div style={{ position:'absolute', top:'20%', left:'10%', width:240, height:240, borderRadius:'50%', background:'rgba(236,72,153,0.18)', filter:'blur(70px)' }} />
+                  <div style={{ position:'absolute', bottom:'10%', right:'8%', width:200, height:200, borderRadius:'50%', background:'rgba(168,85,247,0.22)', filter:'blur(60px)' }} />
+                </div>
+              )}
+              {covers.map((url, i) => (
+                <img
+                  key={url + i}
+                  src={url}
+                  alt=""
+                  onClick={() => setCoverLightbox(i)}
+                  style={{
+                    position:'absolute', inset:0,
+                    width:'100%', height:'100%',
+                    objectFit:'cover',
+                    opacity: i === coverIdx ? 1 : 0,
+                    transition: 'opacity 1.2s ease-in-out',
+                    cursor: 'zoom-in',
+                  }}
+                />
+              ))}
+              <div style={{ position:'absolute', inset:0, background:'linear-gradient(to top, #0a0a0f 0%, rgba(10,10,15,0.55) 50%, transparent 100%)', pointerEvents:'none' }} />
+              {/* Indicador de cuántas portadas hay — pequeños dots al pie */}
+              {covers.length > 1 && (
+                <div style={{ position:'absolute', bottom:14, left:'50%', transform:'translateX(-50%)', display:'flex', gap:5, zIndex:15 }}>
+                  {covers.map((_, i) => (
+                    <span key={i} style={{
+                      width: i === coverIdx ? 18 : 6, height: 6,
+                      borderRadius: 99,
+                      background: i === coverIdx ? '#fff' : 'rgba(255,255,255,0.50)',
+                      transition: 'width 320ms ease, background 320ms ease',
+                      boxShadow: i === coverIdx ? '0 0 8px rgba(255,255,255,0.50)' : 'none',
+                    }} />
+                  ))}
+                </div>
+              )}
+              <button
+                onClick={(e) => { e.stopPropagation(); typeof window !== 'undefined' && window.history.back() }}
+                style={{ position:'absolute', top:16, left:16, zIndex:20, width:40, height:40, borderRadius:'50%', background:'rgba(0,0,0,0.50)', backdropFilter:'blur(12px)', WebkitBackdropFilter:'blur(12px)', border:'1px solid rgba(255,255,255,0.15)', display:'flex', alignItems:'center', justifyContent:'center', cursor:'pointer', color:'#fff' }}>
+                <ChevronLeft size={20} />
+              </button>
+              {user?.id && commerce?.id && (
+                <ClubNotifyBell commerceId={commerce.id} />
+              )}
+              {/* Lápiz "editar portada" — solo en modo ojo del dueño,
+                  posicionado debajo de la campanita en la esquina sup-derecha.
+                  Tap → navega a Configuración → Información básica donde
+                  vive el upload multi-portada. */}
+              {editMode && (
+                <button
+                  onClick={(e) => { e.stopPropagation(); navigateEditField('cover_images') }}
+                  title="Editar portadas"
+                  aria-label="Editar portadas"
+                  style={{
+                    position: 'absolute',
+                    top: 64, right: 16, zIndex: 21,
+                    width: 40, height: 40, borderRadius: '50%',
+                    background: 'linear-gradient(135deg, #7C3AED, #BD4BF8)',
+                    border: '1px solid rgba(255,255,255,0.22)',
+                    color: '#fff', cursor: 'pointer', padding: 0,
+                    display: 'flex', alignItems: 'center', justifyContent: 'center',
+                    boxShadow: '0 4px 14px rgba(189,75,248,0.55)',
+                  }}
+                >
+                  <Pen size={16} strokeWidth={2.4} />
+                </button>
+              )}
+            </section>
+            {/* Lightbox modal — imagen ampliada full-screen con backdrop
+                oscuro. Tap fuera de la imagen / X cierra. */}
+            {coverLightbox != null && (
+              <CoverLightboxGallery
+                covers={covers}
+                startIdx={coverLightbox}
+                onClose={() => setCoverLightbox(null)}
+                scrollRef={lightboxScrollRef}
+              />
+            )}
+          </>
+        )
+      })()}
 
       {/* ── CONTENIDO PRINCIPAL (bajo el hero) ── */}
       {/* paddingBottom amplio: el ClubTopNav ahora flota como pill al fondo
@@ -3009,7 +3260,16 @@ export default function ClubProfilePage() {
                 <div style={{ fontSize:13, color:C.mist }}>El negocio aún no tiene premios activos.</div>
               </GlassCard>
             ) : (
-              <div style={{ display:'flex', flexDirection:'column', gap:16 }}>
+              <div style={{
+                // Grilla de 2 columnas para mostrar más premios en menos
+                // scroll. Cards verticales (foto arriba, info abajo). Antes
+                // era flex column con cards horizontales — el reformat a
+                // grid multiplica la densidad sin sacrificar legibilidad
+                // porque las fotos se mantienen prominentes.
+                display: 'grid',
+                gridTemplateColumns: 'repeat(2, 1fr)',
+                gap: 12,
+              }}>
                 {activePrizes.map((prize, idx) => {
                   const canRedeem      = isMember && bal >= prize.cost
                   const progressPct    = isMember ? Math.min(100, Math.round((bal / prize.cost) * 100)) : 0
@@ -3048,12 +3308,13 @@ export default function ClubProfilePage() {
                       }}
                       onMouseEnter={e => { if (!isOos) e.currentTarget.style.transform = 'translateY(-1px)' }}
                       onMouseLeave={e => { e.currentTarget.style.transform = 'translateY(0)' }}>
-                      {/* Pen icon — solo en edit mode. Posicionado afuera de
-                          la esquina sup-derecha para que se destaque y no
-                          choque con el contenido. */}
+                      {/* Pen icon — solo en edit mode. Tap → redirige a la
+                          pestaña Premios del panel del comercio (no abre
+                          modal inline) para mantener consistencia con el
+                          resto de los lápices. */}
                       {editMode && (
                         <button
-                          onClick={(e) => { e.stopPropagation(); setInlineEdit({ field:'prize', prize }) }}
+                          onClick={(e) => { e.stopPropagation(); navigateEditField('prize') }}
                           aria-label={`Editar ${prize.name}`}
                           style={{
                             position:'absolute', top:-8, right:-8, zIndex:5,
@@ -3067,13 +3328,15 @@ export default function ClubProfilePage() {
                           <Pen size={13} strokeWidth={2.4} />
                         </button>
                       )}
-                      <div style={{ display:'flex' }}>
+                      <div style={{ display:'flex', flexDirection:'column' }}>
 
-                        {/* Imagen izquierda */}
-                        <div style={{ width:'30%', flexShrink:0, aspectRatio:'1', position:'relative', overflow:'hidden', background:'linear-gradient(135deg, rgba(168,85,247,0.15), rgba(236,72,153,0.15))', display:'flex', alignItems:'center', justifyContent:'center' }}>
+                        {/* Imagen arriba — full width 4:3 para que se vea
+                            generosa pero la card no quede demasiado alta
+                            cuando hay muchos premios. */}
+                        <div style={{ width:'100%', aspectRatio:'4 / 3', position:'relative', overflow:'hidden', background:'linear-gradient(135deg, rgba(168,85,247,0.15), rgba(236,72,153,0.15))', display:'flex', alignItems:'center', justifyContent:'center' }}>
                           {prize.img_url
                             ? <img src={prize.img_url} alt={prize.name} style={{ width:'100%', height:'100%', objectFit:'cover' }} />
-                            : <Gift size={32} strokeWidth={1.5} color="rgba(255,255,255,0.4)" />
+                            : <Gift size={36} strokeWidth={1.5} color="rgba(255,255,255,0.4)" />
                           }
                           {/* Banner "NUEVO" diagonal sobre la esquina sup-izq.
                               Solo aparece si el premio se cargó hace menos de
@@ -3104,21 +3367,34 @@ export default function ClubProfilePage() {
                           )}
                         </div>
 
-                        {/* Contenido derecho */}
-                        <div style={{ flex:1, padding:'14px 14px 14px', display:'flex', flexDirection:'column', justifyContent:'space-between', minWidth:0 }}>
+                        {/* Contenido inferior — sigue siendo flex column con
+                            info arriba y progreso abajo, pero con paddings
+                            y tipografía un poco más compactos para que la
+                            card vertical no quede gigante en la grilla 2x. */}
+                        <div style={{ padding:'12px 12px 12px', display:'flex', flexDirection:'column', gap:10, minWidth:0 }}>
 
                           {/* Info superior */}
                           <div>
-                            <div style={{ fontFamily:FN, fontSize:14, fontWeight:600, color:C.white, lineHeight:1.3 }}>
+                            <div style={{
+                              fontFamily:FN, fontSize:13, fontWeight:600, color:C.white,
+                              lineHeight:1.3,
+                              // Truncamos a 2 líneas para evitar que un nombre largo
+                              // descuadre la altura de la card respecto a la vecina.
+                              display:'-webkit-box',
+                              WebkitLineClamp:2,
+                              WebkitBoxOrient:'vertical',
+                              overflow:'hidden',
+                              minHeight: 'calc(1.3em * 2)',
+                            }}>
                               {prize.name}
                             </div>
-                            <div style={{ display:'flex', alignItems:'center', gap:6, marginTop:4 }}>
-                              <Gem size={14} color="#a855f7" strokeWidth={2} />
-                              <span style={{ color:'#a855f7', fontSize:13, fontWeight:500, fontFamily:FN }}>
+                            <div style={{ display:'flex', alignItems:'center', gap:5, marginTop:4 }}>
+                              <Gem size={13} color="#a855f7" strokeWidth={2} />
+                              <span style={{ color:'#a855f7', fontSize:12, fontWeight:600, fontFamily:FN }}>
                                 {prize.cost} {unitLabel}
                               </span>
                               {prize.stock !== null && (
-                                <span style={{ marginLeft:'auto', fontSize:11, color: isOos ? C.o : prize.stock <= 2 ? C.o : C.dust, fontWeight:600 }}>
+                                <span style={{ marginLeft:'auto', fontSize:10, color: isOos ? C.o : prize.stock <= 2 ? C.o : C.dust, fontWeight:600 }}>
                                   {isOos ? 'Agotado' : `${prize.stock} disp.`}
                                 </span>
                               )}
@@ -3131,9 +3407,9 @@ export default function ClubProfilePage() {
                               • Aún no llegó al cost: violeta de marca pleno
                                 (#BD4BF8) sin animación de flow, con pulse muy
                                 sutil para que se sienta "vivo" sin distraer. */}
-                          <div style={{ marginTop:12 }}>
+                          <div>
                             <div style={{
-                              height:14,
+                              height:10,
                               background:'rgba(0,0,0,0.55)',
                               borderRadius:9999,
                               overflow:'hidden',
@@ -3143,7 +3419,7 @@ export default function ClubProfilePage() {
                                 style={{
                                   height:'100%',
                                   width:`${progressPct}%`,
-                                  minWidth: progressPct > 0 ? 14 : 0,
+                                  minWidth: progressPct > 0 ? 10 : 0,
                                   borderRadius:9999,
                                   background: canRedeem
                                     ? 'linear-gradient(90deg, #FE5000 0%, #BD4BF8 50%, #FE5000 100%)'
@@ -3158,17 +3434,15 @@ export default function ClubProfilePage() {
                                 }}
                               />
                             </div>
-                            <div style={{ marginTop:6, display:'flex', alignItems:'center', justifyContent:'space-between', gap:8 }}>
-                              <p style={{ fontSize:12, color:'rgba(255,255,255,0.55)', margin:0, flex:1, minWidth:0 }}>
+                            <div style={{ marginTop:5, display:'flex', alignItems:'center', justifyContent:'space-between', gap:6 }}>
+                              <p style={{ fontSize:11, color:'rgba(255,255,255,0.55)', margin:0, flex:1, minWidth:0, overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>
                                 {canRedeem
-                                  ? <span style={{ color:'#22E698', fontWeight:600 }}>Disponible para canjear</span>
+                                  ? <span style={{ color:'#22E698', fontWeight:600 }}>Disponible</span>
                                   : isMember
-                                    ? <><span style={{ color:C.white, fontWeight:600 }}>{pointsLeft}</span> {unitLabel} para canjear</>
-                                    : `Necesitás ${prize.cost} ${unitLabel}`}
+                                    ? <><span style={{ color:C.white, fontWeight:600 }}>{pointsLeft}</span> {unitLabel}</>
+                                    : `${prize.cost} ${unitLabel}`}
                               </p>
-                              <span style={{ fontSize:11, color:'#a855f7', fontWeight:700, letterSpacing:'.04em', display:'inline-flex', alignItems:'center', gap:3, flexShrink:0 }}>
-                                Ver más <ChevronRight size={12} strokeWidth={2.6} />
-                              </span>
+                              <ChevronRight size={12} strokeWidth={2.6} color="#a855f7" style={{ flexShrink:0 }} />
                             </div>
                           </div>
 
@@ -3247,7 +3521,11 @@ export default function ClubProfilePage() {
         <div onClick={() => !leaving && setLeaveConfirm(false)}
           style={{ position:'fixed', inset:0, zIndex:9999, background:'rgba(0,0,0,0.78)', backdropFilter:'blur(12px)', WebkitBackdropFilter:'blur(12px)', display:'flex', alignItems:'center', justifyContent:'center', padding:20 }}>
           <div onClick={e => e.stopPropagation()}
-            style={{ width:'100%', maxWidth:340, background:'rgba(20,16,32,0.98)', border:'1px solid rgba(255,255,255,0.10)', borderRadius:18, padding:'22px 20px', boxShadow:'0 32px 80px rgba(0,0,0,0.6)' }}>
+            style={{ position:'relative', width:'100%', maxWidth:340, background:'rgba(20,16,32,0.98)', border:'1px solid rgba(255,255,255,0.10)', borderRadius:18, padding:'22px 20px', boxShadow:'0 32px 80px rgba(0,0,0,0.6)' }}>
+            <button onClick={() => !leaving && setLeaveConfirm(false)} aria-label="Cerrar" title="Cerrar" disabled={leaving}
+              style={{ position:'absolute', top:10, right:10, width:30, height:30, borderRadius:'50%', background:'rgba(255,255,255,0.05)', border:'1px solid rgba(255,255,255,0.10)', color:'#fff', cursor: leaving ? 'wait' : 'pointer', display:'flex', alignItems:'center', justifyContent:'center', padding:0 }}>
+              <X size={14} strokeWidth={2.4} />
+            </button>
             <div style={{ display:'flex', justifyContent:'center', marginBottom:14 }}>
               <div style={{ width:52, height:52, borderRadius:14, background:'rgba(248,116,68,0.14)', border:'1px solid rgba(248,116,68,0.32)', display:'flex', alignItems:'center', justifyContent:'center' }}>
                 <LogOut size={24} color='#f87444' strokeWidth={2} />
@@ -3306,7 +3584,11 @@ export default function ClubProfilePage() {
       {showModal && (
         <div style={{ position:'fixed', inset:0, background:'rgba(0,0,0,0.80)', backdropFilter:'blur(12px)', WebkitBackdropFilter:'blur(12px)', zIndex:999, display:'flex', alignItems:'flex-end', justifyContent:'center' }}
           onClick={e => { if (e.target===e.currentTarget) setShowModal(false) }}>
-          <div style={{ background:'rgba(255,255,255,0.08)', backdropFilter:'blur(40px)', WebkitBackdropFilter:'blur(40px)', border:'1px solid rgba(255,255,255,0.15)', borderRadius:'28px 28px 0 0', width:'100%', maxWidth:560, padding:'24px 24px 44px', animation:'fadeUp .3s ease', boxShadow:'0 -8px 40px rgba(0,0,0,0.4)' }}>
+          <div style={{ position:'relative', background:'rgba(255,255,255,0.08)', backdropFilter:'blur(40px)', WebkitBackdropFilter:'blur(40px)', border:'1px solid rgba(255,255,255,0.15)', borderRadius:'28px 28px 0 0', width:'100%', maxWidth:560, padding:'24px 24px 44px', animation:'fadeUp .3s ease', boxShadow:'0 -8px 40px rgba(0,0,0,0.4)' }}>
+            <button onClick={() => setShowModal(false)} aria-label="Cerrar" title="Cerrar"
+              style={{ position:'absolute', top:14, right:14, width:32, height:32, borderRadius:'50%', background:'rgba(255,255,255,0.08)', border:'1px solid rgba(255,255,255,0.15)', color:'#fff', cursor:'pointer', display:'flex', alignItems:'center', justifyContent:'center', padding:0, zIndex:2 }}>
+              <X size={16} strokeWidth={2.4} />
+            </button>
             <div style={{ width:40, height:4, background:'rgba(255,255,255,0.15)', borderRadius:2, margin:'0 auto 24px' }} />
             <div style={{ fontFamily:FN, fontSize:20, fontWeight:700, color:C.white, marginBottom:4, letterSpacing:'-0.02em' }}>
               Ser parte de {commerce.name}
@@ -3718,6 +4000,10 @@ export default function ClubProfilePage() {
         <div style={{ position:'fixed', inset:0, zIndex:800, display:'flex', alignItems:'center', justifyContent:'center', padding:20 }}>
           <div onClick={() => setConfirmPrize(null)} style={{ position:'absolute', inset:0, background:'rgba(0,0,0,0.82)', backdropFilter:'blur(12px)', WebkitBackdropFilter:'blur(12px)' }} />
           <div style={{ position:'relative', background:'rgba(14,8,28,0.97)', border:'1px solid rgba(255,255,255,0.12)', borderRadius:22, padding:'26px 22px', width:'100%', maxWidth:320, boxShadow:'0 32px 80px rgba(0,0,0,0.6)' }}>
+            <button onClick={() => setConfirmPrize(null)} aria-label="Cerrar" title="Cerrar"
+              style={{ position:'absolute', top:10, right:10, width:30, height:30, borderRadius:'50%', background:'rgba(255,255,255,0.05)', border:'1px solid rgba(255,255,255,0.10)', color:'#fff', cursor:'pointer', display:'flex', alignItems:'center', justifyContent:'center', padding:0 }}>
+              <X size={14} strokeWidth={2.4} />
+            </button>
             <div style={{ width:48, height:48, borderRadius:'50%', background:'rgba(189,75,248,0.18)', display:'flex', alignItems:'center', justifyContent:'center', margin:'0 auto 14px' }}>
               <Gift size={22} strokeWidth={1.5} color="#BD4BF8" />
             </div>
@@ -3746,6 +4032,10 @@ export default function ClubProfilePage() {
           onClick={e => { if (e.target===e.currentTarget) setShowLoginPrompt(false) }}>
           <div style={{ position:'absolute', inset:0, background:'rgba(0,0,0,0.82)', backdropFilter:'blur(12px)', WebkitBackdropFilter:'blur(12px)' }} />
           <div style={{ position:'relative', borderRadius:24, padding:'28px 22px', width:'100%', maxWidth:340, background:'rgba(255,255,255,0.06)', border:'1px solid rgba(255,255,255,0.12)', backdropFilter:'blur(40px)', WebkitBackdropFilter:'blur(40px)', boxShadow:'0 32px 80px rgba(0,0,0,0.6)', animation:'fadeUp .3s ease' }}>
+            <button onClick={() => setShowLoginPrompt(false)} aria-label="Cerrar" title="Cerrar"
+              style={{ position:'absolute', top:10, right:10, width:30, height:30, borderRadius:'50%', background:'rgba(255,255,255,0.06)', border:'1px solid rgba(255,255,255,0.12)', color:'#fff', cursor:'pointer', display:'flex', alignItems:'center', justifyContent:'center', padding:0 }}>
+              <X size={14} strokeWidth={2.4} />
+            </button>
             <div style={{ width:50, height:50, borderRadius:'50%', background:'rgba(189,75,248,0.18)', display:'flex', alignItems:'center', justifyContent:'center', margin:'0 auto 16px' }}>
               <span style={{ fontFamily:FN, fontSize:22, fontWeight:900, color:'#BD4BF8' }}>G</span>
             </div>

@@ -14,6 +14,11 @@ import NotificationsBell from '../lib/NotificationsBell'
 import FloatingActionsTab from '../lib/FloatingActionsTab'
 import EnablePushPrompt from '../lib/EnablePushPrompt'
 import MinimalSignupModal from '../lib/MinimalSignupModal'
+import PrizeWizardModal from '../lib/PrizeWizardModal'
+import ProfileItemWizard from '../lib/ProfileItemWizard'
+import BizPromptBanner from '../lib/BizPromptBanner'
+import CrossRoleNudges from '../lib/CrossRoleNudges'
+import LogoCropper, { validateImageFile, checkImageDimensions } from '../lib/LogoCropper'
 import SwRegister from '../lib/sw-register'
 import InfoHint from '../lib/InfoHint'
 import HelpBanner, { resetAllHelpBanners } from '../lib/HelpBanner'
@@ -128,8 +133,25 @@ function cardNumberFromSeed(seed) {
 }
 const PLANS = {
   free:    { label:'FREE',    limit:30,   price:0,      color:'#9CA3AF', badge:'#2E2E2E' },
-  starter: { label:'STARTER', limit:60,   price:25000,  color:'#5B8DEF', badge:'#1A2A4A' },
-  pro:     { label:'PRO',     limit:null, price:45000,  color:'#F5A623', badge:'#2A1E00' },
+  starter: {
+    label:           'STARTER',
+    limit:           60,
+    price:           25000,
+    color:           '#5B8DEF',
+    badge:           '#1A2A4A',
+    // Link de pago recurrente de Mercado Pago. Al abrirse, le agregamos
+    // `?external_reference={commerce.id}` para que cuando MP nos notifique
+    // el pago sepamos qué comercio activar (ver upgradePlan).
+    subscriptionUrl: 'https://www.mercadopago.com.ar/subscriptions/checkout?preapproval_plan_id=70261fab7ead48ef960b444d04689bfc',
+  },
+  pro:     {
+    label:           'PRO',
+    limit:           null,
+    price:           45000,
+    color:           '#F5A623',
+    badge:           '#2A1E00',
+    subscriptionUrl: 'https://www.mercadopago.com.ar/subscriptions/checkout?preapproval_plan_id=62e68b0c9a6d4e7697a6032fda8e95ec',
+  },
 }
 
 const CATS = [
@@ -1153,177 +1175,8 @@ async function makeQR(value, { width = 300, margin = 2, dark, light }, _logoColo
   })
 }
 
-// ─── LOGO CROP UTILITIES ──────────────────────────────────────────────────────
-function validateImageFile(file) {
-  if (!['image/jpeg','image/jpg','image/png','image/webp'].includes(file.type))
-    return 'Formato no válido. Usá JPG, PNG o WEBP.'
-  if (file.size > 5 * 1024 * 1024)
-    return 'La imagen es muy grande. Máximo 5MB.'
-  return null
-}
-
-function checkImageDimensions(file) {
-  // Validación deliberadamente laxa: solo exige que el lado MÁS LARGO sea
-  // de al menos 400px. Antes era el lado más corto ≥ 400, lo que rechazaba
-  // imágenes con proporción rara (ej: 1500×300 logos panorámicos) que el
-  // LogoCropper justamente puede arreglar via makeSquareWithPadding.
-  return new Promise(resolve => {
-    const img = new Image()
-    const url = URL.createObjectURL(file)
-    img.onload = () => {
-      URL.revokeObjectURL(url)
-      const longestSide = Math.max(img.naturalWidth, img.naturalHeight)
-      resolve(longestSide >= 400 ? null : 'La imagen es muy chica. Necesitamos al menos 400 px en su lado más largo.')
-    }
-    img.onerror = () => { URL.revokeObjectURL(url); resolve(null) }
-    img.src = url
-  })
-}
-
-function _createCropImage(url) {
-  return new Promise((res, rej) => {
-    const img = new Image()
-    img.crossOrigin = 'anonymous'
-    img.onload  = () => res(img)
-    img.onerror = rej
-    img.src = url
-  })
-}
-
-async function getCroppedBlob(imageSrc, pixelCrop, outputSize = 512) {
-  const image  = await _createCropImage(imageSrc)
-  const canvas = document.createElement('canvas')
-  canvas.width = canvas.height = outputSize
-  const ctx = canvas.getContext('2d')
-  // Limpiamos el canvas a transparente. Si el pixelCrop pisa zonas fuera de
-  // la imagen original (caso "fit con padding" para logos de proporciones
-  // extremas), esas zonas quedan transparentes en el output.
-  ctx.clearRect(0, 0, outputSize, outputSize)
-  // Clamp del source rect a las dimensiones reales de la imagen.
-  const sx = Math.max(0, pixelCrop.x)
-  const sy = Math.max(0, pixelCrop.y)
-  const sw = Math.min(image.width  - sx, pixelCrop.x + pixelCrop.width  - sx)
-  const sh = Math.min(image.height - sy, pixelCrop.y + pixelCrop.height - sy)
-  if (sw > 0 && sh > 0) {
-    const scale = outputSize / pixelCrop.width
-    const dx = (sx - pixelCrop.x) * scale
-    const dy = (sy - pixelCrop.y) * scale
-    const dw = sw * scale
-    const dh = sh * scale
-    ctx.drawImage(image, sx, sy, sw, sh, dx, dy, dw, dh)
-  }
-  const px = ctx.getImageData(0, 0, outputSize, outputSize).data
-  let hasAlpha = false
-  for (let i = 3; i < px.length; i += 4) { if (px[i] < 255) { hasAlpha = true; break } }
-  const fmt = hasAlpha ? 'image/png' : 'image/jpeg'
-  const blob = await new Promise(res => canvas.toBlob(res, fmt, hasAlpha ? 1 : 0.85))
-  if (!hasAlpha && blob.size > 200 * 1024)
-    return await new Promise(res => canvas.toBlob(res, 'image/jpeg', 0.75))
-  return blob
-}
-
-// Pre-procesamiento de imágenes con proporción extrema: genera un dataURL
-// cuadrado con la imagen centrada y el resto en transparente. Sirve para
-// logos de texto largo (ej "ENIGMA") que sin esto quedan recortados al centro.
-async function makeSquareWithPadding(imageSrc) {
-  const img = await _createCropImage(imageSrc)
-  const w = img.naturalWidth, h = img.naturalHeight
-  const ratio = w / h
-  // Si ya es ~cuadrada, no hacemos nada — devolvemos la original sin tocar.
-  if (ratio >= 0.85 && ratio <= 1.15) return { src: imageSrc, padded: false }
-  const size = Math.max(w, h)
-  const canvas = document.createElement('canvas')
-  canvas.width = canvas.height = size
-  const ctx = canvas.getContext('2d')
-  ctx.clearRect(0, 0, size, size)
-  const dx = (size - w) / 2
-  const dy = (size - h) / 2
-  ctx.drawImage(img, dx, dy, w, h)
-  return { src: canvas.toDataURL('image/png'), padded: true }
-}
-
-// ─── LOGO CROPPER MODAL ────────────────────────────────────────────────────────
-function LogoCropper({ imageSrc, onSave, onCancel }) {
-  const [crop,      setCrop]      = useState({ x:0, y:0 })
-  const [zoom,      setZoom]      = useState(1)
-  const [pixelCrop, setPixelCrop] = useState(null)
-  const [saving,    setSaving]    = useState(false)
-  // Si la imagen no es cuadrada la pre-procesamos para meterla en un cuadrado
-  // con padding transparente. Eso evita el problema de "solo veo el centro"
-  // cuando subís un logo de texto largo, banner, etc.
-  const [processedSrc, setProcessedSrc] = useState(null)
-  const [wasPadded,    setWasPadded]    = useState(false)
-
-  useEffect(() => {
-    let cancelled = false
-    setProcessedSrc(null)
-    makeSquareWithPadding(imageSrc).then(({ src, padded }) => {
-      if (cancelled) return
-      setProcessedSrc(src)
-      setWasPadded(padded)
-      setCrop({ x:0, y:0 })
-      setZoom(1)
-    }).catch(() => { if (!cancelled) setProcessedSrc(imageSrc) })
-    return () => { cancelled = true }
-  }, [imageSrc])
-
-  const onCropComplete = useCallback((_, px) => setPixelCrop(px), [])
-
-  async function handleSave() {
-    if (!pixelCrop || !processedSrc) return
-    setSaving(true)
-    try { onSave(await getCroppedBlob(processedSrc, pixelCrop)) }
-    finally { setSaving(false) }
-  }
-
-  return (
-    <div style={{ position:'fixed', inset:0, zIndex:9999, background:'rgba(0,0,0,0.94)', display:'flex', flexDirection:'column', alignItems:'center', justifyContent:'center', padding:16 }}>
-      <div style={{ width:'100%', maxWidth:480, marginBottom:14 }}>
-        <div style={{ fontFamily:FN, fontSize:17, fontWeight:800, color:C.white, marginBottom:4 }}>Ajustá tu logo</div>
-        <div style={{ fontSize:12, color:C.mist, lineHeight:1.5 }}>
-          {wasPadded
-            ? 'Tu logo no era cuadrado, lo encuadramos automáticamente con bordes transparentes. Igual podés mover y zoom.'
-            : 'Arrastrá y hacé zoom para encuadrar. Todos los logos son cuadrados.'}
-        </div>
-      </div>
-      <div style={{ width:'100%', maxWidth:480, aspectRatio:'1/1', position:'relative', borderRadius:16, overflow:'hidden', background:'#111', border:`1px solid ${C.rim}` }}>
-        {processedSrc && (
-          <Cropper
-            image={processedSrc} crop={crop} zoom={zoom} aspect={1}
-            cropShape="rect" showGrid={false} restrictPosition
-            onCropChange={setCrop} onZoomChange={setZoom} onCropComplete={onCropComplete}
-            style={{
-              containerStyle: { borderRadius:16 },
-              cropAreaStyle: { border:'2px solid rgba(139,92,246,0.85)', borderRadius:10, boxShadow:'0 0 0 9999px rgba(0,0,0,0.55)' },
-            }}
-          />
-        )}
-        {!processedSrc && (
-          <div style={{ position:'absolute', inset:0, display:'flex', alignItems:'center', justifyContent:'center', color:C.mist, fontSize:12 }}>
-            Procesando imagen…
-          </div>
-        )}
-      </div>
-      <div style={{ width:'100%', maxWidth:480, marginTop:16, display:'flex', alignItems:'center', gap:10 }}>
-        <span style={{ fontSize:12, color:C.mist }}>−</span>
-        <input type="range" min={1} max={3} step={0.01} value={zoom}
-          onChange={e => setZoom(Number(e.target.value))}
-          style={{ flex:1, accentColor:'#8B5CF6', cursor:'pointer', height:4 }} />
-        <span style={{ fontSize:12, color:C.mist }}>+</span>
-      </div>
-      <div style={{ width:'100%', maxWidth:480, display:'flex', gap:10, marginTop:18 }}>
-        <button onClick={onCancel} disabled={saving}
-          style={{ flex:1, padding:'13px', borderRadius:12, background:'rgba(255,255,255,0.07)', border:`1px solid ${C.rim}`, color:C.pearl, fontSize:13, fontFamily:FN, fontWeight:600, cursor:'pointer' }}>
-          Cancelar
-        </button>
-        <button onClick={handleSave} disabled={saving || !pixelCrop}
-          style={{ flex:2, padding:'13px', borderRadius:12, background:G, border:'none', color:'#fff', fontSize:13, fontFamily:FN, fontWeight:700, cursor:saving?'default':'pointer', opacity:saving||!pixelCrop?.7:1 }}>
-          {saving ? 'Guardando…' : 'Guardar logo'}
-        </button>
-      </div>
-    </div>
-  )
-}
+// LogoCropper, validateImageFile, checkImageDimensions, getCroppedBlob,
+// makeSquareWithPadding viven en lib/LogoCropper.js — importados arriba.
 
 // ─── COLOR PICKER MODAL ───────────────────────────────────────────────────────
 function _luminance(hex) {
@@ -2368,7 +2221,7 @@ function CommerceQRCard({ commerce }) {
 }
 
 // ─── UPGRADE MODAL ────────────────────────────────────────────────────────────
-function UpgradeModal({ feature, onUpgrade, onViewPlans, onClose }) {
+function UpgradeModal({ feature, onUpgrade, onViewPlans, onContactSupport, onClose }) {
   const gate = FEATURE_GATES[feature]
   if (!gate) return null
   const planDef = PLANS[gate.ctaPlan]
@@ -2414,6 +2267,14 @@ function UpgradeModal({ feature, onUpgrade, onViewPlans, onClose }) {
           style={{ width:'100%', padding:'10px', background:'transparent', border:`1px solid ${C.rim}`, borderRadius:12, color:C.mist, fontFamily:FN, fontSize:12, fontWeight:600, cursor:'pointer' }}>
           Ver todos los planes
         </button>
+        {onContactSupport && (
+          <div style={{ marginTop:14, paddingTop:12, borderTop:`1px solid ${C.rim}`, textAlign:'center' }}>
+            <button onClick={() => onContactSupport(gate.ctaPlan)}
+              style={{ background:'transparent', border:'none', color:C.dust, fontFamily:FI, fontSize:11, fontWeight:500, cursor:'pointer', padding:0, textDecoration:'underline', textUnderlineOffset:3 }}>
+              ¿Problemas con el pago? Escribinos por WhatsApp
+            </button>
+          </div>
+        )}
       </div>
     </div>
   )
@@ -2814,6 +2675,18 @@ function FullscreenLoader({ message }) {
 function Navbar({ setView, cityName, user, profile, onLogin, onLogout, currentView, clientTab, onOwnerProfile }) {
   const role = profile?.role || 'client'
 
+  // Modal "¿Cómo querés entrar?" — aparece al tocar Entrar cuando no hay user.
+  // Pregunta si entra como cliente o como negocio. La elección se persiste en
+  // sessionStorage 'benefix:signupAs' para que después del OAuth callback el
+  // boot flow sepa qué modo del MinimalSignupModal abrir (si es nuevo). Si es
+  // un user existente, el flag se ignora y va a su panel real.
+  const [roleAskerOpen, setRoleAskerOpen] = useState(false)
+  function pickRole(r) {
+    try { sessionStorage.setItem('benefix:signupAs', r) } catch {}
+    setRoleAskerOpen(false)
+    onLogin && onLogin()
+  }
+
   // ── Shared style helpers ──────────────────────────────────────────────────
   // Botones dentro del contenedor glass: transparentes por defecto,
   // gradient G como "indicador" en el botón activo (mismo patrón que ClientBottomNav).
@@ -2860,16 +2733,125 @@ function Navbar({ setView, cityName, user, profile, onLogin, onLogout, currentVi
 
   // ── No logged-in user ─────────────────────────────────────────────────────
   if (!user) return (
-    <nav className="navbar-glass" style={{ ...NAV, padding:'0 20px' }}>
-      <div style={{ cursor:'pointer' }} onClick={() => setView('home')}><Logo /></div>
-      <div style={{ display:'flex', gap:8, alignItems:'center' }}>
-        {cityName && <span style={{ fontSize:11, color:C.mist, padding:'4px 10px', borderRadius:99, background:C.bg3, border:`1px solid ${C.rim}`, display:'inline-flex', alignItems:'center', gap:4 }}><MapPin size={10} color={C.mist} strokeWidth={2} />{cityName}</span>}
-        <button onClick={() => setView('register-commerce')} style={{ background:'transparent', border:`1px solid ${C.rim}`, color:C.mist, fontSize:11, padding:'6px 11px', borderRadius:8, cursor:'pointer', whiteSpace:'nowrap', display:'flex', alignItems:'center', gap:5 }}>
-          <Building2 size={11} strokeWidth={2} /> Tu negocio
-        </button>
-        <GBtn sm onClick={onLogin}><span style={{ fontWeight:900 }}>G</span> Entrar</GBtn>
-      </div>
-    </nav>
+    <>
+      <nav className="navbar-glass" style={{ ...NAV, padding:'0 20px' }}>
+        <div style={{ cursor:'pointer' }} onClick={() => setView('home')}><Logo /></div>
+        <div style={{ display:'flex', gap:8, alignItems:'center' }}>
+          {cityName && <span style={{ fontSize:11, color:C.mist, padding:'4px 10px', borderRadius:99, background:C.bg3, border:`1px solid ${C.rim}`, display:'inline-flex', alignItems:'center', gap:4 }}><MapPin size={10} color={C.mist} strokeWidth={2} />{cityName}</span>}
+          <GBtn sm onClick={() => setRoleAskerOpen(true)}>Entrar</GBtn>
+        </div>
+      </nav>
+      {roleAskerOpen && (
+        <div
+          onClick={() => setRoleAskerOpen(false)}
+          style={{
+            position:'fixed', inset:0, zIndex:9995,
+            background:'rgba(8,4,18,0.72)',
+            backdropFilter:'blur(10px)', WebkitBackdropFilter:'blur(10px)',
+            display:'flex', alignItems:'center', justifyContent:'center',
+            padding:20,
+          }}
+        >
+          <div
+            onClick={(e) => e.stopPropagation()}
+            className="modal-in"
+            style={{
+              width:'100%', maxWidth:380,
+              background:'linear-gradient(180deg, rgba(28,18,42,0.96), rgba(18,10,28,0.96))',
+              border:'1px solid rgba(255,255,255,0.10)',
+              borderRadius:22,
+              padding:'22px 22px 24px',
+              boxShadow:'0 24px 64px rgba(0,0,0,0.55)',
+              position:'relative',
+            }}
+          >
+            <button
+              onClick={() => setRoleAskerOpen(false)}
+              aria-label="Cerrar"
+              style={{ position:'absolute', top:12, right:12, width:30, height:30, borderRadius:'50%', background:'rgba(255,255,255,0.06)', border:'1px solid rgba(255,255,255,0.10)', color:C.mist, cursor:'pointer', display:'flex', alignItems:'center', justifyContent:'center', padding:0 }}
+            >
+              <X size={14} strokeWidth={2} />
+            </button>
+
+            <div style={{ textAlign:'center', marginBottom:18, marginTop:4 }}>
+              <div style={{ fontFamily:FN, fontSize:18, fontWeight:900, color:C.white, letterSpacing:'.02em', marginBottom:6 }}>
+                ¿Cómo querés entrar?
+              </div>
+              <div style={{ fontSize:12, color:C.mist, lineHeight:1.5, maxWidth:300, margin:'0 auto' }}>
+                Elegí el rol con el que vas a usar Benefix. Si ya tenés cuenta, te llevamos a tu panel.
+              </div>
+            </div>
+
+            {/* Soy cliente */}
+            <button
+              onClick={() => pickRole('client')}
+              style={{
+                width:'100%', textAlign:'left',
+                display:'flex', alignItems:'center', gap:12,
+                padding:'14px 16px', borderRadius:14,
+                background:'rgba(139,92,246,0.10)',
+                border:'1.5px solid rgba(139,92,246,0.32)',
+                color:C.white, cursor:'pointer',
+                marginBottom:10,
+                transition:'background 180ms ease, border 180ms ease',
+              }}
+            >
+              <div style={{
+                width:38, height:38, borderRadius:11,
+                background:'rgba(139,92,246,0.22)',
+                display:'flex', alignItems:'center', justifyContent:'center',
+                flexShrink:0,
+              }}>
+                <Wallet size={18} color="#BD4BF8" strokeWidth={2} />
+              </div>
+              <div style={{ flex:1, minWidth:0 }}>
+                <div style={{ fontFamily:FN, fontSize:14, fontWeight:800, marginBottom:2 }}>
+                  Soy cliente
+                </div>
+                <div style={{ fontSize:12, color:C.mist, lineHeight:1.4 }}>
+                  Sumar puntos en mis comercios favoritos.
+                </div>
+              </div>
+            </button>
+
+            {/* Soy un negocio */}
+            <button
+              onClick={() => pickRole('merchant')}
+              style={{
+                width:'100%', textAlign:'left',
+                display:'flex', alignItems:'center', gap:12,
+                padding:'14px 16px', borderRadius:14,
+                background:'rgba(254,80,0,0.10)',
+                border:'1.5px solid rgba(254,80,0,0.32)',
+                color:C.white, cursor:'pointer',
+                transition:'background 180ms ease, border 180ms ease',
+              }}
+            >
+              <div style={{
+                width:38, height:38, borderRadius:11,
+                background:'rgba(254,80,0,0.22)',
+                display:'flex', alignItems:'center', justifyContent:'center',
+                flexShrink:0,
+              }}>
+                <Store size={18} color="#FE5000" strokeWidth={2} />
+              </div>
+              <div style={{ flex:1, minWidth:0 }}>
+                <div style={{ fontFamily:FN, fontSize:14, fontWeight:800, marginBottom:2 }}>
+                  Soy un negocio
+                </div>
+                <div style={{ fontSize:12, color:C.mist, lineHeight:1.4 }}>
+                  Crear mi club y fidelizar clientes.
+                </div>
+              </div>
+            </button>
+
+            <div style={{ fontSize:11, color:'rgba(255,255,255,0.32)', textAlign:'center', marginTop:14, lineHeight:1.5 }}>
+              Después podés activar el otro rol desde tu cuenta.
+            </div>
+          </div>
+        </div>
+      )}
+    </>
   )
 
   // ── Logged-in user ────────────────────────────────────────────────────────
@@ -4970,7 +4952,7 @@ function CommerceView({ commerce:c, setView, user, onLoginRequired, onCommerceUp
                   <div>
                     <label style={{ fontSize:11, color:C.dust, fontWeight:600, marginBottom:4, display:'block' }}>Descripción <span style={{ color:C.dust, fontWeight:400 }}>(opcional)</span></label>
                     <textarea value={v.description} onChange={e => set({ description: e.target.value })}
-                      placeholder="Detalles para el cliente. Ej: válido lun a vie..."
+                      placeholder="Detalles del premio. Ej: Café con leche grande"
                       rows={2}
                       style={{ width:'100%', padding:'10px 12px', background:'rgba(255,255,255,0.06)', border:'1px solid rgba(255,255,255,0.14)', borderRadius:10, color:C.white, fontSize:13, fontFamily:'inherit', resize:'vertical', boxSizing:'border-box', lineHeight:1.45 }} />
                   </div>
@@ -6480,35 +6462,34 @@ function ClientView({ setView, user, profile, onLogout, initialTab }) {
   const [acctForm,   setAcctForm]   = useState({ name: profile?.name || '', phone: profile?.phone || '' })
   const [acctSaving, setAcctSaving] = useState(false)
   const [acctStats,  setAcctStats]  = useState(null)
-  // Cartel "¿Tenés un negocio?" — máquina de estados con 2 ubicaciones:
-  //   top-collapsed   → arriba, primera vez, con Sí/No
-  //   top-expanded    → arriba, después de tocar Sí, con texto + link
-  //   bottom-collapsed/expanded → abajo de "Guardar cambios", versión compacta
-  //                                con flecha desplegable (sin Sí/No)
-  // Si tocó "No" o "Sí" en una sesión previa, arranca directo en bottom-collapsed.
-  // Persistencia: localStorage guarda answer ('yes'|'no'). Solo un cartel
-  // visible a la vez (nunca duplicado).
-  const [bizState, setBizState] = useState(() => {
-    if (typeof window === 'undefined') return 'top-collapsed'
+  // Cartel "¿Tenés un negocio?" — versión compacta colapsable. La pregunta
+  // inicial la maneja ahora el banner global (BizPromptBanner). Acá solo
+  // dejamos el affordance compacto post-respuesta para que el cliente
+  // pueda volver sobre el tema cuando quiera (por ejemplo, si dijo "No"
+  // y después se arrepintió, o si dijo "Sí" pero abandonó el signup).
+  // bizAnswered lee localStorage en el primer render y se actualiza
+  // cuando el banner global dispatcha 'benefix:biz-answered'.
+  const [bizAnswered, setBizAnswered] = useState(() => {
+    if (typeof window === 'undefined') return false
     try {
-      const answer = localStorage.getItem('benefix:bizAnswer')
-      if (answer === 'yes' || answer === 'no') return 'bottom-collapsed'
-      return 'top-collapsed'
-    } catch { return 'top-collapsed' }
+      const a = localStorage.getItem('benefix:bizAnswer')
+      return a === 'yes' || a === 'no'
+    } catch { return false }
   })
-
-  function bizAnswerYes() {
-    try { localStorage.setItem('benefix:bizAnswer', 'yes') } catch {}
-    setBizState('top-expanded')
-  }
-  function bizAnswerNo() {
-    try { localStorage.setItem('benefix:bizAnswer', 'no') } catch {}
-    // Movimiento inmediato a la posición de abajo, compacto.
-    setBizState('bottom-collapsed')
-  }
+  const [bizState, setBizState] = useState('bottom-collapsed')
   function bizToggleBottom() {
     setBizState(s => s === 'bottom-expanded' ? 'bottom-collapsed' : 'bottom-expanded')
   }
+  useEffect(() => {
+    function onBizAnswered() {
+      try {
+        const a = localStorage.getItem('benefix:bizAnswer')
+        setBizAnswered(a === 'yes' || a === 'no')
+      } catch {}
+    }
+    window.addEventListener('benefix:biz-answered', onBizAnswered)
+    return () => window.removeEventListener('benefix:biz-answered', onBizAnswered)
+  }, [])
   const supabase = getSupabase()
 
   // Club filters — multi-select. Array vacío = "Todos" (sin filtrar).
@@ -6718,7 +6699,7 @@ function ClientView({ setView, user, profile, onLogout, initialTab }) {
     'mis clubs': {
       id:    'client-mis-clubs',
       title: 'Tu billetera',
-      body:  'Cada tarjeta es un negocio donde sos socio.',
+      body:  'Cada tarjeta es un negocio donde sumás beneficios.',
       details: <>Tocá una para ver puntos, premios y promos. Si tenés varias usá los chips de arriba para filtrar por ciudad o rubro.</>,
     },
     'premios': {
@@ -6754,6 +6735,12 @@ function ClientView({ setView, user, profile, onLogout, initialTab }) {
 
   return (
     <div style={{ maxWidth:520, margin:'0 auto', padding:'58px 15px 24px' }}>
+
+      {/* Banner top "¿Tenés un negocio?" — renderizado adentro de ClientView
+          en lugar de en App.js, porque acá ya estamos después del paddingTop:58
+          que esquiva al ClientBottomNav fijo. Se sincroniza vía localStorage
+          con el resto de los entry points (modal 10s, card del perfil). */}
+      <BizPromptBanner profile={profile} />
 
       {/* Cartel de ayuda — SIEMPRE primero, inmediatamente debajo del navbar.
           Cambia su contenido según la pestaña activa. */}
@@ -7352,61 +7339,6 @@ function ClientView({ setView, user, profile, onLogout, initialTab }) {
             </div>
           </div>
 
-          {/* Cartel "¿Tenés un negocio?" — versión TOP (primera vista, con Sí/No).
-              Aparece solo si nunca respondió. Click en Sí → expande con texto + link.
-              Click en No → se oculta y reaparece en versión BOTTOM 1h después. */}
-          {profile?.role !== 'commerce_owner' && (bizState === 'top-collapsed' || bizState === 'top-expanded') && (
-            <div style={{
-              position:'relative', overflow:'hidden',
-              background:'linear-gradient(135deg, rgba(254,80,0,0.18) 0%, rgba(189,75,248,0.22) 100%)',
-              border:'1px solid rgba(189,75,248,0.32)',
-              borderRadius:16, marginBottom:12,
-            }}>
-              <div style={{
-                padding:'14px 18px',
-                display:'flex', alignItems:'center', gap:14,
-              }}>
-                <div style={{ width:46, height:46, borderRadius:12, background:G, display:'flex', alignItems:'center', justifyContent:'center', flexShrink:0, boxShadow:'0 4px 18px rgba(168,85,247,0.42)' }}>
-                  <Store size={22} color='#fff' strokeWidth={2} />
-                </div>
-                <div style={{ flex:1, minWidth:0, fontFamily:FN, fontSize:14, fontWeight:700, color:'#fff' }}>
-                  ¿Tenés un negocio?
-                </div>
-                {bizState === 'top-collapsed' && (
-                  <div style={{ display:'flex', alignItems:'center', gap:10, flexShrink:0 }}>
-                    <button onClick={bizAnswerYes}
-                      style={{ background:'transparent', border:'none', color:'#fff', fontFamily:FN, fontSize:14, fontWeight:700, cursor:'pointer', padding:'4px 6px' }}>
-                      Sí
-                    </button>
-                    <span style={{ color:'rgba(255,255,255,0.35)', fontSize:14, lineHeight:1 }}>|</span>
-                    <button onClick={bizAnswerNo}
-                      style={{ background:'transparent', border:'none', color:'rgba(255,255,255,0.78)', fontFamily:FN, fontSize:14, fontWeight:500, cursor:'pointer', padding:'4px 6px' }}>
-                      No
-                    </button>
-                  </div>
-                )}
-              </div>
-              {bizState === 'top-expanded' && (
-                <div style={{ padding:'0 18px 16px 78px' }}>
-                  <div style={{ fontSize:12, color:'rgba(255,255,255,0.65)', lineHeight:1.5, marginBottom:12 }}>
-                    Registralo y empezá a fidelizar tus clientes. Es la misma cuenta — seguís siendo cliente también.
-                  </div>
-                  <button onClick={() => window.dispatchEvent(new CustomEvent('benefix:open-signup', { detail: { mode: 'merchant' } }))}
-                    style={{
-                      display:'inline-flex', alignItems:'center', gap:6,
-                      background:G, border:'none', borderRadius:10,
-                      padding:'9px 14px', color:'#fff', fontSize:13, fontWeight:700,
-                      cursor:'pointer', fontFamily:FN,
-                      boxShadow:'0 4px 14px rgba(168,85,247,0.35)',
-                    }}>
-                    Registrar mi negocio
-                    <ArrowRight size={14} strokeWidth={2.4} />
-                  </button>
-                </div>
-              )}
-            </div>
-          )}
-
           {/* Stats */}
           <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr 1fr', gap:8, marginBottom:12 }}>
             {[
@@ -7470,7 +7402,7 @@ function ClientView({ setView, user, profile, onLogout, initialTab }) {
           {/* Cartel "¿Tenés un negocio?" — versión BOTTOM (compacta, persistente
               después de la primera respuesta o tras el cooldown de 1h del "No").
               Solo flecha desplegable, sin Sí/No. Ver bizState para la lógica. */}
-          {profile?.role !== 'commerce_owner' && (bizState === 'bottom-collapsed' || bizState === 'bottom-expanded') && (
+          {profile?.role !== 'commerce_owner' && bizAnswered && (
             <div style={{
               position:'relative', overflow:'hidden',
               background:'linear-gradient(135deg, rgba(254,80,0,0.18) 0%, rgba(189,75,248,0.22) 100%)',
@@ -10053,32 +9985,11 @@ function CommerceSettingsView({ user, profile, setView, onLogout, onOwnerProfile
     document.addEventListener('pointerdown', onPointerDown, true)
     return () => document.removeEventListener('pointerdown', onPointerDown, true)
   }, [railExpanded, railBackdropVisible])
-  // showRailHint: tooltip "Recordá que tocando esta solapa..." que aparece 5
-  // segundos después de la primera vez que el user cierra el rail expandido.
-  // Solo se muestra UNA VEZ por user (persistido en localStorage). El user lo
-  // descarta tocando la X. Sirve como onboarding para que descubra la solapa
-  // delgada como punto de re-entrada al menú.
-  const [showRailHint, setShowRailHint] = useState(false)
   // railTabHandSeen: cuando el user toca la solapa fucsia, la manito que la
   // señala desaparece. NO persiste — cada vez que el user vuelve a entrar al
   // intent picker (vía el ícono "Mi Negocio"), la manito reaparece para
   // recordarle que la solapa abre el menú.
   const [railTabHandSeen, setRailTabHandSeen] = useState(false)
-  const railHintFired = useRef(false)
-  useEffect(() => {
-    if (railExpanded || railHintFired.current) return
-    if (typeof window === 'undefined') return
-    try {
-      if (localStorage.getItem('benefix:rail-hint-seen')) return
-    } catch {}
-    railHintFired.current = true
-    const t = setTimeout(() => setShowRailHint(true), 5000)
-    return () => clearTimeout(t)
-  }, [railExpanded])
-  function dismissRailHint() {
-    setShowRailHint(false)
-    try { localStorage.setItem('benefix:rail-hint-seen', '1') } catch {}
-  }
   const [hoursForm, setHoursForm]         = useState(null)
   const [isDirty, setIsDirty]             = useState(false)
   // Sincroniza con flag global usada por setTab (wrapper) y beforeunload.
@@ -10127,6 +10038,35 @@ function CommerceSettingsView({ user, profile, setView, onLogout, onOwnerProfile
   // (escanear QR del cliente). Una vez que elige una opción, queda en false
   // hasta el próximo click en el icono "Mi Negocio" del navbar.
   const [intentPickerActive, setIntentPickerActive] = useState(true)
+  // wizardItemId: cuando es != null, se renderiza el ProfileItemWizard con el
+  // flujo correspondiente a ese itemId (description, phone, address, social,
+  // logo, cover, category, system, hours, firstPrize). Se setea desde
+  // navigateConfigItem cuando el dueño toca "Cargar ahora" en una tarjeta.
+  const [wizardItemId, setWizardItemId] = useState(null)
+  // intentFilter: filtro del slider de tarjetas del intent picker. Permite
+  // que el dueño elija entre ver solo "pendientes" (default) o "listas"
+  // (las que ya completó). Se rendea como dos pestañas debajo de la barra
+  // de progreso.
+  const [intentFilter, setIntentFilter] = useState('pendientes')
+  // messagesConfigured: true cuando el dueño tocó al menos una vez la
+  // configuración de mensajes (autoConfigs guardado en localStorage). Se usa
+  // para que la tarjeta "Mensajes automáticos" del intent picker no quede en
+  // "Listo" automáticamente sin haber hecho nada.
+  const [messagesConfigured, setMessagesConfigured] = useState(false)
+  // recentlyCompletedItems: { [itemId]: timestamp } — para mostrar una
+  // animación de celebración sutil en la tarjeta cuando el dueño acaba de
+  // completar la carga. La entrada se limpia automáticamente a los ~2.5s.
+  const [recentlyCompletedItems, setRecentlyCompletedItems] = useState({})
+  function markItemCompleted(itemId) {
+    setRecentlyCompletedItems(s => ({ ...s, [itemId]: Date.now() }))
+    setTimeout(() => {
+      setRecentlyCompletedItems(s => {
+        const next = { ...s }
+        delete next[itemId]
+        return next
+      })
+    }, 2600)
+  }
   // showPanelHint: tooltip que aparece a los 5 segundos de inactividad sobre
   // el intent picker, sugiriendo ir al panel completo. Solo aparece la primera
   // vez (persistido en localStorage).
@@ -10260,7 +10200,25 @@ function CommerceSettingsView({ user, profile, setView, onLogout, onOwnerProfile
     supabase.from('commerces').select('*').eq('owner_id', user.id).single()
       .then(({ data }) => {
         setCommerce(data)
-        setForm({ ...data, province: data?.province || 'La Pampa', prog_pts: data?.prog_pts || 100 })
+        // Backfill cover_images: comercios viejos pueden tener cover_image
+        // (legacy singular) sin cover_images (array). Lo derivamos para que
+        // el ProfileItemWizard muestre las fotos viejas en los slots.
+        const coverImagesBackfilled = (Array.isArray(data?.cover_images) && data.cover_images.length > 0)
+          ? data.cover_images
+          : (data?.cover_image ? [data.cover_image] : [])
+        // Mismo backfill para categories: si solo hay category (legacy single)
+        // y categories[] está vacío, lo derivamos para que el picker
+        // multi-select del wizard arranque con el chip ya cargado.
+        const categoriesBackfilled = (Array.isArray(data?.categories) && data.categories.length > 0)
+          ? data.categories
+          : (data?.category ? [data.category] : [])
+        setForm({
+          ...data,
+          province: data?.province || 'La Pampa',
+          prog_pts: data?.prog_pts || 100,
+          cover_images: coverImagesBackfilled,
+          categories: categoriesBackfilled,
+        })
         setHoursForm(data?.hours_structured || HOURS_DEFAULT)
         if (data && !data.onboarding_done) setShowOnboardingBanner(true)
         setLoading(false)
@@ -10298,7 +10256,12 @@ function CommerceSettingsView({ user, profile, setView, onLogout, onOwnerProfile
     // Cargar configs de automatizaciones desde localStorage
     try {
       const saved = localStorage.getItem(`cb_auto_${commerce.id}`)
-      if (saved) setAutoConfigs(JSON.parse(saved))
+      if (saved) {
+        setAutoConfigs(JSON.parse(saved))
+        // Si hay datos guardados, el dueño ya tocó la config de mensajes:
+        // marca el item del intent picker como "configurado".
+        setMessagesConfigured(true)
+      }
       const savedLog = localStorage.getItem(`cb_sent_${commerce.id}`)
       if (savedLog) setSentLog(JSON.parse(savedLog))
     } catch {}
@@ -10557,7 +10520,7 @@ function CommerceSettingsView({ user, profile, setView, onLogout, onOwnerProfile
 
   async function saveConfiguracion() {
     const errs = validateConfiguracion()
-    if (Object.keys(errs).length) { setConfigErrors(errs); return }
+    if (Object.keys(errs).length) { setConfigErrors(errs); return false }
     setConfigErrors({})
     setSaving(true); setSaved(false)
     const instagram = form.instagram
@@ -10571,10 +10534,17 @@ function CommerceSettingsView({ user, profile, setView, onLogout, onOwnerProfile
           commerce_id:      commerce.id,
           name:             form.name?.trim(),
           category:         form.category,
+          // Multi-rubro: el picker del wizard guarda en form.categories
+          // (array hasta 3). El API lo prefiere sobre `category` y mantiene
+          // el espejo legacy en `commerces.category`.
+          categories:       Array.isArray(form.categories) && form.categories.length > 0 ? form.categories : undefined,
           customCategory:   form.customCategory || undefined,
           description:      form.description || null,
           img_url:          form.img_url || null,
           cover_image:      form.cover_image || null,
+          // cover_images (array) faltaba acá — sin esto, las fotos subidas
+          // desde el ProfileItemWizard NO se persistían en DB. Bug conocido.
+          cover_images:     Array.isArray(form.cover_images) ? form.cover_images : undefined,
           phone:            form.phone || null,
           instagram:        instagram || null,
           facebook:         form.facebook || null,
@@ -10588,10 +10558,24 @@ function CommerceSettingsView({ user, profile, setView, onLogout, onOwnerProfile
       const data = await res.json()
       const resolvedCategory = form.category === 'Otro' ? (form.customCategory || form.category) : form.category
       if (data.ok) {
+        // Sincronizamos commerce con TODOS los campos del form para que las
+        // tarjetas del intent picker (que calculan `done` desde commerce)
+        // reflejen el cambio inmediato sin necesidad de recargar la página.
         setCommerce(c => ({
           ...c,
           name:             form.name?.trim(),
           category:         resolvedCategory,
+          categories:       (Array.isArray(form.categories) && form.categories.length > 0) ? form.categories : (resolvedCategory ? [resolvedCategory] : (c.categories || null)),
+          description:      form.description || null,
+          img_url:          form.img_url || null,
+          cover_image:      form.cover_image || null,
+          cover_images:     Array.isArray(form.cover_images) ? form.cover_images : (c.cover_images || null),
+          phone:            form.phone || null,
+          instagram:        instagram || null,
+          facebook:         form.facebook || null,
+          province:         form.province || null,
+          city_name:        form.city_name || null,
+          address:          form.address || null,
           onboarding_done:  true,
           hours_structured: hoursForm,
           brand_color:      form.brand_color || null,
@@ -10603,13 +10587,72 @@ function CommerceSettingsView({ user, profile, setView, onLogout, onOwnerProfile
         logActivity('settings', 'Perfil del negocio actualizado')
         showToast('success', 'Perfil guardado correctamente')
         setTimeout(() => setSaved(false), 3000)
+        setSaving(false)
+        return true
       } else {
         showToast('error', data.error || 'Error al guardar')
+        setSaving(false)
+        return false
       }
     } catch (_) {
       showToast('error', 'Error de conexión')
+      setSaving(false)
+      return false
     }
-    setSaving(false)
+  }
+
+  // Upload de logo desde el ProfileItemWizard — recibe el blob YA cropeado
+  // por LogoCropper (que aplica makeSquareWithPadding para logos panorámicos
+  // como el de "abba SEGURIDAD" 1800×500). Sube como JPG/PNG según corresponda.
+  async function uploadLogoBlob(blob) {
+    if (!blob || !commerce) return false
+    setUploadingLogo(true)
+    try {
+      // El LogoCropper devuelve PNG si tiene transparencia (logos panorámicos
+      // con padding) o JPEG si no. Usamos extensión jpg como default y
+      // pisamos con upsert. El contentType del blob lo respeta supabase.
+      const ext = blob.type === 'image/png' ? 'png' : 'jpg'
+      const path = `${commerce.id}/logo.${ext}`
+      const { error } = await supabase.storage.from('commerce-images').upload(path, blob, { contentType: blob.type, upsert: true })
+      if (error) { showToast('error', 'Error al subir el logo'); return false }
+      const { data } = supabase.storage.from('commerce-images').getPublicUrl(path)
+      // Cache-buster: el path se reusa con upsert (logo.png o logo.jpg), así
+      // que la URL pública es la misma entre uploads. Sin el ?v=… el browser
+      // muestra la imagen vieja desde cache aunque storage ya la pisó.
+      const bustedUrl = `${data.publicUrl}?v=${Date.now()}`
+      set('img_url', bustedUrl)
+      // También actualizamos commerce en DB para que el cambio sea inmediato
+      // (igual que hace handleLogoCropSave del flujo del accordion).
+      await supabase.from('commerces').update({ img_url: bustedUrl }).eq('id', commerce.id)
+      return true
+    } finally {
+      setUploadingLogo(false)
+    }
+  }
+
+  // Actualiza el sistema de recompensas (stars/points + compra mínima)
+  // directo en supabase. Usado desde ProfileItemWizard. Para puntos
+  // siempre limpia prog_min_purchase a null (no aplica). Para estrellas
+  // guarda el monto mínimo de compra que el cliente debe gastar para
+  // sumar 1 estrella.
+  const [updatingSystem, setUpdatingSystem] = useState(false)
+  async function updateSystem(progType, minPurchase) {
+    if (!commerce?.id) return false
+    const safe = ['stars', 'points'].includes(progType) ? progType : 'stars'
+    const min = safe === 'stars' ? (parseInt(minPurchase) > 0 ? parseInt(minPurchase) : null) : null
+    setUpdatingSystem(true)
+    try {
+      const { error } = await supabase
+        .from('commerces')
+        .update({ prog_type: safe, prog_min_purchase: min })
+        .eq('id', commerce.id)
+      if (error) { showToast('error', 'No se pudo guardar el sistema'); return false }
+      setCommerce(c => ({ ...c, prog_type: safe, prog_min_purchase: min }))
+      showToast('success', 'Sistema guardado')
+      return true
+    } finally {
+      setUpdatingSystem(false)
+    }
   }
 
   async function uploadPrizeImg(file) {
@@ -10643,8 +10686,11 @@ function CommerceSettingsView({ user, profile, setView, onLogout, onOwnerProfile
     const { error } = await supabase.storage.from('commerce-images').upload(path, blob, { contentType:'image/jpeg', upsert:true })
     if (!error) {
       const { data } = supabase.storage.from('commerce-images').getPublicUrl(path)
-      set('img_url', data.publicUrl)
-      await supabase.from('commerces').update({ img_url: data.publicUrl }).eq('id', commerce.id)
+      // Cache-buster — ver comentario en uploadLogoBlob. Sin esto, al
+      // cambiar el logo el browser sigue mostrando el viejo.
+      const bustedUrl = `${data.publicUrl}?v=${Date.now()}`
+      set('img_url', bustedUrl)
+      await supabase.from('commerces').update({ img_url: bustedUrl }).eq('id', commerce.id)
       showToast('success', 'Logo guardado.')
     } else {
       showToast('error', 'Error al subir el logo.')
@@ -10663,10 +10709,14 @@ function CommerceSettingsView({ user, profile, setView, onLogout, onOwnerProfile
     const { error } = await supabase.storage.from('commerce-images').upload(path, file, { upsert: true })
     if (!error) {
       const { data } = supabase.storage.from('commerce-images').getPublicUrl(path)
+      // Cache-buster — el path se reusa con upsert (cover-0.jpg, cover-1.jpg…)
+      // así que la URL pública es la misma entre uploads. Sin el ?v=… el
+      // browser muestra la imagen vieja desde cache aunque storage ya la pisó.
+      const bustedUrl = `${data.publicUrl}?v=${Date.now()}`
       // Insertar la URL en la posición slotIdx del array form.cover_images.
       // Si el array todavía no existe o es más corto, lo extendemos.
       const current = Array.isArray(form.cover_images) ? [...form.cover_images] : []
-      current[slotIdx] = data.publicUrl
+      current[slotIdx] = bustedUrl
       // Limpiar nulls/undefined que pudieran haber quedado entre slots.
       const cleaned = current.filter(u => typeof u === 'string' && u.trim())
       set('cover_images', cleaned)
@@ -10760,11 +10810,8 @@ function CommerceSettingsView({ user, profile, setView, onLogout, onOwnerProfile
     setNewPrize(formShape)
     setPrizeError('')
     setCreatePrizeOpen(true)
-    // Scroll al form
-    setTimeout(() => {
-      const el = document.getElementById('prize-form-card')
-      if (el) el.scrollIntoView({ behavior:'smooth', block:'center' })
-    }, 100)
+    // Antes hacíamos scroll a #prize-form-card; ahora el form vive en
+    // PrizeWizardModal (overlay full-screen) así que no hace falta scroll.
   }
   function cancelEditPrize() {
     setEditingPrizeId(null)
@@ -11064,19 +11111,11 @@ function CommerceSettingsView({ user, profile, setView, onLogout, onOwnerProfile
     </div>
   )
 
-  // ── ONBOARDING: mostrar hasta que esté completado ──
-  if (!commerce.onboarding_done) {
-    return (
-      <OnboardingView
-        commerce={commerce}
-        onComplete={async () => {
-          // Guardar en BD y actualizar estado local
-          await supabase.from('commerces').update({ onboarding_done: true }).eq('id', commerce.id)
-          setCommerce(c => ({ ...c, onboarding_done: true }))
-        }}
-      />
-    )
-  }
+  // ── ONBOARDING viejo (10 pasos) — DESACTIVADO ──
+  // El alta nueva (MinimalSignupModal de 4 pasos) ya recolecta los datos
+  // mínimos para arrancar y marca onboarding_done=true. El OnboardingView
+  // queda como código muerto pero no se renderiza más, ni siquiera para
+  // comercios viejos cuyo flag onboarding_done todavía esté en false.
 
   const unitLabel = form?.prog_type === 'stars' ? 'estrellas' : 'puntos'
   const unitIcon  = form?.prog_type === 'stars' ? '★' : '◆'
@@ -11096,18 +11135,45 @@ function CommerceSettingsView({ user, profile, setView, onLogout, onOwnerProfile
   const rewardsAtLimit  = perms.max_rewards !== null && activeRewardsCount >= perms.max_rewards
 
   async function upgradePlan(newPlan) {
-    // MVP simple: en lugar de upgrade directo en DB, abrimos WhatsApp con mensaje
-    // pre-armado al admin para coordinar el cobro vía Mercado Pago manual.
-    // El admin después actualiza el plan a mano (vía panel admin o Supabase).
-    const def      = PLANS[newPlan]
-    if (!def) return
-    const priceFmt = def.price ? `$${def.price.toLocaleString('es-AR')}/mes` : 'Gratis'
-    const msg = `Hola Benefix! Soy ${commerce?.name || 'un comerciante'} y quiero suscribirme al plan ${def.label} (${priceFmt}). Esperando link de pago para coordinar. ¡Gracias!`
-    const ADMIN_WHATSAPP = '542302351158'  // sin + ni espacios — WhatsApp del admin
+    // Flujo de upgrade:
+    //  1. Abrimos el link de pago recurrente de Mercado Pago con la suscripción
+    //     correspondiente al plan (STARTER / PRO).
+    //  2. Le agregamos `external_reference={commerce.id}` a la URL para que
+    //     cuando MP nos notifique el pago aprobado, sepamos qué comercio
+    //     activar. El admin (vos) revisa la notificación de MP y actualiza
+    //     el plan en supabase manualmente — la activación automática vía
+    //     webhooks queda para una iteración futura cuando haya más volumen.
+    //  3. Si el dueño no quiere pagar online o tiene problemas, el modal
+    //     muestra un fallback de WhatsApp (ver UpgradeModal).
+    const def = PLANS[newPlan]
+    if (!def || !def.subscriptionUrl) {
+      showToast('error', 'Plan no disponible. Contactanos por WhatsApp.')
+      return
+    }
+    // external_reference en MP debe ser una string. Mete el commerce.id
+    // (uuid) para que la notificación de pago se mapee al comercio correcto.
+    // Usa & si la URL ya tiene query string (los links de MP siempre la
+    // tienen porque incluyen ?preapproval_plan_id=...).
+    const sep = def.subscriptionUrl.includes('?') ? '&' : '?'
+    const ref = commerce?.id ? `${sep}external_reference=${encodeURIComponent(commerce.id)}` : ''
+    const url = `${def.subscriptionUrl}${ref}`
+    window.open(url, '_blank', 'noopener,noreferrer')
+    showToast('success', `Te abrimos el checkout de Mercado Pago. Activamos tu plan ${def.label} en cuanto se confirme el pago.`)
+    logActivity('settings', `Iniciado checkout de upgrade a ${def.label}`)
+  }
+
+  // Fallback: abre WhatsApp con un mensaje pre-armado para coordinar el pago
+  // manualmente. Se expone desde el UpgradeModal como link secundario para
+  // dueños que tengan problemas con el checkout online.
+  function contactSupportForUpgrade(newPlan) {
+    const def = PLANS[newPlan]
+    const planLabel = def?.label || 'STARTER'
+    const priceFmt = def?.price ? `$${def.price.toLocaleString('es-AR')}/mes` : ''
+    const msg = `Hola Benefix! Soy ${commerce?.name || 'un comerciante'} y tengo dudas para suscribirme al plan ${planLabel}${priceFmt ? ` (${priceFmt})` : ''}. ¿Me podés ayudar a coordinar el pago?`
+    const ADMIN_WHATSAPP = '542302351158'
     const url = `https://wa.me/${ADMIN_WHATSAPP}?text=${encodeURIComponent(msg)}`
     window.open(url, '_blank', 'noopener,noreferrer')
-    showToast('info', 'Te abrimos WhatsApp para coordinar tu suscripción')
-    logActivity('settings', `Solicitud de upgrade a ${def.label}`)
+    logActivity('settings', `Solicitud de soporte para upgrade a ${planLabel}`)
   }
 
   const nearPrize = members.filter(m => {
@@ -12007,7 +12073,14 @@ function CommerceSettingsView({ user, profile, setView, onLogout, onOwnerProfile
         title: 'Sistema de recompensas',
         description: 'Estrellas o puntos. Lo que mejor te funcione.',
         Icon: Sparkles,
-        done: !!commerce.prog_type,
+        // El sistema queda "done" solo cuando el dueño eligió tipo Y, si es
+        // estrellas, configuró la compra mínima para sumar 1 estrella. Para
+        // puntos no aplica min_purchase (cada peso = 1 punto).
+        done: !!commerce.prog_type && (commerce.prog_type === 'points' || (commerce.prog_min_purchase && commerce.prog_min_purchase > 0)),
+        // partial: el dueño ya eligió el tipo de sistema en el alta pero le
+        // falta configurar la compra mínima. La tarjeta sigue pendiente, pero
+        // el botón cambia a "Completar" en vez de "Cargar ahora".
+        partial: !!commerce.prog_type && commerce.prog_type === 'stars' && !(commerce.prog_min_purchase && commerce.prog_min_purchase > 0),
         goTo: 'recompensas',
       },
       {
@@ -12017,6 +12090,43 @@ function CommerceSettingsView({ user, profile, setView, onLogout, onOwnerProfile
         Icon: Gift,
         done: prizes.filter(p => p.active).length > 0,
         goTo: 'premios',
+      },
+      {
+        id: 'discountNext',
+        title: 'Cupón próxima visita',
+        description: 'Que vuelvan con un % OFF automático.',
+        Icon: Percent,
+        // Done si el plan permite promos Y hay al menos 1 discount_next activo.
+        done: canPromote && Array.isArray(promos) && promos.some(p => p.active && p.type === 'discount_next'),
+        // Bloqueado si el plan no soporta promos. La card aparece pero queda
+        // en "Pendientes" con chip de plan + CTA "Actualizar plan".
+        lockedByPlan: canPromote ? null : 'starter',
+        upgradeFeature: 'promotions',
+        goTo: 'recompensas',
+      },
+      {
+        id: 'doubleDays',
+        title: 'Días con bonus ×2',
+        description: 'Llená tus días flojos: ×2 estrellas/puntos.',
+        Icon: Zap,
+        done: canPromote && Array.isArray(promos) && promos.some(p => p.active && p.type === 'double_points'),
+        lockedByPlan: canPromote ? null : 'starter',
+        upgradeFeature: 'promotions',
+        goTo: 'recompensas',
+      },
+      {
+        id: 'messages',
+        title: 'Mensajes automáticos',
+        description: 'Recordatorios de WhatsApp para que tus clientes vuelvan.',
+        Icon: Bot,
+        // Done si el plan PRO permite Y el dueño activó al menos un tipo
+        // de mensaje (no quedaron todos en false).
+        done: canUseFeature(planKey, 'automatizaciones')
+          && (autoConfigs?.reactivacion?.active || autoConfigs?.cercaPremio?.active || autoConfigs?.primeraVisita?.active)
+          && messagesConfigured,
+        lockedByPlan: canUseFeature(planKey, 'automatizaciones') ? null : 'pro',
+        upgradeFeature: 'automatizaciones',
+        goTo: 'automatizaciones',
       },
       {
         id: 'hours',
@@ -12032,7 +12142,7 @@ function CommerceSettingsView({ user, profile, setView, onLogout, onOwnerProfile
         title: 'Ubicación',
         description: 'Dirección para que te encuentren en el mapa.',
         Icon: MapPin,
-        done: !!form?.address && !!form?.city_name,
+        done: !!form?.address && !!form?.city_name && !!form?.province,
         goTo: 'configuracion',
         section: 'ubicacion',
       },
@@ -12055,32 +12165,93 @@ function CommerceSettingsView({ user, profile, setView, onLogout, onOwnerProfile
         section: 'contacto',
       },
     ]
-    const sortedItems = [...configItems].sort((a, b) => Number(a.done) - Number(b.done))
-    const doneCount   = configItems.filter(i => i.done).length
-    const totalCount  = configItems.length
-    const cfgPct      = Math.round(doneCount / totalCount * 100)
+    // ── Estrategia de progreso ──
+    // El progreso (cfgPct, X de N) y los LEDs se calculan SOLO sobre items
+    // que el plan actual del dueño puede completar. Esto permite que un
+    // usuario FREE llegue al 100% con sus 10 items y sienta el logro,
+    // mientras los items premium (STARTER/PRO) aparecen aparte como
+    // "siguiente nivel". Estrategia de marketing: premiar la finalización
+    // antes de empujar el upgrade — el usuario que ya configuró todo y
+    // está usando la app es mucho más receptivo a expandirse.
+    const completableItems = configItems.filter(i => !i.lockedByPlan)
+    const lockedItems      = configItems.filter(i => i.lockedByPlan)
+    const pendingItems     = completableItems.filter(i => !i.done)
+    const doneItems        = completableItems.filter(i => i.done)
+    const doneCount        = doneItems.length
+    const totalCount       = completableItems.length
+    const pendingCount     = pendingItems.length
+    const cfgPct           = totalCount > 0 ? Math.round(doneCount / totalCount * 100) : 0
+    // sortedItems aplica el filtro elegido por el dueño en las pestañas.
+    // En Pendientes mostramos primero los completables-pendientes y al final
+    // los locked (siguiente nivel). En Listas solo los completados.
+    const sortedItems = intentFilter === 'listas'
+      ? doneItems
+      : [...pendingItems, ...lockedItems]
+    // Flag para mostrar el banner de "todo listo en tu plan" cuando el dueño
+    // completó todos sus items pero aún hay locked aspiracionales.
+    const planFullyComplete = pendingCount === 0 && lockedItems.length > 0
     const motivMsg    = cfgPct === 0   ? 'Empezá a configurar tu negocio'
                       : cfgPct < 30    ? 'Empezaste — seguí completando'
                       : cfgPct < 70    ? 'Vas muy bien — seguí completando'
                       : cfgPct < 100   ? '¡Casi listo! Te falta poco'
                       :                  '¡Negocio listo para arrancar!'
+    // Abre el wizard "amigable" para el item tappeado. Cada itemId dispara
+    // su propio mini-flujo en ProfileItemWizard. Para items handleados
+    // inline (description/phone/address/social), el wizard guarda directo y
+    // se cierra. Para los complejos (logo/category/system/hours/firstPrize),
+    // muestra una intro + CTA "Configurar" que invoca handleWizardDeepLink
+    // para llevar al dueño al tab/accordion correspondiente.
+    //
+    // Excepción: `firstPrize` no tiene wizard intermedio — el card va directo
+    // al destino. Si todavía no tiene premios → abre PrizeWizardModal en
+    // modo creación. Si ya tiene → navega a la pestaña Premios para editar.
     const navigateConfigItem = (item) => {
+      // Items lockeados por plan (recompensas extra y mensajes en planes
+      // que no los soportan): cerramos el intent picker y abrimos el
+      // upgrade modal en el panel principal, sin pasar por el wizard.
+      // El feature key indica qué upsell mostrar.
+      if (item.lockedByPlan) {
+        setIntentPickerActive(false)
+        setCameFromConfigCards(true)
+        setUpgradeModal(item.upgradeFeature || 'promotions')
+        return
+      }
+      if (item.id === 'firstPrize') {
+        if (item.done) {
+          handleWizardDeepLink({ tab: 'premios' })
+        } else {
+          handleWizardDeepLink({ tab: 'premios', openPrizeWizard: true })
+        }
+        return
+      }
+      setWizardItemId(item.id)
+    }
+    // Callback del ProfileItemWizard cuando el dueño toca "Configurar" en
+    // un step de tipo deep-link. Cierra el intent picker y navega al tab +
+    // sección apropiada (lógica del flujo viejo).
+    const handleWizardDeepLink = (target) => {
+      if (!target) return
       setIntentPickerActive(false)
-      _setTabRaw(item.goTo)
+      if (target.tab) _setTabRaw(target.tab)
       setRailExpanded(false)
-      // Marcamos que el dueño llegó al tab desde el slider de tarjetas,
-      // para mostrar el botón "Volver a tarjetas" en el tope del panel.
       setCameFromConfigCards(true)
-      // Si el item especifica una sección dentro de un tab con accordions
-      // (como "configuracion" → basica/horarios/ubicacion/contacto), la
-      // abrimos y la scrolleamos a la vista. El setTimeout le da tiempo a
-      // React para montar la vista del tab antes de buscar el DOM.
-      if (item.section) {
-        setExpandedConfigSection(item.section)
+      if (target.section) {
+        setExpandedConfigSection(target.section)
         setTimeout(() => {
-          const el = document.querySelector(`[data-config-section="${item.section}"]`)
+          const el = document.querySelector(`[data-config-section="${target.section}"]`)
           if (el) el.scrollIntoView({ behavior: 'smooth', block: 'start' })
         }, 120)
+      }
+      // Caso especial: el flujo de "primer premio" abre el PrizeWizardModal
+      // existente en lugar de un accordion.
+      if (target.openPrizeWizard) {
+        setTimeout(() => {
+          setNewPrize({ name: '', description: '', cost: '', img_url: '', stock: '' })
+          setEditingPrizeId(null)
+          setOriginalPrize(null)
+          setPrizeError('')
+          setCreatePrizeOpen(true)
+        }, 200)
       }
     }
 
@@ -12122,16 +12293,21 @@ function CommerceSettingsView({ user, profile, setView, onLogout, onOwnerProfile
                 fontFamily: FN, fontSize: 28, fontWeight: 900,
                 letterSpacing: '-0.025em', lineHeight: 1,
                 position: 'relative',
-                // Gradient violeta de marca con un highlight más claro en
-                // el medio. backgroundSize 300% + animación de
-                // background-position hace que el highlight recorra el
-                // texto de derecha a izquierda en loop, simulando un
-                // shimmer/brillo continuo. Filter drop-shadow añade un
-                // glow violeta sutil alrededor del trazo.
-                background: cfgPct === 100
+                // Gradient violeta/verde de marca con un highlight más claro
+                // en el medio. backgroundSize 300% + animación de
+                // background-position hace que el highlight recorra el texto
+                // de derecha a izquierda en loop, simulando un shimmer.
+                // OJO: usamos `backgroundImage` (no la shorthand `background`)
+                // para evitar el warning de React "mixing shorthand and
+                // non-shorthand" y para que `backgroundClip: text` no se
+                // resetee al cambiar `cfgPct`. El shorthand pisaba el clip
+                // y el 100% terminaba renderizándose como un rectángulo verde
+                // sólido en vez del número con gradiente.
+                backgroundImage: cfgPct === 100
                   ? 'linear-gradient(110deg, #22E698 0%, #4ade80 50%, #22E698 100%)'
                   : 'linear-gradient(110deg, #7C3AED 0%, #7C3AED 30%, #F0C2FF 50%, #7C3AED 70%, #7C3AED 100%)',
                 backgroundSize: '300% 100%',
+                backgroundRepeat: 'no-repeat',
                 WebkitBackgroundClip: 'text',
                 backgroundClip: 'text',
                 WebkitTextFillColor: 'transparent',
@@ -12165,9 +12341,10 @@ function CommerceSettingsView({ user, profile, setView, onLogout, onOwnerProfile
                 transform: 'translateY(-50%)',
                 zIndex: 0,
               }} />
-              {/* LEDs encima de la línea */}
+              {/* LEDs encima de la línea — solo items completables del plan
+                  actual. Items locked se rendean aparte con su chip de plan. */}
               <div style={{ position:'relative', zIndex:1, display:'flex', alignItems:'center', justifyContent:'space-between', width:'100%' }}>
-                {configItems.map((it) => {
+                {completableItems.map((it) => {
                   const done = it.done
                   return (
                     <div key={it.id} style={{
@@ -12185,8 +12362,207 @@ function CommerceSettingsView({ user, profile, setView, onLogout, onOwnerProfile
                 })}
               </div>
             </div>
+
           </div>
         </div>
+
+        {/* ── Container "carpeta" que engloba pestañas + contenido ──
+            Tipo file folder UI: las pestañas se sienten como las orejitas de
+            la carpeta y todo el contenido (banners + slider + dots) vive
+            adentro del mismo card. Visualmente delimita "esta área es la
+            navegación entre Pendientes/Listas y sus tarjetas". */}
+        <div style={{
+          margin: isMobile ? '8px 14px 0' : '8px 22px 0',
+          background: 'linear-gradient(180deg, rgba(189,75,248,0.06) 0%, rgba(189,75,248,0.02) 100%)',
+          border: '1px solid rgba(189,75,248,0.22)',
+          borderRadius: 22,
+          paddingTop: 0,
+          paddingBottom: 14,
+          position: 'relative',
+          overflow: 'hidden',
+        }}>
+
+        {/* ── Pestañas Pendientes / Listas (al tope del container) ── */}
+        <div style={{
+          display: 'flex', gap: 0,
+          borderBottom: '1px solid rgba(189,75,248,0.18)',
+          padding: '4px 4px 0',
+        }}>
+          {[
+            { id: 'pendientes', label: 'Pendientes', count: pendingCount },
+            { id: 'listas',     label: 'Listas',     count: doneCount    },
+          ].map(t => {
+            const active = intentFilter === t.id
+            return (
+              <button
+                key={t.id}
+                onClick={() => {
+                  setIntentFilter(t.id)
+                  setConfigSlideIdx(0)
+                  // Scroll al inicio del slider cuando cambiás de pestaña
+                  setTimeout(() => {
+                    const el = configSliderRef.current
+                    if (el) el.scrollTo({ left: 0, behavior: 'auto' })
+                  }, 0)
+                }}
+                style={{
+                  flex: 1,
+                  padding: '13px 14px 12px',
+                  // Tab activa "se merge" con el container: mismo bg que el
+                  // wrapper, sin borde inferior. Tab inactiva queda apagada.
+                  background: active ? 'rgba(189,75,248,0.12)' : 'transparent',
+                  border: 'none',
+                  borderTopLeftRadius: 14,
+                  borderTopRightRadius: 14,
+                  color: active ? '#fff' : 'rgba(255,255,255,0.50)',
+                  fontFamily: FN, fontSize: 13,
+                  fontWeight: active ? 800 : 600,
+                  letterSpacing: '.04em',
+                  cursor: 'pointer',
+                  position: 'relative',
+                  display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 7,
+                  transition: 'background 200ms ease, color 200ms ease',
+                }}>
+                {t.label}
+                <span style={{
+                  fontSize: 10.5, fontWeight: 800,
+                  padding: '2px 7px',
+                  borderRadius: 99,
+                  background: active ? 'rgba(189,75,248,0.30)' : 'rgba(255,255,255,0.08)',
+                  color: active ? '#fff' : 'rgba(255,255,255,0.50)',
+                  border: `1px solid ${active ? 'rgba(189,75,248,0.50)' : 'rgba(255,255,255,0.10)'}`,
+                  fontFamily: FN, letterSpacing: '.02em',
+                }}>
+                  {t.count}
+                </span>
+                {active && (
+                  <span style={{
+                    position: 'absolute', bottom: -1, left: '15%', right: '15%',
+                    height: 2, borderRadius: 2,
+                    background: 'linear-gradient(135deg, #FE5000, #BD4BF8)',
+                  }} />
+                )}
+              </button>
+            )
+          })}
+        </div>
+
+        {/* ── Banner "plan completo" cuando llegó al 100% pero hay locked items ──
+            Estrategia de marketing: celebrar la finalización ANTES de empujar
+            el upgrade. El dueño que ya configuró todo es mucho más receptivo
+            a expandirse al ver lo que viene como "siguiente nivel". */}
+        {intentFilter === 'pendientes' && planFullyComplete && (
+          <div style={{
+            margin: isMobile ? '4px 18px 16px' : '4px 28px 16px',
+            padding: '16px 18px',
+            borderRadius: 16,
+            background: 'linear-gradient(135deg, rgba(34,230,152,0.16), rgba(34,230,152,0.06))',
+            border: '1px solid rgba(34,230,152,0.40)',
+            display: 'flex', alignItems: 'flex-start', gap: 12,
+          }}>
+            <div style={{
+              width: 38, height: 38, borderRadius: 12,
+              background: 'linear-gradient(135deg, #22E698, #4ade80)',
+              display: 'flex', alignItems: 'center', justifyContent: 'center',
+              flexShrink: 0,
+              boxShadow: '0 6px 18px rgba(34,230,152,0.45)',
+            }}>
+              <Check size={18} color="#fff" strokeWidth={2.8} />
+            </div>
+            <div style={{ flex: 1, minWidth: 0 }}>
+              <div style={{ fontFamily: FN, fontSize: 13.5, fontWeight: 800, color: '#22E698', marginBottom: 3, letterSpacing: '-.005em' }}>
+                ¡Tu plan está al 100%!
+              </div>
+              <div style={{ fontSize: 12.5, color: 'rgba(255,255,255,0.78)', lineHeight: 1.5 }}>
+                Configuraste todo lo del plan <strong style={{ color: '#fff' }}>{(planKey || 'free').toUpperCase()}</strong>. Acá abajo están las funciones premium que se desbloquean al actualizar.
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* ── Nota explicativa de las cards locked en Pendientes ──
+            Solo se muestra cuando hay items completables pendientes Y items
+            locked. Si todos están completos, ya se mostró el banner de arriba. */}
+        {intentFilter === 'pendientes' && pendingCount > 0 && lockedItems.length > 0 && (
+          <div style={{
+            margin: isMobile ? '4px 18px 14px' : '4px 28px 14px',
+            padding: '10px 14px',
+            borderRadius: 12,
+            background: 'rgba(189,75,248,0.06)',
+            border: '1px solid rgba(189,75,248,0.20)',
+            display: 'flex', alignItems: 'flex-start', gap: 10,
+          }}>
+            <Sparkles size={14} color="#BD4BF8" strokeWidth={2.2} style={{ flexShrink: 0, marginTop: 1 }} />
+            <div style={{ fontSize: 11.5, color: 'rgba(255,255,255,0.72)', lineHeight: 1.5 }}>
+              Las tarjetas con chip <strong style={{ color: '#5B8DEF' }}>STARTER</strong> o <strong style={{ color: '#F5A623' }}>PRO</strong> son funciones premium. Aparecen acá para que las conozcas, pero no afectan tu progreso — son las que se desbloquean si actualizás tu plan.
+            </div>
+          </div>
+        )}
+
+        {/* ── Empty state cuando la lista filtrada está vacía ──
+            Pendientes vacío = todo está listo (celebración).
+            Listas vacío    = el dueño todavía no completó nada. */}
+        {sortedItems.length === 0 && (
+          <div style={{
+            margin: isMobile ? '20px 18px 0' : '20px 28px 0',
+            padding: '32px 22px',
+            borderRadius: 22,
+            background: intentFilter === 'pendientes'
+              ? 'linear-gradient(135deg, rgba(34,230,152,0.10), rgba(34,230,152,0.04))'
+              : 'rgba(255,255,255,0.03)',
+            border: intentFilter === 'pendientes'
+              ? '1px solid rgba(34,230,152,0.32)'
+              : '1px solid rgba(255,255,255,0.08)',
+            textAlign: 'center',
+            animation: intentFilter === 'pendientes' ? 'celebrate-card 1.4s cubic-bezier(0.16,1,0.3,1)' : undefined,
+          }}>
+            <div style={{
+              width: 64, height: 64, borderRadius: 22,
+              background: intentFilter === 'pendientes'
+                ? 'linear-gradient(135deg, #22E698, #4ade80)'
+                : 'rgba(255,255,255,0.06)',
+              display: 'flex', alignItems: 'center', justifyContent: 'center',
+              margin: '0 auto 16px',
+              boxShadow: intentFilter === 'pendientes'
+                ? '0 12px 32px rgba(34,230,152,0.45)'
+                : 'none',
+            }}>
+              {intentFilter === 'pendientes'
+                ? <Check size={32} color="#fff" strokeWidth={2.6} />
+                : <Sparkles size={28} color="rgba(255,255,255,0.45)" strokeWidth={1.8} />}
+            </div>
+            <div style={{
+              fontFamily: FN, fontSize: 18, fontWeight: 900,
+              color: intentFilter === 'pendientes' ? '#22E698' : '#fff',
+              marginBottom: 8,
+              letterSpacing: '-.01em',
+            }}>
+              {intentFilter === 'pendientes'
+                ? '¡Felicitaciones, todo listo!'
+                : 'Nada por acá todavía'}
+            </div>
+            <div style={{ fontSize: 13, color: 'rgba(255,255,255,0.65)', lineHeight: 1.55, maxWidth: 320, margin: '0 auto' }}>
+              {intentFilter === 'pendientes'
+                ? <>Configuraste los <strong style={{ color: '#fff', fontWeight: 800 }}>{totalCount}</strong> datos clave de tu negocio. Tus clientes te van a encontrar prolijo y listo para sumarlos al club.</>
+                : <>Todavía no completaste ninguna configuración. Empezá por las que están en <strong style={{ color: '#fff', fontWeight: 800 }}>Pendientes</strong>.</>}
+            </div>
+            {intentFilter === 'listas' && pendingCount > 0 && (
+              <button
+                onClick={() => setIntentFilter('pendientes')}
+                style={{
+                  marginTop: 16,
+                  padding: '10px 18px', borderRadius: 12,
+                  background: 'linear-gradient(135deg, #FE5000, #BD4BF8)',
+                  border: 'none', color: '#fff',
+                  fontFamily: FN, fontSize: 13, fontWeight: 800,
+                  cursor: 'pointer',
+                  boxShadow: '0 6px 18px rgba(189,75,248,0.40)',
+                }}>
+                Ir a Pendientes ({pendingCount})
+              </button>
+            )}
+          </div>
+        )}
 
         {/* ── Slider horizontal de tarjetas ──
             Cada tarjeta es una config: pendiente con gradient violeta
@@ -12195,6 +12571,7 @@ function CommerceSettingsView({ user, profile, setView, onLogout, onOwnerProfile
             para que el dueño caiga primero en lo que falta. */}
         {/* Wrapper del slider con position:relative para anclar las flechas
             laterales por encima del scroll horizontal de las cards. */}
+        {sortedItems.length > 0 && (
         <div style={{ position: 'relative' }}>
         <div
           ref={configSliderRef}
@@ -12224,6 +12601,18 @@ function CommerceSettingsView({ user, profile, setView, onLogout, onOwnerProfile
         >
           <style>{`
             .config-slider::-webkit-scrollbar { display: none; }
+            @keyframes celebrate-card {
+              0%   { transform: scale(1); }
+              25%  { transform: scale(1.012); }
+              60%  { transform: scale(0.998); }
+              100% { transform: scale(1); }
+            }
+            @keyframes celebrate-badge {
+              0%   { transform: scale(0.4) rotate(-12deg); opacity: 0; }
+              45%  { transform: scale(1.18) rotate(6deg); opacity: 1; }
+              70%  { transform: scale(0.96) rotate(-2deg); opacity: 1; }
+              100% { transform: scale(1) rotate(0); opacity: 1; }
+            }
           `}</style>
           <div style={{
             display: 'flex',
@@ -12235,6 +12624,13 @@ function CommerceSettingsView({ user, profile, setView, onLogout, onOwnerProfile
             {sortedItems.map((item, idx) => {
               const Icon = item.Icon
               const done = item.done
+              const isJustCompleted = !!recentlyCompletedItems[item.id]
+              // isLocked: el item está bloqueado por el plan actual. Las cards
+              // siguen apareciendo en "Pendientes" pero el visual muestra el
+              // chip del plan que las desbloquea + CTA "Actualizar plan".
+              const isLocked = !!item.lockedByPlan
+              const lockPlan = item.lockedByPlan && PLANS[item.lockedByPlan]
+              const lockColor = lockPlan?.color || '#5B8DEF'
               return (
                 <button
                   key={item.id}
@@ -12249,19 +12645,23 @@ function CommerceSettingsView({ user, profile, setView, onLogout, onOwnerProfile
                     // border-radius grande, el divider con glow y el CTA
                     // grande al pie.
                     background: 'linear-gradient(180deg, #0a0612 0%, #150823 100%)',
-                    border: '1px solid rgba(189,75,248,0.32)',
+                    border: `1px solid ${isJustCompleted ? 'rgba(34,230,152,0.55)' : 'rgba(189,75,248,0.32)'}`,
                     borderRadius: 24,
                     padding: '22px 22px 0',
                     textAlign: 'left',
                     cursor: 'pointer',
                     fontFamily: 'inherit',
-                    transition: 'transform 180ms ease, border-color 180ms ease, box-shadow 180ms ease',
+                    transition: 'transform 180ms ease, border-color 280ms ease, box-shadow 280ms ease',
                     display: 'flex', flexDirection: 'column',
                     minHeight: 320,
                     position: 'relative',
                     overflow: 'hidden',
-                    boxShadow: '0 18px 40px rgba(0,0,0,0.45), 0 6px 18px rgba(189,75,248,0.18)',
-                    animation: `fadeUp .35s ease ${idx * 0.05}s both`,
+                    boxShadow: isJustCompleted
+                      ? '0 18px 40px rgba(0,0,0,0.45), 0 0 0 2px rgba(34,230,152,0.30), 0 8px 28px rgba(34,230,152,0.45)'
+                      : '0 18px 40px rgba(0,0,0,0.45), 0 6px 18px rgba(189,75,248,0.18)',
+                    animation: isJustCompleted
+                      ? 'celebrate-card 1.4s cubic-bezier(0.16,1,0.3,1)'
+                      : `fadeUp .35s ease ${idx * 0.05}s both`,
                   }}
                   onMouseEnter={(e) => { e.currentTarget.style.transform = 'translateY(-2px)' }}
                   onMouseLeave={(e) => { e.currentTarget.style.transform = 'translateY(0)' }}
@@ -12282,12 +12682,25 @@ function CommerceSettingsView({ user, profile, setView, onLogout, onOwnerProfile
                     {/* Categoría / etiqueta superior */}
                     <div style={{
                       fontFamily: FN, fontSize: 11, fontWeight: 700,
-                      color: 'rgba(216,180,254,0.85)',
+                      color: isLocked ? `${lockColor}DD` : 'rgba(216,180,254,0.85)',
                       letterSpacing: '.10em', textTransform: 'uppercase',
                     }}>
-                      {done ? 'Configurado' : 'A completar'}
+                      {isLocked ? `Disponible en` : (done ? 'Configurado' : 'A completar')}
                     </div>
-                    {done ? (
+                    {isLocked ? (
+                      <span style={{
+                        display: 'inline-flex', alignItems: 'center', gap: 5,
+                        fontSize: 9.5, fontWeight: 800, color: lockColor,
+                        letterSpacing: '.10em', textTransform: 'uppercase',
+                        background: `${lockColor}1F`,
+                        border: `1px solid ${lockColor}66`,
+                        padding: '4px 10px', borderRadius: 99,
+                        boxShadow: `0 4px 12px ${lockColor}40`,
+                      }}>
+                        <Lock size={10} strokeWidth={2.6} />
+                        {(item.lockedByPlan || '').toUpperCase()}
+                      </span>
+                    ) : done ? (
                       <span style={{
                         display: 'inline-flex', alignItems: 'center', gap: 4,
                         fontSize: 9.5, fontWeight: 800, color: '#22E698',
@@ -12295,6 +12708,7 @@ function CommerceSettingsView({ user, profile, setView, onLogout, onOwnerProfile
                         background: 'rgba(34,230,152,0.10)',
                         border: '1px solid rgba(34,230,152,0.35)',
                         padding: '4px 9px', borderRadius: 99,
+                        animation: isJustCompleted ? 'celebrate-badge 0.9s cubic-bezier(0.34,1.56,0.64,1) both' : undefined,
                       }}>
                         <Check size={10} strokeWidth={2.8} /> Listo
                       </span>
@@ -12363,17 +12777,24 @@ function CommerceSettingsView({ user, profile, setView, onLogout, onOwnerProfile
                       </div>
                     )}
                     <div style={{ fontSize: 13, color: 'rgba(255,255,255,0.78)', fontWeight: 500, lineHeight: 1.4 }}>
-                      {done ? 'Está cargado y visible para tus clientes.' : 'Tap acá para configurar este dato.'}
+                      {isLocked
+                        ? `Para usar esta función necesitás el plan ${(item.lockedByPlan || '').toUpperCase()}.`
+                        : (done ? 'Está cargado y visible para tus clientes.' : 'Tap acá para configurar este dato.')}
                     </div>
                   </div>
 
-                  {/* CTA grande estilo "Get it now" — pill full-width con gradient */}
+                  {/* CTA grande estilo "Get it now" — pill full-width con gradient.
+                      Cuando el item está lockeado por plan, el CTA cambia a
+                      "Actualizar plan" con el color del plan que desbloquea
+                      (azul STARTER o ámbar PRO) y abre el upgrade modal. */}
                   <div style={{
                     display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6,
-                    background: done
-                      ? 'rgba(255,255,255,0.06)'
-                      : 'linear-gradient(135deg, #7C3AED 0%, #BD4BF8 100%)',
-                    border: done ? '1px solid rgba(255,255,255,0.14)' : 'none',
+                    background: isLocked
+                      ? `linear-gradient(135deg, ${lockColor} 0%, ${lockColor}D9 100%)`
+                      : done
+                        ? 'rgba(255,255,255,0.06)'
+                        : 'linear-gradient(135deg, #7C3AED 0%, #BD4BF8 100%)',
+                    border: (done && !isLocked) ? '1px solid rgba(255,255,255,0.14)' : 'none',
                     color: '#fff',
                     fontFamily: FN, fontSize: 14, fontWeight: 800,
                     letterSpacing: '.02em',
@@ -12382,11 +12803,14 @@ function CommerceSettingsView({ user, profile, setView, onLogout, onOwnerProfile
                     marginLeft: -22, marginRight: -22, marginBottom: 0,
                     borderBottomLeftRadius: 22, borderBottomRightRadius: 22,
                     borderTopLeftRadius: 0, borderTopRightRadius: 0,
-                    boxShadow: done ? 'none' : '0 6px 20px rgba(189,75,248,0.50)',
+                    boxShadow: isLocked
+                      ? `0 6px 20px ${lockColor}80`
+                      : (done ? 'none' : '0 6px 20px rgba(189,75,248,0.50)'),
                     position: 'relative',
                   }}>
-                    {done ? 'Editar' : 'Cargar ahora'}
-                    <ChevronRight size={15} strokeWidth={2.6} />
+                    {isLocked
+                      ? <><Zap size={14} strokeWidth={2.6} /> Actualizar plan</>
+                      : <>{done ? 'Editar' : (item.partial ? 'Completar' : 'Cargar ahora')} <ChevronRight size={15} strokeWidth={2.6} /></>}
                   </div>
                 </button>
               )
@@ -12456,11 +12880,12 @@ function CommerceSettingsView({ user, profile, setView, onLogout, onOwnerProfile
           </>
         )}
         </div>
+        )}
 
         {/* ── Dots de progreso del slider ──
-            Una bolita por cada card (10 en total). La activa se ensancha
-            y se vuelve violeta sólido; las inactivas quedan apagadas.
-            Tap en un dot scrollea a esa card. */}
+            Una bolita por cada card. Solo se muestran si hay más de 1 card
+            (no tiene sentido un solo dot) Y si el slider está activo. */}
+        {sortedItems.length > 1 && (
         <div style={{ display: 'flex', justifyContent: 'center', gap: 6, marginTop: 14, padding: isMobile ? '0 18px' : '0 28px' }}>
           {sortedItems.map((_, i) => {
             const active = i === configSlideIdx
@@ -12484,6 +12909,9 @@ function CommerceSettingsView({ user, profile, setView, onLogout, onOwnerProfile
             )
           })}
         </div>
+        )}
+
+        </div>{/* fin del container "carpeta" pestañas + contenido */}
 
         {/* Radial menu — botón cog en el bottom-center que abre arco de
             íconos. También está disponible en el intent picker para que
@@ -12491,12 +12919,38 @@ function CommerceSettingsView({ user, profile, setView, onLogout, onOwnerProfile
             tarjeta. */}
         {renderRadialMenu()}
 
+        {/* Wizard amigable de configuración — se abre cuando el dueño toca
+            "Cargar ahora" en una tarjeta del slider de arriba. Cada itemId
+            dispara su propio mini-flujo (inline para campos simples,
+            deep-link para complejos como horarios o sistema). */}
+        <ProfileItemWizard
+          itemId={wizardItemId}
+          onClose={() => setWizardItemId(null)}
+          onSaveSuccess={(id) => markItemCompleted(id)}
+          form={form}
+          setForm={setForm}
+          saving={saving}
+          onSave={async () => await saveConfiguracion()}
+          onDeepLink={handleWizardDeepLink}
+          commerce={commerce}
+          hoursForm={hoursForm}
+          setHoursForm={setHoursForm}
+          uploadLogoBlob={uploadLogoBlob}
+          uploadingLogo={uploadingLogo}
+          uploadCover={uploadCover}
+          removeCover={removeCover}
+          uploadingCover={uploadingCover}
+          updateSystem={updateSystem}
+          updatingSystem={updatingSystem}
+        />
+
       </div>
     )
   }
 
   function saveAutoConfigs(next) {
     setAutoConfigs(next)
+    setMessagesConfigured(true)
     if (commerce) { try { localStorage.setItem(`cb_auto_${commerce.id}`, JSON.stringify(next)) } catch {} }
   }
   function markSent(type, userId) {
@@ -12786,7 +13240,8 @@ function CommerceSettingsView({ user, profile, setView, onLogout, onOwnerProfile
         <UpgradeModal
           feature={upgradeModal}
           onUpgrade={async (plan) => { await upgradePlan(plan); setUpgradeModal(null) }}
-          onViewPlans={() => { setTab('configuracion'); setUpgradeModal(null) }}
+          onViewPlans={() => { setTab('planes'); setUpgradeModal(null) }}
+          onContactSupport={(plan) => { contactSupportForUpgrade(plan); setUpgradeModal(null) }}
           onClose={() => setUpgradeModal(null)}
         />
       )}
@@ -13064,60 +13519,9 @@ function CommerceSettingsView({ user, profile, setView, onLogout, onOwnerProfile
                 El rail (colapsado o expandido) coexiste con el contenido sin
                 overlay encima. */}
 
-            {/* ── Coachmark "Recordá que tocando esta solapa..." ──
-                Aparece a los 5 segundos DESPUÉS de la primera vez que el user
-                cierra el rail. Apunta hacia la solapa colapsada con un chevron.
-                Una sola vez por user (localStorage). Tap en la X lo descarta. */}
-            {showRailHint && !railExpanded && (
-              <div style={{
-                position:'fixed',
-                left: 30, top: '50%', transform: 'translateY(-50%)',
-                zIndex: 197,
-                maxWidth: 'min(280px, calc(100vw - 60px))',
-                background: 'linear-gradient(135deg, rgba(254,80,0,0.96), rgba(189,75,248,0.96))',
-                borderRadius: 14,
-                padding: '12px 14px 12px 12px',
-                boxShadow: '0 14px 40px rgba(189,75,248,0.45), 0 0 0 1px rgba(255,255,255,0.10)',
-                display: 'flex', alignItems: 'flex-start', gap: 10,
-                animation: 'rail-hint-in 380ms cubic-bezier(0.16, 1, 0.3, 1)',
-              }}>
-                {/* Triángulo apuntando a la solapa (a la izquierda) */}
-                <div style={{
-                  position: 'absolute',
-                  left: -7, top: '50%', transform: 'translateY(-50%)',
-                  width: 0, height: 0,
-                  borderTop: '8px solid transparent',
-                  borderBottom: '8px solid transparent',
-                  borderRight: '8px solid #FE5000',
-                }} />
-                <ChevronLeft size={22} color="#fff" strokeWidth={2.6}
-                  style={{ flexShrink:0, marginTop:1, animation:'rail-hint-arrow 1.2s ease-in-out infinite' }} />
-                <div style={{ flex:1, fontFamily:FN, fontSize:12.5, fontWeight:600, color:'#fff', lineHeight:1.4, paddingTop:1 }}>
-                  Recordá que tocando esta solapa podés acceder a todas las configuraciones.
-                </div>
-                <button onClick={dismissRailHint} aria-label="Cerrar"
-                  style={{
-                    flexShrink:0,
-                    width:24, height:24, borderRadius:'50%',
-                    background:'rgba(255,255,255,0.20)',
-                    border:'none', color:'#fff',
-                    cursor:'pointer', padding:0,
-                    display:'flex', alignItems:'center', justifyContent:'center',
-                  }}>
-                  <X size={13} strokeWidth={2.5} />
-                </button>
-                <style>{`
-                  @keyframes rail-hint-in {
-                    from { opacity: 0; transform: translateY(-50%) translateX(-20px); }
-                    to   { opacity: 1; transform: translateY(-50%) translateX(0); }
-                  }
-                  @keyframes rail-hint-arrow {
-                    0%, 100% { transform: translateX(0); }
-                    50%      { transform: translateX(-4px); }
-                  }
-                `}</style>
-              </div>
-            )}
+            {/* Coachmark "Recordá que tocando esta solapa..." ELIMINADO.
+                Era un cartel viejo del menú lateral que ya no aplica con
+                el menú actual (radial / intent picker). */}
             {/* Cuando el rail está COLAPSADO, no renderizamos el aside angosto
                 de antes — la solapa fucsia (renderRailTab) lo reemplaza y se
                 renderiza más abajo. El aside con los items solo aparece cuando
@@ -13540,7 +13944,7 @@ function CommerceSettingsView({ user, profile, setView, onLogout, onOwnerProfile
               {_helpClientes}
 
               {/* Header */}
-              <div style={{ display:'flex', alignItems:'flex-start', justifyContent:'space-between', gap:10, marginBottom: hasClients ? 4 : 0 }}>
+              <div style={{ display:'flex', alignItems:'flex-start', justifyContent:'space-between', gap:10, marginBottom: hasClients ? 10 : 6 }}>
                 <div>
                   <div style={{ fontFamily:FN, fontSize:18, fontWeight:900, color:C.white, letterSpacing:'.08em', textTransform:'uppercase' }}>Clientes</div>
                   {hasClients && (
@@ -14195,7 +14599,7 @@ function CommerceSettingsView({ user, profile, setView, onLogout, onOwnerProfile
               </button>
             )}
             {/* Header con contador de límite */}
-            <div style={{ display:'flex', alignItems:'flex-start', justifyContent:'space-between', marginBottom:4, gap:10 }}>
+            <div style={{ display:'flex', alignItems:'flex-start', justifyContent:'space-between', marginBottom:10, gap:10 }}>
               <div style={{ display:'flex', alignItems:'center', gap:8 }}>
                 <div style={{ fontFamily:FN, fontSize:18, fontWeight:900, color:C.white, letterSpacing:'.08em', textTransform:'uppercase' }}>Premios</div>
                 <InfoHint align="left" text={
@@ -14335,7 +14739,9 @@ function CommerceSettingsView({ user, profile, setView, onLogout, onOwnerProfile
             })}
             {prizes.length === 0 && <div style={{ textAlign:'center', padding:'24px 0', color:C.dust, fontSize:12 }}>No hay premios todavía. Creá el primero.</div>}
 
-            {/* Formulario nuevo premio — bloqueado si en límite */}
+            {/* CTA "Crear premio" — abre el wizard modal de 3 pasos.
+                Si el comercio llegó al límite del plan, el CTA se reemplaza
+                por una pill de bloqueo que abre el upgrade modal. */}
             {rewardsAtLimit ? (
               <div onClick={() => setUpgradeModal('rewards')} style={{ marginTop:12, border:`1px dashed ${C.v}44`, borderRadius:14, padding:20, cursor:'pointer', opacity:0.65, display:'flex', flexDirection:'column', alignItems:'center', gap:8, background:`${C.v}08` }}>
                 <Lock size={22} color={C.mist} strokeWidth={1.5} />
@@ -14346,129 +14752,94 @@ function CommerceSettingsView({ user, profile, setView, onLogout, onOwnerProfile
                 </div>
               </div>
             ) : (
-              <div id="prize-form-card" style={{ marginTop:12, border: (createPrizeOpen || editingPrizeId) ? `1px solid ${C.v}55` : 'none', borderRadius:14, background: (createPrizeOpen || editingPrizeId) ? 'rgba(189,75,248,0.04)' : 'transparent', overflow:'hidden', transition:'border-color .2s, background .2s' }}>
-                {/* Header — cuando está cerrado, es un botón gradiente de marca
-                    (CTA primario). Cuando está abierto/editando, se vuelve un
-                    header neutro para que la jerarquía la tome el form. */}
-                <button onClick={() => editingPrizeId ? null : setCreatePrizeOpen(o => !o)}
-                  style={(createPrizeOpen || editingPrizeId) ? {
-                    width:'100%', padding:'14px 18px', background:'transparent', border:'none', cursor:'pointer', display:'flex', alignItems:'center', justifyContent:'space-between', textAlign:'left', fontFamily:'inherit',
-                  } : {
-                    width:'100%', padding:'14px 18px', background:G, border:'none', cursor:'pointer', display:'flex', alignItems:'center', justifyContent:'space-between', textAlign:'left', fontFamily:'inherit', borderRadius:14, boxShadow:'0 6px 20px -6px rgba(254,80,0,0.45)',
-                  }}>
-                  <div style={{ fontFamily:FN, fontSize:14, color:'#fff', fontWeight:800, display:'flex', alignItems:'center', gap:7 }}>
-                    <Plus size={15} strokeWidth={2.8} color={(createPrizeOpen || editingPrizeId) ? C.v : '#fff'} />
-                    {editingPrizeId ? `Editando: ${newPrize.name || 'premio'}` : 'Crear premio'}
-                  </div>
-                  <div style={{ display:'flex', alignItems:'center', gap:10 }}>
-                    {perms.max_rewards !== null && !editingPrizeId && (
-                      <div style={{ fontSize:10, color: (createPrizeOpen || editingPrizeId) ? (activeRewardsCount === perms.max_rewards - 1 ? C.o : C.dust) : 'rgba(255,255,255,0.85)', fontWeight:700 }}>
-                        {activeRewardsCount}/{perms.max_rewards}
-                        {activeRewardsCount === perms.max_rewards - 1 && ' · último'}
-                      </div>
-                    )}
-                    {editingPrizeId ? (
-                      <button onClick={e => { e.stopPropagation(); cancelEditPrize() }}
-                        style={{ background:'transparent', border:'none', color:C.dust, fontSize:11, cursor:'pointer', fontFamily:FN, fontWeight:600 }}>Cancelar</button>
-                    ) : (
-                      <ChevronDown size={16} color={(createPrizeOpen) ? C.mist : '#fff'} style={{ transform: createPrizeOpen ? 'rotate(180deg)' : 'none', transition:'transform .2s' }} />
-                    )}
-                  </div>
-                </button>
-                {/* Body — colapsado por default. Cuando edita un existente, siempre abierto. */}
-                {(createPrizeOpen || editingPrizeId) && (
-                <div style={{ padding:'4px 18px 18px', borderTop:`1px solid rgba(255,255,255,0.06)` }}>
-
-                {/* Título */}
-                <div style={{ marginBottom:12 }}>
-                  <label style={{ fontFamily:FN, fontSize:11, fontWeight:700, color:C.mist, textTransform:'uppercase', letterSpacing:'.05em', display:'block', marginBottom:5 }}>Título <span style={{ color:'#f87444', fontWeight:400 }}>·</span></label>
-                  <Inp value={newPrize.name} onChange={e=>setNewPrize(p=>({...p,name:e.target.value}))} placeholder="Ej: Café gratis, 20% OFF en la cuenta..." />
-                </div>
-
-                {/* Descripción opcional */}
-                <div style={{ marginBottom:12 }}>
-                  <label style={{ fontFamily:FN, fontSize:11, fontWeight:700, color:C.mist, textTransform:'uppercase', letterSpacing:'.05em', display:'block', marginBottom:5 }}>Descripción <span style={{ color:C.dust, fontWeight:400, textTransform:'none', letterSpacing:0 }}>(opcional)</span></label>
-                  <textarea value={newPrize.description} onChange={e=>setNewPrize(p=>({...p,description:e.target.value}))} placeholder="Detalles para el cliente. Ej: válido de lunes a viernes, no acumulable con otras promos..."
-                    rows={2}
-                    style={{ width:'100%', background:C.bg3, border:`1px solid ${C.rim}`, borderRadius:10, padding:'10px 12px', fontSize:13, color:C.pearl, fontFamily:'inherit', resize:'vertical', boxSizing:'border-box', lineHeight:1.5 }} />
-                </div>
-
-                {/* Costo + Stock en grid de 2 columnas */}
-                <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:10, marginBottom:12 }}>
-                  {/* Costo */}
-                  <div>
-                    <label style={{ fontFamily:FN, fontSize:11, fontWeight:700, color:C.mist, textTransform:'uppercase', letterSpacing:'.05em', display:'flex', alignItems:'center', gap:5, marginBottom:5 }}>
-                      Costo en {unitLabel} <span style={{ color:'#f87444', fontWeight:400 }}>·</span>
-                    </label>
-                    <input type="number" min={1} value={newPrize.cost} onChange={e=>setNewPrize(p=>({...p,cost:e.target.value}))} placeholder={`Ej: ${commerce?.prog_type === 'stars' ? '10' : '500'}`}
-                      style={{ width:'100%', background:C.bg3, border:`1px solid ${C.rim}`, borderRadius:10, padding:'10px 12px', fontSize:13, color:C.pearl, boxSizing:'border-box' }} />
-                    <div style={{ fontSize:10, color:C.dust, marginTop:4 }}>Cuántos {unitLabel} cuesta canjear este premio</div>
-                  </div>
-                  {/* Stock */}
-                  <div>
-                    <label style={{ fontFamily:FN, fontSize:11, fontWeight:700, color:C.mist, textTransform:'uppercase', letterSpacing:'.05em', display:'block', marginBottom:5 }}>
-                      Stock <span style={{ color:C.dust, fontWeight:400, textTransform:'none', letterSpacing:0 }}>(opcional)</span>
-                    </label>
-                    <div style={{ position:'relative' }}>
-                      <input type="number" min={1} value={newPrize.stock} onChange={e=>setNewPrize(p=>({...p,stock:e.target.value}))} placeholder="Ilimitado"
-                        style={{ width:'100%', background:C.bg3, border:`1px solid ${C.rim}`, borderRadius:10, padding:'10px 12px', fontSize:13, color:C.pearl, boxSizing:'border-box' }} />
-                      {newPrize.stock !== '' && (
-                        <button onClick={()=>setNewPrize(p=>({...p,stock:''}))} type="button" title="Volver a ilimitado"
-                          style={{ position:'absolute', right:8, top:'50%', transform:'translateY(-50%)', background:'transparent', border:'none', color:C.dust, fontSize:14, cursor:'pointer', padding:'2px 6px' }}>✕</button>
-                      )}
-                    </div>
-                    <div style={{ fontSize:10, color:C.dust, marginTop:4 }}>Vacío = sin tope</div>
-                  </div>
-                </div>
-
-                {/* Foto */}
-                <div style={{ marginBottom:14 }}>
-                  <input type="file" accept="image/*" id="prize-img-input" style={{ display:'none' }}
-                    onChange={e => { if (e.target.files[0]) uploadPrizeImg(e.target.files[0]); e.target.value='' }} />
-                  {newPrize.img_url ? (
-                    <div style={{ display:'flex', alignItems:'center', gap:10 }}>
-                      <img src={newPrize.img_url} alt="" style={{ width:56, height:56, borderRadius:10, objectFit:'cover', flexShrink:0 }} />
-                      <button onClick={() => setNewPrize(p=>({...p,img_url:''}))}
-                        style={{ background:'transparent', border:`1px solid ${C.rim}`, borderRadius:8, color:C.dust, fontSize:11, cursor:'pointer', padding:'7px 12px' }}>✕ Quitar foto</button>
-                    </div>
-                  ) : (
-                    <label htmlFor="prize-img-input" style={{ display:'flex', alignItems:'center', gap:7, background:C.bg3, border:`1px dashed ${C.rim}`, borderRadius:10, padding:'10px 14px', fontSize:12, color:uploadingImg?C.pearl:C.mist, cursor:'pointer', width:'100%', justifyContent:'center', boxSizing:'border-box' }}>
-                      <Camera size={14} strokeWidth={2} />
-                      {uploadingImg ? 'Subiendo...' : 'Foto del premio (opcional)'}
-                    </label>
-                  )}
-                </div>
-
-                {prizeError && <div style={{ fontSize:11, color:'#f87', marginBottom:10 }}>{prizeError}</div>}
-                {(() => {
-                  // En modo edición, comparamos con el snapshot original para
-                  // habilitar el Guardar solo si hay cambios sin guardar.
-                  const isEditing = !!editingPrizeId
-                  const hasFields = !!newPrize.name && !!newPrize.cost
-                  const hasChanges = isEditing && originalPrize ? (
-                    newPrize.name !== originalPrize.name ||
-                    (newPrize.description||'') !== (originalPrize.description||'') ||
-                    String(newPrize.cost) !== String(originalPrize.cost) ||
-                    (newPrize.img_url||'') !== (originalPrize.img_url||'') ||
-                    String(newPrize.stock||'') !== String(originalPrize.stock||'')
-                  ) : true
-                  const disabled = addingPrize || !hasFields || (isEditing && !hasChanges)
-                  return (
-                    <GBtn onClick={addPrize} disabled={disabled} sm style={{ width:'100%', justifyContent:'center' }}>
-                      {addingPrize
-                        ? (isEditing ? '⟳ Guardando...' : '⟳ Creando...')
-                        : (isEditing
-                            ? (hasChanges ? 'Guardar cambios' : 'Sin cambios')
-                            : 'Crear premio')}
-                    </GBtn>
-                  )
-                })()}
-                <div style={{ fontSize:10, color:C.dust, marginTop:8, textAlign:'center' }}><span style={{ color:'#f87444' }}>·</span> Campos obligatorios</div>
-                </div>
+              <button
+                onClick={() => { setNewPrize({ name:'', description:'', cost:'', img_url:'', stock:'' }); setEditingPrizeId(null); setOriginalPrize(null); setPrizeError(''); setCreatePrizeOpen(true) }}
+                style={{
+                  width:'100%', marginTop:12,
+                  padding:'15px 18px',
+                  background: G, border:'none',
+                  borderRadius: 14,
+                  color:'#fff', fontFamily: FN, fontSize: 14, fontWeight: 800,
+                  cursor:'pointer',
+                  display:'flex', alignItems:'center', justifyContent:'space-between',
+                  boxShadow:'0 8px 22px -6px rgba(254,80,0,0.50)',
+                }}>
+                <span style={{ display:'flex', alignItems:'center', gap:8 }}>
+                  <Plus size={16} strokeWidth={2.8} color="#fff" />
+                  Crear premio
+                </span>
+                {perms.max_rewards !== null && (
+                  <span style={{ fontSize:11, fontWeight:700, color:'rgba(255,255,255,0.85)' }}>
+                    {activeRewardsCount}/{perms.max_rewards}
+                    {activeRewardsCount === perms.max_rewards - 1 && ' · último'}
+                  </span>
                 )}
-              </div>
+              </button>
+            )}
+
+            {/* CTA upgrade STARTER — solo se muestra cuando el plan tiene límite
+                de premios pero aún no se llegó al tope (rewardsAtLimit ya tiene
+                su propio bloque más arriba). Invita al dueño a desbloquear
+                premios ilimitados antes de chocar con el límite. */}
+            {perms.max_rewards !== null && !rewardsAtLimit && (
+              <button
+                onClick={() => setUpgradeModal('rewards')}
+                style={{
+                  width:'100%', marginTop:10,
+                  padding:'12px 14px',
+                  background: `linear-gradient(135deg, ${PLANS.starter.color}14, ${PLANS.starter.color}07)`,
+                  border: `1px solid ${PLANS.starter.color}44`,
+                  borderRadius: 12,
+                  cursor:'pointer',
+                  display:'flex', alignItems:'center', gap:10,
+                  textAlign:'left',
+                  fontFamily:'inherit',
+                }}>
+                <div style={{
+                  width:32, height:32, borderRadius:9,
+                  background: `${PLANS.starter.color}22`,
+                  border: `1px solid ${PLANS.starter.color}55`,
+                  display:'flex', alignItems:'center', justifyContent:'center',
+                  flexShrink:0,
+                }}>
+                  <Zap size={15} color={PLANS.starter.color} strokeWidth={2.4} />
+                </div>
+                <div style={{ flex:1, minWidth:0 }}>
+                  <div style={{ fontFamily:FN, fontSize:12.5, fontWeight:800, color:'#fff', lineHeight:1.3 }}>
+                    ¿Querés cargar más premios?
+                    <span style={{ color: PLANS.starter.color, marginLeft:6, fontSize:10, letterSpacing:'.07em', textTransform:'uppercase' }}>
+                      Pasate a STARTER
+                    </span>
+                  </div>
+                  <div style={{ fontSize:11, color:C.mist, fontWeight:500, marginTop:2, lineHeight:1.4 }}>
+                    Premios ilimitados, promociones y descuentos para tus clientes.
+                  </div>
+                </div>
+                <ArrowRight size={14} color={C.mist} strokeWidth={2.4} style={{ flexShrink:0 }} />
+              </button>
             )}
           </div>
+        )}
+
+        {/* Wizard modal de premio — open=true cuando el user toca "Crear premio"
+            o "Editar" en la lista. addPrize() y cancelEditPrize() ya cierran
+            el modal vía setCreatePrizeOpen(false), así que no hace falta más
+            coordinación. */}
+        {tab === 'premios' && (
+          <PrizeWizardModal
+            open={createPrizeOpen || !!editingPrizeId}
+            onClose={() => editingPrizeId ? cancelEditPrize() : setCreatePrizeOpen(false)}
+            editingPrizeId={editingPrizeId}
+            originalPrize={originalPrize}
+            newPrize={newPrize}
+            setNewPrize={setNewPrize}
+            commerce={commerce}
+            addPrize={addPrize}
+            addingPrize={addingPrize}
+            prizeError={prizeError}
+            uploadPrizeImg={uploadPrizeImg}
+            uploadingImg={uploadingImg}
+          />
         )}
 
         {/* ─── SECCIÓN 2: RECOMPENSAS EXTRA (STARTER + PRO) ─── */}
@@ -15019,7 +15390,7 @@ function CommerceSettingsView({ user, profile, setView, onLogout, onOwnerProfile
           return (
             <div>
               <div style={{ marginBottom:24 }}>
-                <div style={{ display:'flex', alignItems:'center', gap:8, marginBottom:4 }}>
+                <div style={{ display:'flex', alignItems:'center', gap:8, marginBottom:10 }}>
                   <div style={{ fontFamily:FN, fontSize:18, fontWeight:900, color:C.white, letterSpacing:'.08em', textTransform:'uppercase' }}>Reportes</div>
                   <InfoHint align="left" text={
                     'Datos crudos de tu actividad: cada visita registrada, cada canje y la lista completa de tus clientes.\n\n' +
@@ -15334,7 +15705,7 @@ function CommerceSettingsView({ user, profile, setView, onLogout, onOwnerProfile
           return (
             <div>
               <div style={{ marginBottom:24 }}>
-                <div style={{ display:'flex', alignItems:'center', gap:8, marginBottom:4 }}>
+                <div style={{ display:'flex', alignItems:'center', gap:8, marginBottom:10 }}>
                   <div style={{ fontFamily:FN, fontSize:18, fontWeight:900, color:C.white, letterSpacing:'.08em', textTransform:'uppercase' }}>Segmentación de clientes</div>
                   <InfoHint align="left" text={
                     'Tus clientes se agrupan automáticamente en 4 segmentos según su comportamiento:\n\n' +
@@ -15457,7 +15828,7 @@ function CommerceSettingsView({ user, profile, setView, onLogout, onOwnerProfile
           }
           return (
             <div>
-              <div style={{ fontFamily:FN, fontSize:18, fontWeight:900, color:C.white, marginBottom:4, letterSpacing:'.08em', textTransform:'uppercase' }}>Historial</div>
+              <div style={{ fontFamily:FN, fontSize:18, fontWeight:900, color:C.white, marginBottom:10, letterSpacing:'.08em', textTransform:'uppercase' }}>Historial</div>
               <div style={{ fontSize:12, color:C.mist, marginBottom:20 }}>Cambios recientes en tu negocio.</div>
               <HelpBanner
                 id="merchant-historial"
@@ -15500,7 +15871,7 @@ function CommerceSettingsView({ user, profile, setView, onLogout, onOwnerProfile
             ya no hace falta porque acá es la pestaña entera. ── */}
         {tab === 'planes' && (
           <div>
-            <div style={{ display:'flex', alignItems:'center', gap:8, marginBottom:4 }}>
+            <div style={{ display:'flex', alignItems:'center', gap:8, marginBottom:10 }}>
               <div style={{ fontFamily:FN, fontSize:18, fontWeight:900, color:C.white, letterSpacing:'.08em', textTransform:'uppercase' }}>Planes</div>
               <InfoHint align="left" text={
                 'FREE: gratis, hasta 30 clientes, sin promociones extra ni mensajes automáticos.\n\n' +
@@ -15733,19 +16104,6 @@ function CommerceSettingsView({ user, profile, setView, onLogout, onOwnerProfile
                   <strong style={{ color:'#fff' }}>Foto, descripción, dirección, horarios</strong>, <strong style={{ color:'#fff' }}>plan</strong>, <strong style={{ color:'#fff' }}>sistema de recompensas</strong> y <strong style={{ color:'#fff' }}>cuenta</strong>. Cada sección abre y cierra como un acordeón — tocá la que quieras editar.
                 </>}
               />
-
-              {/* Onboarding banner */}
-              {showOnboardingBanner && (
-                <div style={{ background:'linear-gradient(135deg,rgba(124,92,237,0.18),rgba(254,80,0,0.10))', border:'1px solid rgba(189,75,248,0.28)', borderRadius:16, padding:'16px 18px', marginBottom:20, display:'flex', alignItems:'flex-start', gap:12 }}>
-                  <div style={{ flex:1 }}>
-                    <div style={{ fontFamily:FN, fontSize:14, fontWeight:700, color:C.white, marginBottom:4 }}>Completá tu perfil</div>
-                    <div style={{ fontSize:12, color:C.mist, lineHeight:1.5 }}>Cuanta más info tengas, más fácil te van a encontrar tus clientes. Empezá con el nombre y la categoría.</div>
-                  </div>
-                  <button onClick={() => setShowOnboardingBanner(false)} style={{ background:'transparent', border:'none', color:C.dust, cursor:'pointer', padding:4, flexShrink:0 }}>
-                    <X size={14} />
-                  </button>
-                </div>
-              )}
 
               {/* Progreso de perfil */}
               <div style={{ marginBottom:22 }}>
@@ -16356,7 +16714,7 @@ function CommerceSettingsView({ user, profile, setView, onLogout, onOwnerProfile
                   <ArrowLeft size={13} strokeWidth={2.5} /> Volver a recompensas
                 </button>
               )}
-              <div style={{ display:'flex', alignItems:'center', gap:8, marginBottom:4 }}>
+              <div style={{ display:'flex', alignItems:'center', gap:8, marginBottom:10 }}>
                 <div style={{ fontFamily:FN, fontSize:18, fontWeight:900, color:C.white, letterSpacing:'.08em', textTransform:'uppercase' }}>Automatizaciones</div>
                 <InfoHint align="left" text={
                   'Mensajes de WhatsApp que la app te ayuda a enviar a clientes específicos sin que tengas que pensarlo.\n\n' +
@@ -18748,6 +19106,17 @@ export default function App() {
       )}
       <Navbar setView={navigate} cityName={currentCity?.name} user={user} profile={profile} onLogin={handleLogin} onLogout={handleLogout} currentView={view} clientTab={clientTab} onOwnerProfile={handleOwnerProfile} />
       <div style={{ height:80 }} />
+      {/* Banner top "¿Tenés un negocio?" — aparece debajo del navbar en las
+          vistas que NO tienen sub-nav fijo propio. ClientView tiene su
+          ClientBottomNav fijo en top:62, así que el banner se renderiza
+          INTERNAMENTE dentro de ClientView (después de su paddingTop:58 que
+          ya esquiva el sub-nav). Para todas las otras vistas se renderiza
+          acá en el flow general. */}
+      {user && profile && view !== 'client' && (
+        <div style={{ maxWidth: 520, margin: '0 auto', padding: '0 15px' }}>
+          <BizPromptBanner profile={profile} />
+        </div>
+      )}
       {view === 'home'      && <HomeView setView={navigate} user={user} profile={profile} onLogin={handleLogin} />}
       {view === 'directory'          && <DirectoryView citySlug={citySlug} cities={cities} setView={navigate} setCommerce={setCommerce} />}
       {view === 'commerce'           && <CommerceView commerce={commerce} setView={navigate} user={user} onLoginRequired={handleLogin} onCommerceUpdate={updates => setCommerce(prev => ({ ...prev, ...updates }))} />}
@@ -18773,6 +19142,10 @@ export default function App() {
           <SupportChat hideButton role={view === 'commerce-settings' ? 'merchant' : 'client'} />
           {/* Banner para activar push del navegador. */}
           <EnablePushPrompt />
+          {/* Nudges cross-rol temporizados:
+              • 10s — si es cliente sin respuesta, sugerir registrar negocio.
+              • 15s — si es dueño, recordar que tiene QR personal de cliente. */}
+          <CrossRoleNudges profile={profile} setView={navigate} />
         </>
       )}
       <DevToolbar user={user} profile={profile} onRoleChange={() => loadProfile(user.id)} />

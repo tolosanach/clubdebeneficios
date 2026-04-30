@@ -16,7 +16,7 @@ export async function POST(request) {
 
   const body = await request.json()
   const {
-    commerce_id, name, category, categories, customCategory, description, img_url, cover_image,
+    commerce_id, name, category, categories, customCategory, description, img_url, cover_image, cover_images,
     phone, instagram, facebook, country, province, city_name, address, hours_structured, brand_color,
     prog_min_purchase,
   } = body
@@ -128,6 +128,16 @@ export async function POST(request) {
     ...(body.description      !== undefined && { description:      description || null }),
     ...(body.img_url          !== undefined && { img_url:          img_url || null }),
     ...(body.cover_image      !== undefined && { cover_image:      cover_image || null }),
+    // Array de hasta 5 portadas. Filtramos URLs vacías y limitamos a
+    // 5 entradas máximo. La columna legacy `cover_image` se mantiene
+    // como espejo del primer ítem (el SQL update arriba ya la setea
+    // explícitamente vía el `cover_image` del body si vino, o queda
+    // como NULL si el array está vacío).
+    ...(body.cover_images     !== undefined && {
+      cover_images: Array.isArray(cover_images)
+        ? cover_images.filter(u => typeof u === 'string' && u.trim()).slice(0, 5)
+        : null
+    }),
     ...(body.phone            !== undefined && { phone:            phone || null }),
     ...(body.instagram        !== undefined && { instagram:        instagram || null }),
     ...(body.facebook         !== undefined && { facebook:         facebook || null }),

@@ -22,7 +22,7 @@ export async function GET(request) {
   const { data: commerce, error } = await supabaseAdmin
     .from('commerces')
     .select(`
-      id, name, description, img_url, cover_image, slug, owner_id,
+      id, name, description, img_url, cover_image, cover_images, slug, owner_id,
       prog_type, prog_goal, prog_discount, prog_min_purchase, reward_text, reward_color,
       category, plan, featured, rating,
       address, lat, lng, hours_structured, instagram, facebook, phone,
