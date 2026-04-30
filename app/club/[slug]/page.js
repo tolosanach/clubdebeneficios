@@ -11,9 +11,11 @@ import {
   Shield, MessageCircle, ArrowRight, Check, Smartphone,
   ScanLine, LogOut, Percent,
   Eye, Store, LayoutDashboard, DoorOpen,
+  Bell, BellOff, Pen, X, Calendar,
 } from 'lucide-react'
 import PhoneInput from '../../../lib/PhoneInput'
 import HelpBanner from '../../../lib/HelpBanner'
+import { FAMILIES_DATA } from '../../../lib/commerce-families-data'
 
 // Feature flag — sistema de reseñas/rating apagado hasta tener masa crítica.
 // Sincronizado con el flag del mismo nombre en app/page.js.
@@ -69,6 +71,17 @@ const GLOBAL_CSS = `
   @keyframes shimmer     { 0%{background-position:200% 0} 100%{background-position:-200% 0} }
   @keyframes glowPulse   { 0%,100%{box-shadow:0 0 20px rgba(168,85,247,0.3)} 50%{box-shadow:0 0 40px rgba(168,85,247,0.6)} }
   @keyframes cardIn      { from{opacity:0;transform:translateY(12px)} to{opacity:1;transform:translateY(0)} }
+  @keyframes brand-bar-flow {
+    0%, 100% { background-position: 100% 0; }
+    50%      { background-position:   0% 0; }
+  }
+  /* Pulse sutil para la barra cuando el cliente todavía no llegó al cost
+     del premio. Solo varía el glow — el color del fill (violeta pleno) se
+     mantiene quieto. Da sensación de "vivo" sin distraer. */
+  @keyframes brand-bar-pulse {
+    0%, 100% { box-shadow: 0 0 8px rgba(189,75,248,0.45), inset 0 0 6px rgba(255,255,255,0.20); }
+    50%      { box-shadow: 0 0 14px rgba(189,75,248,0.70), inset 0 0 10px rgba(255,255,255,0.32); }
+  }
   @keyframes gradient-slow {
     0%,100% { background-position: 0% 50%; }
     50%     { background-position: 100% 50%; }
@@ -77,6 +90,8 @@ const GLOBAL_CSS = `
   html,body { background:#0a0a0f; }
   ::-webkit-scrollbar { width:3px; }
   ::-webkit-scrollbar-thumb { background:rgba(168,85,247,0.4); border-radius:2px; }
+  .prize-gallery-strip::-webkit-scrollbar { display:none; }
+  .prize-gallery-strip { scrollbar-width: none; }
   .animate-gradient-slow {
     background-size: 200% 200%;
     animation: gradient-slow 8s ease infinite;
@@ -429,31 +444,649 @@ function SlideToJoinButton({ onJoin, isDemoClub }) {
   )
 }
 
+// InlineEditModal — modal de edición que aparece cuando el dueño toca un
+// lápiz en /club/[slug]?edit=1. Replica los mismos campos del panel de
+// configuración del negocio (no es una versión simplificada). Al guardar,
+// llama a /api/save-commerce-config (para campos del comercio) o updatea
+// la tabla prizes directo via supabase (para premios). El padre se entera
+// vía onSavedCommerce / onSavedPrize / onDeletedPrize.
+function InlineEditModal({ title, field, initial, inputStyle, labelStyle, onClose, onSavedCommerce, onSavedPrize, onDeletedPrize }) {
+  const supabase = getSharedSupabase()
+  const [saving, setSaving] = useState(false)
+  const [error,  setError]  = useState('')
+  // Estado del form — varía según `field`. Para campos simples (name, etc.)
+  // es un string. Para 'address' y 'prize' son objetos.
+  const [val, setVal] = useState(() => {
+    if (field === 'address') {
+      return {
+        country:   initial?.country   || '',
+        province:  initial?.province  || '',
+        city_name: initial?.city_name || '',
+        address:   initial?.address   || '',
+      }
+    }
+    if (field === 'prize') {
+      return {
+        name:        initial?.name        || '',
+        description: initial?.description || '',
+        cost:        initial?.cost ?? '',
+        stock:       initial?.stock ?? '',
+        img_url:     initial?.img_url     || '',
+        active:      initial?.active !== false,
+      }
+    }
+    if (field === 'category') {
+      // Hasta 3 categorías. initial.categories es la fuente de verdad; si no
+      // viene, caemos al singular legacy.
+      const arr = Array.isArray(initial?.categories) && initial.categories.length
+        ? initial.categories
+        : (initial?.category ? [initial.category] : [])
+      return { categories: arr.slice(0, 3), customDraft: '' }
+    }
+    if (field === 'name')        return initial?.name        || ''
+    if (field === 'description') return initial?.description || ''
+    if (field === 'instagram')   return initial?.instagram   || ''
+    if (field === 'facebook')    return initial?.facebook    || ''
+    if (field === 'phone')       return initial?.phone       || ''
+    return ''
+  })
+
+  async function save() {
+    setError('')
+    setSaving(true)
+    try {
+      // ── Campos del comercio ──
+      if (field !== 'prize') {
+        const payload = { commerce_id: initial?.id }
+        if (field === 'address') {
+          payload.country   = val.country?.trim()   || null
+          payload.province  = val.province?.trim()  || null
+          payload.city_name = val.city_name?.trim() || null
+          payload.address   = val.address?.trim()   || null
+        } else if (field === 'category') {
+          // Validación local — al menos una categoría.
+          const cats = (val.categories || []).map(c => (c || '').trim()).filter(Boolean)
+          if (cats.length === 0) {
+            setError('Elegí al menos una categoría.')
+            setSaving(false)
+            return
+          }
+          if (cats.length > 3) {
+            setError('Máximo 3 categorías.')
+            setSaving(false)
+            return
+          }
+          payload.categories = cats
+        } else {
+          payload[field] = (val || '').trim() || null
+        }
+        const res = await fetch('/api/save-commerce-config', {
+          method:'POST',
+          headers:{ 'Content-Type':'application/json' },
+          body: JSON.stringify(payload),
+        })
+        const d = await res.json()
+        if (!res.ok || d.error) {
+          setError(d.message || d.error || 'No se pudo guardar')
+          setSaving(false)
+          return
+        }
+        // Devolvemos solo los campos que cambiaron para mergear local
+        const updates = {}
+        if (field === 'address') {
+          updates.country   = payload.country
+          updates.province  = payload.province
+          updates.city_name = payload.city_name
+          updates.address   = payload.address
+          if (d.lat !== undefined) updates.lat = d.lat
+          if (d.lng !== undefined) updates.lng = d.lng
+        } else if (field === 'category') {
+          updates.categories = payload.categories
+          updates.category   = payload.categories[0]
+        } else {
+          updates[field] = payload[field]
+        }
+        onSavedCommerce?.(updates)
+        return
+      }
+      // ── Premio ──
+      const updates = {
+        name:        val.name?.trim() || initial.name,
+        description: val.description?.trim() || null,
+        cost:        parseInt(val.cost, 10) || 0,
+        stock:       val.stock === '' || val.stock === null ? null : parseInt(val.stock, 10),
+        img_url:     val.img_url || null,
+        active:      !!val.active,
+      }
+      const { data: updated, error: upErr } = await supabase
+        .from('prizes').update(updates).eq('id', initial.id).select().single()
+      if (upErr) { setError(upErr.message || 'No se pudo guardar'); setSaving(false); return }
+      onSavedPrize?.(updated || { ...initial, ...updates })
+    } catch (e) {
+      setError(e?.message || 'Error de conexión')
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  async function deletePrize() {
+    if (field !== 'prize' || !initial?.id) return
+    if (typeof window !== 'undefined') {
+      const ok = window.confirm(`¿Borrar el premio "${initial.name}"? Esta acción no se puede deshacer.`)
+      if (!ok) return
+    }
+    setSaving(true)
+    try {
+      const { error: delErr } = await supabase.from('prizes').delete().eq('id', initial.id)
+      if (delErr) { setError(delErr.message || 'No se pudo borrar'); setSaving(false); return }
+      onDeletedPrize?.(initial.id)
+    } catch (e) {
+      setError(e?.message || 'Error de conexión')
+      setSaving(false)
+    }
+  }
+
+  return (
+    <div style={{ position:'fixed', inset:0, zIndex:900, display:'flex', alignItems:'flex-end', justifyContent:'center' }}>
+      <div onClick={onClose} style={{ position:'absolute', inset:0, background:'rgba(0,0,0,0.85)', backdropFilter:'blur(14px)', WebkitBackdropFilter:'blur(14px)' }} />
+      <div style={{
+        position:'relative', width:'100%', maxWidth:520, maxHeight:'92vh',
+        background:'#0a0a14',
+        border:'1px solid rgba(189,75,248,0.30)',
+        borderRadius:'24px 24px 0 0',
+        overflow:'hidden',
+        display:'flex', flexDirection:'column',
+        animation:'fadeUp .3s cubic-bezier(0.16,1,0.3,1)',
+        boxShadow:'0 -16px 64px rgba(0,0,0,0.55)',
+      }}>
+        {/* Header */}
+        <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', padding:'18px 20px 14px', borderBottom:'1px solid rgba(255,255,255,0.06)' }}>
+          <div>
+            <div style={{ fontSize:10, color:'#BD4BF8', fontWeight:800, letterSpacing:'.18em', textTransform:'uppercase', marginBottom:4, fontFamily:'inherit' }}>Editar</div>
+            <h2 style={{ fontSize:18, fontWeight:900, color:'#fff', margin:0, letterSpacing:'-.01em', fontFamily:'inherit' }}>{title}</h2>
+          </div>
+          <button onClick={onClose} aria-label="Cerrar"
+            style={{ background:'rgba(255,255,255,0.08)', border:'none', borderRadius:'50%', width:32, height:32, color:'#fff', cursor:'pointer', display:'flex', alignItems:'center', justifyContent:'center', padding:0 }}>
+            <X size={15} strokeWidth={2.4} />
+          </button>
+        </div>
+
+        {/* Body */}
+        <div style={{ flex:1, overflowY:'auto', padding:'18px 20px' }}>
+          {/* Campos según tipo */}
+          {field === 'name' && (
+            <div>
+              <label style={labelStyle}>Nombre</label>
+              <input type="text" value={val} onChange={e => setVal(e.target.value)} placeholder="Nombre del negocio" style={inputStyle} autoFocus />
+              <p style={{ fontSize:11, color:'rgba(255,255,255,0.45)', marginTop:8 }}>
+                Solo podés cambiar el nombre cada 20 días.
+              </p>
+            </div>
+          )}
+          {field === 'description' && (
+            <div>
+              <label style={labelStyle}>Descripción</label>
+              <textarea value={val} onChange={e => setVal(e.target.value)} placeholder="Contale a tus clientes qué hacés, qué ofrecés y por qué te elegirían…" rows={6}
+                style={{ ...inputStyle, resize:'vertical', minHeight:120, lineHeight:1.5 }} autoFocus />
+            </div>
+          )}
+          {field === 'instagram' && (
+            <div>
+              <label style={labelStyle}>Instagram</label>
+              <input type="text" value={val} onChange={e => setVal(e.target.value)} placeholder="@tuusuario" style={inputStyle} autoFocus />
+            </div>
+          )}
+          {field === 'facebook' && (
+            <div>
+              <label style={labelStyle}>Facebook</label>
+              <input type="text" value={val} onChange={e => setVal(e.target.value)} placeholder="facebook.com/tunegocio" style={inputStyle} autoFocus />
+            </div>
+          )}
+          {field === 'phone' && (
+            <div>
+              <label style={labelStyle}>Teléfono</label>
+              <input type="tel" value={val} onChange={e => setVal(e.target.value)} placeholder="+54 9 11 …" style={inputStyle} autoFocus />
+            </div>
+          )}
+          {field === 'address' && (
+            <div style={{ display:'flex', flexDirection:'column', gap:12 }}>
+              <div>
+                <label style={labelStyle}>País</label>
+                <input type="text" value={val.country} onChange={e => setVal(v => ({ ...v, country: e.target.value }))} placeholder="Argentina" style={inputStyle} />
+              </div>
+              <div>
+                <label style={labelStyle}>Provincia</label>
+                <input type="text" value={val.province} onChange={e => setVal(v => ({ ...v, province: e.target.value }))} placeholder="Ej: La Pampa" style={inputStyle} />
+              </div>
+              <div>
+                <label style={labelStyle}>Localidad</label>
+                <input type="text" value={val.city_name} onChange={e => setVal(v => ({ ...v, city_name: e.target.value }))} placeholder="Ej: General Pico" style={inputStyle} />
+              </div>
+              <div>
+                <label style={labelStyle}>Dirección</label>
+                <input type="text" value={val.address} onChange={e => setVal(v => ({ ...v, address: e.target.value }))} placeholder="Calle y número" style={inputStyle} autoFocus />
+              </div>
+            </div>
+          )}
+          {field === 'category' && (() => {
+            const selected = val.categories || []
+            const customDraft = val.customDraft || ''
+            const toggleCat = (name) => {
+              setVal(v => {
+                const cur = v.categories || []
+                if (cur.includes(name)) {
+                  return { ...v, categories: cur.filter(c => c !== name) }
+                }
+                if (cur.length >= 3) return v
+                return { ...v, categories: [...cur, name] }
+              })
+            }
+            const addCustom = () => {
+              const t = (customDraft || '').trim()
+              if (!t) return
+              setVal(v => {
+                const cur = v.categories || []
+                if (cur.includes(t)) return { ...v, customDraft: '' }
+                if (cur.length >= 3) return { ...v, customDraft: '' }
+                return { ...v, categories: [...cur, t], customDraft: '' }
+              })
+            }
+            return (
+              <div style={{ display:'flex', flexDirection:'column', gap:14 }}>
+                <div>
+                  <label style={labelStyle}>Categorías seleccionadas (máx 3)</label>
+                  {selected.length === 0 ? (
+                    <div style={{ fontSize:12, color:'rgba(255,255,255,0.45)', padding:'10px 12px', background:'rgba(255,255,255,0.04)', border:'1px dashed rgba(255,255,255,0.16)', borderRadius:10 }}>
+                      Todavía no elegiste ninguna.
+                    </div>
+                  ) : (
+                    <div style={{ display:'flex', flexWrap:'wrap', gap:8 }}>
+                      {selected.map(c => (
+                        <span key={c} style={{ display:'inline-flex', alignItems:'center', gap:6, padding:'6px 10px 6px 12px', background:'linear-gradient(135deg, rgba(124,58,237,0.30), rgba(189,75,248,0.30))', border:'1px solid rgba(189,75,248,0.45)', borderRadius:99, fontSize:12, color:'#fff', fontWeight:700 }}>
+                          {c}
+                          <button onClick={() => toggleCat(c)} aria-label={`Sacar ${c}`}
+                            style={{ background:'rgba(0,0,0,0.30)', border:'none', borderRadius:'50%', width:18, height:18, color:'#fff', cursor:'pointer', display:'flex', alignItems:'center', justifyContent:'center', padding:0 }}>
+                            <X size={10} strokeWidth={2.6} />
+                          </button>
+                        </span>
+                      ))}
+                    </div>
+                  )}
+                </div>
+                <div>
+                  <label style={labelStyle}>Otro (rubro personalizado)</label>
+                  <div style={{ display:'flex', gap:8 }}>
+                    <input type="text" value={customDraft}
+                      onChange={e => setVal(v => ({ ...v, customDraft: e.target.value }))}
+                      onKeyDown={e => { if (e.key === 'Enter') { e.preventDefault(); addCustom() } }}
+                      placeholder="Ej: Estudio de tatuajes"
+                      style={{ ...inputStyle, flex:1 }} />
+                    <button onClick={addCustom} disabled={!customDraft.trim() || selected.length >= 3}
+                      style={{ padding:'0 14px', background:'rgba(189,75,248,0.18)', color:'#fff', border:'1px solid rgba(189,75,248,0.45)', borderRadius:10, fontSize:12, fontWeight:800, cursor: !customDraft.trim() || selected.length >= 3 ? 'not-allowed' : 'pointer', opacity: !customDraft.trim() || selected.length >= 3 ? 0.5 : 1, fontFamily:'inherit', whiteSpace:'nowrap' }}>
+                      Añadir
+                    </button>
+                  </div>
+                </div>
+                <div>
+                  <label style={labelStyle}>Elegí desde la lista</label>
+                  <div style={{ display:'flex', flexDirection:'column', gap:14, maxHeight:340, overflowY:'auto', padding:'4px 2px' }}>
+                    {FAMILIES_DATA.map(fam => (
+                      <div key={fam.id}>
+                        <div style={{ fontSize:10, fontWeight:800, letterSpacing:'.14em', textTransform:'uppercase', color:'rgba(255,255,255,0.55)', marginBottom:6 }}>
+                          {fam.name}
+                        </div>
+                        <div style={{ display:'flex', flexWrap:'wrap', gap:6 }}>
+                          {fam.subs.map(s => {
+                            const isSel = selected.includes(s.name)
+                            const disabled = !isSel && selected.length >= 3
+                            return (
+                              <button key={s.name} onClick={() => toggleCat(s.name)} disabled={disabled}
+                                style={{
+                                  padding:'6px 10px', borderRadius:99, fontSize:11.5, fontWeight:700, fontFamily:'inherit',
+                                  cursor: disabled ? 'not-allowed' : 'pointer',
+                                  background: isSel ? 'linear-gradient(135deg, #7C3AED, #BD4BF8)' : 'rgba(255,255,255,0.05)',
+                                  color: isSel ? '#fff' : 'rgba(255,255,255,0.78)',
+                                  border: isSel ? '1px solid rgba(189,75,248,0.55)' : '1px solid rgba(255,255,255,0.10)',
+                                  opacity: disabled ? 0.4 : 1,
+                                }}>
+                                {s.name}
+                              </button>
+                            )
+                          })}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              </div>
+            )
+          })()}
+          {field === 'prize' && (
+            <div style={{ display:'flex', flexDirection:'column', gap:12 }}>
+              {/* Imagen */}
+              <div>
+                <label style={labelStyle}>Foto del premio</label>
+                {val.img_url ? (
+                  <div style={{ position:'relative', display:'inline-block' }}>
+                    <img src={val.img_url} alt="" style={{ width:96, height:96, borderRadius:12, objectFit:'cover', display:'block' }} />
+                    <button onClick={() => setVal(v => ({ ...v, img_url:'' }))}
+                      style={{ position:'absolute', top:-6, right:-6, background:'#000', border:'1px solid rgba(255,255,255,0.20)', borderRadius:'50%', width:24, height:24, cursor:'pointer', color:'#fff', display:'flex', alignItems:'center', justifyContent:'center', padding:0 }}>
+                      <X size={11} strokeWidth={2.5} />
+                    </button>
+                  </div>
+                ) : (
+                  <div>
+                    <input type="file" accept="image/*" id="inline-edit-prize-img" style={{ display:'none' }}
+                      onChange={async e => {
+                        const file = e.target.files?.[0]
+                        e.target.value = ''
+                        if (!file) return
+                        setSaving(true)
+                        try {
+                          const ext = (file.name.split('.').pop()||'jpg').toLowerCase()
+                          const path = `${initial.commerce_id || 'prize'}/${Date.now()}.${ext}`
+                          const { error } = await supabase.storage.from('prize-images').upload(path, file, { upsert:false })
+                          if (error) throw error
+                          const { data } = supabase.storage.from('prize-images').getPublicUrl(path)
+                          setVal(v => ({ ...v, img_url: data.publicUrl }))
+                        } catch (err) { setError(err.message || 'Error al subir foto') }
+                        finally { setSaving(false) }
+                      }} />
+                    <label htmlFor="inline-edit-prize-img"
+                      style={{ display:'inline-flex', alignItems:'center', gap:7, padding:'10px 14px', background:'rgba(255,255,255,0.04)', border:'1px dashed rgba(255,255,255,0.20)', borderRadius:10, fontSize:12, color:'rgba(255,255,255,0.65)', cursor:'pointer', fontFamily:'inherit', fontWeight:600 }}>
+                      <Camera size={14} strokeWidth={2} /> Subir foto
+                    </label>
+                  </div>
+                )}
+              </div>
+              <div>
+                <label style={labelStyle}>Título</label>
+                <input type="text" value={val.name} onChange={e => setVal(v => ({ ...v, name: e.target.value }))} placeholder="Café gratis" style={inputStyle} autoFocus />
+              </div>
+              <div>
+                <label style={labelStyle}>Descripción (opcional)</label>
+                <textarea value={val.description} onChange={e => setVal(v => ({ ...v, description: e.target.value }))} placeholder="Detalle del premio…" rows={3}
+                  style={{ ...inputStyle, resize:'vertical', minHeight:70, lineHeight:1.5 }} />
+              </div>
+              <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:10 }}>
+                <div>
+                  <label style={labelStyle}>Costo</label>
+                  <input type="number" min="1" value={val.cost} onChange={e => setVal(v => ({ ...v, cost: e.target.value }))} placeholder="10" style={inputStyle} />
+                </div>
+                <div>
+                  <label style={labelStyle}>Stock (opcional)</label>
+                  <input type="number" min="0" value={val.stock ?? ''} onChange={e => setVal(v => ({ ...v, stock: e.target.value }))} placeholder="∞" style={inputStyle} />
+                </div>
+              </div>
+              {/* Toggle activo */}
+              <label style={{ display:'flex', alignItems:'center', gap:10, cursor:'pointer', userSelect:'none', padding:'10px 12px', background:'rgba(255,255,255,0.04)', borderRadius:10, border:'1px solid rgba(255,255,255,0.10)' }}>
+                <input type="checkbox" checked={!!val.active} onChange={e => setVal(v => ({ ...v, active: e.target.checked }))}
+                  style={{ width:18, height:18, accentColor:'#BD4BF8' }} />
+                <span style={{ fontSize:13, color:'#fff', fontFamily:'inherit', fontWeight:600 }}>Activo en el catálogo</span>
+              </label>
+              {/* Botón eliminar */}
+              <button onClick={deletePrize} disabled={saving}
+                style={{ marginTop:6, padding:'10px 14px', background:'transparent', color:'#f87171', border:'1px solid rgba(248,113,113,0.40)', borderRadius:10, fontSize:13, fontWeight:700, cursor:'pointer', fontFamily:'inherit' }}>
+                Eliminar premio
+              </button>
+            </div>
+          )}
+
+          {error && (
+            <div style={{ marginTop:14, padding:'10px 12px', background:'rgba(248,113,113,0.12)', border:'1px solid rgba(248,113,113,0.36)', borderRadius:10, fontSize:12, color:'#fca5a5' }}>
+              {error}
+            </div>
+          )}
+        </div>
+
+        {/* Footer */}
+        <div style={{ padding:'14px 20px calc(14px + env(safe-area-inset-bottom, 0px))', borderTop:'1px solid rgba(255,255,255,0.06)', display:'flex', gap:10 }}>
+          <button onClick={onClose} disabled={saving}
+            style={{ flex:1, padding:'12px', background:'rgba(255,255,255,0.06)', color:'#fff', border:'1px solid rgba(255,255,255,0.12)', borderRadius:12, fontSize:13, fontWeight:700, cursor:'pointer', fontFamily:'inherit' }}>
+            Cancelar
+          </button>
+          <button onClick={save} disabled={saving}
+            style={{ flex:2, padding:'12px', background:'linear-gradient(135deg, #7C3AED, #BD4BF8)', color:'#fff', border:'none', borderRadius:12, fontSize:13, fontWeight:800, cursor: saving ? 'wait' : 'pointer', boxShadow:'0 6px 18px rgba(189,75,248,0.45)', fontFamily:'inherit', opacity: saving ? 0.7 : 1 }}>
+            {saving ? 'Guardando…' : 'Guardar'}
+          </button>
+        </div>
+      </div>
+    </div>
+  )
+}
+
+// ClubNotifyBell — versión compacta de ClubNotifyToggle, diseñada para
+// vivir flotando sobre la esquina superior-derecha de la portada del club.
+// Botón circular 40x40 (igual que el back button del cover). Al cargar
+// muestra el ícono apagado; con animación de "wiggle" cada 2s para llamar
+// la atención del usuario que aún no se suscribió. Al activar la suscripción
+// el ícono pasa a fucsia/violeta sólido y la animación se apaga.
+function ClubNotifyBell({ commerceId }) {
+  const [loaded,     setLoaded]     = useState(false)
+  const [subscribed, setSubscribed] = useState(false)
+  const [busy,       setBusy]       = useState(false)
+  useEffect(() => {
+    if (!commerceId) return
+    fetch(`/api/club-subscription?commerce_id=${commerceId}`, { cache:'no-store' })
+      .then(r => r.json())
+      .then(d => { if (d?.ok) setSubscribed(!!d.subscribed) })
+      .catch(() => {})
+      .finally(() => setLoaded(true))
+  }, [commerceId])
+  async function toggle(e) {
+    e?.stopPropagation?.()
+    if (busy || !commerceId) return
+    setBusy(true)
+    const next = !subscribed
+    setSubscribed(next)
+    try {
+      await fetch('/api/club-subscription', {
+        method: next ? 'POST' : 'DELETE',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ commerce_id: commerceId }),
+      })
+    } catch {
+      setSubscribed(!next)
+    } finally {
+      setBusy(false)
+    }
+  }
+  // Animación de campanita: shake/wiggle cada 2 segundos cuando el cliente
+  // todavía NO está suscripto. Una vez activado, se apaga (no necesita
+  // pedir más atención).
+  return (
+    <button
+      onClick={toggle}
+      aria-label={subscribed ? 'Desactivar notificaciones del club' : 'Activar notificaciones del club'}
+      title={subscribed ? 'Recibís novedades de este club' : 'Avisame de premios y promos'}
+      style={{
+        position:'absolute', top:16, right:16, zIndex:20,
+        width:40, height:40, borderRadius:'50%',
+        background: subscribed
+          ? 'linear-gradient(135deg, #BD4BF8, #EC4899)'
+          : 'rgba(0,0,0,0.50)',
+        backdropFilter: subscribed ? 'none' : 'blur(12px)',
+        WebkitBackdropFilter: subscribed ? 'none' : 'blur(12px)',
+        border: subscribed ? 'none' : '1px solid rgba(255,255,255,0.18)',
+        display:'flex', alignItems:'center', justifyContent:'center',
+        cursor: busy ? 'wait' : 'pointer',
+        color:'#fff', padding:0,
+        boxShadow: subscribed
+          ? '0 4px 16px rgba(189,75,248,0.55)'
+          : '0 4px 12px rgba(0,0,0,0.35)',
+        transition: 'background 220ms ease, box-shadow 220ms ease',
+        opacity: loaded ? 1 : 0.7,
+      }}>
+      <style>{`
+        @keyframes bell-wiggle {
+          0%, 88%, 100% { transform: rotate(0deg); }
+          90% { transform: rotate(-12deg); }
+          92% { transform: rotate(10deg); }
+          94% { transform: rotate(-8deg); }
+          96% { transform: rotate(6deg); }
+          98% { transform: rotate(-3deg); }
+        }
+      `}</style>
+      <Bell
+        size={18}
+        strokeWidth={2.4}
+        style={{
+          animation: subscribed ? 'none' : 'bell-wiggle 2s ease-in-out infinite',
+          transformOrigin: '50% 0%',
+        }}
+      />
+    </button>
+  )
+}
+
+// ClubNotifyToggle — campanita para que el cliente reciba notificaciones
+// cuando este comercio carga premio nuevo o promo nueva. La preferencia
+// se guarda en la tabla `club_subscriptions` vía /api/club-subscription.
+// Inicialmente lee el estado al montar; mientras tanto muestra el ícono
+// con opacidad reducida. Toggle anima al toque (off → on enciende un
+// glow). El cliente puede no ser miembro y aún así suscribirse — la idea
+// es enterarse de novedades aunque no haya entrado todavía al club.
+function ClubNotifyToggle({ commerceId, commerceName }) {
+  const [loaded,     setLoaded]     = useState(false)
+  const [subscribed, setSubscribed] = useState(false)
+  const [busy,       setBusy]       = useState(false)
+  useEffect(() => {
+    if (!commerceId) return
+    fetch(`/api/club-subscription?commerce_id=${commerceId}`, { cache:'no-store' })
+      .then(r => r.json())
+      .then(d => { if (d?.ok) { setSubscribed(!!d.subscribed) } })
+      .catch(() => {})
+      .finally(() => setLoaded(true))
+  }, [commerceId])
+  async function toggle() {
+    if (busy || !commerceId) return
+    setBusy(true)
+    const next = !subscribed
+    setSubscribed(next)  // optimistic
+    try {
+      if (next) {
+        await fetch('/api/club-subscription', {
+          method:'POST',
+          headers:{ 'Content-Type':'application/json' },
+          body: JSON.stringify({ commerce_id: commerceId }),
+        })
+      } else {
+        await fetch('/api/club-subscription', {
+          method:'DELETE',
+          headers:{ 'Content-Type':'application/json' },
+          body: JSON.stringify({ commerce_id: commerceId }),
+        })
+      }
+    } catch {
+      setSubscribed(!next)  // rollback en error
+    } finally {
+      setBusy(false)
+    }
+  }
+  return (
+    <button onClick={toggle}
+      aria-label={subscribed ? 'Desactivar notificaciones' : 'Activar notificaciones'}
+      style={{
+        display:'flex', alignItems:'center', gap:10,
+        width:'100%', padding:'12px 14px',
+        background: subscribed
+          ? 'linear-gradient(135deg, rgba(189,75,248,0.20), rgba(236,72,153,0.18))'
+          : 'rgba(255,255,255,0.04)',
+        border: subscribed
+          ? '1px solid rgba(189,75,248,0.45)'
+          : '1px solid rgba(255,255,255,0.10)',
+        borderRadius: 14,
+        cursor: busy ? 'wait' : 'pointer',
+        opacity: loaded ? 1 : 0.55,
+        transition: 'background 200ms ease, border-color 200ms ease',
+        textAlign: 'left',
+        fontFamily: 'inherit',
+      }}>
+      <div style={{
+        width: 36, height: 36, borderRadius: 10, flexShrink: 0,
+        background: subscribed
+          ? 'linear-gradient(135deg, #BD4BF8, #EC4899)'
+          : 'rgba(255,255,255,0.06)',
+        border: subscribed ? 'none' : '1px solid rgba(255,255,255,0.10)',
+        display: 'flex', alignItems: 'center', justifyContent: 'center',
+        boxShadow: subscribed ? '0 4px 14px rgba(189,75,248,0.40)' : 'none',
+      }}>
+        {subscribed
+          ? <Bell size={16} color="#fff" strokeWidth={2.4} />
+          : <BellOff size={16} color="rgba(255,255,255,0.55)" strokeWidth={2.2} />}
+      </div>
+      <div style={{ flex: 1, minWidth: 0 }}>
+        <div style={{ fontSize: 13, fontWeight: 700, color: '#fff', fontFamily: FN }}>
+          {subscribed ? 'Recibís novedades de este club' : 'Avisame de premios y promos nuevas'}
+        </div>
+        <div style={{ fontSize: 11, color: 'rgba(255,255,255,0.55)', marginTop: 2 }}>
+          {subscribed
+            ? `Te avisamos cuando ${commerceName || 'el comercio'} cargue algo nuevo`
+            : 'Tap para activar la campanita'}
+        </div>
+      </div>
+      {/* Switch visual */}
+      <div style={{
+        flexShrink: 0,
+        width: 38, height: 22, borderRadius: 99,
+        background: subscribed ? 'rgba(189,75,248,0.55)' : 'rgba(255,255,255,0.10)',
+        border: '1px solid rgba(255,255,255,0.14)',
+        position: 'relative',
+        transition: 'background 220ms ease',
+      }}>
+        <div style={{
+          position: 'absolute',
+          top: 2, left: subscribed ? 18 : 2,
+          width: 16, height: 16, borderRadius: '50%',
+          background: '#fff',
+          boxShadow: '0 2px 6px rgba(0,0,0,0.30)',
+          transition: 'left 220ms cubic-bezier(0.16,1,0.3,1)',
+        }} />
+      </div>
+    </button>
+  )
+}
+
 function MemberBadge({ createdAt }) {
   const since = createdAt
     ? new Date(createdAt).toLocaleDateString('es-AR', { month:'long', year:'numeric' })
     : null
+  // Versión minimal: solo una línea de texto violeta + ícono outline.
+  // Sin contenedor de fondo, sin border, sin padding pesado.
+  // Efecto de brillo: la base es violeta, y un highlight más claro
+  // recorre el texto de izquierda a derecha en loop sutil. El gradient
+  // se clipea al texto vía background-clip para que el shine "viva
+  // adentro" del trazo de las letras.
   return (
     <div style={{
-      width:'100%',
-      background:'linear-gradient(135deg, rgba(168,85,247,0.15), rgba(236,72,153,0.15))',
-      backdropFilter:'blur(20px)', WebkitBackdropFilter:'blur(20px)',
-      border:'1px solid rgba(168,85,247,0.30)',
-      borderRadius:16, padding:16,
+      display:'flex', alignItems:'center', gap:7,
+      fontFamily:FN, fontSize:13, fontWeight:600,
+      letterSpacing:'.005em',
+      padding:'2px 2px',
+      color:'#BD4BF8',
     }}>
-      <div style={{ display:'flex', alignItems:'center', gap:12 }}>
-        <div style={{
-          width:40, height:40, borderRadius:'50%', flexShrink:0,
-          background:'linear-gradient(135deg, #a855f7, #ec4899)',
-          display:'flex', alignItems:'center', justifyContent:'center',
-        }}>
-          <Check size={20} color="#fff" strokeWidth={2.5} />
-        </div>
-        <div>
-          <p style={{ color:'#fff', fontSize:14, fontWeight:600, fontFamily:FN, margin:0 }}>Sos parte de este club</p>
-          {since && <p style={{ color:'rgba(255,255,255,0.5)', fontSize:12, margin:'2px 0 0', fontFamily:FI }}>Miembro desde {since}</p>}
-        </div>
-      </div>
+      <style>{`
+        @keyframes member-badge-shimmer {
+          0%   { background-position: 150% 0; }
+          100% { background-position: -50% 0; }
+        }
+      `}</style>
+      <Check size={14} color="#BD4BF8" strokeWidth={2.2}
+        style={{ flexShrink: 0 }}
+      />
+      <span style={{
+        background: 'linear-gradient(100deg, #BD4BF8 0%, #BD4BF8 40%, #F0C2FF 50%, #BD4BF8 60%, #BD4BF8 100%)',
+        backgroundSize: '300% 100%',
+        WebkitBackgroundClip: 'text',
+        backgroundClip: 'text',
+        WebkitTextFillColor: 'transparent',
+        animation: 'member-badge-shimmer 3.5s linear infinite',
+      }}>
+        Ya sos parte de este club.
+        {since && (
+          <span style={{ fontWeight: 400, opacity: 0.85 }}> (desde {since})</span>
+        )}
+      </span>
     </div>
   )
 }
@@ -577,70 +1210,508 @@ function ClubHistory({ user, commerceId, unitLabel, unitColor, UnitIcon, unitIco
 
 // Nav de pestañas — pegado arriba abajo del navbar global, con gradient
 // naranja-violeta. Mismo formato que el nav cliente (Mis Clubs / Historial / Mi QR).
-function ClubTopNav({ tab, setTab, prizesCount }) {
+// LimitedTimeBenefitsSlider — slider auto-rotatorio que muestra las promos
+// activas del comercio en la pestaña Catálogo. Estilo marketinero, gradient
+// fuerte, ícono grande, contador de días con barra de progreso. Se cicla
+// automáticamente cada AUTOSCROLL_MS milisegundos. También permite scroll
+// horizontal manual (swipe en mobile, drag/scroll en desktop). Cuando el
+// user interactúa, pausamos la auto-rotación temporalmente.
+function LimitedTimeBenefitsSlider({ promos, unitLabel, editMode = false }) {
+  const AUTOSCROLL_MS  = 3500
+  const SWIPE_THRESHOLD = 40       // px mínimo para considerar swipe
+  const [idx, setIdx]   = useState(0)
+  const list  = promos || []
+  const count = list.length
+
+  // Touch refs para swipe manual
+  const touchStartXRef = useRef(0)
+  const touchEndXRef   = useRef(0)
+
+  // Auto-advance CONTINUO. No se pausa nunca.
+  useEffect(() => {
+    if (count < 2) return
+    const id = setInterval(() => {
+      setIdx(i => (i + 1) % count)
+    }, AUTOSCROLL_MS)
+    return () => clearInterval(id)
+  }, [count])
+
+  const onTouchStart = (e) => { touchStartXRef.current = e.touches[0].clientX; touchEndXRef.current = e.touches[0].clientX }
+  const onTouchMove  = (e) => { touchEndXRef.current   = e.touches[0].clientX }
+  const onTouchEnd   = () => {
+    const dx = touchEndXRef.current - touchStartXRef.current
+    if (Math.abs(dx) < SWIPE_THRESHOLD) return
+    if (dx < 0) setIdx(i => (i + 1) % count)              // swipe izquierda → siguiente
+    else        setIdx(i => (i - 1 + count) % count)      // swipe derecha  → anterior
+  }
+
+  if (count === 0) return null
+
+  // ── Cálculo de urgencia ──
+  // Paleta restringida a BLANCO + VIOLETA. La urgencia se comunica con:
+  // (a) tamaño/llenado de la barra (mientras más urgente, más llena)
+  // (b) intensidad del pulse (HOY/MAÑANA/≤3 días pulsan)
+  // (c) microcopy ("¡última chance!", "¡aprovechá ya!", etc)
+  // El color del texto/ícono SIEMPRE es blanco; el accent SIEMPRE es violeta.
+  const calcUrgency = (promo) => {
+    if (promo.expiration_type === 'relative' && promo.expiration_days) {
+      return {
+        mode: 'relative',
+        daysLeft: promo.expiration_days,
+        urgencyPct: 35,
+        bigText:  `${promo.expiration_days}`,
+        bigUnit:  promo.expiration_days === 1 ? 'día' : 'días',
+        subtext:  'desde que la activás',
+        pulse:    false,
+      }
+    }
+    const target = promo.expiration_date || promo.expires_at
+    if (!target) return null
+    const now      = Date.now()
+    const expMs    = new Date(target).getTime()
+    const diffMs   = expMs - now
+    const daysLeft = Math.max(0, Math.ceil(diffMs / (24*60*60*1000)))
+    let urgencyPct, bigText, bigUnit, subtext, pulse
+    if (diffMs <= 0) {
+      urgencyPct = 100; bigText = 'YA'; bigUnit = 'no aplica'; subtext = 'venció';            pulse = false
+    } else if (daysLeft === 0) {
+      urgencyPct = 98;  bigText = 'HOY';     bigUnit = '';     subtext = '¡última chance!';  pulse = true
+    } else if (daysLeft === 1) {
+      urgencyPct = 92;  bigText = 'MAÑANA';  bigUnit = '';     subtext = '¡última chance!';  pulse = true
+    } else if (daysLeft <= 3) {
+      urgencyPct = 78;  bigText = String(daysLeft); bigUnit = 'días'; subtext = '¡aprovechá ya!';   pulse = true
+    } else if (daysLeft <= 7) {
+      urgencyPct = 58;  bigText = String(daysLeft); bigUnit = 'días'; subtext = 'termina pronto';   pulse = false
+    } else if (daysLeft <= 14) {
+      urgencyPct = 38;  bigText = String(daysLeft); bigUnit = 'días'; subtext = 'tiempo limitado';  pulse = false
+    } else {
+      urgencyPct = 18;  bigText = String(daysLeft); bigUnit = 'días'; subtext = 'por tiempo limitado'; pulse = false
+    }
+    const expDate = new Date(target)
+    const dd = String(expDate.getDate()).padStart(2,'0')
+    const mm = String(expDate.getMonth()+1).padStart(2,'0')
+    return { mode: 'fixed', daysLeft, urgencyPct, bigText, bigUnit, subtext, expiryLabel: `Hasta el ${dd}/${mm}`, pulse }
+  }
+
+  return (
+    // Sin marginBottom propio — el padre (tab unificado) ya provee el
+    // gap:16 entre containers, así que cualquier margen extra rompe la
+    // grilla de spacing.
+    <div>
+      {/* Keyframes globales del slider — el shimmer de la barra del
+          termómetro de urgencia se reusa entre todas las cards. */}
+      <style>{`
+        @keyframes urgency-shimmer {
+          0%   { background-position: -120% 0; }
+          100% { background-position: 220% 0; }
+        }
+      `}</style>
+      {/* Header del bloque */}
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12 }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+          <Flame size={16} color="#fff" strokeWidth={2.4} />
+          <h3 style={{ fontFamily: FN, fontSize: 13, fontWeight: 800, color: '#fff', letterSpacing: '.10em', textTransform: 'uppercase', margin: 0 }}>
+            Beneficios por tiempo limitado
+          </h3>
+        </div>
+        {count > 1 && (
+          <div style={{ fontSize: 11, color: 'rgba(255,255,255,0.50)', fontWeight: 600 }}>
+            {idx + 1}/{count}
+          </div>
+        )}
+      </div>
+
+      {/* Track con transform: translateX. El padre tiene overflow:hidden
+          y el hijo se desplaza por CSS transition. Esto evita peleas con
+          el scroll-snap nativo del browser. Touch handlers en el padre
+          permiten swipe manual entre cards. */}
+      <div
+        onTouchStart={onTouchStart}
+        onTouchMove={onTouchMove}
+        onTouchEnd={onTouchEnd}
+        style={{
+          position: 'relative',
+          overflow: 'hidden',
+          borderRadius: 20,
+        }}
+      >
+        <div style={{
+          display: 'flex',
+          flexWrap: 'nowrap',
+          width: `${count * 100}%`,
+          transform: `translateX(-${idx * (100 / count)}%)`,
+          transition: 'transform 600ms cubic-bezier(0.22,1,0.36,1)',
+        }}>
+        {list.map((promo, i) => {
+            const isDouble   = promo.type === 'double_points'
+            const isDiscount = promo.type === 'discount_next'
+            // Número grande estilo display: para % OFF mostramos el value
+            // (ej "10%"), para double_points mostramos "×2". El nombre
+            // descriptivo de la promo va como subtítulo abajo.
+            const bigDisplay = isDouble
+              ? '×2'
+              : (promo.value != null ? `${promo.value}%` : '%')
+            const subBig     = isDouble ? `Doble ${unitLabel}` : 'OFF'
+            const subtitle   = promo.description || (isDouble
+              ? 'Acumulás el doble en cada compra'
+              : 'En tu próxima visita')
+            const urgency    = calcUrgency(promo)
+
+            return (
+              <div key={promo.id} style={{
+                width: `${100 / count}%`,
+                flexShrink: 0,
+                padding: '0 2px',
+                boxSizing: 'border-box',
+              }}>
+                <div style={{
+                  // Base muy oscura — el inner glow violeta hace todo el
+                  // trabajo visual. Sin animaciones de gradiente: el glow
+                  // estático le da personalidad y profundidad sin distraer.
+                  background: 'linear-gradient(180deg, #0a0510 0%, #14081f 100%)',
+                  borderRadius: 22,
+                  padding: '26px 22px 22px',
+                  position: 'relative',
+                  // overflow hidden siempre — el lápiz ahora vive adentro
+                  // de la card, no necesita sobresalir.
+                  overflow: 'hidden',
+                  minHeight: 240,
+                  border: '1px solid rgba(189,75,248,0.22)',
+                  // El inner glow: múltiples sombras inset para crear el
+                  // efecto "luz violeta saliendo desde los bordes hacia
+                  // adentro". Combinado con una sombra externa sutil que
+                  // ancla la card al fondo.
+                  boxShadow: `
+                    inset 0 0 90px 12px rgba(189,75,248,0.55),
+                    inset 0 0 30px 4px rgba(189,75,248,0.45),
+                    inset 0 0 0 1px rgba(255,255,255,0.06),
+                    0 18px 40px rgba(0,0,0,0.50),
+                    0 4px 14px rgba(189,75,248,0.18)
+                  `,
+                  animation: urgency?.pulse ? `card-glow-pulse-${i} 1.8s ease-in-out infinite` : 'none',
+                }}>
+                  <style>{`
+                    @keyframes card-glow-pulse-${i} {
+                      0%, 100% {
+                        box-shadow:
+                          inset 0 0 90px 12px rgba(189,75,248,0.55),
+                          inset 0 0 30px 4px rgba(189,75,248,0.45),
+                          inset 0 0 0 1px rgba(255,255,255,0.06),
+                          0 18px 40px rgba(0,0,0,0.50),
+                          0 4px 14px rgba(189,75,248,0.18);
+                      }
+                      50% {
+                        box-shadow:
+                          inset 0 0 110px 18px rgba(189,75,248,0.75),
+                          inset 0 0 40px 8px  rgba(189,75,248,0.65),
+                          inset 0 0 0 1px rgba(255,255,255,0.10),
+                          0 18px 44px rgba(0,0,0,0.55),
+                          0 4px 22px rgba(189,75,248,0.40);
+                      }
+                    }
+                  `}</style>
+
+                  {/* Lápiz de edición — solo en modo previsualización del
+                      dueño (editMode=true). Posicionado ADENTRO de la
+                      card (top:12, right:12) para que no se corte con
+                      overflow:hidden y se vea bien sobre el inner glow.
+                      Tap → redirige a la pestaña "Promociones" del panel
+                      de configuración del comercio (donde el dueño
+                      gestiona discount_next y double_points). */}
+                  {editMode && (
+                    <button
+                      onClick={(e) => {
+                        e.stopPropagation()
+                        try {
+                          sessionStorage.setItem('benefix:edit-section', 'promociones')
+                          sessionStorage.setItem('benefix:loginNext', 'commerce-settings')
+                          sessionStorage.setItem('benefix:nextTab', 'recompensas')
+                        } catch {}
+                        if (typeof window !== 'undefined') window.location.href = '/?view=commerce-settings&tab=recompensas&section=promociones'
+                      }}
+                      title="Editar promoción"
+                      aria-label="Editar promoción"
+                      style={{
+                        position: 'absolute',
+                        top: 12, right: 12,
+                        zIndex: 5,
+                        display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
+                        width: 30, height: 30, borderRadius: '50%',
+                        background: 'linear-gradient(135deg, #7C3AED, #BD4BF8)',
+                        border: '1px solid rgba(255,255,255,0.30)',
+                        color: '#fff', cursor: 'pointer', padding: 0,
+                        boxShadow: '0 4px 12px rgba(189,75,248,0.50)',
+                      }}
+                    >
+                      <Pen size={13} strokeWidth={2.4} />
+                    </button>
+                  )}
+
+                  {/* ═══ CONTENIDO CENTRADO ═══ */}
+                  {/* Tag superior — los días vigentes son INFO CRÍTICA
+                      sobre todo para las cards x2 (donde el cliente
+                      necesita saber qué día acumular el doble). Por eso:
+                      • Para x2: si tiene días → "LUNES Y JUEVES" etc.
+                                 sin días → "TODOS LOS DÍAS" (no "Activo ahora").
+                      • Para %OFF: mismo patrón pero sin días → "Activo ahora". */}
+                  {(() => {
+                    const days = promo.days || []
+                    const hasDays = days.length > 0
+                    let tagLabel
+                    if (hasDays) {
+                      const upper = days.map(d => String(d).toUpperCase())
+                      if (upper.length === 1)      tagLabel = upper[0]
+                      else if (upper.length === 2) tagLabel = `${upper[0]} Y ${upper[1]}`
+                      else                          tagLabel = `${upper.slice(0, -1).join(', ')} Y ${upper[upper.length - 1]}`
+                    } else {
+                      tagLabel = isDouble ? 'TODOS LOS DÍAS' : 'Activo ahora'
+                    }
+                    // Para x2 hacemos el tag más prominente (los días son
+                    // parte del valor del beneficio). Para %OFF queda más
+                    // discreto. Ambos viven en la misma posición.
+                    const prominentDays = isDouble && hasDays
+                    return (
+                      <div style={{ position: 'relative', textAlign: 'center', marginBottom: 18 }}>
+                        <div style={{
+                          display: 'inline-flex', alignItems: 'center', gap: 6,
+                          padding: prominentDays ? '7px 16px' : '5px 12px',
+                          background: prominentDays
+                            ? 'linear-gradient(135deg, rgba(189,75,248,0.30), rgba(124,58,237,0.30))'
+                            : 'rgba(255,255,255,0.06)',
+                          backdropFilter: 'blur(8px)', WebkitBackdropFilter: 'blur(8px)',
+                          border: prominentDays ? '1px solid rgba(216,180,254,0.55)' : '1px solid rgba(255,255,255,0.20)',
+                          borderRadius: 99,
+                          fontSize: prominentDays ? 11 : 10,
+                          fontWeight: 800,
+                          letterSpacing: '.14em', textTransform: 'uppercase',
+                          color: '#fff',
+                          boxShadow: prominentDays ? '0 4px 14px rgba(189,75,248,0.35)' : 'none',
+                        }}>
+                          <Calendar size={prominentDays ? 12 : 11} strokeWidth={2.6} color="#fff" /> {tagLabel}
+                        </div>
+                      </div>
+                    )
+                  })()}
+
+                  {/* Display gigante — número del descuento en grande,
+                      tipografía display heavy para impacto visual.
+                      Estilo del reference (85%, 23%): bold pesado, blanco
+                      sobre el fondo glow violeta. */}
+                  <div style={{ position: 'relative', textAlign: 'center', marginBottom: 4 }}>
+                    <div style={{
+                      fontFamily: FN,
+                      fontSize: bigDisplay.length <= 3 ? 78 : bigDisplay.length <= 4 ? 64 : 52,
+                      fontWeight: 900,
+                      color: '#fff',
+                      lineHeight: 0.95,
+                      letterSpacing: '-0.04em',
+                      textShadow: '0 4px 24px rgba(189,75,248,0.50), 0 0 1px rgba(255,255,255,0.6)',
+                      // Stretch tipográfico para sentir un display heavy
+                      transform: 'scaleY(1.08)',
+                      transformOrigin: 'center',
+                    }}>
+                      {bigDisplay}
+                    </div>
+                    <div style={{
+                      fontFamily: FN, fontSize: 13, fontWeight: 800, color: '#fff',
+                      letterSpacing: '.18em', textTransform: 'uppercase',
+                      marginTop: 4, opacity: 0.85,
+                    }}>
+                      {subBig}
+                    </div>
+                  </div>
+
+                  {/* Subtítulo descriptivo. Los días ya viven arriba en el tag,
+                      así que acá no se duplican. */}
+                  <div style={{ position: 'relative', textAlign: 'center', marginTop: 10, marginBottom: 16 }}>
+                    <div style={{
+                      fontSize: 12, fontWeight: 500,
+                      color: 'rgba(255,255,255,0.72)',
+                      lineHeight: 1.4,
+                    }}>
+                      {subtitle}
+                    </div>
+                  </div>
+
+                  {/* ── Termómetro de urgencia (paleta restringida) ──
+                      Solo blanco + violeta. La urgencia se transmite por:
+                      el llenado de la barra, el pulse, y el microcopy.
+                      Sin colores tier. */}
+                  {urgency && (
+                    <div style={{ position: 'relative', background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.10)', borderRadius: 12, padding: '10px 14px' }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+                        {/* Contador grande — siempre blanco */}
+                        <div style={{
+                          flexShrink: 0,
+                          display: 'flex', flexDirection: 'column', alignItems: 'center',
+                          minWidth: 56,
+                        }}>
+                          <div style={{
+                            fontFamily: FN,
+                            fontSize: urgency.bigText.length <= 2 ? 26 : urgency.bigText.length <= 3 ? 22 : 16,
+                            fontWeight: 900,
+                            color: '#fff',
+                            lineHeight: 0.95,
+                            letterSpacing: '-.02em',
+                          }}>
+                            {urgency.bigText}
+                          </div>
+                          {urgency.bigUnit && (
+                            <div style={{ fontSize: 9, fontWeight: 700, color: '#fff', marginTop: 2, textTransform: 'uppercase', letterSpacing: '.10em', opacity: 0.70 }}>
+                              {urgency.bigUnit}
+                            </div>
+                          )}
+                        </div>
+
+                        {/* Barra + microcopy */}
+                        <div style={{ flex: 1, minWidth: 0 }}>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: 5, marginBottom: 5 }}>
+                            <Clock size={10} strokeWidth={2.4} color="#fff" />
+                            <span style={{ fontSize: 10, fontWeight: 700, color: '#fff', textTransform: 'uppercase', letterSpacing: '.06em', opacity: 0.85 }}>
+                              {urgency.subtext}
+                            </span>
+                          </div>
+                          {/* Track violeta + fill blanco. Mientras más urgente, más llena. */}
+                          <div style={{ height: 6, borderRadius: 99, background: 'rgba(189,75,248,0.20)', overflow: 'hidden', position: 'relative' }}>
+                            <div style={{
+                              height: '100%',
+                              width: `${urgency.urgencyPct}%`,
+                              background: '#ffffff',
+                              borderRadius: 99,
+                              transition: 'width 700ms cubic-bezier(0.22,1,0.36,1)',
+                              boxShadow: '0 0 8px rgba(255,255,255,0.55)',
+                            }} />
+                            {/* Shimmer en cards urgentes */}
+                            {urgency.pulse && (
+                              <div style={{
+                                position: 'absolute', inset: 0, borderRadius: 99,
+                                background: 'linear-gradient(90deg, transparent 0%, rgba(255,255,255,0.6) 50%, transparent 100%)',
+                                backgroundSize: '40% 100%',
+                                backgroundRepeat: 'no-repeat',
+                                animation: 'urgency-shimmer 1.6s linear infinite',
+                                pointerEvents: 'none',
+                              }} />
+                            )}
+                          </div>
+                          {urgency.expiryLabel && (
+                            <div style={{ fontSize: 10, color: 'rgba(255,255,255,0.75)', marginTop: 5, fontWeight: 600 }}>
+                              {urgency.expiryLabel}
+                            </div>
+                          )}
+                          {urgency.mode === 'relative' && (
+                            <div style={{ fontSize: 10, color: 'rgba(255,255,255,0.78)', marginTop: 5, fontWeight: 500, fontStyle: 'italic' }}>
+                              {urgency.subtext}
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              </div>
+            )
+          })}
+        </div>
+      </div>
+
+      {/* Dots de paginación — solo si hay 2+ promos */}
+      {count > 1 && (
+        <div style={{ display: 'flex', justifyContent: 'center', gap: 6, marginTop: 12 }}>
+          {list.map((_, i) => (
+            <button key={i} onClick={() => setIdx(i)} aria-label={`Beneficio ${i+1}`}
+              style={{
+                width: idx === i ? 22 : 6, height: 6, borderRadius: 99,
+                background: idx === i ? 'linear-gradient(135deg, #FE5000, #BD4BF8)' : 'rgba(255,255,255,0.18)',
+                border: 'none', cursor: 'pointer', padding: 0,
+                transition: 'width 320ms cubic-bezier(0.22,1,0.36,1), background 320ms ease',
+              }} />
+          ))}
+        </div>
+      )}
+    </div>
+  )
+}
+
+function ClubTopNav({ tab, setTab, prizesCount, editMode = false }) {
+  // Nav interno del club. Diseñado como pill flotante al fondo de la
+  // pantalla (estilo iOS dock / safari mobile). Mientras el cliente esté
+  // dentro del club queda siempre visible, sin importar la sección.
+  //
+  // En modo `editMode` (dueño previsualizando), escondemos la pestaña
+  // Historial — ahí van las visitas/canjes del CLIENTE, no aplica para
+  // el dueño viendo su propia vista pública.
+  // Inicio + Catálogo se unificaron: ahora es UN solo tab "Inicio" que
+  // contiene tanto la info del negocio (en accordions colapsables) como
+  // el slider de beneficios + el catálogo de premios. Antes eran dos
+  // pestañas separadas que duplicaban contexto.
   const TABS = [
-    { id:'inicio',    label:'Inicio'   },
-    { id:'premios',   label:'Premios', badge: prizesCount },
-    { id:'historial', label:'Historial' },
+    { id:'inicio',    label:'Inicio',    Icon: Store, badge: prizesCount },
+    ...(editMode ? [] : [{ id:'historial', label:'Historial', Icon: Clock }]),
   ]
   return (
     <nav style={{
-      // Estilo discreto: fondo casi transparente con borde inferior sutil,
-      // así el navbar superior (con gradient de marca) sigue siendo el
-      // protagonista visual. La pestaña activa se marca con un underline
-      // gradient violeta y peso de fuente más fuerte.
-      background: 'rgba(255,255,255,0.025)',
-      borderBottom: '1px solid rgba(255,255,255,0.08)',
+      position: 'fixed',
+      bottom: 'calc(20px + env(safe-area-inset-bottom, 0px))',
+      left: '50%',
+      transform: 'translateX(-50%)',
+      zIndex: 150,
+      // Look limpio: fondo blanco sólido + silueta fucsia visible. Sin glow:
+      // ningún boxShadow para que la pill quede plana, solo el contorno fucsia
+      // la define contra el fondo.
+      background: '#ffffff',
+      backdropFilter: 'none',
+      WebkitBackdropFilter: 'none',
+      borderRadius: 9999,
+      border: '1.5px solid #EC4899',
+      padding: 6,
+      display: 'flex',
+      gap: 6,
+      boxShadow: 'none',
     }}>
-      <div style={{
-        maxWidth: 520, margin: '0 auto',
-        display: 'flex', alignItems: 'stretch', justifyContent: 'center',
-        padding: '8px 16px 0',
-      }}>
-        {TABS.map(({ id, label, badge }, i) => {
-          const active = tab === id
-          return (
-            <button key={id}
-              onClick={() => setTab(id)}
-              onMouseDown={e => e.currentTarget.style.transform = 'scale(0.97)'}
-              onMouseUp={e => e.currentTarget.style.transform = 'scale(1)'}
-              onMouseLeave={e => e.currentTarget.style.transform = 'scale(1)'}
-              style={{
-                flex: 1,
-                background: 'transparent',
-                border: 'none',
-                color: active ? '#fff' : 'rgba(255,255,255,0.55)',
-                fontFamily: FN,
-                fontSize: 13,
-                fontWeight: active ? 700 : 500,
-                letterSpacing: '.02em',
-                padding: '10px 8px 12px',
-                cursor: 'pointer',
-                transition: 'color 180ms ease, font-weight 180ms ease, transform 160ms cubic-bezier(0.23,1,0.32,1)',
-                position: 'relative',
-              }}>
-              {label}
-              {badge > 0 && (
-                <span style={{
-                  position:'absolute', top:2, right: 2,
-                  background:'rgba(189,75,248,0.85)', color:'#fff',
-                  fontSize:9, fontWeight:800, fontFamily:FN,
-                  borderRadius:9999, padding:'1px 5px',
-                  minWidth:16, textAlign:'center', lineHeight:1.5,
-                }}>{badge}</span>
-              )}
-              {/* Underline gradient sutil solo para la pestaña activa */}
-              {active && (
-                <span style={{
-                  position:'absolute', bottom:-1, left:'25%', right:'25%',
-                  height: 2, borderRadius: 2,
-                  background:'linear-gradient(135deg, #FE5000, #BD4BF8)',
-                }} />
-              )}
-            </button>
-          )
-        })}
-      </div>
+      {TABS.map(({ id, label, Icon, badge }) => {
+        const active = tab === id
+        return (
+          <button key={id}
+            onClick={() => setTab(id)}
+            onMouseDown={e => e.currentTarget.style.transform = 'scale(0.95)'}
+            onMouseUp={e => e.currentTarget.style.transform = 'scale(1)'}
+            onMouseLeave={e => e.currentTarget.style.transform = 'scale(1)'}
+            style={{
+              // Activo: fondo fucsia, texto e ícono blanco.
+              // Inactivo: fondo blanco, ícono negro — sin glow, sin sombras.
+              background: active ? '#EC4899' : '#ffffff',
+              border: 'none',
+              borderRadius: 9999,
+              padding: active ? '12px 18px' : '12px 14px',
+              cursor: 'pointer',
+              display: 'flex',
+              alignItems: 'center',
+              gap: 9,
+              color: active ? '#ffffff' : '#000000',
+              fontFamily: FN,
+              fontSize: 14,
+              fontWeight: active ? 800 : 600,
+              letterSpacing: '.01em',
+              transition: 'background 220ms ease, padding 220ms ease, color 220ms ease, transform 160ms cubic-bezier(0.23,1,0.32,1)',
+              position: 'relative',
+              boxShadow: 'none',
+              whiteSpace: 'nowrap',
+            }}>
+            <Icon size={22} strokeWidth={2.4} />
+            {active && <span>{label}</span>}
+            {badge > 0 && !active && (
+              <span style={{
+                position:'absolute', top:-3, right:-3,
+                background:'#EC4899', color:'#fff',
+                fontSize:10, fontWeight:800, fontFamily:FN,
+                borderRadius:9999, padding:'2px 6px',
+                minWidth:16, textAlign:'center', lineHeight:1.4,
+                border:'1.5px solid #ffffff',
+              }}>{badge}</span>
+            )}
+          </button>
+        )
+      })}
     </nav>
   )
 }
@@ -691,9 +1762,19 @@ export default function ClubProfilePage() {
   const [joinError, setJoinError]     = useState('')
 
   const [showHours, setShowHours]     = useState(false)
+  // showAboutBusiness state removido — la info "Sobre el negocio" ahora
+  // vive adentro del expandable de la card principal del negocio,
+  // controlado por `cardOpen` (chevron al pie de la card).
+  // Accordion "Mi historial en este club" — antes era una pestaña aparte.
+  // Ahora vive como sección colapsable al fondo del tab unificado, solo
+  // visible si el cliente es miembro (los no-miembros no tienen historial).
+  const [showHistory, setShowHistory] = useState(false)
   const [qrDataUrl, setQrDataUrl]     = useState(null)
   const [tab, setTab]                 = useState('inicio')
-  const [cardOpen, setCardOpen]       = useState(true)
+  // Card del negocio arranca CERRADA. La info "Sobre el negocio"
+  // (descripción, horarios, ubicación, redes) vive adentro y se
+  // despliega cuando el cliente toca la flecha del fondo de la card.
+  const [cardOpen, setCardOpen]       = useState(false)
   const [showSplash, setShowSplash]   = useState(false)
   const [isDemo, setIsDemo]           = useState(false)
   const autoJoinDone                  = useRef(false)
@@ -701,12 +1782,47 @@ export default function ClubProfilePage() {
   // Canjes
   const [redeeming, setRedeeming]       = useState(null)   // prize.id being processed
   const [confirmPrize, setConfirmPrize] = useState(null)   // prize awaiting confirmation
+  const [prizeDetail,  setPrizeDetail]  = useState(null)   // prize abierto en vista "ecommerce"
+  // Editor inline: cuando el dueño está en ?edit=1 y toca un lápiz, se
+  // abre este modal con los campos correspondientes. Estructura:
+  //   { field: 'name'|'description'|'address'|'instagram'|'facebook'|'phone'|'prize', prize?: <object>, label? }
+  const [inlineEdit, setInlineEdit] = useState(null)
+  // Galería del prize detail: solo manual. El auto-loop fue removido
+  // porque peleaba con el scroll-snap nativo y bloqueaba el swipe del
+  // usuario (apenas el user empezaba a scrollear, el setInterval lo
+  // tiraba al próximo slide). Ahora la galería es 100% interactiva: el
+  // cliente swipea horizontalmente para ver las imágenes a su ritmo.
+  const galleryStripRef = useRef(null)
+  // Index activo de la galería — se actualiza cuando el user scrollea
+  // manualmente, para iluminar el dot correspondiente. Se resetea a 0
+  // cada vez que se abre un prize distinto.
+  const [galleryIdx, setGalleryIdx] = useState(0)
+  useEffect(() => { setGalleryIdx(0) }, [prizeDetail])
+  const handleGalleryScroll = () => {
+    const el = galleryStripRef.current
+    if (!el) return
+    const idx = Math.round(el.scrollLeft / el.clientWidth)
+    if (idx !== galleryIdx && idx >= 0) setGalleryIdx(idx)
+  }
   const [toasts, setToasts]             = useState([])
 
   function addToast(type, msg) {
     const id = Date.now()
     setToasts(prev => [...prev, { id, type, msg }])
     setTimeout(() => setToasts(prev => prev.filter(t => t.id !== id)), 4000)
+  }
+
+  // Construye una URL wa.me con un mensaje pre-llenado. Limpia el número
+  // (saca espacios, guiones, paréntesis, '+') y prepende '54' si parece
+  // local Argentina y no trae código de país.
+  function buildWhatsappUrl(phone, message) {
+    if (!phone) return null
+    let digits = String(phone).replace(/\D/g, '')
+    if (!digits) return null
+    if (!digits.startsWith('54') && digits.length >= 8 && digits.length <= 12) {
+      digits = '54' + digits
+    }
+    return `https://wa.me/${digits}?text=${encodeURIComponent(message)}`
   }
 
   async function doRedeem(prize) {
@@ -722,6 +1838,21 @@ export default function ClubProfilePage() {
         addToast('success', `¡${prize.name} canjeado! Mostralo en caja.`)
         const field = d.prog_type === 'stars' ? 'stars' : 'points'
         setMembership(prev => ({ ...prev, [field]: d.new_balance }))
+        // Cerrar la vista de detalle si estaba abierta.
+        setPrizeDetail(null)
+        // Abrir WhatsApp con el comercio y mensaje pre-llenado para que el
+        // cliente avise que viene a retirar el premio. Opcional — solo si
+        // el comercio tiene número cargado. Hacemos esto en el client-side
+        // porque navigator.open desde un user click no requiere permisos
+        // y abre el chat directamente en mobile (deep link a WhatsApp).
+        const userName = (userProfile?.name || '').trim() || 'un cliente'
+        const message  = `Hola, soy ${userName}. Quiero canjear mis puntos por el beneficio "${prize.name}".`
+        const waUrl    = buildWhatsappUrl(commerce?.phone, message)
+        if (waUrl) {
+          // Pequeño delay para que el toast de éxito alcance a verse antes
+          // del context-switch a WhatsApp.
+          setTimeout(() => { window.open(waUrl, '_blank', 'noopener,noreferrer') }, 350)
+        }
       } else {
         addToast('error', d.error || 'Error al canjear')
       }
@@ -761,7 +1892,16 @@ export default function ClubProfilePage() {
   }, [slug, searchParams])
 
   useEffect(() => {
-    fetch(`/api/club-profile?slug=${slug}`)
+    // Triple cache-bust:
+    //  1) cache:'no-store' → browser HTTP cache + Next.js fetch cache.
+    //  2) Cache-Control header → reverse proxies / CDN entre browser y server.
+    //  3) timestamp en query → URL única por request, esquiva cualquier
+    //     capa de cache que matchee por URL exacta (incluido service workers
+    //     viejos que pudieran estar interceptando).
+    fetch(`/api/club-profile?slug=${slug}&_=${Date.now()}`, {
+      cache: 'no-store',
+      headers: { 'Cache-Control': 'no-cache' },
+    })
       .then(r => r.json())
       .then(d => {
         if (!d.ok) {
@@ -840,7 +1980,8 @@ export default function ClubProfilePage() {
       .catch(() => {})
   }, [data?.commerce?.id])
 
-  useEffect(() => { setCardOpen(tab === 'inicio') }, [tab])
+  // useEffect viejo que abría la card al cambiar a inicio fue removido —
+  // ahora la card arranca cerrada y solo se abre por interacción del user.
 
   async function handleSubmitReview() {
     if (!reviewRating) { setReviewError('Elegí una cantidad de estrellas'); return }
@@ -943,10 +2084,63 @@ export default function ClubProfilePage() {
   const visits       = membership?.visits_count || 0
   const goal         = commerce.prog_goal || (isStars ? 5 : 500)
   const pct          = Math.min(100, Math.round((bal / goal) * 100))
-  const activePromo  = promos.find(p => p.active)
-  const activePrizes = prizes.filter(p => p.active)
+  // La API ya filtra por active=true en el SELECT pero NO incluye la columna
+  // `active` en la lista de campos devueltos (ni en prizes ni en promos).
+  // Si filtramos acá por p.active descartamos todo (undefined es falsy). La
+  // API ya garantiza que solo devuelve activos, así que tomamos directamente
+  // el array sin re-filtrar.
+  const activePromo  = (promos || [])[0] || null
+  const activePrizes = prizes || []
   // Spotlight cuando el cliente entra escaneando el QR del negocio.
   const fromQr       = searchParams.get('from_qr') === '1'
+  // Modo edición: el dueño llegó acá vía el ojo del navbar (?edit=1).
+  // Combina ownership real (user.id === commerce.owner_id) + flag URL —
+  // si solo está la flag pero no es dueño, NO se renderizan los pencils.
+  const editMode     = searchParams.get('edit') === '1'
+                       && !!user?.id && !!commerce?.owner_id
+                       && user.id === commerce.owner_id
+  // Helper: pequeño botón Pen que abre un modal inline con los campos de
+  // edición correspondientes (mismo conjunto de inputs que el panel de
+  // configuración del negocio). Para casi todos los campos NO navega afuera
+  // — el dueño edita acá mismo, guarda, y los cambios se reflejan
+  // instantáneamente en la página pública.
+  // Excepción: 'hours' usa un editor de horarios muy complejo (7 días con
+  // múltiples turnos) que no tendría sentido replicar en miniatura, así
+  // que ese pencil sí navega al panel completo.
+  const editPencil = (field, label = 'Editar', extra = {}) => editMode ? (
+    <button
+      onClick={(e) => {
+        e.stopPropagation()
+        // eslint-disable-next-line no-console
+        console.log('[editPencil] tap', { field, label, editMode, hasInlineSetter: typeof setInlineEdit === 'function' })
+        if (field === 'hours') {
+          try {
+            sessionStorage.setItem('benefix:edit-section', 'horarios')
+            sessionStorage.setItem('benefix:loginNext', 'commerce-settings')
+            sessionStorage.setItem('benefix:nextTab', 'configuracion')
+          } catch {}
+          if (typeof window !== 'undefined') window.location.href = '/?view=commerce-settings&tab=configuracion'
+          return
+        }
+        // eslint-disable-next-line no-console
+        console.log('[editPencil] opening inline modal for', field)
+        setInlineEdit({ field, ...extra })
+      }}
+      title={label}
+      aria-label={label}
+      style={{
+        display:'inline-flex', alignItems:'center', justifyContent:'center',
+        width:28, height:28, borderRadius:'50%',
+        background:'linear-gradient(135deg, #7C3AED, #BD4BF8)',
+        border:'1px solid rgba(255,255,255,0.18)',
+        color:'#fff', cursor:'pointer', padding:0,
+        boxShadow:'0 4px 12px rgba(189,75,248,0.45)',
+        marginLeft:8,
+        flexShrink:0,
+      }}>
+      <Pen size={13} strokeWidth={2.4} />
+    </button>
+  ) : null
 
   // URL "Cómo llegar" — siempre direcciones (con destino), no solo búsqueda.
   // Con coords es más preciso; sin coords usamos dirección + ciudad + provincia
@@ -960,9 +2154,20 @@ export default function ClubProfilePage() {
     <div style={{ position:'relative', minHeight:'100vh', width:'100%', background:C.bg, overflowX:'hidden', fontFamily:FI, WebkitFontSmoothing:'antialiased' }}>
       <style>{GLOBAL_CSS}</style>
 
+      {/* Banner de modo edición — flotante en el tope cuando el dueño
+          llegó vía el ojo del navbar (?edit=1). Le recuerda que está
+          viendo la versión editable y le da un atajo para irse al panel
+          completo de configuración. */}
+      {/* El banner "Modo edición" se renderiza más abajo (justo después
+          del spacer del navbar), no acá. Lo dejamos en su lugar real
+          para que aparezca exactamente entre el navbar superior y la
+          portada, sin overlap con la imagen del cover. */}
+
       {isDemo && (
+        // Banner de demo — se planta justo abajo del bloque navbar+sub-nav
+        // (navbar 58px + sub-nav ~44px = 102px).
         <div style={{
-          position:'fixed', top:58, left:0, right:0, zIndex:190,
+          position:'fixed', top:102, left:0, right:0, zIndex:190,
           background:'rgba(168,85,247,0.18)', backdropFilter:'blur(12px)', WebkitBackdropFilter:'blur(12px)',
           borderBottom:'1px solid rgba(168,85,247,0.30)',
           padding:'8px 16px', textAlign:'center',
@@ -992,7 +2197,11 @@ export default function ClubProfilePage() {
               // con la vista actual), TRANSP (logout, sin fondo).
               const NEUTRAL = { display:'flex', alignItems:'center', justifyContent:'center', width:34, height:34, borderRadius:9, background:'rgba(255,255,255,0.06)', border:`1px solid ${C.rim}`, cursor:'pointer', color:'rgba(255,255,255,0.78)', textDecoration:'none' }
               const ACTIVE  = { display:'flex', alignItems:'center', justifyContent:'center', width:34, height:34, borderRadius:9, background:G, border:'none', cursor:'default', color:'#fff', boxShadow:'0 2px 10px rgba(168,85,247,0.42)', textDecoration:'none' }
-              const PRIMARY = { display:'flex', alignItems:'center', justifyContent:'center', width:34, height:34, borderRadius:9, background:G, border:'none', cursor:'pointer', color:'#fff', boxShadow:'0 4px 14px #FE500033', textDecoration:'none' }
+              // PRIMARY: idéntico al ACTIVE de gradient pero clickeable. Lo
+              // usamos para el botón del User en esta vista — el cliente está
+              // navegando en el "área de billetera" (los clubes a los que se
+              // sumó), así que el ícono User queda iluminado siempre.
+              const PRIMARY = { display:'flex', alignItems:'center', justifyContent:'center', width:34, height:34, borderRadius:9, background:G, border:'none', cursor:'pointer', color:'#fff', boxShadow:'0 2px 10px rgba(168,85,247,0.42)', textDecoration:'none' }
               const TRANSP  = { display:'flex', alignItems:'center', justifyContent:'center', width:34, height:34, borderRadius:9, background:'transparent', border:'none', cursor:'pointer', color:'rgba(255,255,255,0.70)', padding:0 }
 
               const role = userProfile?.role
@@ -1010,12 +2219,16 @@ export default function ClubProfilePage() {
               }
 
               if (role === 'admin') {
+                const goHref = (href) => (e) => {
+                  e.preventDefault()
+                  if (typeof window !== 'undefined') window.location.href = href
+                }
                 return (
                   <>
-                    <a href="/?view=admin" title="Panel admin" style={NEUTRAL}>
+                    <a href="/?view=admin" title="Panel admin" style={NEUTRAL} onClick={goHref('/?view=admin')}>
                       <LayoutDashboard size={15} strokeWidth={2} />
                     </a>
-                    <a href="/?view=client" title="Mi cuenta" style={PRIMARY}>
+                    <a href="/?view=client" title="Mi cuenta" style={PRIMARY} onClick={goHref('/?view=client')}>
                       <User size={15} strokeWidth={2} />
                     </a>
                     <button title="Salir" onClick={doLogout} style={TRANSP}>
@@ -1026,9 +2239,23 @@ export default function ClubProfilePage() {
               }
 
               if (role === 'commerce_owner') {
+                // Si el dueño está previsualizando SU propio club (modo ojo),
+                // el botón User va NEUTRAL — no estamos "en el área cliente",
+                // estamos en la vista pública del propio comercio. Solo el
+                // ojo queda iluminado, evitando confundir al usuario con dos
+                // íconos activos a la vez.
+                const userStyleOwner = isOwnerOfThisClub ? NEUTRAL : PRIMARY
+                // Forzamos navegación full-reload con window.location.href en
+                // los onClick además del href — algunos casos raros (Service
+                // Worker, prefetch agresivo) pueden tragarse el click del <a>
+                // en App Router, así que reforzamos.
+                const goHref = (href) => (e) => {
+                  e.preventDefault()
+                  if (typeof window !== 'undefined') window.location.href = href
+                }
                 return (
                   <>
-                    <a href="/?view=scanner" title="Escanear QR" style={NEUTRAL}>
+                    <a href="/?view=scanner" title="Escanear QR" style={NEUTRAL} onClick={goHref('/?view=scanner')}>
                       <ScanLine size={15} strokeWidth={2} />
                     </a>
                     {isOwnerOfThisClub ? (
@@ -1036,14 +2263,14 @@ export default function ClubProfilePage() {
                         <Eye size={15} strokeWidth={2} color={eyeColor} />
                       </span>
                     ) : (
-                      <a href="/?view=commerce" title="Vista pública de mi club" style={NEUTRAL}>
+                      <a href="/?view=commerce" title="Vista pública de mi club" style={NEUTRAL} onClick={goHref('/?view=commerce')}>
                         <Eye size={15} strokeWidth={2} />
                       </a>
                     )}
-                    <a href="/?view=commerce-settings" title="Mi Negocio" style={NEUTRAL}>
+                    <a href="/?view=commerce-settings" title="Mi Negocio" style={NEUTRAL} onClick={goHref('/?view=commerce-settings')}>
                       <Store size={15} strokeWidth={2} />
                     </a>
-                    <a href="/?view=client" title="Mi cuenta" style={PRIMARY}>
+                    <a href="/?view=client" title="Mi cuenta" style={userStyleOwner} onClick={goHref('/?view=client')}>
                       <User size={15} strokeWidth={2} />
                     </a>
                     <button title="Cerrar sesión" onClick={doLogout} style={TRANSP}>
@@ -1055,12 +2282,16 @@ export default function ClubProfilePage() {
 
               // Cliente regular (con o sin sesión). Sin user no mostramos
               // logout; el resto se mantiene como atajos.
+              const goHref = (href) => (e) => {
+                e.preventDefault()
+                if (typeof window !== 'undefined') window.location.href = href
+              }
               return (
                 <>
-                  <a href="/?view=scanner" title="Escanear QR" style={NEUTRAL}>
+                  <a href="/?view=scanner" title="Escanear QR" style={NEUTRAL} onClick={goHref('/?view=scanner')}>
                     <ScanLine size={15} strokeWidth={2} />
                   </a>
-                  <a href="/?view=client" title="Mi cuenta" style={PRIMARY}>
+                  <a href="/?view=client" title="Mi cuenta" style={PRIMARY} onClick={goHref('/?view=client')}>
                     <User size={15} strokeWidth={2} />
                   </a>
                   {user && (
@@ -1073,13 +2304,101 @@ export default function ClubProfilePage() {
             })()}
           </div>
         </nav>
-        {/* ── NAV DE PESTAÑAS (Inicio / Premios / Mi QR) — pegado abajo del navbar
-              con el gradiente de marca, mismo formato que el nav cliente. ── */}
-        <ClubTopNav tab={tab} setTab={setTab} prizesCount={activePrizes.length} />
+        {/* ── SUB-NAV CLIENTE ──
+              Espejo del ClientBottomNav del app principal. Visible para
+              clientes/socios que navegan dentro de un club, NO en modo
+              edición del dueño (editMode). Cuando el dueño previsualiza
+              su propio club vía el ojo, no tiene sentido mostrar atajos
+              al área de cliente — está actuando como dueño. */}
+        {!editMode && (
+        <nav style={{
+          background: 'rgba(10, 10, 10, 0.75)',
+          backdropFilter: 'blur(14px)',
+          WebkitBackdropFilter: 'blur(14px)',
+          borderBottom: '1px solid rgba(255,255,255,0.08)',
+        }}>
+          <div style={{
+            maxWidth: 520, margin: '0 auto',
+            display: 'flex', alignItems: 'stretch', justifyContent: 'center',
+            padding: '8px 16px 0',
+          }}>
+            {[
+              { id: 'mis clubs', label: 'Mi billetera' },
+              { id: 'premios',   label: 'Mis beneficios' },
+              { id: 'historial', label: 'Historial'    },
+              { id: 'cuenta',    label: 'Perfil'       },
+            ].map(({ id, label }) => {
+              // En la página del club, "Mi billetera" siempre va activa —
+              // estamos parados dentro de uno de los clubes de la billetera.
+              const active   = id === 'mis clubs'
+              const isWallet = id === 'mis clubs'
+              const color    = isWallet
+                ? (active ? '#EC4899' : 'rgba(236,72,153,0.75)')
+                : (active ? '#fff'    : 'rgba(255,255,255,0.55)')
+              return (
+                <a key={id}
+                  href={`/?view=client&tab=${encodeURIComponent(id)}`}
+                  style={{
+                    flex: 1, textAlign:'center',
+                    background: 'transparent',
+                    border: 'none',
+                    color,
+                    fontFamily: FN,
+                    fontSize: 13,
+                    fontWeight: active ? 700 : 500,
+                    letterSpacing: '.02em',
+                    padding: '10px 8px 12px',
+                    cursor: 'pointer',
+                    textDecoration: 'none',
+                    position: 'relative',
+                  }}>
+                  {label}
+                  {active && (
+                    <span style={{
+                      position:'absolute', bottom:-1, left:'25%', right:'25%',
+                      height: 2, borderRadius: 2,
+                      background:'linear-gradient(135deg, #FE5000, #BD4BF8)',
+                    }} />
+                  )}
+                </a>
+              )
+            })}
+          </div>
+        </nav>
+        )}{/* fin del condicional !editMode del sub-nav cliente */}
+        {/* El ClubTopNav también está oculto ahora — la navegación interna
+            del club se mergeó en una sola pestaña Inicio. */}
       </div>
 
-      {/* Spacer: 58 navbar + 50 nav de pestañas = 108 (+ banner demo si aplica) */}
-      <div style={{ height: isDemo ? 142 : 108 }} />
+      {/* Spacer: navbar superior (58px) + sub-nav cliente (~44px) + banner demo si aplica.
+          En editMode el sub-nav cliente está oculto, así que descontamos esos 44px. */}
+      <div style={{ height: isDemo ? (editMode ? 92 : 136) : (editMode ? 58 : 102) }} />
+
+      {/* Banner "Modo edición" — render INLINE (no fixed) inmediatamente
+          después del spacer del navbar. Toma su propio espacio vertical y
+          empuja la portada para abajo, sin overlap. Solo aparece cuando
+          el dueño está previsualizando con el ojo. */}
+      {editMode && (
+        <div style={{
+          background:'linear-gradient(135deg, rgba(124,58,237,0.96), rgba(189,75,248,0.96))',
+          borderTop:'1px solid rgba(255,255,255,0.10)',
+          borderBottom:'1px solid rgba(255,255,255,0.18)',
+          padding:'10px 16px',
+          display:'flex', alignItems:'center', justifyContent:'space-between', gap:10,
+          fontFamily:FI,
+        }}>
+          <div style={{ display:'flex', alignItems:'center', gap:10, minWidth:0 }}>
+            <Pen size={14} color="#fff" strokeWidth={2.4} style={{ flexShrink:0 }} />
+            <div style={{ fontSize:12, color:'#fff', fontWeight:600, overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>
+              Modo edición — los <strong style={{ fontWeight:800 }}>lápices violetas</strong> te llevan a editar
+            </div>
+          </div>
+          <a href={`/club/${commerce.slug}`}
+            style={{ fontFamily:FN, fontSize:11, fontWeight:800, color:'#fff', background:'rgba(0,0,0,0.30)', padding:'6px 12px', borderRadius:99, textDecoration:'none', whiteSpace:'nowrap', flexShrink:0 }}>
+            Salir
+          </a>
+        </div>
+      )}
 
       {/* ── 2. HERO - portada ── */}
       <section style={{ position:'relative', width:'100%', height:'35vh', minHeight:240, overflow:'hidden' }}>
@@ -1098,10 +2417,21 @@ export default function ClubProfilePage() {
           style={{ position:'absolute', top:16, left:16, zIndex:20, width:40, height:40, borderRadius:'50%', background:'rgba(0,0,0,0.50)', backdropFilter:'blur(12px)', WebkitBackdropFilter:'blur(12px)', border:'1px solid rgba(255,255,255,0.15)', display:'flex', alignItems:'center', justifyContent:'center', cursor:'pointer', color:'#fff' }}>
           <ChevronLeft size={20} />
         </button>
+        {/* Campanita de notificaciones del club — sobre la portada en la
+            esquina sup-derecha. Visible siempre (en las 3 pestañas) porque
+            vive en el HERO, no adentro de un tab. Solo se renderiza si hay
+            user logueado y commerce válido (la API enforza auth). */}
+        {user?.id && commerce?.id && (
+          <ClubNotifyBell commerceId={commerce.id} />
+        )}
       </section>
 
       {/* ── CONTENIDO PRINCIPAL (bajo el hero) ── */}
-      <div style={{ maxWidth:600, margin:'0 auto', paddingBottom:100 }}>
+      {/* paddingBottom amplio: el ClubTopNav ahora flota como pill al fondo
+          (~50px alto + 16px gap + safe-area iOS). Reservamos espacio extra
+          para que con scroll máximo el último contenido no quede tapado
+          por la pill ni se sienta apretado contra ella. */}
+      <div style={{ maxWidth:600, margin:'0 auto', paddingBottom:140 }}>
 
         {/* ── CARD DEL NEGOCIO (collapsible, sobre la portada) ── */}
         <div style={{ margin:'-80px 16px 0', position:'relative', zIndex:10 }}>
@@ -1111,9 +2441,15 @@ export default function ClubProfilePage() {
             border:'1px solid rgba(255,255,255,0.10)',
             borderRadius:20, overflow:'hidden',
           }}>
-            {/* Header siempre visible */}
-            <button
+            {/* Header siempre visible. Era un <button> pero se rompe la
+                hidratación si tiene pencils anidados (no se permite button
+                dentro de button en HTML). Lo cambié a div + role="button"
+                + onClick — los pencils internos sí siguen siendo botones
+                válidos y stopPropagation evita que toggleen el card. */}
+            <div
+              role="button" tabIndex={0}
               onClick={() => setCardOpen(v => !v)}
+              onKeyDown={e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); setCardOpen(v => !v) } }}
               style={{ width:'100%', background:'transparent', border:'none', cursor:'pointer', padding:'14px 16px', display:'block' }}
             >
               <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between' }}>
@@ -1125,7 +2461,12 @@ export default function ClubProfilePage() {
                     }
                   </div>
                   <div style={{ textAlign:'left' }}>
-                    <div style={{ fontFamily:FN, fontSize:16, fontWeight:700, color:C.white, lineHeight:1.2 }}>{commerce.name}</div>
+                    <div style={{ display:'flex', alignItems:'center' }}>
+                      <div style={{ fontFamily:FN, fontSize:16, fontWeight:700, color:C.white, lineHeight:1.2 }}>{commerce.name}</div>
+                      <span onClick={e => e.stopPropagation()} style={{ display:'inline-flex' }}>
+                        {editPencil('name', 'Editar nombre')}
+                      </span>
+                    </div>
                     <div style={{ display:'flex', alignItems:'center', gap:6, marginTop:4 }}>
                       <span style={{ fontSize:11, color:'rgba(255,255,255,0.55)', background:'rgba(255,255,255,0.08)', borderRadius:99, padding:'2px 8px' }}>{commerce.category}</span>
                       {REVIEWS_ENABLED && (reviewsAvg !== null || commerce.rating) && (
@@ -1133,78 +2474,226 @@ export default function ClubProfilePage() {
                           <Star size={11} strokeWidth={0} fill="currentColor" /> {reviewsAvg ?? commerce.rating}
                         </span>
                       )}
+                      <span onClick={e => e.stopPropagation()} style={{ display:'inline-flex' }}>
+                        {editPencil('category', 'Editar categoría')}
+                      </span>
                     </div>
                   </div>
                 </div>
-                <ChevronDown size={18} color="rgba(255,255,255,0.45)"
-                  style={{ transform: cardOpen ? 'rotate(180deg)' : 'rotate(0deg)', transition:'transform 0.3s ease', flexShrink:0 }} />
-              </div>
-            </button>
-
-            {/* Contenido expandible */}
-            <div style={{
-              maxHeight: cardOpen ? 420 : 0,
-              opacity: cardOpen ? 1 : 0,
-              overflow:'hidden',
-              transition:'max-height 0.3s ease-out, opacity 0.2s ease-out',
-            }}>
-              <div style={{ padding:'0 16px 16px' }}>
-                {/* Badges ciudad + socios */}
-                <div style={{ display:'flex', gap:8, flexWrap:'wrap', marginBottom:10 }}>
-                  {commerce.city?.name && (
-                    <span style={{ fontSize:11, color:'rgba(255,255,255,0.55)', background:'rgba(255,255,255,0.08)', borderRadius:99, padding:'3px 10px', display:'flex', alignItems:'center', gap:4 }}>
-                      <MapPin size={11} strokeWidth={2} /> {commerce.city.name}
-                    </span>
-                  )}
-                  {/* Socios escondidos en el perfil del club. */}
-                </div>
-                {/* Descripción — siempre visible. Si está vacía, mostrar placeholder
-                    para que el dueño vea el espacio que tiene que llenar. */}
-                <p style={{ fontSize:13, color: commerce.description ? 'rgba(255,255,255,0.70)' : 'rgba(255,255,255,0.30)', fontStyle: commerce.description ? 'normal' : 'italic', lineHeight:1.6, margin:'0 0 12px' }}>
-                  {commerce.description || 'Este negocio todavía no agregó una descripción.'}
-                </p>
-                {/* Horarios — siempre visible para mantener estructura,
-                    con placeholder cuando no están configurados. */}
+                {/* Indicador "Abierto ahora · 09–22" en el header — antes
+                    vivía adentro del desplegable, pero el cliente quiere
+                    ese dato sin tener que abrir nada. Se calcula inline a
+                    partir de hours_structured + hora actual. Si no hay
+                    horarios cargados, no se renderiza nada. */}
                 {(() => {
                   const hs = commerce.hours_structured
-                  // Sin info de horarios — placeholder
-                  if (!hs) {
-                    return (
-                      <div style={{ display:'flex', alignItems:'center', gap:8, paddingTop:12, borderTop:'1px solid rgba(255,255,255,0.08)' }}>
-                        <span style={{ width:8, height:8, borderRadius:'50%', background:'rgba(255,255,255,0.20)', flexShrink:0 }} />
-                        <span style={{ color:'rgba(255,255,255,0.35)', fontSize:12, fontFamily:FI, fontStyle:'italic' }}>Horarios no informados</span>
-                      </div>
-                    )
-                  }
+                  if (!hs) return null
                   const dayKeys = ['sunday','monday','tuesday','wednesday','thursday','friday','saturday']
                   const today = hs[dayKeys[new Date().getDay()]]
-                  if (!today || !today.open || !today.shifts?.length) {
-                    return (
-                      <div style={{ display:'flex', alignItems:'center', gap:8, paddingTop:12, borderTop:'1px solid rgba(255,255,255,0.08)' }}>
-                        <span style={{ width:8, height:8, borderRadius:'50%', background:'#888', flexShrink:0 }} />
-                        <span style={{ color:'#888', fontSize:12, fontFamily:FI }}>Cerrado hoy</span>
-                      </div>
-                    )
+                  if (!today) return null
+                  let openNow = false, summary = 'Cerrado'
+                  if (today.open && today.shifts?.length) {
+                    const nowMin = new Date().getHours()*60 + new Date().getMinutes()
+                    openNow = today.shifts.some(s => {
+                      const [fh, fm] = (s.from || '0:0').split(':').map(Number)
+                      const [th, tm] = (s.to   || '0:0').split(':').map(Number)
+                      return nowMin >= (fh*60+fm) && nowMin <= (th*60+tm)
+                    })
+                    summary = today.shifts.map(s => `${s.from}–${s.to}`).join(' · ')
                   }
-                  const nowMin = new Date().getHours()*60 + new Date().getMinutes()
-                  const openNow = today.shifts.some(s => {
-                    const [fh, fm] = (s.from || '0:0').split(':').map(Number)
-                    const [th, tm] = (s.to   || '0:0').split(':').map(Number)
-                    return nowMin >= (fh*60+fm) && nowMin <= (th*60+tm)
-                  })
-                  const summary = today.shifts.map(s => `${s.from}–${s.to}`).join(' · ')
                   return (
-                    <div style={{ display:'flex', alignItems:'center', gap:8, paddingTop:12, borderTop:'1px solid rgba(255,255,255,0.08)' }}>
-                      <span style={{ width:8, height:8, borderRadius:'50%', background: openNow ? '#22c55e' : '#888', flexShrink:0, animation: openNow ? 'pulse 2s ease-in-out infinite' : 'none' }} />
-                      <span style={{ color: openNow ? '#4ade80' : '#888', fontSize:12, fontFamily:FI }}>{openNow ? 'Abierto ahora' : 'Cerrado'}</span>
-                      <span style={{ color:'rgba(255,255,255,0.45)', fontSize:12 }}>· {summary}</span>
+                    <div style={{ display:'flex', flexDirection:'column', alignItems:'flex-end', gap:2, marginRight:8, flexShrink:1, minWidth:0 }}>
+                      <div style={{ display:'flex', alignItems:'center', gap:5 }}>
+                        <span style={{ width:7, height:7, borderRadius:'50%', background: openNow ? '#22c55e' : '#888', flexShrink:0, animation: openNow ? 'pulse 2s ease-in-out infinite' : 'none' }} />
+                        <span style={{ color: openNow ? '#4ade80' : '#888', fontSize:11, fontFamily:FI, fontWeight:600 }}>{openNow ? 'Abierto ahora' : 'Cerrado'}</span>
+                      </div>
+                      <span style={{ color:'rgba(255,255,255,0.50)', fontSize:11, fontFamily:FI, whiteSpace:'nowrap', overflow:'hidden', textOverflow:'ellipsis', maxWidth:140 }}>{summary}</span>
                     </div>
                   )
                 })()}
+                {/* Chevron viejo del top-right removido — ahora hay una
+                    flecha grande al pie de la card (centrada) que indica
+                    "tocá para desplegar info". */}
               </div>
+            </div>
+
+            {/* Contenido expandible — TODA la info "Sobre el negocio" vive
+                acá adentro: descripción, horarios completos, ubicación y
+                redes sociales. Antes esto estaba partido en dos accordions
+                (uno arriba con descripción y otro abajo con el resto);
+                ahora todo unificado en uno solo. */}
+            <div style={{
+              maxHeight: cardOpen ? 900 : 0,
+              opacity: cardOpen ? 1 : 0,
+              overflow:'hidden',
+              transition:'max-height 0.4s ease-out, opacity 0.25s ease-out',
+            }}>
+              <div style={{ padding:'0 16px 8px' }}>
+                {/* Ciudad badge */}
+                {commerce.city?.name && (
+                  <div style={{ display:'flex', gap:8, flexWrap:'wrap', marginBottom:10 }}>
+                    <span style={{ fontSize:11, color:'rgba(255,255,255,0.55)', background:'rgba(255,255,255,0.08)', borderRadius:99, padding:'3px 10px', display:'flex', alignItems:'center', gap:4 }}>
+                      <MapPin size={11} strokeWidth={2} /> {commerce.city.name}
+                    </span>
+                  </div>
+                )}
+                {/* Descripción — siempre con placeholder cuando vacía. */}
+                <div style={{ display:'flex', alignItems:'flex-start', gap:8, marginBottom:14 }}>
+                  <p style={{ fontSize:13, color: commerce.description ? 'rgba(255,255,255,0.70)' : 'rgba(255,255,255,0.30)', fontStyle: commerce.description ? 'normal' : 'italic', lineHeight:1.6, margin:0, flex:1, minWidth:0 }}>
+                    {commerce.description || 'Este negocio todavía no agregó una descripción.'}
+                  </p>
+                  {editPencil('description', 'Editar descripción')}
+                </div>
+              </div>
+
+              {/* Horarios full week — desde hours_structured */}
+              {commerce.hours_structured ? (() => {
+                const dayKeys   = ['monday','tuesday','wednesday','thursday','friday','saturday','sunday']
+                const dayLabels = { monday:'Lun', tuesday:'Mar', wednesday:'Mié', thursday:'Jue', friday:'Vie', saturday:'Sáb', sunday:'Dom' }
+                const todayKey  = ['sunday','monday','tuesday','wednesday','thursday','friday','saturday'][new Date().getDay()]
+                const today     = commerce.hours_structured[todayKey]
+                const todayShifts = today?.open ? (today.shifts || []).map(s => `${s.from}–${s.to}`).join(' · ') : 'Cerrado'
+                const hasAny = dayKeys.some(k => commerce.hours_structured[k]?.open && commerce.hours_structured[k]?.shifts?.length)
+                if (!hasAny) return null
+                return (
+                  <>
+                    <div style={{ borderTop:'1px solid rgba(255,255,255,0.08)' }} />
+                    <div style={{ display:'flex', alignItems:'center', padding:'0 12px 0 0' }}>
+                      <button
+                        onClick={() => setShowHours(v => !v)}
+                        style={{ flex:1, background:'transparent', border:'none', cursor:'pointer', padding:'14px 16px', display:'flex', alignItems:'center', justifyContent:'space-between', fontFamily:FI, textAlign:'left' }}
+                      >
+                        <div style={{ display:'flex', alignItems:'center', gap:12 }}>
+                          <Clock size={18} strokeWidth={2} color="rgba(255,255,255,0.6)" />
+                          <div>
+                            <p style={{ color:C.white, fontSize:14, fontWeight:500, margin:0 }}>Horarios</p>
+                            {!showHours && <p style={{ color:'rgba(255,255,255,0.45)', fontSize:12, margin:'2px 0 0' }}>Hoy: {todayShifts}</p>}
+                          </div>
+                        </div>
+                        <ChevronDown size={18} color="rgba(255,255,255,0.35)" style={{ transform: showHours ? 'rotate(180deg)' : 'none', transition:'transform .2s', flexShrink:0 }} />
+                      </button>
+                      {editPencil('hours', 'Editar horarios')}
+                    </div>
+                    <div style={{ maxHeight: showHours ? 320 : 0, overflow:'hidden', transition:'max-height 0.25s ease-out' }}>
+                      <div style={{ padding:'0 16px 14px 46px', fontSize:13, color:C.mist, lineHeight:1.9 }}>
+                        {dayKeys.map(k => {
+                          const d = commerce.hours_structured[k]
+                          const txt = d?.open && d?.shifts?.length
+                            ? d.shifts.map(s => `${s.from}–${s.to}`).join(' · ')
+                            : 'Cerrado'
+                          return (
+                            <div key={k} style={{ display:'flex', justifyContent:'space-between', gap:12 }}>
+                              <span style={{ color: k === todayKey ? C.white : C.mist, fontWeight: k === todayKey ? 600 : 400 }}>{dayLabels[k]}</span>
+                              <span style={{ color: k === todayKey ? C.white : C.mist }}>{txt}</span>
+                            </div>
+                          )
+                        })}
+                      </div>
+                    </div>
+                  </>
+                )
+              })() : (
+                <>
+                  <div style={{ borderTop:'1px solid rgba(255,255,255,0.08)' }} />
+                  <div style={{ display:'flex', alignItems:'center', gap:8, padding:'14px 16px' }}>
+                    <span style={{ width:8, height:8, borderRadius:'50%', background:'rgba(255,255,255,0.20)', flexShrink:0 }} />
+                    <span style={{ color:'rgba(255,255,255,0.35)', fontSize:12, fontFamily:FI, fontStyle:'italic' }}>Horarios no informados</span>
+                  </div>
+                </>
+              )}
+
+              {/* Ubicación + Cómo llegar */}
+              <div style={{ borderTop:'1px solid rgba(255,255,255,0.08)' }} />
+              {(commerce.address || (commerce.lat && commerce.lng)) ? (
+                <div style={{ display:'flex', alignItems:'center', padding:'0 12px 0 0' }}>
+                  <a href={mapsUrl} target="_blank" rel="noopener noreferrer"
+                    style={{ flex:1, display:'flex', alignItems:'center', justifyContent:'space-between', padding:'14px 16px', textDecoration:'none', fontFamily:FI }}>
+                    <div style={{ display:'flex', alignItems:'center', gap:12 }}>
+                      <MapPin size={18} strokeWidth={2} color="rgba(255,255,255,0.6)" />
+                      <div>
+                        <p style={{ color:C.white, fontSize:14, fontWeight:500, margin:0 }}>{commerce.address || 'Ver en el mapa'}</p>
+                        {commerce.city && <p style={{ color:'rgba(255,255,255,0.45)', fontSize:12, margin:'2px 0 0' }}>{commerce.city.name}</p>}
+                      </div>
+                    </div>
+                    <span style={{ background:'transparent', color:'#BD4BF8', border:'1.5px solid #BD4BF8', borderRadius:8, padding:'6px 12px', fontSize:12, fontWeight:700, fontFamily:FN, whiteSpace:'nowrap', flexShrink:0 }}>Cómo llegar →</span>
+                  </a>
+                  {editPencil('address', 'Editar ubicación')}
+                </div>
+              ) : (
+                <div style={{ display:'flex', alignItems:'center', gap:12, padding:'14px 16px', fontFamily:FI }}>
+                  <MapPin size={18} strokeWidth={2} color="rgba(255,255,255,0.25)" />
+                  <div style={{ flex:1, minWidth:0 }}>
+                    <p style={{ color:'rgba(255,255,255,0.35)', fontSize:14, fontWeight:500, margin:0, fontStyle:'italic' }}>Dirección no informada</p>
+                    {commerce.city?.name && <p style={{ color:'rgba(255,255,255,0.30)', fontSize:12, margin:'2px 0 0' }}>{commerce.city.name}</p>}
+                  </div>
+                  {editPencil('address', 'Agregar ubicación')}
+                </div>
+              )}
+
+              {/* Instagram */}
+              <div style={{ borderTop:'1px solid rgba(255,255,255,0.08)' }} />
+              {commerce.instagram ? (
+                <div style={{ display:'flex', alignItems:'center', padding:'0 12px 0 0' }}>
+                  <a href={`https://instagram.com/${commerce.instagram.replace('@','')}`} target="_blank" rel="noopener noreferrer"
+                    style={{ flex:1, display:'flex', alignItems:'center', justifyContent:'space-between', padding:'14px 16px', textDecoration:'none', fontFamily:FI }}>
+                    <div style={{ display:'flex', alignItems:'center', gap:12 }}>
+                      <Camera size={18} strokeWidth={2} color="rgba(255,255,255,0.6)" />
+                      <p style={{ color:C.white, fontSize:14, fontWeight:500, margin:0 }}>{commerce.instagram}</p>
+                    </div>
+                    <ChevronRight size={18} color="rgba(255,255,255,0.35)" />
+                  </a>
+                  {editPencil('instagram', 'Editar Instagram')}
+                </div>
+              ) : (
+                <div style={{ display:'flex', alignItems:'center', gap:12, padding:'14px 16px', fontFamily:FI }}>
+                  <Camera size={18} strokeWidth={2} color="rgba(255,255,255,0.25)" />
+                  <p style={{ flex:1, color:'rgba(255,255,255,0.35)', fontSize:14, fontWeight:500, margin:0, fontStyle:'italic' }}>Sin redes sociales</p>
+                  {editPencil('instagram', 'Agregar Instagram')}
+                </div>
+              )}
+            </div>
+
+            {/* Flecha al pie de la card — siempre visible (incluso cuando
+                la card está cerrada). Indica "tocá para desplegar la info
+                del negocio". Click en la flecha o cualquier parte de la
+                card hace toggle del cardOpen. */}
+            <div
+              role="button"
+              tabIndex={0}
+              onClick={(e) => { e.stopPropagation(); setCardOpen(v => !v) }}
+              onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); setCardOpen(v => !v) } }}
+              aria-label={cardOpen ? 'Ocultar info del negocio' : 'Mostrar info del negocio'}
+              style={{
+                display:'flex', alignItems:'center', justifyContent:'center', gap:6,
+                padding:'10px 16px',
+                borderTop:'1px solid rgba(255,255,255,0.08)',
+                cursor:'pointer',
+                color:'rgba(255,255,255,0.55)',
+                fontFamily:FN, fontSize:11, fontWeight:600,
+                letterSpacing:'.10em', textTransform:'uppercase',
+                transition:'background 200ms ease',
+              }}
+              onMouseEnter={(e) => e.currentTarget.style.background = 'rgba(255,255,255,0.04)'}
+              onMouseLeave={(e) => e.currentTarget.style.background = 'transparent'}
+            >
+              {cardOpen ? 'Ocultar' : 'Sobre el negocio'}
+              <ChevronDown
+                size={16}
+                strokeWidth={2.4}
+                style={{
+                  transform: cardOpen ? 'rotate(180deg)' : 'rotate(0deg)',
+                  transition: 'transform 0.3s ease',
+                }}
+              />
             </div>
           </div>
         </div>
+
+        {/* El ClubTopNav (Inicio / Catálogo / Historial) ahora vive como
+            pill flotante al fondo de la pantalla (ver render más abajo,
+            fuera del flujo del contenido). Mientras el cliente esté dentro
+            de la página del club queda siempre visible y la card del
+            negocio sigue arriba como contexto persistente. */}
 
         {/* ── SLIDE TO JOIN / MEMBER BADGE (siempre visible) ──
               Cuando el cliente viene del QR del negocio (?from_qr=1) y todavía
@@ -1217,7 +2706,16 @@ export default function ClubProfilePage() {
         )}
         <div style={{ padding:'20px 16px 0', position: fromQr && !isMember && !spotlightSeen ? 'relative' : 'static', zIndex: fromQr && !isMember && !spotlightSeen ? 200 : 'auto' }}>
           {isMember ? (
-            <MemberBadge createdAt={membership?.joined_at} />
+            <>
+              {/* "Sos parte de este club" solo aparece en la pestaña Inicio
+                  — en Catálogo e Historial el cliente quiere foco en el
+                  contenido específico, no en la confirmación de pertenencia.
+                  La campanita ya vive sobre la portada (visible en las 3
+                  pestañas), así que no se duplica acá. */}
+              {tab === 'inicio' && (
+                <MemberBadge createdAt={membership?.joined_at} />
+              )}
+            </>
           ) : (
             <>
               {fromQr && !spotlightSeen && (
@@ -1276,288 +2774,37 @@ export default function ClubProfilePage() {
         {tab === 'inicio' && (
           <div style={{ animation:'fadeUp .35s ease', padding:'16px 16px 0', display:'flex', flexDirection:'column', gap:16 }}>
 
-            <HelpBanner
-              id="club-inicio"
-              title="Conociste un club nuevo"
-              body="Esta es la página pública del comercio. Acá ves cómo funciona su sistema de recompensas, qué premios ofrece, sus datos y cómo sumarte. Si te sumás, vas a poder acumular y canjear directamente desde tu billetera."
-            />
-
-            {/* Card de progreso (miembro) */}
-            {isMember && (
-              <div style={{ background:'rgba(255,255,255,0.05)', backdropFilter:'blur(16px)', WebkitBackdropFilter:'blur(16px)', border:'1px solid rgba(255,255,255,0.10)', borderRadius:20, padding:'20px', position:'relative', overflow:'hidden' }}>
-                <div style={{ position:'absolute', top:0, left:0, right:0, height:3, background:GA }} />
-                <div style={{ position:'absolute', top:-40, right:-30, width:140, height:140, borderRadius:'50%', background:'rgba(168,85,247,0.1)', filter:'blur(40px)', pointerEvents:'none' }} />
-                <div style={{ display:'flex', justifyContent:'space-between', alignItems:'flex-start', marginBottom:16 }}>
-                  <div>
-                    <div style={{ fontSize:11, color:C.mist, marginBottom:6, fontWeight:500 }}>Tu saldo</div>
-                    <div style={{ fontFamily:FN, fontSize:36, fontWeight:900, color:unitColor, lineHeight:1, display:'flex', alignItems:'center', gap:8 }}>
-                      <UnitIcon size={28} {...unitIconProps} /> {bal}
-                    </div>
-                    <div style={{ fontSize:12, color:C.mist, marginTop:4 }}>{unitLabel}</div>
-                  </div>
-                  <div style={{ textAlign:'right' }}>
-                    <div style={{ fontSize:12, color:C.mist }}>{visits} visita{visits!==1?'s':''}</div>
-                  </div>
-                </div>
-                <div style={{ display:'flex', justifyContent:'space-between', marginBottom:8 }}>
-                  <span style={{ fontSize:11, color:C.mist }}>Progreso hacia la recompensa</span>
-                  <span style={{ fontSize:11, color:C.v, fontWeight:700 }}>{pct}%</span>
-                </div>
-                <ProgressBar pct={pct} />
-                <div style={{ fontSize:11, color:C.mist, marginTop:8, display:'flex', alignItems:'center', gap:5 }}><Gift size={11} strokeWidth={2} /> {commerce.reward_text || `Meta: ${goal} ${unitLabel}`}</div>
-                {/* Compra mínima visible al cliente (solo en stars). Le da
-                    transparencia sobre cuándo le suma estrella y cuándo no. */}
-                {isStars && commerce.prog_min_purchase > 0 && (
-                  <div style={{ fontSize:11, color:'rgba(251,191,36,0.85)', marginTop:6, display:'flex', alignItems:'center', gap:5 }}>
-                    <Star size={11} strokeWidth={0} fill="currentColor" />
-                    Compra mínima para sumar estrella: <strong>${commerce.prog_min_purchase.toLocaleString('es-AR')}</strong>
-                  </div>
-                )}
-              </div>
+            {/* HelpBanner — solo se muestra al cliente común. En modo
+                edición del ojo (editMode) no aparece — el dueño está
+                previsualizando su propio club, no necesita el copy
+                introductorio orientado a clientes nuevos. */}
+            {!editMode && (
+              <HelpBanner
+                id="club-inicio"
+                title="Conociste un club nuevo"
+                body="Esta es la página pública del comercio. Acá ves los premios, datos y cómo sumarte."
+                details="Si te sumás al club, vas a poder acumular puntos o estrellas con cada compra y canjearlos directamente desde tu billetera."
+              />
             )}
 
-            {/* Bloque de info unificado — siempre visible para mantener estructura
-                consistente. Cada sección muestra placeholder cuando está vacía. */}
-            {(
-              <div style={{ background:'rgba(255,255,255,0.05)', backdropFilter:'blur(20px)', WebkitBackdropFilter:'blur(20px)', border:'1px solid rgba(255,255,255,0.10)', borderRadius:16, overflow:'hidden' }}>
+            {/* La card "Tu saldo" se movió a la pestaña Catálogo — ahí
+                conviven el balance del cliente y los premios que puede
+                canjear, evitando que Inicio sea un compendio de TODO. */}
 
-                {/* Horarios — desde hours_structured (JSONB con días y turnos) */}
-                {commerce.hours_structured && (() => {
-                  const dayKeys   = ['monday','tuesday','wednesday','thursday','friday','saturday','sunday']
-                  const dayLabels = { monday:'Lun', tuesday:'Mar', wednesday:'Mié', thursday:'Jue', friday:'Vie', saturday:'Sáb', sunday:'Dom' }
-                  const todayKey  = ['sunday','monday','tuesday','wednesday','thursday','friday','saturday'][new Date().getDay()]
-                  const today     = commerce.hours_structured[todayKey]
-                  const todayShifts = today?.open ? (today.shifts || []).map(s => `${s.from}–${s.to}`).join(' · ') : 'Cerrado'
+            {/* El accordion "Sobre el negocio" que vivía acá fue absorbido
+                por la card del negocio (arriba). Ahora todo (descripción +
+                horarios + ubicación + redes) vive adentro de un único
+                desplegable controlado por la flecha al pie de esa card. */}
 
-                  // Solo mostrar el bloque si al menos un día tiene horario
-                  const hasAny = dayKeys.some(k => commerce.hours_structured[k]?.open && commerce.hours_structured[k]?.shifts?.length)
-                  if (!hasAny) return null
+            {/* La card "Promoción activa" se removió porque ahora el slider
+                "Beneficios por tiempo limitado" (más abajo en este mismo
+                tab) muestra TODAS las promos activas con su countdown,
+                evitando duplicación visual. */}
 
-                  return (
-                    <>
-                      <button
-                        onClick={() => setShowHours(v => !v)}
-                        style={{ width:'100%', background:'transparent', border:'none', cursor:'pointer', padding:'14px 16px', display:'flex', alignItems:'center', justifyContent:'space-between', fontFamily:FI, textAlign:'left' }}
-                      >
-                        <div style={{ display:'flex', alignItems:'center', gap:12 }}>
-                          <Clock size={18} strokeWidth={2} color="rgba(255,255,255,0.6)" />
-                          <div>
-                            <p style={{ color:C.white, fontSize:14, fontWeight:500, margin:0 }}>Horarios</p>
-                            {!showHours && <p style={{ color:'rgba(255,255,255,0.45)', fontSize:12, margin:'2px 0 0' }}>Hoy: {todayShifts}</p>}
-                          </div>
-                        </div>
-                        <ChevronDown size={18} color="rgba(255,255,255,0.35)" style={{ transform: showHours ? 'rotate(180deg)' : 'none', transition:'transform .2s', flexShrink:0 }} />
-                      </button>
-                      <div style={{ maxHeight: showHours ? 320 : 0, overflow:'hidden', transition:'max-height 0.25s ease-out' }}>
-                        <div style={{ padding:'0 16px 14px 46px', fontSize:13, color:C.mist, lineHeight:1.9 }}>
-                          {dayKeys.map(k => {
-                            const d = commerce.hours_structured[k]
-                            const txt = d?.open && d?.shifts?.length
-                              ? d.shifts.map(s => `${s.from}–${s.to}`).join(' · ')
-                              : 'Cerrado'
-                            return (
-                              <div key={k} style={{ display:'flex', justifyContent:'space-between', gap:12 }}>
-                                <span style={{ color: k === todayKey ? C.white : C.mist, fontWeight: k === todayKey ? 600 : 400 }}>{dayLabels[k]}</span>
-                                <span style={{ color: k === todayKey ? C.white : C.mist }}>{txt}</span>
-                              </div>
-                            )
-                          })}
-                        </div>
-                      </div>
-                      {(commerce.address || commerce.lat || commerce.lng || commerce.instagram) && (
-                        <div style={{ borderTop:'1px solid rgba(255,255,255,0.08)' }} />
-                      )}
-                    </>
-                  )
-                })()}
-
-                {/* Ubicación — siempre visible. Si tiene dirección, link a Maps;
-                    si no, placeholder gris en italic. */}
-                {(commerce.address || (commerce.lat && commerce.lng)) ? (
-                  <a href={mapsUrl} target="_blank" rel="noopener noreferrer"
-                    style={{ display:'flex', alignItems:'center', justifyContent:'space-between', padding:'14px 16px', textDecoration:'none', fontFamily:FI }}>
-                    <div style={{ display:'flex', alignItems:'center', gap:12 }}>
-                      <MapPin size={18} strokeWidth={2} color="rgba(255,255,255,0.6)" />
-                      <div>
-                        <p style={{ color:C.white, fontSize:14, fontWeight:500, margin:0 }}>{commerce.address || 'Ver en el mapa'}</p>
-                        {commerce.city && <p style={{ color:'rgba(255,255,255,0.45)', fontSize:12, margin:'2px 0 0' }}>{commerce.city.name}</p>}
-                      </div>
-                    </div>
-                    {/* Botón outline fucsia — formato consistente con tags activos. */}
-                    <span style={{ background:'transparent', color:'#EC4899', border:'1.5px solid #EC4899', borderRadius:8, padding:'6px 12px', fontSize:12, fontWeight:700, fontFamily:FN, whiteSpace:'nowrap', flexShrink:0 }}>Cómo llegar →</span>
-                  </a>
-                ) : (
-                  <div style={{ display:'flex', alignItems:'center', gap:12, padding:'14px 16px', fontFamily:FI, borderTop:'1px solid rgba(255,255,255,0.06)' }}>
-                    <MapPin size={18} strokeWidth={2} color="rgba(255,255,255,0.25)" />
-                    <div>
-                      <p style={{ color:'rgba(255,255,255,0.35)', fontSize:14, fontWeight:500, margin:0, fontStyle:'italic' }}>Dirección no informada</p>
-                      {commerce.city?.name && <p style={{ color:'rgba(255,255,255,0.30)', fontSize:12, margin:'2px 0 0' }}>{commerce.city.name}</p>}
-                    </div>
-                  </div>
-                )}
-                <div style={{ borderTop:'1px solid rgba(255,255,255,0.08)' }} />
-
-                {/* Instagram — siempre visible. Si está vacío, placeholder. */}
-                {commerce.instagram ? (
-                  <a href={`https://instagram.com/${commerce.instagram.replace('@','')}`} target="_blank" rel="noopener noreferrer"
-                    style={{ display:'flex', alignItems:'center', justifyContent:'space-between', padding:'14px 16px', textDecoration:'none', fontFamily:FI }}>
-                    <div style={{ display:'flex', alignItems:'center', gap:12 }}>
-                      <Camera size={18} strokeWidth={2} color="rgba(255,255,255,0.6)" />
-                      <p style={{ color:C.white, fontSize:14, fontWeight:500, margin:0 }}>{commerce.instagram}</p>
-                    </div>
-                    <ChevronRight size={18} color="rgba(255,255,255,0.35)" />
-                  </a>
-                ) : (
-                  <div style={{ display:'flex', alignItems:'center', gap:12, padding:'14px 16px', fontFamily:FI }}>
-                    <Camera size={18} strokeWidth={2} color="rgba(255,255,255,0.25)" />
-                    <p style={{ color:'rgba(255,255,255,0.35)', fontSize:14, fontWeight:500, margin:0, fontStyle:'italic' }}>Sin redes sociales</p>
-                  </div>
-                )}
-              </div>
-            )}
-
-            {/* Promoción activa */}
-            {activePromo && (() => {
-              const clientPromo = clientPromos.find(cp => cp.promotion_id === activePromo.id && cp.status === 'active')
-              const daysLeft = clientPromo
-                ? Math.ceil((new Date(clientPromo.expires_at) - new Date()) / (1000 * 60 * 60 * 24))
-                : null
-              const expiringSoon = daysLeft !== null && daysLeft <= 3
-              const accentColor = expiringSoon ? '#fb923c' : '#c084fc'
-              const bgColor     = expiringSoon
-                ? 'linear-gradient(135deg, rgba(251,146,60,0.15), rgba(254,80,0,0.15))'
-                : 'linear-gradient(135deg, rgba(168,85,247,0.20), rgba(236,72,153,0.20))'
-              const borderColor = expiringSoon ? 'rgba(251,146,60,0.35)' : 'rgba(168,85,247,0.30)'
-              const iconBg      = expiringSoon ? 'rgba(251,146,60,0.25)' : 'rgba(168,85,247,0.30)'
-              const countdownText = daysLeft === null ? null
-                : daysLeft <= 0 ? '¡Vence hoy!'
-                : daysLeft === 1 ? '¡Vence mañana!'
-                : `Vence en ${daysLeft} día${daysLeft !== 1 ? 's' : ''}`
-
-              return (
-                <div style={{ background:bgColor, backdropFilter:'blur(24px)', WebkitBackdropFilter:'blur(24px)', borderRadius:16, padding:'16px', border:`1px solid ${borderColor}` }}>
-                  <div style={{ display:'flex', alignItems:'center', gap:12, marginBottom: countdownText ? 10 : 0 }}>
-                    <div style={{ width:40, height:40, borderRadius:'50%', background:iconBg, display:'flex', alignItems:'center', justifyContent:'center', flexShrink:0 }}>
-                      <Sparkles size={20} strokeWidth={2} color={accentColor} />
-                    </div>
-                    <div style={{ flex:1 }}>
-                      <p style={{ color:accentColor, fontSize:11, fontWeight:600, textTransform:'uppercase', letterSpacing:'.08em', fontFamily:FI, marginBottom:3 }}>
-                        {isMember ? 'Tu promoción activa' : 'Promoción activa'}
-                      </p>
-                      <p style={{ color:C.white, fontSize:14, fontWeight:500, fontFamily:FI }}>
-                        {activePromo.description || (activePromo.type==='double_points' ? `Doble ${unitLabel}` : `${activePromo.value}% de descuento`)}
-                      </p>
-                      {activePromo.days?.length > 0 && (
-                        <div style={{ display:'flex', gap:5, marginTop:6 }}>
-                          {activePromo.days.map(d => (
-                            <span key={d} style={{ fontSize:10, background:`${accentColor}22`, color:accentColor, borderRadius:6, padding:'3px 8px', fontWeight:600 }}>
-                              {DAYS_MAP[d] || d}
-                            </span>
-                          ))}
-                        </div>
-                      )}
-                    </div>
-                  </div>
-                  {countdownText && (
-                    <div style={{ paddingLeft:52 }}>
-                      <div style={{ display:'flex', alignItems:'center', gap:7, marginBottom:6 }}>
-                        <Clock size={12} color={accentColor} strokeWidth={2} />
-                        <span style={{ fontSize:12, fontWeight:700, color:accentColor }}>{countdownText}</span>
-                      </div>
-                      {daysLeft > 0 && activePromo.expiration_type === 'relative' && (
-                        <div style={{ height:3, borderRadius:99, background:'rgba(255,255,255,0.10)', overflow:'hidden' }}>
-                          <div style={{ height:'100%', borderRadius:99, background:accentColor, width:`${Math.min(100, Math.round(daysLeft / (activePromo.expiration_days || 7) * 100))}%`, transition:'width 400ms ease' }} />
-                        </div>
-                      )}
-                    </div>
-                  )}
-                </div>
-              )
-            })()}
-
-            {/* Catálogo — visible siempre, con estado vacío cuando el comercio
-                aún no cargó premios. Antes lo escondíamos (length === 0) y la
-                tab Inicio quedaba sin esa sección, lo cual confundía. */}
-            {activePrizes.length === 0 && (
-              <div>
-                <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', marginBottom:14 }}>
-                  <h2 style={{ fontFamily:FN, fontSize:17, fontWeight:600, color:C.white, letterSpacing:'-0.02em', margin:0 }}>Catálogo</h2>
-                </div>
-                <div style={{ background:'rgba(255,255,255,0.04)', border:'1px solid rgba(255,255,255,0.08)', borderRadius:16, padding:'28px 20px', textAlign:'center' }}>
-                  <div style={{ display:'flex', justifyContent:'center', marginBottom:12 }}>
-                    <div style={{ width:54, height:54, borderRadius:14, background:'rgba(236,72,153,0.10)', border:'1px solid rgba(236,72,153,0.22)', display:'flex', alignItems:'center', justifyContent:'center' }}>
-                      <Gift size={24} strokeWidth={1.5} color='rgba(236,72,153,0.75)' />
-                    </div>
-                  </div>
-                  <div style={{ fontFamily:FN, fontSize:14, fontWeight:600, color:'rgba(255,255,255,0.85)', marginBottom:6 }}>Sin premios todavía</div>
-                  <div style={{ fontSize:12, color:'rgba(255,255,255,0.50)', lineHeight:1.55, maxWidth:260, margin:'0 auto' }}>
-                    {commerce.name} todavía no cargó premios. Cuando los cargue, los vas a ver acá.
-                  </div>
-                </div>
-              </div>
-            )}
-            {activePrizes.length > 0 && (
-              <div>
-                <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', marginBottom:14 }}>
-                  <h2 style={{ fontFamily:FN, fontSize:17, fontWeight:600, color:C.white, letterSpacing:'-0.02em', margin:0 }}>Catálogo</h2>
-                  <button onClick={() => setTab('premios')} style={{ background:'transparent', border:'none', color:C.v, fontSize:13, fontWeight:500, fontFamily:FI, cursor:'pointer' }}>
-                    Ver todos →
-                  </button>
-                </div>
-                <div style={{ display:'flex', flexDirection:'column', gap:12 }}>
-                  {activePrizes.slice(0, 3).map((prize, idx) => {
-                    const canRedeem  = isMember && bal >= prize.cost
-                    const progressPct = isMember ? Math.min(100, Math.round((bal / prize.cost) * 100)) : 0
-                    const pointsLeft  = Math.max(prize.cost - bal, 0)
-                    return (
-                      <div key={prize.id}
-                        style={{
-                          width:'100%', background:'rgba(255,255,255,0.05)',
-                          backdropFilter:'blur(20px)', WebkitBackdropFilter:'blur(20px)',
-                          border:`1px solid ${canRedeem ? 'rgba(34,230,152,0.35)' : 'rgba(255,255,255,0.10)'}`,
-                          borderRadius:16, overflow:'hidden',
-                          animation:`cardIn .35s ease ${idx * 0.07}s both`,
-                        }}>
-                        <div style={{ display:'flex' }}>
-                          <div style={{ width:'30%', flexShrink:0, aspectRatio:'1', background:'linear-gradient(135deg, rgba(168,85,247,0.15), rgba(236,72,153,0.15))', display:'flex', alignItems:'center', justifyContent:'center', overflow:'hidden' }}>
-                            {prize.img_url
-                              ? <img src={prize.img_url} alt={prize.name} style={{ width:'100%', height:'100%', objectFit:'cover' }} />
-                              : <Gift size={28} strokeWidth={1.5} color="rgba(255,255,255,0.4)" />
-                            }
-                          </div>
-                          <div style={{ flex:1, padding:'12px 14px', display:'flex', flexDirection:'column', justifyContent:'space-between', minWidth:0 }}>
-                            <div>
-                              <div style={{ fontFamily:FN, fontSize:13, fontWeight:600, color:C.white, lineHeight:1.3 }}>{prize.name}</div>
-                              <div style={{ display:'flex', alignItems:'center', gap:5, marginTop:4 }}>
-                                <Gem size={13} color="#a855f7" strokeWidth={2} />
-                                <span style={{ color:'#a855f7', fontSize:12, fontWeight:500, fontFamily:FN }}>{prize.cost} {unitLabel}</span>
-                              </div>
-                            </div>
-                            <div style={{ marginTop:10 }}>
-                              <div style={{ height:10, background:'rgba(255,255,255,0.10)', borderRadius:9999, overflow:'visible' }}>
-                                <div className="fluorescent-bar" style={{ position:'relative', height:'100%', borderRadius:9999, width:`${progressPct}%`, minWidth: progressPct > 0 ? 10 : 0 }} />
-                              </div>
-                              {canRedeem ? (
-                                <button
-                                  disabled={redeeming === prize.id}
-                                  onClick={() => setConfirmPrize(prize)}
-                                  style={{ width:'100%', marginTop:5, padding:'5px 0', background:'linear-gradient(135deg,#22c55e,#10b981)', border:'none', borderRadius:8, color:'#fff', fontFamily:FN, fontSize:11, fontWeight:600, cursor:redeeming===prize.id?'not-allowed':'pointer', opacity:redeeming===prize.id?0.6:1 }}>
-                                  {redeeming === prize.id ? '...' : 'Canjear'}
-                                </button>
-                              ) : (
-                                <p style={{ fontSize:11, color:'rgba(255,255,255,0.45)', margin:'4px 0 0' }}>
-                                  {isMember ? <><span style={{ color:C.white, fontWeight:600 }}>{pointsLeft}</span> {unitLabel} para canjear</> : `Necesitás ${prize.cost} ${unitLabel}`}
-                                </p>
-                              )}
-                            </div>
-                          </div>
-                        </div>
-                      </div>
-                    )
-                  })}
-                </div>
-              </div>
-            )}
+            {/* El catálogo de premios ya no se muestra en Inicio — ahora vive
+                exclusivamente en la pestaña "Catálogo", junto con el balance
+                del cliente. Antes esto causaba duplicación visual entre las
+                dos pestañas. */}
 
             {/* RESEÑAS — desactivadas via REVIEWS_ENABLED (ver flag al top del archivo) */}
             {REVIEWS_ENABLED && (reviews.length > 0 || isMember) && (
@@ -1687,25 +2934,72 @@ export default function ClubProfilePage() {
               </div>
             )}
 
-            <div style={{ textAlign:'center', marginTop:28, marginBottom:8, fontSize:12, color:C.dust }}>
-              Benefix · {commerce.city?.name || ''}
-            </div>
+            {/* Footer "Benefix · Ciudad" eliminado de acá: quedaba flotando
+                en el medio de la página después de mergear los tabs. Si se
+                quiere volver a mostrar, va al final de todo el contenido. */}
           </div>
         )}
 
-        {/* ━━━ TAB: PREMIOS ━━━ */}
-        {tab === 'premios' && (
-          <div style={{ margin:'16px 16px 0', animation:'fadeUp .3s ease' }}>
-            <HelpBanner
-              id="club-premios"
-              title="Catálogo del club"
-              body="Estos son los premios que el comercio ofrece a cambio de sus puntos o estrellas. Si todavía no sos socio, sumate primero — los podés canjear cuando juntes lo necesario."
-            />
-            <h2 style={{ fontFamily:FN, fontSize:20, fontWeight:700, color:C.white, marginBottom:4, letterSpacing:'-0.02em' }}>Catálogo</h2>
-            <div style={{ fontSize:13, color:C.mist, marginBottom:20, display:'flex', alignItems:'center', gap:5 }}>
-              {isMember
-                ? <><UnitIcon size={13} {...unitIconProps} /> <span style={{ color:unitColor, fontWeight:600 }}>{bal}</span> {unitLabel} disponibles</>
-                : `Necesitás ${unitLabel} para canjear premios.`}
+        {/* ━━━ CATÁLOGO (parte del tab unificado "Inicio") ━━━
+            Se mergeó con el tab "inicio" para evitar la división artificial.
+            El bloque sigue siendo independiente porque tiene su propia
+            lógica (slider + saldo + lista de premios) y se renderiza
+            DESPUÉS del bloque de info principal en el flujo del DOM.
+            Mismo `gap:16` flex que el bloque de arriba para spacing
+            consistente entre todos los containers de la página. */}
+        {tab === 'inicio' && (
+          <div style={{ margin:'16px 16px 0', animation:'fadeUp .3s ease', display:'flex', flexDirection:'column', gap:16 }}>
+
+            {/* ── TU SALDO ── (solo miembros) */}
+            {isMember && (
+              <div style={{ background:'rgba(255,255,255,0.05)', backdropFilter:'blur(16px)', WebkitBackdropFilter:'blur(16px)', border:'1px solid rgba(255,255,255,0.10)', borderRadius:20, padding:'20px', position:'relative', overflow:'hidden' }}>
+                <div style={{ position:'absolute', top:0, left:0, right:0, height:3, background:GA }} />
+                <div style={{ position:'absolute', top:-40, right:-30, width:140, height:140, borderRadius:'50%', background:'rgba(168,85,247,0.1)', filter:'blur(40px)', pointerEvents:'none' }} />
+                <div style={{ display:'flex', justifyContent:'space-between', alignItems:'flex-start' }}>
+                  <div>
+                    <div style={{ fontSize:11, color:C.mist, marginBottom:6, fontWeight:500 }}>Tu saldo</div>
+                    <div style={{ fontFamily:FN, fontSize:36, fontWeight:900, color:unitColor, lineHeight:1, display:'flex', alignItems:'center', gap:8 }}>
+                      <UnitIcon size={28} {...unitIconProps} /> {bal}
+                    </div>
+                    <div style={{ fontSize:12, color:C.mist, marginTop:4 }}>{unitLabel}</div>
+                  </div>
+                  <div style={{ textAlign:'right' }}>
+                    <div style={{ fontSize:12, color:C.mist }}>{visits} visita{visits!==1?'s':''}</div>
+                  </div>
+                </div>
+                {/* La barra de "progreso hacia la recompensa" se removió:
+                    asumía que el cliente apunta al premio más barato, lo cual
+                    no siempre es así. Cada premio tiene su propia barra de
+                    progreso en su card del catálogo (más abajo) — eso le da
+                    al cliente control total sobre qué meta perseguir. */}
+                {/* Compra mínima visible al cliente (solo en stars). */}
+                {isStars && commerce.prog_min_purchase > 0 && (
+                  <div style={{ fontSize:11, color:'rgba(251,191,36,0.85)', marginTop:14, display:'flex', alignItems:'center', gap:5 }}>
+                    <Star size={11} strokeWidth={0} fill="currentColor" />
+                    Compra mínima para sumar estrella: <strong>${commerce.prog_min_purchase.toLocaleString('es-AR')}</strong>
+                  </div>
+                )}
+              </div>
+            )}
+
+            {/* ── BENEFICIOS POR TIEMPO LIMITADO ──
+                Slider auto-rotatorio con las promos activas (descuentos,
+                doble puntaje, etc). Va ANTES del catálogo de premios para
+                que el primer impacto del cliente sean los beneficios
+                urgentes con vencimiento, y después navegue tranquilo el
+                catálogo de premios canjeables. */}
+            <LimitedTimeBenefitsSlider promos={promos} unitLabel={unitLabel} editMode={editMode} />
+
+            {/* Header "Premios" + subtítulo agrupados en un solo bloque
+                (sin marginBottom propio) para que el gap:16 del padre se
+                aplique de forma consistente entre header→primera card. */}
+            <div>
+              <h2 style={{ fontFamily:FN, fontSize:20, fontWeight:700, color:C.white, margin:0, letterSpacing:'-0.02em' }}>Premios</h2>
+              <div style={{ fontSize:13, color:C.mist, marginTop:4, display:'flex', alignItems:'center', gap:5 }}>
+                {isMember
+                  ? <><UnitIcon size={13} {...unitIconProps} /> <span style={{ color:unitColor, fontWeight:600 }}>{bal}</span> {unitLabel} disponibles</>
+                  : `Necesitás ${unitLabel} para canjear premios.`}
+              </div>
             </div>
 
             {activePrizes.length === 0 ? (
@@ -1721,19 +3015,58 @@ export default function ClubProfilePage() {
                   const progressPct    = isMember ? Math.min(100, Math.round((bal / prize.cost) * 100)) : 0
                   const pointsLeft     = Math.max(prize.cost - bal, 0)
                   const isOos          = prize.stock === 0
+                  // Tag "NUEVO" para premios creados en los últimos 7 días.
+                  // Se renderiza diagonal en la esquina sup-izq de la foto.
+                  const isNew = (() => {
+                    if (!prize.created_at) return false
+                    const createdMs = new Date(prize.created_at).getTime()
+                    const weekMs = 7 * 24 * 60 * 60 * 1000
+                    return (Date.now() - createdMs) < weekMs
+                  })()
                   return (
-                    <div key={prize.id}
+                    <div
+                      key={prize.id}
+                      role="button" tabIndex={0}
+                      onClick={() => setPrizeDetail(prize)}
+                      onKeyDown={e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); setPrizeDetail(prize) } }}
                       style={{
+                        position:'relative',
                         width:'100%',
                         background:'rgba(255,255,255,0.05)',
                         backdropFilter:'blur(20px)',
                         WebkitBackdropFilter:'blur(20px)',
                         border:`1px solid ${canRedeem ? 'rgba(34,230,152,0.35)' : 'rgba(255,255,255,0.10)'}`,
                         borderRadius:16,
-                        overflow:'hidden',
+                        overflow: editMode ? 'visible' : 'hidden',
                         opacity: isOos ? 0.5 : 1,
                         animation:`cardIn .35s ease ${idx * 0.07}s both`,
-                      }}>
+                        padding:0,
+                        textAlign:'left',
+                        cursor: 'pointer',
+                        fontFamily:'inherit',
+                        transition:'transform 160ms ease, border-color 160ms ease',
+                      }}
+                      onMouseEnter={e => { if (!isOos) e.currentTarget.style.transform = 'translateY(-1px)' }}
+                      onMouseLeave={e => { e.currentTarget.style.transform = 'translateY(0)' }}>
+                      {/* Pen icon — solo en edit mode. Posicionado afuera de
+                          la esquina sup-derecha para que se destaque y no
+                          choque con el contenido. */}
+                      {editMode && (
+                        <button
+                          onClick={(e) => { e.stopPropagation(); setInlineEdit({ field:'prize', prize }) }}
+                          aria-label={`Editar ${prize.name}`}
+                          style={{
+                            position:'absolute', top:-8, right:-8, zIndex:5,
+                            width:30, height:30, borderRadius:'50%',
+                            background:'linear-gradient(135deg, #7C3AED, #BD4BF8)',
+                            border:'2px solid #0a0a14',
+                            color:'#fff', cursor:'pointer', padding:0,
+                            display:'flex', alignItems:'center', justifyContent:'center',
+                            boxShadow:'0 4px 14px rgba(189,75,248,0.55)',
+                          }}>
+                          <Pen size={13} strokeWidth={2.4} />
+                        </button>
+                      )}
                       <div style={{ display:'flex' }}>
 
                         {/* Imagen izquierda */}
@@ -1742,6 +3075,33 @@ export default function ClubProfilePage() {
                             ? <img src={prize.img_url} alt={prize.name} style={{ width:'100%', height:'100%', objectFit:'cover' }} />
                             : <Gift size={32} strokeWidth={1.5} color="rgba(255,255,255,0.4)" />
                           }
+                          {/* Banner "NUEVO" diagonal sobre la esquina sup-izq.
+                              Solo aparece si el premio se cargó hace menos de
+                              7 días. Diseño tipo "ribbon" inclinado a -45° con
+                              gradient violeta de marca y un sutil glow para
+                              que se destaque sobre cualquier imagen de fondo. */}
+                          {isNew && (
+                            <div style={{
+                              position: 'absolute',
+                              top: 10,
+                              left: -28,
+                              transform: 'rotate(-45deg)',
+                              background: 'linear-gradient(135deg, #7C3AED 0%, #BD4BF8 50%, #A855F7 100%)',
+                              color: '#fff',
+                              fontFamily: FN,
+                              fontSize: 9,
+                              fontWeight: 900,
+                              letterSpacing: '.18em',
+                              textTransform: 'uppercase',
+                              padding: '3px 32px',
+                              boxShadow: '0 2px 8px rgba(124,58,237,0.55), 0 0 0 1px rgba(255,255,255,0.18) inset',
+                              textShadow: '0 1px 2px rgba(0,0,0,0.40)',
+                              pointerEvents: 'none',
+                              zIndex: 2,
+                            }}>
+                              Nuevo
+                            </div>
+                          )}
                         </div>
 
                         {/* Contenido derecho */}
@@ -1765,37 +3125,50 @@ export default function ClubProfilePage() {
                             </div>
                           </div>
 
-                          {/* Barra de progreso + texto */}
+                          {/* Barra de progreso + estado.
+                              • canRedeem (100%): degradé de marca naranja→violeta
+                                fluyendo lento (4.5s). Glow doble naranja + violeta.
+                              • Aún no llegó al cost: violeta de marca pleno
+                                (#BD4BF8) sin animación de flow, con pulse muy
+                                sutil para que se sienta "vivo" sin distraer. */}
                           <div style={{ marginTop:12 }}>
-                            <div style={{ height:12, background:'rgba(255,255,255,0.10)', borderRadius:9999, overflow:'visible' }}>
+                            <div style={{
+                              height:14,
+                              background:'rgba(0,0,0,0.55)',
+                              borderRadius:9999,
+                              overflow:'hidden',
+                              border:'1px solid rgba(255,255,255,0.08)',
+                            }}>
                               <div
-                                className="fluorescent-bar"
-                                style={{ position:'relative', height:'100%', borderRadius:9999, width:`${progressPct}%`, minWidth: progressPct > 0 ? 12 : 0 }}
+                                style={{
+                                  height:'100%',
+                                  width:`${progressPct}%`,
+                                  minWidth: progressPct > 0 ? 14 : 0,
+                                  borderRadius:9999,
+                                  background: canRedeem
+                                    ? 'linear-gradient(90deg, #FE5000 0%, #BD4BF8 50%, #FE5000 100%)'
+                                    : '#BD4BF8',
+                                  backgroundSize: canRedeem ? '200% 100%' : 'auto',
+                                  boxShadow: canRedeem
+                                    ? '0 0 12px rgba(254,80,0,0.65), 0 0 22px rgba(189,75,248,0.55), inset 0 0 10px rgba(255,255,255,0.30)'
+                                    : '0 0 8px rgba(189,75,248,0.45), inset 0 0 6px rgba(255,255,255,0.20)',
+                                  animation: canRedeem
+                                    ? 'brand-bar-flow 4.5s ease-in-out infinite'
+                                    : 'brand-bar-pulse 2.8s ease-in-out infinite',
+                                }}
                               />
                             </div>
-                            <div style={{ marginTop:6 }}>
-                              {canRedeem ? (
-                                <button
-                                  disabled={redeeming === prize.id || isOos}
-                                  onClick={() => setConfirmPrize(prize)}
-                                  style={{
-                                    width:'100%', padding:'7px 0',
-                                    background:'linear-gradient(135deg, #22c55e, #10b981)',
-                                    border:'none', borderRadius:10,
-                                    color:'#fff', fontFamily:FN, fontSize:13, fontWeight:600,
-                                    cursor: (redeeming === prize.id || isOos) ? 'not-allowed' : 'pointer',
-                                    opacity: (redeeming === prize.id || isOos) ? 0.6 : 1,
-                                    boxShadow:'0 4px 14px rgba(34,197,94,0.35)',
-                                  }}>
-                                  {redeeming === prize.id ? 'Procesando...' : 'Canjear premio'}
-                                </button>
-                              ) : (
-                                <p style={{ fontSize:12, color:'rgba(255,255,255,0.5)', margin:0 }}>
-                                  {isMember
+                            <div style={{ marginTop:6, display:'flex', alignItems:'center', justifyContent:'space-between', gap:8 }}>
+                              <p style={{ fontSize:12, color:'rgba(255,255,255,0.55)', margin:0, flex:1, minWidth:0 }}>
+                                {canRedeem
+                                  ? <span style={{ color:'#22E698', fontWeight:600 }}>Disponible para canjear</span>
+                                  : isMember
                                     ? <><span style={{ color:C.white, fontWeight:600 }}>{pointsLeft}</span> {unitLabel} para canjear</>
-                                    : `Necesitás ${prize.cost} ${unitLabel} para canjear`}
-                                </p>
-                              )}
+                                    : `Necesitás ${prize.cost} ${unitLabel}`}
+                              </p>
+                              <span style={{ fontSize:11, color:'#a855f7', fontWeight:700, letterSpacing:'.04em', display:'inline-flex', alignItems:'center', gap:3, flexShrink:0 }}>
+                                Ver más <ChevronRight size={12} strokeWidth={2.6} />
+                              </span>
                             </div>
                           </div>
 
@@ -1810,35 +3183,41 @@ export default function ClubProfilePage() {
           </div>
         )}
 
-        {/* ━━━ TAB: HISTORIAL — visitas y canjes del cliente en este negocio ━━━ */}
-        {tab === 'historial' && (
+        {/* ━━━ HISTORIAL (accordion al fondo del tab unificado) ━━━
+            Antes era una pestaña aparte; ahora vive como accordion abajo
+            del catálogo de premios. Solo se muestra a miembros — los
+            no-miembros no tienen visitas ni canjes que ver. En modo
+            edición del dueño (editMode), tampoco aparece (es info del
+            cliente, no del comercio). */}
+        {tab === 'inicio' && isMember && !editMode && (
           <div style={{ margin:'16px 16px 0', animation:'fadeUp .3s ease' }}>
-            {isMember ? (
-              <ClubHistory user={user} commerceId={commerce.id} unitLabel={unitLabel} unitColor={unitColor} UnitIcon={UnitIcon} unitIconProps={unitIconProps} />
-            ) : (
-              <div style={{ textAlign:'center', padding:'40px 20px 20px' }}>
-                <div style={{ display:'flex', justifyContent:'center', marginBottom:16 }}>
-                  <div style={{ width:64, height:64, borderRadius:'50%', background:'rgba(168,85,247,0.12)', border:'1px solid rgba(168,85,247,0.25)', display:'flex', alignItems:'center', justifyContent:'center' }}>
-                    <Clock size={28} strokeWidth={1.5} color={C.v} />
+            <div style={{ background:'rgba(255,255,255,0.04)', backdropFilter:'blur(20px)', WebkitBackdropFilter:'blur(20px)', border:'1px solid rgba(255,255,255,0.10)', borderRadius:16, overflow:'hidden' }}>
+              <button
+                onClick={() => setShowHistory(v => !v)}
+                style={{
+                  width: '100%', background: 'transparent', border: 'none',
+                  cursor: 'pointer', padding: '14px 16px',
+                  display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+                  fontFamily: FI, textAlign: 'left',
+                }}
+              >
+                <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+                  <div style={{ width: 36, height: 36, borderRadius: 10, background: 'rgba(189,75,248,0.14)', border: '1px solid rgba(189,75,248,0.22)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                    <Clock size={16} color="#fff" strokeWidth={2.2} />
+                  </div>
+                  <div>
+                    <p style={{ color: C.white, fontSize: 14, fontWeight: 700, margin: 0, fontFamily: FN }}>Mi historial en este club</p>
+                    <p style={{ color: 'rgba(255,255,255,0.45)', fontSize: 11, margin: '2px 0 0' }}>Visitas y canjes</p>
                   </div>
                 </div>
-                <div style={{ fontFamily:FN, fontSize:18, fontWeight:700, color:C.white, marginBottom:10 }}>
-                  Tu historial te espera
+                <ChevronDown size={18} color="rgba(255,255,255,0.45)" style={{ transform: showHistory ? 'rotate(180deg)' : 'none', transition: 'transform .25s ease' }} />
+              </button>
+              {showHistory && (
+                <div style={{ borderTop: '1px solid rgba(255,255,255,0.08)', padding: '14px 0' }}>
+                  <ClubHistory user={user} commerceId={commerce.id} unitLabel={unitLabel} unitColor={unitColor} UnitIcon={UnitIcon} unitIconProps={unitIconProps} />
                 </div>
-                <div style={{ fontSize:13, color:C.mist, lineHeight:1.6, marginBottom:24, maxWidth:300, margin:'0 auto 24px' }}>
-                  Cuando seas socio de {commerce.name} vas a ver acá tus visitas y los premios que canjeaste.
-                </div>
-                <button onClick={() => setShowModal(true)}
-                  style={{
-                    padding:'12px 24px',
-                    background:'linear-gradient(135deg, #a855f7, #ec4899)',
-                    border:'none', borderRadius:14, color:'#fff',
-                    fontFamily:FN, fontSize:14, fontWeight:600, cursor:'pointer',
-                  }}>
-                  Unirme al club
-                </button>
-              </div>
-            )}
+              )}
+            </div>
           </div>
         )}
       </div>
@@ -1914,7 +3293,14 @@ export default function ClubProfilePage() {
         </div>
       )}
 
-      {/* Nav de pestañas pasó arriba (ClubTopNav) — abajo no va más. */}
+      {/* ── BOTTOM NAV FLOTANTE DEL CLUB ── (REMOVIDO)
+            Antes era una pill flotante con Inicio/Catálogo/Historial. Como
+            unificamos Inicio + Catálogo en un solo tab y movimos Historial
+            adentro de un accordion en la página de Inicio, el bottom nav
+            quedó sin función real. Lo escondemos siempre. Si en el futuro
+            hace falta multi-pestaña, se puede volver a montar:
+            <ClubTopNav tab={tab} setTab={setTab} prizesCount={activePrizes.length} editMode={editMode} />
+       */}
 
       {/* ── JOIN MODAL ── */}
       {showModal && (
@@ -1966,22 +3352,386 @@ export default function ClubProfilePage() {
         </div>
       )}
 
+      {/* ── INLINE EDIT MODAL — los lápices del modo edición abren acá ──
+            Re-implementa los mismos campos que la pantalla de configuración
+            del negocio. Para campos del comercio (name, description, address,
+            instagram, facebook, phone) llama a /api/save-commerce-config y
+            actualiza el state local de `data.commerce`. Para premios usa
+            supabase directo (RLS permite al owner editar sus propios prizes)
+            y refresca el array local. */}
+      {inlineEdit && (() => {
+        const f = inlineEdit.field
+        const inputStyle = { width:'100%', background:'rgba(255,255,255,0.06)', border:'1px solid rgba(255,255,255,0.18)', borderRadius:12, padding:'12px 14px', fontSize:14, color:'#fff', fontFamily:'inherit', boxSizing:'border-box', outline:'none' }
+        const labelStyle = { fontSize:11, color:'rgba(255,255,255,0.55)', fontWeight:600, textTransform:'uppercase', letterSpacing:'.08em', display:'block', marginBottom:6, fontFamily:FN }
+        const TITLE = {
+          name:        'Nombre del negocio',
+          description: 'Descripción',
+          address:     'Ubicación',
+          instagram:   'Instagram',
+          facebook:    'Facebook',
+          phone:       'Teléfono',
+          category:    'Categorías',
+          prize:       inlineEdit.prize ? `Premio: ${inlineEdit.prize.name}` : 'Premio',
+        }
+        return (
+          <InlineEditModal
+            title={TITLE[f] || 'Editar'}
+            field={f}
+            initial={inlineEdit.prize || data?.commerce}
+            inputStyle={inputStyle}
+            labelStyle={labelStyle}
+            onClose={() => setInlineEdit(null)}
+            onSavedCommerce={updates => {
+              // Mergeamos los campos actualizados al commerce local sin
+              // perder la galería de prizes ni promos.
+              setData(prev => prev ? ({ ...prev, commerce: { ...prev.commerce, ...updates } }) : prev)
+              setInlineEdit(null)
+            }}
+            onSavedPrize={updatedPrize => {
+              setData(prev => {
+                if (!prev) return prev
+                const nextPrizes = (prev.prizes || []).map(p => p.id === updatedPrize.id ? { ...p, ...updatedPrize } : p)
+                return { ...prev, prizes: nextPrizes }
+              })
+              setInlineEdit(null)
+            }}
+            onDeletedPrize={prizeId => {
+              setData(prev => {
+                if (!prev) return prev
+                const nextPrizes = (prev.prizes || []).filter(p => p.id !== prizeId)
+                return { ...prev, prizes: nextPrizes }
+              })
+              setInlineEdit(null)
+            }}
+          />
+        )
+      })()}
+
+      {/* ── PRIZE DETAIL MODAL ──
+            Vista estilo "producto de ecommerce" del premio: imagen grande,
+            nombre, costo en puntos/estrellas, descripción del comercio,
+            stock y un CTA "Canjear" sticky al fondo. Si el cliente no tiene
+            puntos suficientes se muestra cuánto le falta. Tap en X o backdrop
+            cierra. El "Canjear" abre el confirmPrize modal existente que
+            ya maneja el confirm + doRedeem (que ahora también dispara WA). */}
+      {prizeDetail && (() => {
+        const p = prizeDetail
+        const canRedeem  = isMember && bal >= p.cost
+        const isOos      = p.stock === 0
+        const pointsLeft = Math.max(p.cost - bal, 0)
+        const progressPct = isMember ? Math.min(100, Math.round((bal / p.cost) * 100)) : 0
+        // Galería de imágenes — usa el array `images` si existe; sino cae a
+        // [img_url] (legacy). Si no hay nada, se renderea el placeholder
+        // dentro del slide único.
+        const gallery = (Array.isArray(p.images) && p.images.length > 0)
+          ? p.images
+          : (p.img_url ? [p.img_url] : [])
+        return (
+          <div style={{ position:'fixed', inset:0, zIndex:850, display:'flex', alignItems:'flex-end', justifyContent:'center' }}>
+            {/* Backdrop oscuro */}
+            <div onClick={() => setPrizeDetail(null)}
+              style={{ position:'absolute', inset:0, background:'rgba(0,0,0,0.85)', backdropFilter:'blur(14px)', WebkitBackdropFilter:'blur(14px)' }} />
+            {/* Sheet del detalle — sube desde abajo, ocupa hasta 92vh */}
+            <div style={{
+              position:'relative',
+              width:'100%', maxWidth:520,
+              maxHeight:'92vh',
+              background:'#0a0a14',
+              border:'1px solid rgba(255,255,255,0.08)',
+              borderRadius:'24px 24px 0 0',
+              overflow:'hidden',
+              display:'flex', flexDirection:'column',
+              animation:'fadeUp .3s cubic-bezier(0.16,1,0.3,1)',
+              boxShadow:'0 -16px 64px rgba(0,0,0,0.55)',
+            }}>
+              {/* Botón X cerrar */}
+              <button onClick={() => setPrizeDetail(null)}
+                aria-label="Cerrar"
+                style={{
+                  position:'absolute', top:14, right:14, zIndex:5,
+                  width:38, height:38, borderRadius:'50%',
+                  background:'rgba(0,0,0,0.55)',
+                  backdropFilter:'blur(10px)', WebkitBackdropFilter:'blur(10px)',
+                  border:'1px solid rgba(255,255,255,0.18)',
+                  color:'#fff',
+                  cursor:'pointer', padding:0,
+                  display:'flex', alignItems:'center', justifyContent:'center',
+                }}>
+                <ChevronDown size={20} strokeWidth={2.4} />
+              </button>
+
+              {/* Scrollable content */}
+              <div style={{ flex:1, overflowY:'auto' }}>
+                {/* Galería de imágenes (4:3) — carrusel horizontal con
+                    scroll-snap. Si hay 1+ imágenes, las muestra en orden
+                    swipeables con dots indicadores abajo. Si no hay ninguna,
+                    cae al placeholder con ícono Gift centrado. */}
+                <div style={{
+                  width:'100%',
+                  aspectRatio:'4 / 3',
+                  background:'linear-gradient(135deg, rgba(168,85,247,0.30), rgba(236,72,153,0.20))',
+                  position:'relative',
+                  overflow:'hidden',
+                }}>
+                  {gallery.length === 0 ? (
+                    <div style={{ position:'absolute', inset:0, display:'flex', alignItems:'center', justifyContent:'center' }}>
+                      <Gift size={84} strokeWidth={1.2} color="rgba(255,255,255,0.50)" />
+                    </div>
+                  ) : (
+                    <>
+                      <div
+                        ref={galleryStripRef}
+                        onScroll={handleGalleryScroll}
+                        className="prize-gallery-strip"
+                        style={{
+                          width:'100%', height:'100%',
+                          display:'flex',
+                          overflowX:'auto', overflowY:'hidden',
+                          scrollSnapType:'x mandatory',
+                          WebkitOverflowScrolling:'touch',
+                          scrollbarWidth:'none',
+                          msOverflowStyle:'none',
+                        }}>
+                        {gallery.map((src, i) => (
+                          <div key={i} style={{
+                            flex:'0 0 100%',
+                            width:'100%', height:'100%',
+                            scrollSnapAlign:'start',
+                            scrollSnapStop:'always',
+                          }}>
+                            <img
+                              src={src}
+                              alt={`${p.name} — imagen ${i + 1} de ${gallery.length}`}
+                              loading={i === 0 ? 'eager' : 'lazy'}
+                              style={{ width:'100%', height:'100%', objectFit:'cover', display:'block' }}
+                            />
+                          </div>
+                        ))}
+                      </div>
+                      {/* Contador "1/3" — estilo ecommerce, esquina inferior-derecha */}
+                      {gallery.length > 1 && (
+                        <span style={{
+                          position:'absolute', bottom:14, right:14,
+                          padding:'5px 12px',
+                          background:'rgba(0,0,0,0.55)',
+                          color:'#fff', fontSize:11, fontWeight:700,
+                          letterSpacing:'.06em',
+                          borderRadius:99, fontFamily:FN,
+                          backdropFilter:'blur(10px)', WebkitBackdropFilter:'blur(10px)',
+                          display:'flex', alignItems:'center', gap:4,
+                        }}>
+                          <Camera size={11} strokeWidth={2.4} /> {gallery.length}
+                        </span>
+                      )}
+                      {/* Dots indicadores: barritas centradas abajo. El dot
+                          activo se ensancha y queda blanco sólido — se sync
+                          con el scroll manual del user vía onScroll arriba. */}
+                      {gallery.length > 1 && (
+                        <div style={{
+                          position:'absolute', bottom:16, left:0, right:0,
+                          display:'flex', justifyContent:'center', gap:6,
+                          pointerEvents:'none',
+                        }}>
+                          {gallery.map((_, i) => {
+                            const active = i === galleryIdx
+                            return (
+                              <span key={i} style={{
+                                width: active ? 24 : 6, height: 4, borderRadius: 99,
+                                background: active ? '#fff' : 'rgba(255,255,255,0.40)',
+                                border: '1px solid rgba(0,0,0,0.20)',
+                                transition: 'width 280ms cubic-bezier(0.22,1,0.36,1), background 280ms ease',
+                              }} />
+                            )
+                          })}
+                        </div>
+                      )}
+                    </>
+                  )}
+                  {/* Stock badge top-left */}
+                  {p.stock !== null && (
+                    <span style={{
+                      position:'absolute', top:14, left:14,
+                      padding:'5px 10px',
+                      background: isOos ? 'rgba(239,68,68,0.92)' : (p.stock <= 2 ? 'rgba(254,80,0,0.92)' : 'rgba(0,0,0,0.55)'),
+                      color:'#fff', fontSize:10, fontWeight:800,
+                      letterSpacing:'.10em', textTransform:'uppercase',
+                      borderRadius:99, fontFamily:FN,
+                      backdropFilter:'blur(10px)', WebkitBackdropFilter:'blur(10px)',
+                      zIndex:2,
+                    }}>
+                      {isOos ? 'Agotado' : `${p.stock} disp.`}
+                    </span>
+                  )}
+                </div>
+
+                {/* Body: título + costo + descripción */}
+                <div style={{ padding:'20px 20px 12px' }}>
+                  {/* Migaja "Catálogo · Comercio" */}
+                  <div style={{ fontFamily:FN, fontSize:10, fontWeight:700, color:C.dust, letterSpacing:'.14em', textTransform:'uppercase', marginBottom:8 }}>
+                    Premio · {commerce.name}
+                  </div>
+                  <h2 style={{ fontFamily:FN, fontSize:22, fontWeight:900, color:C.white, margin:'0 0 10px', lineHeight:1.2, letterSpacing:'-0.01em' }}>
+                    {p.name}
+                  </h2>
+                  {/* Pill grande con el costo en puntos */}
+                  <div style={{
+                    display:'inline-flex', alignItems:'center', gap:8,
+                    padding:'8px 14px', borderRadius:99,
+                    background:'rgba(168,85,247,0.14)',
+                    border:'1px solid rgba(168,85,247,0.40)',
+                    color:'#c084fc',
+                    fontFamily:FN, fontSize:14, fontWeight:800,
+                    marginBottom:18,
+                  }}>
+                    <Gem size={16} strokeWidth={2.2} />
+                    {p.cost} {unitLabel}
+                  </div>
+
+                  {/* Descripción */}
+                  {p.description ? (
+                    <p style={{ fontSize:14, color:'rgba(255,255,255,0.78)', lineHeight:1.6, margin:'0 0 18px', whiteSpace:'pre-wrap' }}>
+                      {p.description}
+                    </p>
+                  ) : (
+                    <p style={{ fontSize:13, color:'rgba(255,255,255,0.40)', fontStyle:'italic', margin:'0 0 18px' }}>
+                      El comercio no agregó descripción para este premio.
+                    </p>
+                  )}
+
+                  {/* Tu progreso (solo miembros) */}
+                  {isMember && (
+                    <div style={{
+                      background:'rgba(255,255,255,0.04)',
+                      border:'1px solid rgba(255,255,255,0.08)',
+                      borderRadius:14, padding:'12px 14px',
+                      marginBottom:14,
+                    }}>
+                      <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:8 }}>
+                        <span style={{ fontSize:12, color:C.mist, fontWeight:600 }}>Tu progreso</span>
+                        <span style={{ fontSize:12, color: canRedeem ? '#22E698' : '#c084fc', fontWeight:700 }}>
+                          {bal} / {p.cost} {unitLabel}
+                        </span>
+                      </div>
+                      <div style={{ height:10, background:'rgba(0,0,0,0.55)', borderRadius:9999, overflow:'hidden', border:'1px solid rgba(255,255,255,0.08)' }}>
+                        <div style={{
+                          height:'100%',
+                          width:`${progressPct}%`,
+                          minWidth: progressPct > 0 ? 10 : 0,
+                          borderRadius:9999,
+                          background: canRedeem
+                            ? 'linear-gradient(90deg, #FE5000 0%, #BD4BF8 50%, #FE5000 100%)'
+                            : '#BD4BF8',
+                          backgroundSize: canRedeem ? '200% 100%' : 'auto',
+                          boxShadow: canRedeem
+                            ? '0 0 14px rgba(254,80,0,0.70), 0 0 26px rgba(189,75,248,0.60), inset 0 0 12px rgba(255,255,255,0.35)'
+                            : '0 0 8px rgba(189,75,248,0.45), inset 0 0 6px rgba(255,255,255,0.20)',
+                          animation: canRedeem
+                            ? 'brand-bar-flow 4.5s ease-in-out infinite'
+                            : 'brand-bar-pulse 2.8s ease-in-out infinite',
+                        }} />
+                      </div>
+                      {!canRedeem && (
+                        <div style={{ marginTop:8, fontSize:12, color:C.mist }}>
+                          Te faltan <strong style={{ color:C.white }}>{pointsLeft} {unitLabel}</strong> — seguí visitando para sumarlos.
+                        </div>
+                      )}
+                    </div>
+                  )}
+
+                  {/* Aviso WhatsApp — adelantamos al cliente que al canjear se
+                      le va a abrir el chat con el comercio para coordinar el
+                      retiro. Solo si el comercio tiene número cargado. */}
+                  {commerce?.phone && canRedeem && (
+                    <div style={{
+                      display:'flex', alignItems:'center', gap:10,
+                      padding:'10px 12px', borderRadius:12,
+                      background:'rgba(34,230,152,0.08)',
+                      border:'1px solid rgba(34,230,152,0.25)',
+                      marginBottom:6,
+                    }}>
+                      <MessageCircle size={16} color="#22E698" strokeWidth={2.2} style={{ flexShrink:0 }} />
+                      <span style={{ fontSize:12, color:'rgba(220,255,236,0.85)', lineHeight:1.4 }}>
+                        Al canjear te abrimos un WhatsApp con {commerce.name} para coordinar el retiro.
+                      </span>
+                    </div>
+                  )}
+                </div>
+              </div>
+
+              {/* CTA sticky al fondo */}
+              <div style={{
+                padding:'14px 20px calc(14px + env(safe-area-inset-bottom, 0px))',
+                background:'rgba(10,10,20,0.92)',
+                borderTop:'1px solid rgba(255,255,255,0.08)',
+                backdropFilter:'blur(20px)', WebkitBackdropFilter:'blur(20px)',
+              }}>
+                {!isMember ? (
+                  <div style={{ textAlign:'center', fontSize:13, color:C.mist, padding:'10px 0' }}>
+                    Sumate al club para poder canjear
+                  </div>
+                ) : isOos ? (
+                  <div style={{ textAlign:'center', fontSize:13, color:'#fb7185', padding:'10px 0', fontWeight:600 }}>
+                    Sin stock — el comercio repondrá pronto
+                  </div>
+                ) : !canRedeem ? (
+                  <div style={{
+                    textAlign:'center',
+                    padding:'12px',
+                    background:'rgba(255,255,255,0.04)',
+                    border:'1px solid rgba(255,255,255,0.08)',
+                    borderRadius:12,
+                  }}>
+                    <div style={{ fontSize:13, color:C.mist }}>
+                      Te faltan <strong style={{ color:C.white }}>{pointsLeft} {unitLabel}</strong> para canjear este premio
+                    </div>
+                  </div>
+                ) : (
+                  <button
+                    disabled={redeeming === p.id}
+                    onClick={() => { setPrizeDetail(null); setConfirmPrize(p) }}
+                    style={{
+                      width:'100%', padding:'14px 0',
+                      // Violeta de marca con un toque de profundidad —
+                      // mismo degradé que usamos en otros CTAs primarios
+                      // del comercio (#7C3AED → #BD4BF8).
+                      background:'linear-gradient(135deg, #7C3AED, #BD4BF8)',
+                      border:'none', borderRadius:14,
+                      color:'#fff', fontFamily:FN, fontSize:15, fontWeight:800,
+                      letterSpacing:'.02em',
+                      cursor: redeeming === p.id ? 'not-allowed' : 'pointer',
+                      opacity: redeeming === p.id ? 0.6 : 1,
+                      boxShadow:'0 8px 24px rgba(189,75,248,0.50)',
+                      display:'flex', alignItems:'center', justifyContent:'center', gap:8,
+                    }}>
+                    <Gift size={18} strokeWidth={2.4} />
+                    {redeeming === p.id ? 'Procesando…' : `Canjear por ${p.cost} ${unitLabel}`}
+                  </button>
+                )}
+              </div>
+            </div>
+          </div>
+        )
+      })()}
+
       {/* ── CONFIRM CANJE MODAL ── */}
       {confirmPrize && (
         <div style={{ position:'fixed', inset:0, zIndex:800, display:'flex', alignItems:'center', justifyContent:'center', padding:20 }}>
           <div onClick={() => setConfirmPrize(null)} style={{ position:'absolute', inset:0, background:'rgba(0,0,0,0.82)', backdropFilter:'blur(12px)', WebkitBackdropFilter:'blur(12px)' }} />
           <div style={{ position:'relative', background:'rgba(14,8,28,0.97)', border:'1px solid rgba(255,255,255,0.12)', borderRadius:22, padding:'26px 22px', width:'100%', maxWidth:320, boxShadow:'0 32px 80px rgba(0,0,0,0.6)' }}>
-            <div style={{ width:48, height:48, borderRadius:'50%', background:'rgba(34,230,152,0.18)', display:'flex', alignItems:'center', justifyContent:'center', margin:'0 auto 14px' }}>
-              <Gift size={22} strokeWidth={1.5} color="#22E698" />
+            <div style={{ width:48, height:48, borderRadius:'50%', background:'rgba(189,75,248,0.18)', display:'flex', alignItems:'center', justifyContent:'center', margin:'0 auto 14px' }}>
+              <Gift size={22} strokeWidth={1.5} color="#BD4BF8" />
             </div>
             <div style={{ fontFamily:FN, fontSize:17, fontWeight:800, color:'#fff', textAlign:'center', marginBottom:6 }}>¿Canjear {confirmPrize.name}?</div>
             <div style={{ fontSize:12, color:C.mist, textAlign:'center', lineHeight:1.6, marginBottom:20 }}>
-              Se descontarán <strong style={{ color:'#fff' }}>{confirmPrize.cost} {unitLabel}</strong> de tu cuenta. Mostrá la pantalla al encargado del negocio.
+              Se descontarán <strong style={{ color:'#fff' }}>{confirmPrize.cost} {unitLabel}</strong> de tu cuenta.
+              {commerce?.phone
+                ? <> Te abrimos un WhatsApp con <strong style={{ color:'#fff' }}>{commerce.name}</strong> para coordinar el retiro.</>
+                : <> Mostrá la pantalla al encargado del negocio.</>}
             </div>
             <div style={{ display:'flex', gap:10 }}>
               <button onClick={() => setConfirmPrize(null)} style={{ flex:1, padding:'11px', background:'rgba(255,255,255,0.08)', border:'1px solid rgba(255,255,255,0.12)', borderRadius:12, color:'#fff', fontFamily:FN, fontSize:13, fontWeight:600, cursor:'pointer' }}>Cancelar</button>
               <button onClick={() => { const p = confirmPrize; setConfirmPrize(null); doRedeem(p) }}
-                style={{ flex:1, padding:'11px', background:'linear-gradient(135deg,#22c55e,#16a34a)', border:'none', borderRadius:12, color:'#fff', fontFamily:FN, fontSize:13, fontWeight:700, cursor:'pointer', boxShadow:'0 4px 14px rgba(34,197,94,0.35)' }}>
+                style={{ flex:1, padding:'11px', background:'linear-gradient(135deg,#7C3AED,#BD4BF8)', border:'none', borderRadius:12, color:'#fff', fontFamily:FN, fontSize:13, fontWeight:700, cursor:'pointer', boxShadow:'0 4px 14px rgba(189,75,248,0.45)' }}>
                 Confirmar
               </button>
             </div>

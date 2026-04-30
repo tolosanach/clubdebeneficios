@@ -3,6 +3,12 @@ import { NextResponse } from 'next/server'
 import { createClient } from '@supabase/supabase-js'
 import { createSupabaseServer } from '../../../lib/supabase-server'
 
+// Forzamos modo dinámico — sin esto, Next.js puede cachear el response del
+// route handler. Eso hacía que los premios nuevos cargados por el comerciante
+// no aparezcan en el catálogo público hasta el siguiente deploy.
+export const dynamic = 'force-dynamic'
+export const revalidate = 0
+
 const supabaseAdmin = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL,
   process.env.SUPABASE_SERVICE_ROLE_KEY
@@ -33,7 +39,7 @@ export async function GET(request) {
   // Fetch active prizes
   const { data: prizes } = await supabaseAdmin
     .from('prizes')
-    .select('id, name, description, cost, img_url, stock, created_at')
+    .select('id, name, description, cost, img_url, images, stock, created_at')
     .eq('commerce_id', commerce.id)
     .eq('active', true)
     .order('cost', { ascending: true })

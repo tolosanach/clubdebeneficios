@@ -11,6 +11,7 @@ import { FAMILIES_DATA } from '../lib/commerce-families-data'
 import PhoneInput from '../lib/PhoneInput'
 import SupportChat from '../lib/SupportChat'
 import NotificationsBell from '../lib/NotificationsBell'
+import FloatingActionsTab from '../lib/FloatingActionsTab'
 import EnablePushPrompt from '../lib/EnablePushPrompt'
 import SwRegister from '../lib/sw-register'
 import InfoHint from '../lib/InfoHint'
@@ -35,7 +36,8 @@ import {
   Shirt, Footprints, Sofa,
   WashingMachine, Wrench,
   GraduationCap, Languages, Music, MoreHorizontal, Wallet,
-  MessageCircle, ArrowUpDown, Percent,
+  MessageCircle, ArrowUpDown, Percent, Share2,
+  Tag, AlignLeft, AtSign,
 } from 'lucide-react'
 
 const MENU_ICONS = {
@@ -52,6 +54,29 @@ const MENU_ICONS = {
   configuracion:   Settings,
   planes:          CreditCard,  // sigue existiendo internamente para los teasers
 }
+
+// Definición del menú principal del panel comerciante. Vive a nivel de
+// módulo (no dentro del componente) para que renderRailTab pueda
+// referenciarlo sin chocar con el orden de declaración (TDZ). Es data
+// estática — los flags dinámicos como `locked` se computan en el consumer
+// según `planKey` o estado del comercio.
+const MENU = [
+  { id:'dashboard',        label:'Dashboard'        },
+  { id:'clientes',         label:'Clientes'         },
+  // Pestaña unificada: sistema base + promociones (sin automatizaciones).
+  { id:'recompensas',      label:'Recompensas'      },
+  { id:'premios',          label:'Premios'          },
+  // Mensajes = automatizaciones de WhatsApp, separadas porque son
+  // comunicación fuera del scan (no transaccional como recompensas).
+  { id:'mensajes',         label:'Mensajes',        pro: true },
+  // Análisis = reportes + segmentación mergeados.
+  { id:'analisis',         label:'Análisis'         },
+  { id:'historial',        label:'Historial'        },
+  { id:'configuracion',    label:'Configuración'    },
+  // Planes vuelve a ser pestaña propia: Configuración era demasiado larga
+  // con la sección de planes adentro.
+  { id:'planes',           label:'Planes'           },
+]
 
 // Feature flags — desactivar funcionalidades no listas para MVP sin borrar código.
 // Reseñas/rating: tabla y endpoints siguen vivos en la DB; solo escondemos la UI.
@@ -72,6 +97,34 @@ const C = {
 }
 const FN = "'Space Grotesk', system-ui, sans-serif"
 const FI = "'Inter', system-ui, sans-serif"
+// FCC = familia tipográfica estilo "tarjeta de crédito": monospace robusta
+// con buen renderizado de números y mayúsculas. Usamos OCR-B Std cuando el
+// SO la tiene (común en linux/mac) y caemos a Andale Mono / Courier en el
+// resto. Replica el look de los números embossed de una tarjeta real.
+const FCC = "'OCR B Std', 'OCR-B', 'Andale Mono', 'Lucida Console', 'Courier New', monospace"
+
+// Genera un número de tarjeta de 16 dígitos en grupos de 4 a partir de un
+// id estable (commerce.id, slug o lo que tengamos). El resultado es
+// determinístico — la misma tarjeta siempre muestra el mismo número
+// random — pero distinto entre comercios. No es un número de crédito real,
+// solo un detalle estético para que la tarjeta del club se vea como una
+// tarjeta verdadera.
+function cardNumberFromSeed(seed) {
+  const str = String(seed || '0')
+  let hash = 2166136261  // FNV-1a base
+  for (let i = 0; i < str.length; i++) {
+    hash ^= str.charCodeAt(i)
+    hash = Math.imul(hash, 16777619)
+  }
+  let n = Math.abs(hash) || 1
+  let digits = ''
+  for (let i = 0; i < 16; i++) {
+    // LCG simple para generar dígitos pseudo-random consistentes
+    n = (n * 1103515245 + 12345) >>> 0
+    digits += Math.floor((n % 10000) / 1000)
+  }
+  return digits.match(/.{1,4}/g).join(' ')
+}
 const PLANS = {
   free:    { label:'FREE',    limit:30,   price:0,      color:'#9CA3AF', badge:'#2E2E2E' },
   starter: { label:'STARTER', limit:60,   price:25000,  color:'#5B8DEF', badge:'#1A2A4A' },
@@ -140,18 +193,75 @@ function ConfirmModal() {
   const { title, message, confirmText = 'Confirmar', cancelText = 'Cancelar', danger = false, resolve } = modal
   const confirm = () => { setModal(null); resolve(true)  }
   const cancel  = () => { setModal(null); resolve(false) }
+  // Acento del icon: violeta de marca por defecto, naranja-rojo cuando es danger
+  const accentColor = danger ? '#FE5000' : '#BD4BF8'
+  const accentGlow  = danger ? 'rgba(254,80,0,0.55)' : 'rgba(189,75,248,0.55)'
   return createPortal(
     <div style={{ position:'fixed', inset:0, zIndex:9998, display:'flex', alignItems:'center', justifyContent:'center', padding:20 }}>
-      <div onClick={cancel} style={{ position:'absolute', inset:0, background:'rgba(0,0,0,0.82)', backdropFilter:'blur(12px)', WebkitBackdropFilter:'blur(12px)' }} />
-      <div className="modal-in liquid-glass-strong" style={{ position:'relative', borderRadius:24, padding:'28px 22px', width:'100%', maxWidth:340, boxShadow:'0 32px 80px rgba(0,0,0,0.6)' }}>
-        <div style={{ width:50, height:50, borderRadius:'50%', background: danger ? 'rgba(248,116,68,0.18)' : 'rgba(189,75,248,0.18)', display:'flex', alignItems:'center', justifyContent:'center', margin:'0 auto 16px' }}>
-          <AlertTriangle size={22} color={danger ? '#f87444' : C.v} strokeWidth={1.5} />
+      {/* Backdrop con gradient de marca en modo oscuro + halos radiales en
+          las esquinas (efecto "spotlight" violeta/naranja sutiles que dan
+          profundidad sin distraer del modal). */}
+      <div onClick={cancel} style={{
+        position:'absolute', inset:0,
+        background: `
+          radial-gradient(ellipse at top left,    rgba(189,75,248,0.22) 0%, transparent 50%),
+          radial-gradient(ellipse at bottom right, rgba(254,80,0,0.18)   0%, transparent 50%),
+          linear-gradient(135deg, #0a0612 0%, #150823 50%, #0a0612 100%)
+        `,
+      }} />
+      {/* Tarjeta glass con borde sutil. Opacidad baja + backdrop-filter
+          para que se vea un poco lo del fondo borroseado. */}
+      <div className="modal-in" style={{
+        position:'relative', borderRadius:24, padding:'30px 24px',
+        width:'100%', maxWidth:360,
+        background: 'linear-gradient(135deg, rgba(255,255,255,0.10) 0%, rgba(255,255,255,0.04) 100%)',
+        backdropFilter: 'blur(28px) saturate(180%)',
+        WebkitBackdropFilter: 'blur(28px) saturate(180%)',
+        border: '1px solid rgba(255,255,255,0.18)',
+        boxShadow: `
+          0 32px 80px rgba(0,0,0,0.5),
+          0 0 0 1px rgba(255,255,255,0.04),
+          inset 0 1px 0 rgba(255,255,255,0.18)
+        `,
+      }}>
+        {/* Ícono: círculo outlined con el ícono adentro, color violeta/danger */}
+        <div style={{
+          width:64, height:64, borderRadius:'50%',
+          border: `2px solid ${accentColor}`,
+          background: 'transparent',
+          display:'flex', alignItems:'center', justifyContent:'center',
+          margin:'0 auto 18px',
+          boxShadow: `0 0 22px ${accentGlow}, inset 0 0 12px ${accentGlow}`,
+        }}>
+          {danger
+            ? <AlertTriangle size={26} color={accentColor} strokeWidth={2.2} />
+            : <Check size={28} color={accentColor} strokeWidth={2.6} />}
         </div>
-        <div style={{ fontFamily:FN, fontSize:17, fontWeight:800, color:C.white, textAlign:'center', marginBottom:8 }}>{title}</div>
-        <div style={{ fontSize:13, color:C.mist, textAlign:'center', lineHeight:1.7, marginBottom:22 }}>{message}</div>
+        <div style={{ fontFamily:FN, fontSize:20, fontWeight:800, color:'#fff', textAlign:'center', marginBottom:8, letterSpacing:'-0.01em' }}>{title}</div>
+        <div style={{ fontSize:13, color:'rgba(255,255,255,0.65)', textAlign:'center', lineHeight:1.6, marginBottom:24 }}>{message}</div>
         <div style={{ display:'flex', gap:10 }}>
-          <button onClick={cancel}  style={{ flex:1, padding:'11px', background:'rgba(255,255,255,0.08)', border:'1px solid rgba(255,255,255,0.12)', borderRadius:12, color:C.pearl, fontFamily:FN, fontSize:13, fontWeight:600, cursor:'pointer' }}>{cancelText}</button>
-          <button onClick={confirm} style={{ flex:1, padding:'11px', background: danger ? 'linear-gradient(135deg,#f87444,#ef4444)' : GV, border:'none', borderRadius:12, color:'#fff', fontFamily:FN, fontSize:13, fontWeight:700, cursor:'pointer' }}>{confirmText}</button>
+          {/* Cancelar: outlined transparent pill con texto blanco */}
+          <button onClick={cancel} style={{
+            flex:1, padding:'13px',
+            background:'transparent',
+            border:'1px solid rgba(255,255,255,0.30)',
+            borderRadius:99,
+            color:'#fff',
+            fontFamily:FN, fontSize:13, fontWeight:700,
+            cursor:'pointer',
+            transition:'background 180ms ease',
+          }}>{cancelText}</button>
+          {/* Confirmar: pill blanca sólida con texto oscuro (primary action) */}
+          <button onClick={confirm} style={{
+            flex:1, padding:'13px',
+            background:'#ffffff',
+            border:'none',
+            borderRadius:99,
+            color:'#0a0612',
+            fontFamily:FN, fontSize:13, fontWeight:800,
+            cursor:'pointer',
+            boxShadow:'0 4px 14px rgba(0,0,0,0.30)',
+          }}>{confirmText}</button>
         </div>
       </div>
     </div>,
@@ -180,20 +290,63 @@ function LoginPromptModal() {
   const cancel  = () => { setModal(null); resolve(false) }
   return createPortal(
     <div style={{ position:'fixed', inset:0, zIndex:9998, display:'flex', alignItems:'center', justifyContent:'center', padding:20 }}>
-      <div onClick={cancel} style={{ position:'absolute', inset:0, background:'rgba(0,0,0,0.82)', backdropFilter:'blur(12px)', WebkitBackdropFilter:'blur(12px)' }} />
-      <div className="modal-in liquid-glass-strong" style={{ position:'relative', borderRadius:24, padding:'28px 22px', width:'100%', maxWidth:340, boxShadow:'0 32px 80px rgba(0,0,0,0.6)' }}>
+      <div onClick={cancel} style={{
+        position:'absolute', inset:0,
+        background: `
+          radial-gradient(ellipse at top left,    rgba(189,75,248,0.22) 0%, transparent 50%),
+          radial-gradient(ellipse at bottom right, rgba(254,80,0,0.18)   0%, transparent 50%),
+          linear-gradient(135deg, #0a0612 0%, #150823 50%, #0a0612 100%)
+        `,
+      }} />
+      <div className="modal-in" style={{
+        position:'relative', borderRadius:24, padding:'30px 24px',
+        width:'100%', maxWidth:360,
+        background: 'linear-gradient(135deg, rgba(255,255,255,0.10) 0%, rgba(255,255,255,0.04) 100%)',
+        backdropFilter: 'blur(28px) saturate(180%)',
+        WebkitBackdropFilter: 'blur(28px) saturate(180%)',
+        border: '1px solid rgba(255,255,255,0.18)',
+        boxShadow: `
+          0 32px 80px rgba(0,0,0,0.5),
+          0 0 0 1px rgba(255,255,255,0.04),
+          inset 0 1px 0 rgba(255,255,255,0.18)
+        `,
+      }}>
         <button onClick={cancel} aria-label="Cerrar"
           style={{ position:'absolute', top:12, right:12, width:30, height:30, borderRadius:'50%', background:'rgba(0,0,0,0.40)', border:'1px solid rgba(255,255,255,0.18)', color:'#fff', display:'flex', alignItems:'center', justifyContent:'center', cursor:'pointer', padding:0, zIndex:5 }}>
           <X size={14} strokeWidth={2.5} />
         </button>
-        <div style={{ width:50, height:50, borderRadius:'50%', background:'rgba(189,75,248,0.18)', display:'flex', alignItems:'center', justifyContent:'center', margin:'0 auto 16px' }}>
-          <span style={{ fontFamily:FN, fontSize:22, fontWeight:900, color:C.v }}>G</span>
+        <div style={{
+          width:64, height:64, borderRadius:'50%',
+          border: '2px solid #BD4BF8',
+          background: 'transparent',
+          display:'flex', alignItems:'center', justifyContent:'center',
+          margin:'0 auto 18px',
+          boxShadow: '0 0 22px rgba(189,75,248,0.55), inset 0 0 12px rgba(189,75,248,0.55)',
+        }}>
+          <span style={{ fontFamily:FN, fontSize:24, fontWeight:900, color:'#BD4BF8' }}>G</span>
         </div>
-        <div style={{ fontFamily:FN, fontSize:17, fontWeight:800, color:C.white, textAlign:'center', marginBottom:8 }}>Iniciar sesión con Google</div>
-        <div style={{ fontSize:13, color:C.mist, textAlign:'center', lineHeight:1.7, marginBottom:22 }}>Te vamos a redirigir a Google para iniciar sesión. Después volvés a Benefix automáticamente.</div>
+        <div style={{ fontFamily:FN, fontSize:20, fontWeight:800, color:'#fff', textAlign:'center', marginBottom:8, letterSpacing:'-0.01em' }}>Iniciar sesión con Google</div>
+        <div style={{ fontSize:13, color:'rgba(255,255,255,0.65)', textAlign:'center', lineHeight:1.6, marginBottom:24 }}>Te vamos a redirigir a Google para iniciar sesión. Después volvés a Benefix automáticamente.</div>
         <div style={{ display:'flex', gap:10 }}>
-          <button onClick={cancel}  style={{ flex:1, padding:'11px', background:'rgba(255,255,255,0.08)', border:'1px solid rgba(255,255,255,0.12)', borderRadius:12, color:C.pearl, fontFamily:FN, fontSize:13, fontWeight:600, cursor:'pointer' }}>← Volver</button>
-          <button onClick={confirm} style={{ flex:1, padding:'11px', background:GV, border:'none', borderRadius:12, color:'#fff', fontFamily:FN, fontSize:13, fontWeight:700, cursor:'pointer' }}>Continuar →</button>
+          <button onClick={cancel} style={{
+            flex:1, padding:'13px',
+            background:'transparent',
+            border:'1px solid rgba(255,255,255,0.30)',
+            borderRadius:99,
+            color:'#fff',
+            fontFamily:FN, fontSize:13, fontWeight:700,
+            cursor:'pointer',
+          }}>← Volver</button>
+          <button onClick={confirm} style={{
+            flex:1, padding:'13px',
+            background:'#ffffff',
+            border:'none',
+            borderRadius:99,
+            color:'#0a0612',
+            fontFamily:FN, fontSize:13, fontWeight:800,
+            cursor:'pointer',
+            boxShadow:'0 4px 14px rgba(0,0,0,0.30)',
+          }}>Continuar →</button>
         </div>
       </div>
     </div>,
@@ -1372,6 +1525,612 @@ function InstagramStoryQR({ commerce, qrDataUrl }) {
   )
 }
 
+// ─── QR FULLSCREEN — modal pantalla completa para mostrar un QR ──────────────
+// Pensado para los dos casos del producto:
+//   • merchant: el dueño abre su QR para que un cliente lo escanee y se sume
+//     al club. Adicionalmente, debajo aparecen dos botones "Compartir" y
+//     "Copiar URL" para distribución digital.
+//   • client: el cliente abre su pase personal para que el comerciante lo
+//     escanee en caja. Solo el QR + título, sin botones extra.
+//
+// Estética inspirada en pases tipo "Apple Wallet / Nike Experience":
+//   - Fondo gradient violeta/naranja de marca, sin chrome de modal.
+//   - Título gigante en tipografía display (Impact / Anton stack), random
+//     dentro de un set por audiencia para que se sienta vivo.
+//   - QR negro sobre fondo blanco, en una card grande centrada.
+//   - X cerrar arriba a la derecha, glass discreto.
+function QrFullscreen({ open, onClose, qrValue, audience = 'client', shareUrl = '', shareTitle = 'Benefix' }) {
+  // Sets de títulos y subtítulos — uno por audiencia. Se eligen al abrir y
+  // se mantienen mientras el modal esté abierto. Tono rioplatense, mezcla
+  // de calor (familiar), confianza (te tratamos bien), pizca de humor y
+  // referencias al "scan" como acción mágica que activa todo. Sin clichés
+  // de marketing yanqui — esto es Argentina, hablamos como hablamos.
+  const TITLES_MERCHANT = [
+    'ESCANEAME, NO MUERDO',
+    'ACÁ EMPIEZA TU CLUB',
+    'PASÁ, SUMATE',
+    'YA SOS DE LA CASA',
+    'TURNO DE GANAR',
+    'NO ME HAGAS ESPERAR',
+    'ENGANCHATE AL CLUB',
+    'ESTO SE PONE BUENO',
+    'VENÍ QUE HAY PREMIOS',
+    'MENOS PROMESAS, MÁS DESCUENTOS',
+  ]
+  const TITLES_CLIENT = [
+    'ACÁ TENGO LO MÍO',
+    'AHORA ME TOCA A MÍ',
+    'ESCANEAME, GANEMOS JUNTOS',
+    'LISTO PARA SUMAR',
+    'YO YA ESTOY ADENTRO',
+    'DALE QUE SUMO',
+    'AGUANTE EL CLUB',
+    'TENGO EL PASE',
+    'A SUMAR SIN VUELTAS',
+    'MI MUNDO EN UN ESCANEO',
+    'NO TE LO OLVIDES, ESCANEÁ',
+  ]
+  const SUBS_MERCHANT = [
+    'EL CLUB QUE TE TRATA BIEN',
+    'NO HAY LETRA CHICA',
+    'ESCANEÁS Y EMPEZAMOS',
+    'ASÍ DE FÁCIL ES',
+    'SUMÁ · CANJEÁ · DISFRUTÁ',
+    'TURNO DE PREMIARTE',
+    'BIENVENIDO A LA FAMILIA',
+  ]
+  const SUBS_CLIENT = [
+    'CADA VISITA CUENTA',
+    'A FAVOR DEL DESCUENTO',
+    'MI AMIGO EL BENEFICIO',
+    'A SUMAR SIN VUELTAS',
+    'SUMÁ · CANJEÁ · DISFRUTÁ',
+    'EL CÓDIGO DE LA SUERTE',
+    'MOSTRÁ Y GANÁ',
+  ]
+  // ── Hooks primero (Rules of Hooks) ──
+  // Colores plenos de marca — el oscurecimiento se aplica via overlay 50%
+  // negro encima (ver `background` del modal). Así mantenemos el tono de
+  // marca pero apagado lo suficiente como para que la ticket card brillante
+  // destaque arriba.
+  const BG_COLORS = ['#BD4BF8', '#EC4899']  // violeta · fucsia plenos
+  const [title, setTitle] = useState(() => {
+    const pool = audience === 'merchant' ? TITLES_MERCHANT : TITLES_CLIENT
+    return pool[Math.floor(Math.random() * pool.length)]
+  })
+  const [subtitle, setSubtitle] = useState(() => {
+    const pool = audience === 'merchant' ? SUBS_MERCHANT : SUBS_CLIENT
+    return pool[Math.floor(Math.random() * pool.length)]
+  })
+  const [bgColor, setBgColor] = useState(() => BG_COLORS[Math.floor(Math.random() * BG_COLORS.length)])
+  const [copied, setCopied] = useState(false)
+  // Animación de "generación" del QR: durante los primeros 5 segundos, el QR
+  // muestra data random que cambia rápido + un efecto de glitch (jitter +
+  // chromatic aberration). Al final, se asienta en el QR real. Da la
+  // sensación de que el código se está "generando en vivo".
+  const [generatingQr, setGeneratingQr] = useState(true)
+  const [scrambledQr, setScrambledQr]   = useState('')
+  useEffect(() => {
+    if (!open) return
+    setGeneratingQr(true)
+    setScrambledQr(Math.random().toString(36).slice(2) + Date.now())
+    const FRAME_MS = 90       // tick: cuán rápido cambia el contenido random
+    const TOTAL_MS = 5000     // duración total de la "generación"
+    const startedAt = Date.now()
+    const interval = setInterval(() => {
+      const elapsed = Date.now() - startedAt
+      if (elapsed >= TOTAL_MS) {
+        clearInterval(interval)
+        setGeneratingQr(false)
+        return
+      }
+      // Random data → re-renderea el QR con módulos completamente distintos
+      // cada frame. Combinado con el CSS de jitter da el efecto glitch.
+      setScrambledQr(Math.random().toString(36).slice(2) + Date.now() + elapsed)
+    }, FRAME_MS)
+    return () => clearInterval(interval)
+  }, [open, qrValue])
+  // Auto-fit del título al ancho del contenedor: medimos el ancho natural
+  // del título sin wrap y calculamos el font-size que lo hace ocupar el
+  // 100% del ancho. Re-corre cuando el título cambia, en open, o en resize.
+  const titleRef = useRef(null)
+  const [titleFontSize, setTitleFontSize] = useState(48)
+  useEffect(() => {
+    if (open) {
+      const tPool = audience === 'merchant' ? TITLES_MERCHANT : TITLES_CLIENT
+      const sPool = audience === 'merchant' ? SUBS_MERCHANT : SUBS_CLIENT
+      setTitle(tPool[Math.floor(Math.random() * tPool.length)])
+      setSubtitle(sPool[Math.floor(Math.random() * sPool.length)])
+      // Color de fondo: violeta o fucsia pleno, aleatorio en cada apertura.
+      setBgColor(BG_COLORS[Math.floor(Math.random() * BG_COLORS.length)])
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [open, audience])
+  // Cálculo del font-size para que el título "estire" hasta ocupar el ancho
+  // de su contenedor. Estrategia: arrancamos con un tamaño base, medimos el
+  // ancho natural sin wrap, y escalamos linealmente hasta que matchee el
+  // contenedor. Lo re-medimos en cada cambio de título y ante resize.
+  //
+  // SAFETY = 0.94 → dejamos un 6% de margen al final del contenedor. Sin
+  // este factor, errores acumulados de sub-pixel rendering, kerning y
+  // hinting de fuente cortaban la última letra (especialmente con tildes
+  // como "Á" que el sub-pixel rasterizer rinde un toque más anchas que el
+  // measurement). Mejor un par de pixels libres a la derecha que un
+  // carácter cortado.
+  useEffect(() => {
+    if (!open) return
+    function fit() {
+      const el = titleRef.current
+      if (!el) return
+      const container = el.parentElement
+      if (!container) return
+      const containerWidth = container.getBoundingClientRect().width
+      if (containerWidth <= 0) return
+      const BASE = 60
+      // Para medir el ancho NATURAL del texto, dejamos que el elemento se
+      // expanda a width:auto temporalmente. Sin esto, el width:100% que ya
+      // tiene aplicado le impide expandirse y getBoundingClientRect/scrollWidth
+      // devolvían el ancho del contenedor (no del texto). El measurement
+      // anterior subestimaba enormemente la longitud y por eso el título
+      // se rendrizaba más grande de lo que cabía.
+      const prevSize  = el.style.fontSize
+      const prevWhite = el.style.whiteSpace
+      const prevWidth = el.style.width
+      const prevDisp  = el.style.display
+      const prevPos   = el.style.position
+      const prevVis   = el.style.visibility
+      el.style.position   = 'absolute'
+      el.style.visibility = 'hidden'
+      el.style.width      = 'auto'
+      el.style.display    = 'inline-block'
+      el.style.whiteSpace = 'nowrap'
+      el.style.fontSize   = `${BASE}px`
+      const naturalWidth = el.getBoundingClientRect().width
+      // Restaurar todo
+      el.style.fontSize   = prevSize
+      el.style.whiteSpace = prevWhite
+      el.style.width      = prevWidth
+      el.style.display    = prevDisp
+      el.style.position   = prevPos
+      el.style.visibility = prevVis
+      if (naturalWidth <= 0) return
+      // SAFETY = 0.94: 6% de margen al final para absorber errores de sub-
+      // pixel rendering / kerning / hinting de fuente. Mejor un par de px
+      // libres a la derecha que una letra cortada.
+      const SAFETY = 0.94
+      const ideal = (BASE * containerWidth * SAFETY) / naturalWidth
+      setTitleFontSize(Math.max(28, Math.min(88, ideal)))
+    }
+    fit()
+    window.addEventListener('resize', fit)
+    return () => window.removeEventListener('resize', fit)
+  }, [open, title])
+  if (!open) return null
+
+  async function handleCopy() {
+    if (!shareUrl) return
+    try {
+      await navigator.clipboard.writeText(shareUrl)
+      setCopied(true)
+      setTimeout(() => setCopied(false), 1800)
+    } catch {}
+  }
+  // Genera una imagen JPG del ticket card (gradient + título + QR + footer)
+  // usando canvas. La idea: dibujamos cada elemento programáticamente sobre
+  // un canvas grande (1080x1620, ratio 2:3 para historias de Insta) y al
+  // final lo convertimos a Blob → File → Web Share API con archivo.
+  // Si el browser no soporta share con files, descargamos el archivo como
+  // fallback. Si nada de eso, copiamos la URL al portapapeles.
+  async function buildShareImage() {
+    if (typeof document === 'undefined') return null
+    const W = 1080, H = 1620
+    const canvas = document.createElement('canvas')
+    canvas.width = W
+    canvas.height = H
+    const ctx = canvas.getContext('2d')
+    if (!ctx) return null
+
+    // Background: gradient de marca naranja → violeta (mismo del logo)
+    const bg = ctx.createLinearGradient(0, 0, W, H)
+    bg.addColorStop(0,   '#FE5000')
+    bg.addColorStop(1,   '#BD4BF8')
+    ctx.fillStyle = bg
+    ctx.fillRect(0, 0, W, H)
+
+    // Pattern decorativo radial
+    const r1 = ctx.createRadialGradient(W * 0.14, H * 0.16, 0, W * 0.14, H * 0.16, W * 0.45)
+    r1.addColorStop(0, 'rgba(255,255,255,0.10)')
+    r1.addColorStop(1, 'rgba(255,255,255,0)')
+    ctx.fillStyle = r1
+    ctx.fillRect(0, 0, W, H)
+
+    // Padding interno del ticket
+    const PAD = 80
+
+    // Título display — auto-fit al ancho disponible
+    const titleY = PAD + 20
+    ctx.fillStyle = '#0a0a0a'
+    ctx.textAlign = 'left'
+    ctx.textBaseline = 'top'
+    let titleSize = 200
+    do {
+      ctx.font = `900 ${titleSize}px 'Futura PT Condensed Extra Bold', 'Impact', 'Oswald', 'Arial Narrow', sans-serif`
+      if (ctx.measureText(title).width <= W - PAD * 2) break
+      titleSize -= 6
+    } while (titleSize > 60)
+    ctx.fillText(title, PAD, titleY)
+
+    // Subtítulo
+    ctx.font = `700 28px 'Space Grotesk', system-ui, sans-serif`
+    ctx.fillStyle = 'rgba(0,0,0,0.62)'
+    ctx.fillText(subtitle, PAD, titleY + titleSize + 18)
+
+    // QR — generamos un dataURL con el módulo `qrcode` y lo dibujamos
+    let qrDataUrl = null
+    try {
+      const QRCode = (await import('qrcode')).default
+      qrDataUrl = await QRCode.toDataURL(qrValue || '', {
+        width: 720,
+        margin: 1,
+        errorCorrectionLevel: 'M',
+        color: { dark: '#0a0a0a', light: '#ffffff00' },
+      })
+    } catch { /* sin qr → seguimos */ }
+    if (qrDataUrl) {
+      const img = new Image()
+      img.crossOrigin = 'anonymous'
+      img.src = qrDataUrl
+      await new Promise(r => { img.onload = r; img.onerror = r })
+      const qrSize = 720
+      const qrX = (W - qrSize) / 2
+      const qrY = titleY + titleSize + 100
+      ctx.drawImage(img, qrX, qrY, qrSize, qrSize)
+    }
+
+    // Footer del ticket: nombre del club + año
+    const footerName = (audience === 'merchant' && shareTitle && shareTitle !== 'Benefix' ? shareTitle : 'Benefix')
+    ctx.font  = `800 36px 'Space Grotesk', system-ui, sans-serif`
+    ctx.fillStyle = '#0a0a0a'
+    ctx.textAlign = 'left'
+    ctx.fillText(`${footerName.toUpperCase()} CLUB PASS`, PAD, H - PAD - 60)
+    ctx.font = `700 26px 'Space Grotesk', system-ui, sans-serif`
+    ctx.fillStyle = 'rgba(0,0,0,0.55)'
+    ctx.fillText('2026', PAD, H - PAD - 22)
+
+    // Watermark "BENEFIX" en la esquina inferior derecha
+    ctx.font  = `700 20px 'Space Grotesk', system-ui, sans-serif`
+    ctx.fillStyle = 'rgba(0,0,0,0.40)'
+    ctx.textAlign = 'right'
+    ctx.fillText('benefix.com.ar', W - PAD, H - PAD)
+
+    return new Promise((resolve) => {
+      canvas.toBlob((blob) => resolve(blob), 'image/jpeg', 0.92)
+    })
+  }
+
+  async function handleShare() {
+    if (!shareUrl) return
+    let blob = null
+    try { blob = await buildShareImage() } catch {}
+    const fileName = `${(shareTitle || 'benefix').toLowerCase().replace(/[^a-z0-9]+/g, '-')}-pass.jpg`
+    const file = blob ? new File([blob], fileName, { type: 'image/jpeg' }) : null
+
+    // Intento 1: share API con archivo (mobile moderno)
+    if (file && typeof navigator !== 'undefined' && navigator.canShare && navigator.canShare({ files: [file] })) {
+      try {
+        await navigator.share({
+          files: [file],
+          title: shareTitle,
+          text: `${shareTitle} en Benefix — escaneá para sumarte al club`,
+          url: shareUrl,
+        })
+        return
+      } catch { /* user canceled */ }
+    }
+
+    // Intento 2: share API solo con URL (desktop / browsers viejos)
+    if (typeof navigator !== 'undefined' && navigator.share) {
+      try {
+        await navigator.share({
+          title: shareTitle,
+          text: `${shareTitle} en Benefix — sumate al club`,
+          url: shareUrl,
+        })
+        return
+      } catch { /* user canceled */ }
+    }
+
+    // Intento 3: descarga el JPG
+    if (blob) {
+      try {
+        const url = URL.createObjectURL(blob)
+        const a = document.createElement('a')
+        a.href = url
+        a.download = fileName
+        document.body.appendChild(a)
+        a.click()
+        a.remove()
+        setTimeout(() => URL.revokeObjectURL(url), 1000)
+        return
+      } catch {}
+    }
+
+    // Último fallback: copiar URL
+    handleCopy()
+  }
+
+  // Tipografía display: Futura Condensed Extra Bold (Nike "JUST DO IT").
+  // Es condensada Y muy heavy, con letterforms geométricos. Stack ordenado:
+  //  1) Futura PT Condensed Extra Bold / Bold — Adobe (poco común local).
+  //  2) Futura Condensed Bold / Futura Condensed — macOS si tiene.
+  //  3) Helvetica Neue Condensed Black — macOS, alternativa muy fiel.
+  //  4) Impact — UNIVERSAL en Windows/Mac/Linux, condensada heavy nativa,
+  //     visualmente muy cerca de Futura Condensed Extra Bold para el ojo
+  //     no entrenado. Es el "rescate" para que la mayoría de usuarios vean
+  //     el mismo look sin tener Futura instalada.
+  //  5) Oswald / Anton / Bebas Neue — Google Fonts condensadas heavy.
+  //  6) Arial Narrow Bold como último recurso.
+  const FDISPLAY = "'Futura PT Condensed Extra Bold', 'Futura PT Condensed Bold', 'Futura Condensed ExtraBold', 'Futura Condensed Bold', 'Futura Condensed', 'Helvetica Neue Condensed Black', 'Helvetica Inserat', 'Impact', 'Oswald', 'Anton', 'Bebas Neue', 'Arial Narrow Bold', 'Arial Narrow', sans-serif"
+
+  // Estilo compartido de los botones glass (estética idéntica a la
+  // referencia: card alta con ícono arriba-izq y label abajo-izq, fondo
+  // blur tipo iOS, texto blanco). Misma forma para Compartir y Copiar URL.
+  const GLASS_BTN = {
+    display:'flex', flexDirection:'column',
+    alignItems:'flex-start', justifyContent:'space-between',
+    minHeight:96,
+    padding:'14px 16px',
+    background:'rgba(255,255,255,0.10)',
+    backdropFilter:'blur(28px) saturate(160%)',
+    WebkitBackdropFilter:'blur(28px) saturate(160%)',
+    border:'1px solid rgba(255,255,255,0.14)',
+    borderRadius:22,
+    color:'#fff',
+    fontFamily:FN, fontSize:14, fontWeight:700,
+    letterSpacing:'-.01em',
+    cursor:'pointer',
+    textAlign:'left',
+    boxShadow:'0 8px 32px rgba(0,0,0,0.30)',
+    transition:'background 160ms ease, transform 160ms ease',
+  }
+  const ICON_CIRCLE = {
+    width:34, height:34, borderRadius:'50%',
+    background:'rgba(255,255,255,0.16)',
+    border:'1px solid rgba(255,255,255,0.20)',
+    display:'flex', alignItems:'center', justifyContent:'center',
+  }
+
+  return (
+    <div
+      role="dialog" aria-modal="true"
+      style={{
+        position:'fixed', inset:0, zIndex:99999,
+        // Fondo: plano de marca (violeta o fucsia random) + overlay negro
+        // del 50% encima para oscurecerlo (literalmente capa negra al 0.5).
+        // El primer gradient son dos paradas idénticas de negro 50% — sirve
+        // como overlay sólido. Detrás queda el color pleno de marca.
+        background: `linear-gradient(rgba(0,0,0,0.88), rgba(0,0,0,0.88)), ${bgColor}`,
+        display:'flex', flexDirection:'column',
+        animation: 'qr-fs-in 280ms cubic-bezier(0.16,1,0.3,1)',
+        overflow:'hidden',
+      }}
+    >
+      {/* Botón X cerrar */}
+      <button onClick={onClose}
+        aria-label="Cerrar"
+        style={{
+          position:'absolute', top:16, right:16, zIndex:5,
+          width:42, height:42, borderRadius:'50%',
+          background:'rgba(255,255,255,0.10)',
+          backdropFilter:'blur(20px)', WebkitBackdropFilter:'blur(20px)',
+          border:'1px solid rgba(255,255,255,0.18)',
+          color:'#fff',
+          cursor:'pointer', padding:0,
+          display:'flex', alignItems:'center', justifyContent:'center',
+        }}>
+        <X size={18} strokeWidth={2.4} />
+      </button>
+
+      {/* Contenido principal */}
+      <div style={{
+        position:'relative',
+        flex:1, display:'flex', flexDirection:'column',
+        padding:'56px 18px 24px',
+        maxWidth:520, margin:'0 auto', width:'100%',
+        zIndex:1,
+        gap:14,
+      }}>
+        {/* ── TICKET CARD: gradient de marca animado ──
+            Toma todo el alto disponible hasta los botones del fondo (flex:1).
+            El gradient va alternando lentamente la posición de los colores
+            (orange ↔ violet) vía background-position con size 200% — efecto
+            ease-in-out de 12s para que se sienta natural y vivo. */}
+        <div className="qr-fs-card" style={{
+          position:'relative',
+          flex:1,
+          display:'flex', flexDirection:'column',
+          // Gradient con 3 stops del mismo set para que el ciclo sea
+          // perfectamente cerrado (#FE5000 → #BD4BF8 → #FE5000).
+          background: 'linear-gradient(135deg, #FE5000 0%, #BD4BF8 50%, #FE5000 100%)',
+          backgroundSize: '220% 220%',
+          borderRadius:26,
+          padding:'22px 22px 26px',
+          boxShadow:'0 32px 80px rgba(254,80,0,0.25), 0 12px 32px rgba(189,75,248,0.20)',
+          overflow:'hidden',
+        }}>
+          {/* Pattern decorativo sutil de la card — manchas tipo poster */}
+          <div style={{
+            position:'absolute', inset:0,
+            backgroundImage: 'radial-gradient(circle at 14% 16%, rgba(255,255,255,0.10) 0%, transparent 28%), radial-gradient(circle at 86% 78%, rgba(0,0,0,0.10) 0%, transparent 32%)',
+            pointerEvents:'none',
+          }} />
+
+          {/* Header: título + subtítulo. El título se auto-ajusta para
+              ocupar el 100% del ancho del header (ver useEffect 'fit'). */}
+          <div style={{ position:'relative', marginBottom:16 }}>
+            <h1 ref={titleRef} style={{
+              fontFamily: FDISPLAY,
+              fontWeight: 900,
+              fontSize: `${titleFontSize}px`,
+              lineHeight: 0.88,
+              letterSpacing: '-0.01em',
+              color: '#0a0a0a',
+              textTransform: 'uppercase',
+              margin: '0 0 8px',
+              textShadow: '0 2px 0 rgba(255,255,255,0.10)',
+              whiteSpace: 'nowrap',
+              width: '100%',
+            }}>
+              {title}
+            </h1>
+            <div style={{
+              fontFamily: FN, fontSize: 10.5, fontWeight: 700,
+              color: 'rgba(0,0,0,0.62)',
+              letterSpacing: '.16em', textTransform: 'uppercase',
+            }}>
+              {subtitle}
+            </div>
+          </div>
+
+          {/* QR sin fondo — los módulos negros se imprimen directo sobre el
+              gradient de la card. Layout flex column con justify-center
+              para que el QR + label "GENERANDO" queden centrados juntos
+              y el label NO se superponga con el footer "ZAR CLUB PASS". */}
+          <div style={{
+            position:'relative',
+            flex:1,
+            display:'flex', flexDirection:'column',
+            alignItems:'center', justifyContent:'center',
+            gap:8,
+            margin:'4px 0',
+          }}>
+            <div className={generatingQr ? 'qr-signal-fade' : ''} style={{ width:'min(280px, 78%)', position:'relative' }}>
+              <QRCodeSVG
+                value={generatingQr ? scrambledQr : (qrValue || '')}
+                size={280}
+                bgColor="transparent"
+                fgColor="#0a0a0a"
+                level="M"
+                style={{ width:'100%', height:'auto', maxHeight:'100%', display:'block' }}
+              />
+            </div>
+            {generatingQr && (
+              <div style={{
+                fontFamily:FN, fontSize:11, fontWeight:800,
+                color:'rgba(0,0,0,0.75)',
+                letterSpacing:'.22em', textTransform:'uppercase',
+                animation:'qr-gen-blink 0.7s ease-in-out infinite',
+                marginTop:6,
+              }}>
+                ▮ Generando código…
+              </div>
+            )}
+          </div>
+
+          {/* Footer de la card: "[nombre de negocio] CLUB PASS · 2026"
+              Para merchant usa el nombre del comercio; para client cae al
+              "BENEFIX CLUB PASS" genérico. Debajo va el año del pase como
+              detalle tipo edición/temporada. */}
+          <div style={{ position:'relative', marginTop:14 }}>
+            <div style={{
+              fontFamily:FN, fontSize:13, fontWeight:800,
+              color:'#0a0a0a',
+              textTransform:'uppercase', letterSpacing:'.06em',
+            }}>
+              {(audience === 'merchant' && shareTitle && shareTitle !== 'Benefix' ? shareTitle : 'Benefix')} CLUB PASS
+            </div>
+            <div style={{
+              fontFamily:FN, fontSize:11, fontWeight:700,
+              color:'rgba(0,0,0,0.55)',
+              letterSpacing:'.18em',
+              marginTop:2,
+            }}>
+              2026
+            </div>
+          </div>
+        </div>
+
+        {/* ── BOTONES GLASS (solo merchant) ── */}
+        {audience === 'merchant' && shareUrl && (
+          <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:10 }}>
+            <button onClick={handleShare} style={GLASS_BTN}>
+              <div style={ICON_CIRCLE}>
+                <Share2 size={16} strokeWidth={2.4} color="#fff" />
+              </div>
+              <div style={{ marginTop:18, color:'#fff' }}>Compartir</div>
+            </button>
+            <button onClick={handleCopy} style={GLASS_BTN}>
+              <div style={ICON_CIRCLE}>
+                {copied
+                  ? <Check size={16} strokeWidth={2.6} color="#fff" />
+                  : <Copy size={16} strokeWidth={2.4} color="#fff" />}
+              </div>
+              <div style={{ marginTop:18, color:'#fff' }}>{copied ? '¡Copiado!' : 'Copiar URL'}</div>
+            </button>
+          </div>
+        )}
+      </div>
+
+      <style>{`
+        @keyframes qr-fs-in {
+          from { opacity: 0; transform: scale(0.96); }
+          to   { opacity: 1; transform: scale(1); }
+        }
+        /* Gradient de la ticket card — desplaza la background-position para
+           alternar suavemente cuál esquina está naranja vs cuál violeta.
+           Como el gradient tiene 3 stops (orange-violet-orange) con
+           backgroundSize 220%, mover la posición da un flujo continuo. */
+        .qr-fs-card {
+          animation: qr-card-flow 14s ease-in-out infinite;
+        }
+        @keyframes qr-card-flow {
+          0%   { background-position:   0%   0%; }
+          50%  { background-position: 100% 100%; }
+          100% { background-position:   0%   0%; }
+        }
+        /* Signal-fade del QR durante la "generación": una zona del QR baja
+           suavemente su opacidad y esa zona se mueve por el código en loop
+           lento, como si la señal se fuera y volviera. Sin shake, sin scan-
+           line — todo suave y orgánico.
+           El truco: aplicamos un mask radial-gradient cuyo centro está
+           parcialmente transparente (rgba alpha bajo). El mask es 240% de
+           tamaño, así con mask-position podemos pasear el "agujero suave"
+           por distintas zonas del QR. */
+        .qr-signal-fade {
+          -webkit-mask-image: radial-gradient(circle at 30% 30%, rgba(0,0,0,0.35) 0%, rgba(0,0,0,0.55) 12%, rgba(0,0,0,0.85) 25%, black 40%);
+                  mask-image: radial-gradient(circle at 30% 30%, rgba(0,0,0,0.35) 0%, rgba(0,0,0,0.55) 12%, rgba(0,0,0,0.85) 25%, black 40%);
+          -webkit-mask-size: 240% 240%;
+                  mask-size: 240% 240%;
+          -webkit-mask-repeat: no-repeat;
+                  mask-repeat: no-repeat;
+          animation: qr-signal-roam 6s ease-in-out infinite, qr-signal-breath 2.4s ease-in-out infinite;
+          will-change: mask-position, opacity;
+        }
+        /* Roam: el "agujero suave" cambia de zona — esquinas y centros
+           distintos del QR pierden señal de manera asincrónica. */
+        @keyframes qr-signal-roam {
+          0%   { -webkit-mask-position:   0%    0%; mask-position:   0%    0%; }
+          20%  { -webkit-mask-position: 100%   30%; mask-position: 100%   30%; }
+          40%  { -webkit-mask-position:  60%  100%; mask-position:  60%  100%; }
+          60%  { -webkit-mask-position:   0%   80%; mask-position:   0%   80%; }
+          80%  { -webkit-mask-position:  80%   60%; mask-position:  80%   60%; }
+          100% { -webkit-mask-position:   0%    0%; mask-position:   0%    0%; }
+        }
+        /* Breath: leve pulso de opacidad global — refuerza la sensación
+           de "señal débil" sin hacer que tiemble el QR. */
+        @keyframes qr-signal-breath {
+          0%, 100% { opacity: 1; }
+          50%      { opacity: 0.78; }
+        }
+        @keyframes qr-gen-blink {
+          0%, 100% { opacity: 1; }
+          50%      { opacity: 0.30; }
+        }
+      `}</style>
+    </div>
+  )
+}
+
 // ─── QR DEL NEGOCIO ───────────────────────────────────────────────────────────
 function CommerceQRCard({ commerce }) {
   const [qrDataUrl,      setQrDataUrl]      = useState(null)
@@ -2134,8 +2893,12 @@ function Navbar({ setView, cityName, user, profile, onLogin, onLogout, currentVi
             style={{ ...BTN, ...bs('scanner','qr'), cursor: currentView==='scanner' ? 'default' : 'pointer' }}>
             <ScanLine size={16} color={ic('scanner')} strokeWidth={2} />
           </button>
-          <button title="Vista pública de mi club" onClick={currentView==='commerce' ? undefined : onOwnerProfile}
-            style={{ ...BTN, ...bs('commerce','building'), cursor: currentView==='commerce' ? 'default' : 'pointer' }}>
+          {/* El ojo siempre invoca onOwnerProfile (redirige a /club/[slug]?edit=1).
+              Importante: aunque currentView fuera 'commerce' (legacy), igual lo
+              dejamos clickeable para que el usuario pueda salir de esa vista
+              vieja si quedó atrapado por un lastView persistido. */}
+          <button title="Vista pública de mi club" onClick={onOwnerProfile}
+            style={{ ...BTN, ...bs('commerce','building'), cursor: 'pointer' }}>
             <Eye size={16} color={currentView==='commerce' ? '#fff' : 'rgba(255,255,255,0.70)'} strokeWidth={2} />
           </button>
           {/* "Mi Negocio" — solo se enciende con gradient cuando es la vista activa,
@@ -3425,7 +4188,11 @@ function CommerceView({ commerce:c, setView, user, onLoginRequired, onCommerceUp
   const [editSaving, setEditSaving] = useState(false)
   const supabase = getSupabase()
   const isOwner = !!(user?.id && c?.owner_id && user.id === c.owner_id)
-  if (!c) return null
+  // El early-return por `c` null se movió a más abajo, después del useEffect.
+  // Si aborta acá los hooks de abajo no se llaman, y al renderizarse después
+  // (cuando la prop `c` se carga, ej: el deep-link /?view=commerce que setea
+  // setView('commerce') antes de cargar el commerce) el orden de hooks
+  // cambia y React tira "rendered more hooks than during the previous render".
 
   function openEdit(field) {
     setEditField(field)
@@ -3508,12 +4275,14 @@ function CommerceView({ commerce:c, setView, user, onLoginRequired, onCommerceUp
         payload[editField.key] = editValue || null
         localUpdate[editField.key] = editValue || null
       } else if (editField.type === 'location') {
-        // editValue: { country, city_name, address }
+        // editValue: { country, province, city_name, address }
         const v = editValue || {}
         payload.country   = v.country?.trim()   || null
+        payload.province  = v.province?.trim()  || null
         payload.city_name = v.city_name?.trim() || null
         payload.address   = v.address?.trim()   || null
         localUpdate.country   = payload.country
+        localUpdate.province  = payload.province
         localUpdate.city_name = payload.city_name
         localUpdate.address   = payload.address
       } else {
@@ -3548,7 +4317,7 @@ function CommerceView({ commerce:c, setView, user, onLoginRequired, onCommerceUp
   // Portada: usa cover_image (foto de fondo). Si no hay, fallback a un
   // gradient violeta/fucsia de la marca. NUNCA usamos img_url como cover
   // porque eso es el LOGO (cuadrado, va al lado del nombre).
-  const coverSrc = c.cover_image || null
+  const coverSrc = c?.cover_image || null
 
   useEffect(() => {
     if (!c?.id) return
@@ -3576,7 +4345,12 @@ function CommerceView({ commerce:c, setView, user, onLoginRequired, onCommerceUp
     // Obtener progreso
     supabase.from('visits').select('*', { count:'exact', head:true }).eq('user_id', user.id).eq('commerce_id', c.id)
       .then(({ count }) => setProgress(count || 0))
-  }, [user, c.id])
+  }, [user, c?.id])
+
+  // Sin commerce todavía (deep-link /?view=commerce antes de que loadProfile
+  // levante el comercio del owner) — render vacío. El useEffect de arriba
+  // ya quedó protegido con `if (!c?.id) return`.
+  if (!c) return null
 
   async function handleJoin() {
     if (!user) { onLoginRequired(); return }
@@ -4091,6 +4865,10 @@ function CommerceView({ commerce:c, setView, user, onLoginRequired, onCommerceUp
                     <input type="text" value={v.country || ''} onChange={e => upd('country', e.target.value)} placeholder="Argentina" style={inputStyle} />
                   </div>
                   <div>
+                    <label style={labelStyle}>Provincia</label>
+                    <input type="text" value={v.province || ''} onChange={e => upd('province', e.target.value)} placeholder="Ej: La Pampa" style={inputStyle} />
+                  </div>
+                  <div>
                     <label style={labelStyle}>Localidad</label>
                     <input type="text" value={v.city_name || ''} onChange={e => upd('city_name', e.target.value)} placeholder="Ej: General Pico" style={inputStyle} />
                   </div>
@@ -4497,10 +5275,10 @@ function ClientBottomNav({ tab, setTab, profile, setView }) {
   // navbar). Así el ícono User del navbar y la pestaña "Perfil" del sub-nav
   // son dos rutas equivalentes al mismo contenido.
   const TABS = [
-    { id: 'mis clubs', label: 'Mi billetera' },
-    { id: 'premios',   label: 'Premios'   },
-    { id: 'historial', label: 'Historial' },
-    { id: 'cuenta',    label: 'Perfil'    },
+    { id: 'mis clubs', label: 'Mi billetera'   },
+    { id: 'premios',   label: 'Mis beneficios' },
+    { id: 'historial', label: 'Historial'      },
+    { id: 'cuenta',    label: 'Perfil'         },
   ]
 
   return (
@@ -4523,6 +5301,17 @@ function ClientBottomNav({ tab, setTab, profile, setView }) {
       }}>
         {TABS.map(({ id, label }) => {
           const active = tab === id
+          // "Mi billetera" se distingue del resto con texto fucsia — la
+          // billetera es el corazón del valor que recibe el cliente, así
+          // que merece un acento de color que la haga destacar siempre,
+          // esté activa o no.
+          const isWallet = id === 'mis clubs'
+          let color
+          if (isWallet) {
+            color = active ? '#EC4899' : 'rgba(236,72,153,0.75)'
+          } else {
+            color = active ? '#fff' : 'rgba(255,255,255,0.55)'
+          }
           return (
             <button key={id}
               onClick={() => setTab(id)}
@@ -4533,7 +5322,7 @@ function ClientBottomNav({ tab, setTab, profile, setView }) {
                 flex: 1,
                 background: 'transparent',
                 border: 'none',
-                color: active ? '#fff' : 'rgba(255,255,255,0.55)',
+                color,
                 fontFamily: FN,
                 fontSize: 13,
                 fontWeight: active ? 700 : 500,
@@ -4711,32 +5500,108 @@ function WalletCardFront({ club, colors, onFlip, visible }) {
   return (
     <div
       onClick={onFlip}
-      style={{ width:'100%', height:'100%', borderRadius:20, background:colors.bg, overflow:'hidden', cursor: onFlip ? 'pointer' : 'default', position:'relative', userSelect:'none' }}
+      style={{
+        width:'100%', height:'100%', borderRadius:20,
+        background:colors.bg, overflow:'hidden',
+        cursor: onFlip ? 'pointer' : 'default', position:'relative', userSelect:'none',
+        // Glass border effect: combinación de inset shadows que simulan
+        // los bordes reflectantes de una superficie de cristal —
+        //   • Top edge: highlight blanco fuerte (luz reflejada arriba).
+        //   • Bottom edge: shadow oscuro (sombra abajo, da profundidad).
+        //   • Side edges: highlights blancos sutiles (refracción).
+        //   • Border outline: trazo blanco al 12% para definir el limite.
+        //   • Outer drop-shadow: glow ambiental para "levantar" la card.
+        boxShadow: `
+          inset  0  1px 0 rgba(255,255,255,0.32),
+          inset  0 -1px 0 rgba(0,0,0,0.30),
+          inset  1px  0 0 rgba(255,255,255,0.12),
+          inset -1px  0 0 rgba(255,255,255,0.06),
+          inset  0  0 0 1px rgba(255,255,255,0.10),
+          0 12px 28px rgba(0,0,0,0.35),
+          0 4px 10px rgba(0,0,0,0.25)
+        `,
+      }}
     >
       {/* Watermark — behind everything */}
       <div style={{ position:'absolute', right:'-6%', top:'50%', transform:'translateY(-50%)', pointerEvents:'none', zIndex:0 }}>
         <BenefixWatermark color={colors.watermark} size={220} />
       </div>
 
-      {/* Content layer */}
-      <div style={{ position:'absolute', inset:0, padding:'16px 22px 18px', display:'flex', flexDirection:'column', zIndex:1 }}>
+      {/* ── Shine overlay ──
+          Una banda de luz diagonal a 45° (135deg en CSS) que recorre la
+          tarjeta de izquierda a derecha cada 2 segundos. Da el efecto de
+          "reflejo de luz pasando" típico de las tarjetas premium. La capa
+          tiene pointer-events:none para no bloquear el click del flip y
+          va por encima del contenido (zIndex 5) pero clipeada al
+          borderRadius del padre vía overflow:hidden ya existente. */}
+      <div style={{
+        position: 'absolute', inset: 0,
+        pointerEvents: 'none',
+        zIndex: 5,
+        overflow: 'hidden',
+      }}>
+        <div style={{
+          position: 'absolute',
+          top: '-50%', bottom: '-50%',
+          left: 0, right: 0,
+          background: 'linear-gradient(135deg, transparent 35%, rgba(255,255,255,0.18) 48%, rgba(255,255,255,0.28) 50%, rgba(255,255,255,0.18) 52%, transparent 65%)',
+          animation: 'wallet-card-shine 2s linear infinite',
+        }} />
+        <style>{`
+          @keyframes wallet-card-shine {
+            0%   { transform: translateX(-110%); }
+            100% { transform: translateX(110%); }
+          }
+        `}</style>
+      </div>
 
-        {/* Row 1: Logo top-left + metric top-right */}
+      {/* Content layer.
+          Padding-bottom 14 (era 18) — necesitamos un poco más de espacio
+          interno para que el nombre del negocio no quede cortado. La
+          tipografía de tarjeta de crédito (FCC) tiene un line-box más alto
+          que la sans-serif anterior, así que 4px extra abajo previene el
+          clip de letras como E/N/G/M. */}
+      <div style={{ position:'absolute', inset:0, padding:'16px 22px 14px', display:'flex', flexDirection:'column', zIndex:1 }}>
+
+        {/* Row 1: Logo top-left + metric top-right.
+            Cuando hay 2+ promos activas la columna derecha se compacta —
+            balance más chico, promos en pills horizontales bajo el saldo,
+            para no desplazar el nombre del negocio fuera del card. */}
         <div style={{ display:'flex', justifyContent:'space-between', alignItems:'flex-start', flexShrink:0 }}>
-          <CommerceLogo commerce={commerce} size={56} radius={11} />
+          <CommerceLogo commerce={commerce} size={52} radius={11} />
           <div style={{ textAlign:'right' }}>
-            <div style={{ fontFamily:FN, fontSize:44, fontWeight:900, color:colors.text, lineHeight:1, letterSpacing:'-0.03em', opacity:0.80 }}>+{displayBal}</div>
-            <div style={{ fontFamily:FN, fontSize:12, fontWeight:700, color:colors.textSub, letterSpacing:'0.12em', marginTop:3, textTransform:'uppercase' }}>{unit}</div>
-            {promoBadge && (
-              <>
-                <div style={{ fontFamily:FN, fontSize:19, fontWeight:900, color:colors.text, letterSpacing:'-0.01em', marginTop:6, opacity:0.80 }}>{activePromo?.type === 'discount_next' ? `${displayPromoVal}% OFF` : promoBadge}</div>
-                <div style={{ fontFamily:FN, fontSize:11, fontWeight:700, color:colors.textSub, letterSpacing:'0.09em' }}>{promoSub}</div>
-              </>
-            )}
-            {doublePromo && (
-              <div style={{ marginTop:6, paddingTop:5, borderTop:`1px solid ${colors.detail}` }}>
-                <div style={{ fontFamily:FN, fontSize:17, fontWeight:900, color:colors.text, letterSpacing:'-0.01em', lineHeight:1, opacity:0.80 }}>×2 {isStars ? 'ESTRELLAS' : 'PUNTOS'}</div>
-                <div style={{ fontFamily:FN, fontSize:10, fontWeight:700, color:colors.textSub, letterSpacing:'0.09em', marginTop:2, textTransform:'uppercase' }}>{doublePromo.days || 'TODOS LOS DÍAS'}</div>
+            <div style={{ fontFamily:FN, fontSize:38, fontWeight:900, color:colors.text, lineHeight:1, letterSpacing:'-0.03em', opacity:0.85 }}>+{displayBal}</div>
+            <div style={{ fontFamily:FN, fontSize:11, fontWeight:700, color:colors.textSub, letterSpacing:'0.12em', marginTop:2, textTransform:'uppercase' }}>{unit}</div>
+            {(promoBadge || doublePromo) && (
+              <div style={{ display:'flex', flexWrap:'wrap', justifyContent:'flex-end', gap:4, marginTop:6 }}>
+                {promoBadge && (
+                  <span style={{
+                    display:'inline-flex', alignItems:'center', gap:3,
+                    padding:'3px 8px',
+                    background:'rgba(0,0,0,0.20)',
+                    border:`1px solid ${colors.detail}`,
+                    borderRadius:99,
+                    fontFamily:FN, fontSize:11, fontWeight:800,
+                    color:colors.text,
+                    letterSpacing:'.02em',
+                  }}>
+                    {activePromo?.type === 'discount_next' ? `${displayPromoVal}% OFF` : promoBadge}
+                  </span>
+                )}
+                {doublePromo && (
+                  <span style={{
+                    display:'inline-flex', alignItems:'center', gap:3,
+                    padding:'3px 8px',
+                    background:'rgba(0,0,0,0.20)',
+                    border:`1px solid ${colors.detail}`,
+                    borderRadius:99,
+                    fontFamily:FN, fontSize:11, fontWeight:800,
+                    color:colors.text,
+                    letterSpacing:'.02em',
+                  }}>
+                    ×2 {isStars ? '★' : 'pts'}
+                  </span>
+                )}
               </div>
             )}
           </div>
@@ -4750,24 +5615,39 @@ function WalletCardFront({ club, colors, onFlip, visible }) {
           <ChipEMV />
         </div>
 
-        {/* Row 3: 12 masked dots + balance */}
-        <div style={{ marginTop:5, flexShrink:0, fontFamily:'monospace', fontSize:13, fontWeight:500, color:colors.text, letterSpacing:'0.18em', opacity:0.45, display:'flex', alignItems:'baseline', gap:10 }}>
-          <span>{'●●●● ●●●● ●●●●'}</span>
-          <span style={{ fontFamily:FN, fontSize:18, fontWeight:800, letterSpacing:'0.02em' }}>{displayBal}</span>
+        {/* Row 3: número de tarjeta — 16 dígitos en grupos de 4, estilo
+            tarjeta de crédito real. Generado determinísticamente desde
+            commerce.id así cada comercio tiene su propio número fijo
+            (mismo dueño = misma tarjeta cada vez que la abre). */}
+        <div style={{
+          marginTop:5, flexShrink:0,
+          fontFamily:FCC,
+          fontSize:16, fontWeight:600,
+          color:colors.text,
+          letterSpacing:'0.10em',
+          opacity:0.85,
+          whiteSpace:'nowrap',
+        }}>
+          {cardNumberFromSeed(commerce?.id || commerce?.slug || commerce?.name)}
         </div>
 
-        {/* Row 4: Name + rating/category */}
-        <div style={{ marginTop:5, flexShrink:0, minWidth:0 }}>
-          <div style={{ fontFamily:FN, fontSize:18, fontWeight:900, color:colors.text, letterSpacing:'0.03em', textTransform:'uppercase', overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap', lineHeight:1.1 }}>
+        {/* Row 4: Nombre del negocio (estilo credit-card monospace).
+            El sub-line de rating/categoría se removió — con dos promos
+            activas la altura del card no alcanzaba para todo y el nombre
+            del comercio era lo que se cortaba. La info del rubro y rating
+            ya está en la pestaña Beneficios y en la página del club. */}
+        <div style={{ marginTop:6, flexShrink:0, minWidth:0, paddingBottom:2 }}>
+          <div style={{
+            fontFamily:FCC,
+            fontSize:16, fontWeight:700,
+            color:colors.text,
+            letterSpacing:'0.08em',
+            textTransform:'uppercase',
+            overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap',
+            lineHeight:1.2,
+          }}>
             {commerce?.name}
           </div>
-          {(rating || catLabel) && (
-            <div style={{ fontFamily:FN, fontSize:12, color:colors.textSub, letterSpacing:'0.05em', marginTop:3, display:'flex', alignItems:'center', gap:4, flexWrap:'nowrap', overflow:'hidden', opacity:0.55 }}>
-              {rating && <span style={{ display:'flex', alignItems:'center', gap:2 }}><Star size={11} fill="#FBBC04" color="#FBBC04" strokeWidth={0} />{rating}</span>}
-              {rating && catLabel && <span style={{ opacity:0.40 }}>&nbsp;|&nbsp;</span>}
-              {catLabel && <span style={{ overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>{catLabel.toUpperCase()}</span>}
-            </div>
-          )}
         </div>
       </div>
     </div>
@@ -4875,34 +5755,56 @@ function WalletCardBack({ club, colors, onFlip, userId }) {
 
         {/* Row 3: CTA — stopPropagation wrapper prevents flip */}
         <div onClick={e => e.stopPropagation()} style={{ display:'flex', justifyContent:'space-between', alignItems:'center' }}>
+          {/* Botones del back de la tarjeta — par armónico:
+                "Mi QR": pill glass outlined, secundaria.
+                "Ir al club": pill glass + gradient violeta de marca, primaria.
+              Ambos con backdrop-blur para que se sientan parte de la tarjeta
+              sin chocar con el color de fondo del club. */}
           <button
             onClick={e => { e.stopPropagation(); setShowQr(true) }}
-            style={{ display:'flex', alignItems:'center', gap:5, background:'none', border:`1px solid ${colors.detail}`, borderRadius:8, padding:'6px 10px', cursor:'pointer', fontFamily:FN, fontSize:12, fontWeight:700, color:colors.text, opacity:0.75 }}
+            style={{
+              display:'inline-flex', alignItems:'center', gap:6,
+              background:'rgba(255,255,255,0.10)',
+              backdropFilter:'blur(12px)', WebkitBackdropFilter:'blur(12px)',
+              border:'1px solid rgba(255,255,255,0.22)',
+              borderRadius:9999,
+              padding:'7px 13px',
+              cursor:'pointer',
+              fontFamily:FN, fontSize:12, fontWeight:700,
+              color:'#fff',
+              letterSpacing:'.02em',
+            }}
           >
-            <QrCode size={13} strokeWidth={2} color={colors.text} />
+            <QrCode size={13} strokeWidth={2.2} color="#fff" />
             Mi QR
           </button>
           {commerce?.slug
             ? <a
                 href={`/club/${commerce.slug}`}
-                onClick={e => e.stopPropagation()}
+                onClick={e => {
+                  e.stopPropagation()
+                  // Loader overlay para que el cliente vea respuesta inmediata
+                  // mientras Next.js sirve la página del club. Sin esto la
+                  // navegación se sentía "muerta" ~600ms.
+                  if (typeof window !== 'undefined') {
+                    window.dispatchEvent(new CustomEvent('benefix:club-nav', { detail: { name: commerce.name } }))
+                  }
+                }}
                 style={{
-                  display:'flex', alignItems:'center', gap:6,
-                  background: colors.text,
-                  color: colors.bg,
+                  display:'inline-flex', alignItems:'center', gap:6,
+                  background:'linear-gradient(135deg, #7C3AED, #BD4BF8)',
+                  border:'1px solid rgba(255,255,255,0.22)',
+                  borderRadius:9999,
                   padding:'7px 14px',
-                  borderRadius:9,
-                  fontFamily:FN,
-                  fontSize:12,
-                  fontWeight:800,
-                  letterSpacing:'0.06em',
-                  textTransform:'uppercase',
+                  color:'#fff',
+                  fontFamily:FN, fontSize:12, fontWeight:800,
+                  letterSpacing:'.02em',
                   textDecoration:'none',
-                  boxShadow:`0 4px 14px ${colors.text}40`,
+                  boxShadow:'0 6px 18px rgba(189,75,248,0.45)',
                 }}
               >
                 <span>Ir al club</span>
-                <ArrowRight size={13} strokeWidth={2.5} color={colors.bg} />
+                <ArrowRight size={13} strokeWidth={2.6} color="#fff" />
               </a>
             : <span style={{ fontFamily:FN, fontSize:11, color:colors.textSub, opacity:0.40 }}>tap para volver</span>
           }
@@ -4913,36 +5815,64 @@ function WalletCardBack({ club, colors, onFlip, userId }) {
 }
 
 // ─── WALLET CARD (flip container) ────────────────────────────────────────────
+// Flag global: el coachmark "Tocá para girar" + overlay oscuro solo se muestra
+// UNA VEZ por usuario. Persistimos en localStorage. Después del primer tap
+// (o pasados los 360ms del fade-out), marcamos la flag y nunca más reaparece.
+const FLIP_HINT_KEY = 'benefix:wallet-flip-hint-seen'
 function WalletCard({ club, variant, isActive, onScrollTo, isMock, userId }) {
   const [flipped, setFlipped] = useState(false)
-  // Si el usuario ya tocó la tarjeta, cancelamos el auto-flip de descubrimiento.
+  const [showFlipHint, setShowFlipHint] = useState(false)
   const userTouchedRef = useRef(false)
+  // Helper: lee localStorage con try/catch (Safari Private Mode tira error).
+  const flipHintAlreadySeen = () => {
+    try { return localStorage.getItem(FLIP_HINT_KEY) === '1' } catch { return false }
+  }
+  const markFlipHintSeen = () => {
+    try { localStorage.setItem(FLIP_HINT_KEY, '1') } catch {}
+  }
 
   useEffect(() => {
     if (!isActive) {
       setFlipped(false)
+      setShowFlipHint(false)
       userTouchedRef.current = false
       return
     }
-    // Demo de descubrimiento: a los 2s la tarjeta se da vuelta sola, y a los 4s
-    // vuelve sola a su posición original. Sirve para que el usuario entienda
-    // que la tarjeta es giratoria. Si tocó antes, cancelamos toda la secuencia.
+    // Si el user ya vio el coachmark en sesiones anteriores, NO disparamos
+    // el auto-flip de descubrimiento ni el overlay oscuro. Solo la primera
+    // vez. Esto convierte la pantalla en "silenciosa" para usuarios
+    // recurrentes.
+    if (flipHintAlreadySeen()) return
+    // Primera vez: animación de descubrimiento + hint.
     const flipTimer = setTimeout(() => {
       if (!userTouchedRef.current) setFlipped(true)
     }, 2000)
     const unflipTimer = setTimeout(() => {
       if (!userTouchedRef.current) setFlipped(false)
     }, 4000)
+    const hintTimer = setTimeout(() => {
+      if (!userTouchedRef.current) setShowFlipHint(true)
+    }, 4800)
     return () => {
       clearTimeout(flipTimer)
       clearTimeout(unflipTimer)
+      clearTimeout(hintTimer)
     }
   }, [isActive])
 
   const base     = club.commerce?.brand_color || hashToCardColor(club.commerce?.name || '')
   const colors   = cardColors(base)
   const flipCard = isActive
-    ? () => { userTouchedRef.current = true; setFlipped(f => !f) }
+    ? () => {
+        userTouchedRef.current = true
+        // Si era la primera vez (showFlipHint visible o auto-flip todavía
+        // corriendo), marcamos la flag de "ya visto" en localStorage para
+        // que la próxima vez NO se vuelvan a disparar la animación de
+        // descubrimiento ni el overlay oscuro.
+        markFlipHintSeen()
+        setShowFlipHint(false)
+        setFlipped(f => !f)
+      }
     : undefined
 
   if (variant === 'peek') {
@@ -4986,6 +5916,53 @@ function WalletCard({ club, variant, isActive, onScrollTo, isMock, userId }) {
           </div>
           {/* Glass rim — above card faces */}
           <div style={{ position:'absolute', inset:0, borderRadius:20, border:'1px solid rgba(255,255,255,0.14)', boxShadow:'inset 0 1px 0 rgba(255,255,255,0.22)', pointerEvents:'none', zIndex:100 }} />
+
+          {/* ── Hint "Tocá para girar" ──
+              Aparece después de la animación de descubrimiento (flip+unflip).
+              Overlay oscuro semi-transparente sobre la card con texto y un
+              dedito animado. pointer-events: none para que el tap "atraviese"
+              y caiga sobre la card debajo (que llama flipCard → oculta el hint).
+              Fade-in suave al aparecer, fade-out cuando showFlipHint=false. */}
+          <div style={{
+            position: 'absolute', inset: 0,
+            borderRadius: 20,
+            background: 'rgba(8,4,18,0.62)',
+            backdropFilter: 'blur(4px)',
+            WebkitBackdropFilter: 'blur(4px)',
+            display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
+            gap: 10,
+            pointerEvents: 'none',
+            zIndex: 110,
+            opacity: showFlipHint ? 1 : 0,
+            transition: 'opacity 360ms ease',
+          }}>
+            <Hand
+              size={36}
+              strokeWidth={1.8}
+              color="#fff"
+              style={{
+                animation: 'wallet-flip-hint-tap 1.4s ease-in-out infinite',
+                filter: 'drop-shadow(0 2px 8px rgba(0,0,0,0.50))',
+              }}
+            />
+            <div style={{
+              fontFamily: FN, fontSize: 13, fontWeight: 800,
+              color: '#fff',
+              letterSpacing: '.10em',
+              textTransform: 'uppercase',
+              textShadow: '0 2px 8px rgba(0,0,0,0.60)',
+            }}>
+              Tocá para girar
+            </div>
+            <style>{`
+              @keyframes wallet-flip-hint-tap {
+                0%, 100% { transform: translateY(0) scale(1); }
+                40%      { transform: translateY(0) scale(1); }
+                50%      { transform: translateY(4px) scale(0.90); }
+                60%      { transform: translateY(0) scale(1); }
+              }
+            `}</style>
+          </div>
         </div>
       </div>
 
@@ -4995,6 +5972,150 @@ function WalletCard({ club, variant, isActive, onScrollTo, isMock, userId }) {
           Vista previa — unite a un negocio para ver tus datos reales
         </div>
       )}
+    </div>
+  )
+}
+
+// ─── NEARBY CLUBS DEMO ──────────────────────────────────────────────────────
+// 10 clubes mock para mostrar el carousel "Más clubes cerca" debajo de la
+// billetera. Cada uno tiene id, name, slug y color de marca para el logo
+// generado. En producción esto va a venir de un endpoint que use la
+// ubicación del cliente, pero por ahora los hardcodeamos para ver el look.
+const NEARBY_DEMO_CLUBS = [
+  { id: 'demo-1',  name: 'Café Berlín',     slug: 'cafe-berlin',     color: '#A855F7' },
+  { id: 'demo-2',  name: 'Pasta Roma',      slug: 'pasta-roma',      color: '#EC4899' },
+  { id: 'demo-3',  name: 'Heladería Polo',  slug: 'heladeria-polo',  color: '#22D3EE' },
+  { id: 'demo-4',  name: 'Barbería Lions',  slug: 'barberia-lions',  color: '#F59E0B' },
+  { id: 'demo-5',  name: 'Fit Club',        slug: 'fit-club',        color: '#10B981' },
+  { id: 'demo-6',  name: 'Pet Store',       slug: 'pet-store',       color: '#8B5CF6' },
+  { id: 'demo-7',  name: 'Verdulería',      slug: 'verduleria',      color: '#22E698' },
+  { id: 'demo-8',  name: 'Pizzería Napoli', slug: 'pizzeria-napoli', color: '#FB923C' },
+  { id: 'demo-9',  name: 'Cervecería',      slug: 'cerveceria',      color: '#F4A261' },
+  { id: 'demo-10', name: 'Florería Edén',   slug: 'floreria-eden',   color: '#E879F9' },
+]
+
+function NearbyClubsMarquee() {
+  // Duplicamos la lista para hacer el loop seamless: cuando el scroll
+  // pasa por la mitad del ancho total (final de la 1ra copia / inicio de
+  // la 2da), reseteamos scrollLeft a 0 sin que el ojo note el corte —
+  // los items son idénticos en ambas copias.
+  const list = [...NEARBY_DEMO_CLUBS, ...NEARBY_DEMO_CLUBS]
+  const trackRef = useRef(null)
+  const [paused, setPaused] = useState(false)
+  // Auto-scroll continuo via requestAnimationFrame. Velocidad lenta —
+  // 28px/segundo — sensación hipnótica. Se pausa cuando el mouse pasa
+  // por encima (hover) para que el cliente pueda mirar/explorar sin
+  // que el carousel se le mueva.
+  useEffect(() => {
+    if (paused) return
+    let last = performance.now()
+    let raf
+    const SPEED = 28  // px/s
+    const tick = (now) => {
+      const el = trackRef.current
+      if (!el) { raf = requestAnimationFrame(tick); return }
+      const dt = now - last
+      last = now
+      el.scrollLeft += (SPEED * dt) / 1000
+      // Loop seamless: cuando el scroll cruzó la primera mitad (que
+      // contiene una copia entera de la lista), reseteamos para que
+      // muestre la 2da copia desde el principio. Como ambas son
+      // idénticas y los items pegados, el ojo no nota el reset.
+      const half = el.scrollWidth / 2
+      if (el.scrollLeft >= half) el.scrollLeft -= half
+      raf = requestAnimationFrame(tick)
+    }
+    raf = requestAnimationFrame(tick)
+    return () => cancelAnimationFrame(raf)
+  }, [paused])
+  return (
+    <div style={{ marginTop: 24 }}>
+      {/* Header del bloque */}
+      <h3 style={{
+        fontFamily: FN, fontSize: 13, fontWeight: 800,
+        color: '#fff', letterSpacing: '.10em', textTransform: 'uppercase',
+        marginBottom: 14, padding: '0 4px',
+      }}>
+        Más clubes cerca
+      </h3>
+      {/* Track scrollable horizontalmente. Auto-scrolls solo via rAF;
+          el user puede scrollear manualmente con el dedo o trackpad y
+          también puede pausar el auto-scroll pasando el mouse por
+          encima (onMouseEnter). Mask fadea los bordes para suavizar
+          la entrada/salida visual de los items. */}
+      <div
+        ref={trackRef}
+        onMouseEnter={() => setPaused(true)}
+        onMouseLeave={() => setPaused(false)}
+        onTouchStart={() => setPaused(true)}
+        onTouchEnd={()   => setPaused(false)}
+        style={{
+          overflowX: 'auto',
+          overflowY: 'hidden',
+          position: 'relative',
+          WebkitMaskImage: 'linear-gradient(90deg, transparent 0%, black 6%, black 94%, transparent 100%)',
+          maskImage:       'linear-gradient(90deg, transparent 0%, black 6%, black 94%, transparent 100%)',
+          scrollbarWidth: 'none',
+          msOverflowStyle: 'none',
+          WebkitOverflowScrolling: 'touch',
+        }}
+        className="nearby-marquee-track"
+      >
+        <style>{`.nearby-marquee-track::-webkit-scrollbar { display: none; }`}</style>
+        <div style={{
+          display: 'flex', gap: 16,
+          width: 'max-content',
+        }}>
+          {list.map((club, i) => (
+            <a
+              key={`${club.id}-${i}`}
+              href={`/club/${club.slug}`}
+              style={{
+                width: 110, flexShrink: 0,
+                display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 8,
+                textDecoration: 'none',
+              }}
+            >
+              {/* Logo: círculo con gradient del color de marca + inicial */}
+              <div style={{
+                width: 72, height: 72, borderRadius: '50%',
+                background: `linear-gradient(135deg, ${club.color}, ${club.color}AA)`,
+                display: 'flex', alignItems: 'center', justifyContent: 'center',
+                fontFamily: FN, fontSize: 28, fontWeight: 900, color: '#fff',
+                boxShadow: '0 8px 18px rgba(0,0,0,0.35), inset 0 1px 0 rgba(255,255,255,0.22)',
+                border: '1px solid rgba(255,255,255,0.10)',
+              }}>
+                {club.name[0]}
+              </div>
+              {/* Nombre */}
+              <div style={{
+                fontFamily: FN, fontSize: 11.5, fontWeight: 700,
+                color: '#fff', textAlign: 'center',
+                width: '100%',
+                overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
+                lineHeight: 1.2,
+              }}>
+                {club.name}
+              </div>
+              {/* Botón "Ir" — outline violeta, sin fondo. Solo la línea
+                  del border y las letras+icono en color de marca. */}
+              <span style={{
+                display: 'inline-flex', alignItems: 'center', gap: 3,
+                padding: '5px 14px',
+                background: 'transparent',
+                border: '1.5px solid #BD4BF8',
+                borderRadius: 99,
+                color: '#BD4BF8',
+                fontFamily: FN, fontSize: 11, fontWeight: 800,
+                letterSpacing: '.04em',
+              }}>
+                Ir
+                <ArrowRight size={11} strokeWidth={2.6} />
+              </span>
+            </a>
+          ))}
+        </div>
+      </div>
     </div>
   )
 }
@@ -5085,7 +6206,12 @@ function WalletView({ clubs, isMock, userId }) {
     return () => window.removeEventListener('keydown', onKey)
   }, [navigate])
 
-  if (n === 1) return <WalletCard club={clubs[0]} variant="active" isActive isMock={isMock} userId={userId} />
+  if (n === 1) return (
+    <>
+      <WalletCard club={clubs[0]} variant="active" isActive isMock={isMock} userId={userId} />
+      <NearbyClubsMarquee />
+    </>
+  )
 
   const cardH      = stageW > 0 ? Math.round(stageW * 0.6304) : 220
   const containerH = cardH + 90
@@ -5094,6 +6220,7 @@ function WalletView({ clubs, isMock, userId }) {
   const activeIndex = ((Math.round(visualPos) % n) + n) % n
 
   return (
+    <>
     <div ref={containerRef} onTouchStart={handleTouchStart} onTouchEnd={handleTouchEnd}
          style={{ position:'relative', height:containerH, overflow:'hidden',
                   perspective:'900px', perspectiveOrigin:'50% 50%', touchAction:'none' }}>
@@ -5149,11 +6276,23 @@ function WalletView({ clubs, isMock, userId }) {
         )
       })}
     </div>
+    <NearbyClubsMarquee />
+    </>
   )
 }
 
 // ─── FILTER PILLS ─────────────────────────────────────────────────────────────
-function FilterPills({ pills, selected, onSelect, label, size }) {
+function FilterPills({ pills, selected, onSelect, label, size, multi = false }) {
+  // Pills de filtro de Mi billetera (ciudad y rubro). Modo `multi`:
+  //   • selected = array de pills activas (excluye 'Todos').
+  //   • Click en una pill → la suma/quita del array (toggle).
+  //   • Click en 'Todos' → vacía el array (limpia todos los filtros).
+  //   • 'Todos' está visualmente activo cuando no hay nada más seleccionado.
+  // Modo single (legacy): selected = string, click → setea ese string.
+  //
+  // Las pills no-'Todos' llevan "+ " adelante para comunicar "agregá este
+  // filtro a tu selección". Cuando una pill está activa, el "+" se reemplaza
+  // por una × discreta (que también funciona como remove al click).
   const rowRef  = useRef(null)
   const isLarge = size === 'lg'
 
@@ -5164,11 +6303,35 @@ function FilterPills({ pills, selected, onSelect, label, size }) {
     if (e.key === 'ArrowLeft')  { e.preventDefault(); btns[(idx - 1 + btns.length) % btns.length]?.focus() }
   }
 
-  // Wrapper externo: ancho máximo igual al contenedor padre, clip + scroll
-  // horizontal forzado. Inner: width:max-content + flex-wrap:nowrap garantiza
-  // que los pills NO se distribuyan en varias filas — siempre una sola línea
-  // con scroll horizontal. Antes algunos navegadores (Safari iOS especialmente)
-  // permitían wrap en ciertos contextos cuando el padre era flex column.
+  function isActive(p) {
+    if (multi) {
+      const arr = Array.isArray(selected) ? selected : []
+      if (p === 'Todos') return arr.length === 0
+      return arr.includes(p)
+    }
+    return p === selected
+  }
+
+  function handleClick(p) {
+    if (multi) {
+      const arr = Array.isArray(selected) ? selected : []
+      if (p === 'Todos') { onSelect([]); return }
+      const next = arr.includes(p) ? arr.filter(x => x !== p) : [...arr, p]
+      onSelect(next)
+      return
+    }
+    onSelect(p)
+  }
+
+  function handleRemove(p) {
+    if (multi) {
+      const arr = Array.isArray(selected) ? selected : []
+      onSelect(arr.filter(x => x !== p))
+      return
+    }
+    onSelect('Todos')
+  }
+
   return (
     <div style={{
       width: '100%',
@@ -5178,11 +6341,10 @@ function FilterPills({ pills, selected, onSelect, label, size }) {
       scrollbarWidth: 'none',
       msOverflowStyle: 'none',
       WebkitOverflowScrolling: 'touch',
-      // Scroll snap suave para que al deslizar quede algún chip alineado.
       scrollSnapType: 'x proximity',
     }}>
       <div
-        role="radiogroup"
+        role={multi ? 'group' : 'radiogroup'}
         aria-label={label}
         ref={rowRef}
         onKeyDown={handleKeyDown}
@@ -5198,16 +6360,17 @@ function FilterPills({ pills, selected, onSelect, label, size }) {
         }}
       >
         {pills.map(p => {
-          const active = p === selected
+          const active = isActive(p)
           const text   = p !== 'Todos' && p.length > 20 ? p.slice(0, 19) + '…' : p
+          const isTodos = p === 'Todos'
           return (
             <div
               key={p}
-              role="radio"
+              role={multi ? 'checkbox' : 'radio'}
               aria-checked={active}
               tabIndex={0}
-              onClick={() => onSelect(p)}
-              onKeyDown={e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); onSelect(p) } }}
+              onClick={() => handleClick(p)}
+              onKeyDown={e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); handleClick(p) } }}
               style={{
                 flexShrink:   0,
                 scrollSnapAlign: 'start',
@@ -5216,11 +6379,10 @@ function FilterPills({ pills, selected, onSelect, label, size }) {
                 fontSize:     isLarge ? 13 : 11,
                 fontFamily:   FN,
                 fontWeight:   active ? 700 : 500,
-                // Activo: outline + relleno fucsia tenue. Inactivo: outline gris
-                // sin relleno (mismo formato pero más sutil).
-                color:        active ? '#EC4899' : 'rgba(255,255,255,0.50)',
-                background:   active ? 'rgba(236,72,153,0.10)' : 'transparent',
-                border:       `1.5px solid ${active ? '#EC4899' : 'rgba(255,255,255,0.30)'}`,
+                // Activo: outline violeta + relleno violeta tenue. Inactivo: outline gris.
+                color:        active ? '#A855F7' : 'rgba(255,255,255,0.50)',
+                background:   active ? 'rgba(168,85,247,0.10)' : 'transparent',
+                border:       `1.5px solid ${active ? '#A855F7' : 'rgba(255,255,255,0.30)'}`,
                 cursor:       'pointer',
                 transition:   'all 150ms ease',
                 whiteSpace:   'nowrap',
@@ -5230,17 +6392,26 @@ function FilterPills({ pills, selected, onSelect, label, size }) {
                 gap:          6,
               }}
             >
+              {/* Prefijo "+" en pills NO-'Todos' que NO están activas. Cuando la pill se
+                  activa, el "+" desaparece y aparece la × removible al final. */}
+              {!isTodos && !active && (
+                <span style={{
+                  fontWeight: 700,
+                  fontSize: isLarge ? 14 : 12,
+                  color: 'rgba(168,85,247,0.85)',
+                  lineHeight: 1,
+                }}>+</span>
+              )}
               {text}
-              {/* ✕ solo en tags activos que NO sean "Todos". Click → vuelve a "Todos". */}
-              {active && p !== 'Todos' && (
+              {active && !isTodos && (
                 <span
                   role="button"
                   aria-label="Quitar filtro"
-                  onClick={e => { e.stopPropagation(); onSelect('Todos') }}
+                  onClick={e => { e.stopPropagation(); handleRemove(p) }}
                   style={{
                     display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
                     width: isLarge ? 16 : 14, height: isLarge ? 16 : 14, borderRadius: '50%',
-                    background: 'rgba(236,72,153,0.20)', color: '#EC4899',
+                    background: 'rgba(168,85,247,0.20)', color: '#A855F7',
                     fontSize: isLarge ? 11 : 9, fontWeight: 800, cursor: 'pointer', lineHeight: 1,
                   }}
                 >×</span>
@@ -5254,13 +6425,23 @@ function FilterPills({ pills, selected, onSelect, label, size }) {
 }
 
 // ─── CLIENT PORTAL ────────────────────────────────────────────────────────────
-function ClientView({ setView, user, profile, onLogout }) {
-  const [tab, setTab] = useState('mis clubs')
+function ClientView({ setView, user, profile, onLogout, initialTab }) {
+  // Tab inicial — si el deep-link de URL pasó un `initialTab` por prop
+  // (ej: el usuario llegó vía `/?view=client&tab=premios` desde la página
+  // del club), arrancamos en esa pestaña. Si no, default 'mis clubs'.
+  // Pasarlo como prop directo (en vez de leer sessionStorage) evita races
+  // con loadProfile y con remounts de ClientView.
+  const [tab, setTab] = useState(initialTab || 'mis clubs')
   const [memberships, setMemberships] = useState([])
   const [visits, setVisits] = useState([])
+  const [redemptions, setRedemptions] = useState([])  // canjes (premio + descuento)
   const [loading, setLoading] = useState(true)
   const [passQrUrl, setPassQrUrl] = useState(null)
   const [refreshTick, setRefreshTick] = useState(0)
+  // Detail modal: cuando el cliente toca un beneficio (premio o promo) se
+  // abre una vista estilo ecommerce con la info completa. `selectedBenefit`
+  // guarda { kind: 'prize'|'discount'|'double', data, commerce, bal, isStars }.
+  const [selectedBenefit, setSelectedBenefit] = useState(null)
   // Mi cuenta state
   const [acctForm,   setAcctForm]   = useState({ name: profile?.name || '', phone: profile?.phone || '' })
   const [acctSaving, setAcctSaving] = useState(false)
@@ -5296,28 +6477,41 @@ function ClientView({ setView, user, profile, onLogout }) {
   }
   const supabase = getSupabase()
 
-  // Club filters
-  const [filterCity,     setFilterCity]     = useState('Todos')
-  const [filterCategory, setFilterCategory] = useState('Todos')
+  // Club filters — multi-select. Array vacío = "Todos" (sin filtrar).
+  // Antes era un string single-select; ahora cada user puede combinar
+  // varias ciudades / rubros y la wallet muestra clubes que matcheen
+  // CUALQUIERA de los seleccionados.
+  const [filterCities,     setFilterCities]     = useState([])
+  const [filterCategories, setFilterCategories] = useState([])
 
   // El bloque de filtros + wallet usa position:sticky para que, al hacer scroll
   // hacia abajo, el saludo + header se oculten naturalmente y el bloque se
   // pegue al tope del viewport. Para volver a verlos, scroll hacia arriba.
   // No usamos focusMode ni back arrow — todo es scroll nativo.
 
-  // Restore filters from localStorage on mount
+  // Restore filters from localStorage on mount. Soporta el formato viejo
+  // (single string) y el nuevo (array) por compatibilidad — al guardar
+  // siempre quedan en formato nuevo.
   useEffect(() => {
     try {
       const saved = JSON.parse(localStorage.getItem('benefix:clubsFilter') || '{}')
-      if (saved.city)     setFilterCity(saved.city)
-      if (saved.category) setFilterCategory(saved.category)
+      if (Array.isArray(saved.cities)) {
+        setFilterCities(saved.cities)
+      } else if (saved.city && saved.city !== 'Todos') {
+        setFilterCities([saved.city])
+      }
+      if (Array.isArray(saved.categories)) {
+        setFilterCategories(saved.categories)
+      } else if (saved.category && saved.category !== 'Todos') {
+        setFilterCategories([saved.category])
+      }
     } catch {}
   }, [])
 
   // Persist filters
   useEffect(() => {
-    try { localStorage.setItem('benefix:clubsFilter', JSON.stringify({ city: filterCity, category: filterCategory })) } catch {}
-  }, [filterCity, filterCategory])
+    try { localStorage.setItem('benefix:clubsFilter', JSON.stringify({ cities: filterCities, categories: filterCategories })) } catch {}
+  }, [filterCities, filterCategories])
 
   const refresh = useCallback(() => { setRefreshTick(t => t + 1) }, [])
 
@@ -5332,10 +6526,14 @@ function ClientView({ setView, user, profile, onLogout }) {
     setLoading(true)
     Promise.all([
       supabase.from('memberships').select('*, commerce:commerces(id,name,img_url,slug,prog_type,prog_goal,category,city_name,brand_color,rating,promotions(id,type,value,description,days,expires_at,active,expiration_type,expiration_days),prizes(id,name,cost,img_url,system_type,active,stock)), client_promotions(id,promotion_id,expires_at,granted_at,used_at,status)').eq('user_id', user.id),
-      supabase.from('visits').select('*, commerce:commerces(name, img_url)').eq('user_id', user.id).order('scanned_at', { ascending:false }).limit(20),
-    ]).then(([{ data:m }, { data:v }]) => {
+      supabase.from('visits').select('*, commerce:commerces(name, img_url)').eq('user_id', user.id).order('scanned_at', { ascending:false }).limit(40),
+      // Canjes (premios + descuentos usados). Joinea prize.name y commerce
+      // para mostrar contexto en el timeline del historial.
+      supabase.from('redemptions').select('id, kind, points_spent, discount_value, redeemed_at, created_at, prize:prizes(name, img_url), commerce:commerces(name, img_url, prog_type)').eq('user_id', user.id).order('redeemed_at', { ascending:false }).limit(40),
+    ]).then(([{ data:m }, { data:v }, { data:r }]) => {
       setMemberships(m || [])
       setVisits(v || [])
+      setRedemptions(r || [])
       setLoading(false)
     })
   }, [user, refreshTick])
@@ -5448,23 +6646,25 @@ function ClientView({ setView, user, profile, onLogout }) {
   const cityPills     = _uniqueCities.length >= 1 ? ['Todos', ..._uniqueCities] : null
   const categoryPills = _uniqueCats.length   >= 1 ? ['Todos', ..._uniqueCats]   : null
 
-  // Validated active filters (fall back to 'Todos' if value no longer in set)
-  const safeCity    = cityPills     && cityPills.includes(filterCity)     ? filterCity     : 'Todos'
-  const safeCategory= categoryPills && categoryPills.includes(filterCategory) ? filterCategory : 'Todos'
-  const filtersActive = safeCity !== 'Todos' || safeCategory !== 'Todos'
+  // Validated active filters — descartamos del array cualquier item que ya
+  // no exista en las pills disponibles (por si cambió la lista de clubes).
+  const safeCities     = (cityPills     ? filterCities.filter(c => cityPills.includes(c))         : [])
+  const safeCategories = (categoryPills ? filterCategories.filter(c => categoryPills.includes(c)) : [])
+  const filtersActive  = safeCities.length > 0 || safeCategories.length > 0
 
-  // Filtered clubs for the wallet — el match de categoría busca en el array
-  // completo (un comercio matchea si CUALQUIERA de sus categorías coincide).
+  // Filtered clubs for the wallet — multi-match: un club pasa si su ciudad
+  // matchea CUALQUIERA de las ciudades seleccionadas (y idem rubros).
+  // Array vacío = "Todos" (no filtra esa dimensión).
   const filteredMemberships = displayMemberships.filter(m => {
-    const cityOk = safeCity === 'Todos' || m.commerce?.city_name === safeCity
+    const cityOk = safeCities.length === 0 || safeCities.includes(m.commerce?.city_name)
     const cats = Array.isArray(m.commerce?.categories) && m.commerce.categories.length > 0
       ? m.commerce.categories
       : (m.commerce?.category ? [m.commerce.category] : [])
-    const catOk  = safeCategory === 'Todos' || cats.includes(safeCategory)
+    const catOk  = safeCategories.length === 0 || cats.some(c => safeCategories.includes(c))
     return cityOk && catOk
   })
 
-  function clearFilters() { setFilterCity('Todos'); setFilterCategory('Todos') }
+  function clearFilters() { setFilterCities([]); setFilterCategories([]) }
 
   const glass = { background:'rgba(255,255,255,0.03)', border:'none', borderRadius:16, backdropFilter:'blur(20px)', WebkitBackdropFilter:'blur(20px)', boxShadow:'inset 0 1px 1px rgba(255,255,255,0.10), 0 0 0 1px rgba(255,255,255,0.07)', position:'relative', overflow:'hidden' }
 
@@ -5568,20 +6768,26 @@ function ClientView({ setView, user, profile, onLogout }) {
           {/* HelpBanner movido al tope (TAB_HELP['mis clubs']) — ya no va acá */}
 
           {displayMemberships.length === 0 ? (
-            /* Empty wallet state */
-            <div style={{ textAlign:'center', padding:'52px 24px 32px' }}>
-              <div style={{ width:76, height:76, borderRadius:24, background:'rgba(139,92,246,0.12)', border:'1px solid rgba(139,92,246,0.22)', display:'flex', alignItems:'center', justifyContent:'center', margin:'0 auto 20px' }}>
-                <Wallet size={34} strokeWidth={1.5} color="rgba(139,92,246,0.70)" />
+            /* Empty wallet state — sin clubes joinedados todavía. Mostramos
+                el CTA de escanear QR + el marquee "Más clubes cerca" para
+                que el cliente igual pueda descubrir negocios y sumarse a
+                alguno desde acá mismo. */
+            <>
+              <div style={{ textAlign:'center', padding:'52px 24px 24px' }}>
+                <div style={{ width:76, height:76, borderRadius:24, background:'rgba(139,92,246,0.12)', border:'1px solid rgba(139,92,246,0.22)', display:'flex', alignItems:'center', justifyContent:'center', margin:'0 auto 20px' }}>
+                  <Wallet size={34} strokeWidth={1.5} color="rgba(139,92,246,0.70)" />
+                </div>
+                <div style={{ fontFamily:FN, fontSize:17, fontWeight:800, color:'rgba(255,255,255,0.80)', marginBottom:10 }}>Tu billetera está vacía</div>
+                <div style={{ fontSize:13, color:'rgba(255,255,255,0.38)', maxWidth:240, margin:'0 auto 24px', lineHeight:1.65 }}>Escaneá el QR de un comercio para sumar tu primer club.</div>
+                <button
+                  onClick={() => setTab('mi qr')}
+                  style={{ padding:'11px 26px', borderRadius:99, background:'linear-gradient(135deg,#8B5CF6,#EC4899)', border:'none', cursor:'pointer', fontFamily:FN, fontSize:13, fontWeight:700, color:'#fff', boxShadow:'0 4px 20px rgba(139,92,246,0.40)' }}
+                >
+                  Escanear QR
+                </button>
               </div>
-              <div style={{ fontFamily:FN, fontSize:17, fontWeight:800, color:'rgba(255,255,255,0.80)', marginBottom:10 }}>Tu billetera está vacía</div>
-              <div style={{ fontSize:13, color:'rgba(255,255,255,0.38)', maxWidth:240, margin:'0 auto 24px', lineHeight:1.65 }}>Escaneá el QR de un comercio para sumar tu primer club.</div>
-              <button
-                onClick={() => setTab('mi qr')}
-                style={{ padding:'11px 26px', borderRadius:99, background:'linear-gradient(135deg,#8B5CF6,#EC4899)', border:'none', cursor:'pointer', fontFamily:FN, fontSize:13, fontWeight:700, color:'#fff', boxShadow:'0 4px 20px rgba(139,92,246,0.40)' }}
-              >
-                Escanear QR
-              </button>
-            </div>
+              <NearbyClubsMarquee />
+            </>
           ) : (
             <>
               {/* Counter — el "Limpiar" se removió, ahora cada tag activo tiene su propia ✕ */}
@@ -5604,19 +6810,21 @@ function ClientView({ setView, user, profile, onLogout }) {
                   {cityPills && (
                     <FilterPills
                       pills={cityPills}
-                      selected={safeCity}
-                      onSelect={setFilterCity}
+                      selected={safeCities}
+                      onSelect={setFilterCities}
                       label="Filtrar por ciudad"
                       size="lg"
+                      multi
                     />
                   )}
                   {categoryPills && (
                     <FilterPills
                       pills={categoryPills}
-                      selected={safeCategory}
-                      onSelect={setFilterCategory}
+                      selected={safeCategories}
+                      onSelect={setFilterCategories}
                       label="Filtrar por categoría"
                       size="sm"
+                      multi
                     />
                   )}
                 </div>
@@ -5656,29 +6864,49 @@ function ClientView({ setView, user, profile, onLogout }) {
         <div>
           {/* HelpBanner movido al tope (TAB_HELP['premios']) — ya no va acá */}
           {(() => {
-            // Junto todos los premios activos de todos los commerces, mantengo
-            // el balance del cliente (stars o points según prog_type) y ordeno
-            // por "más cerca de canjear" primero (ratio más alto), después por costo.
+            // Lista unificada: premios + promos (descuento próx. compra,
+            // doble puntos en días). Cada item se clickea para abrir el
+            // detalle estilo ecommerce.
             const all = []
             for (const m of memberships) {
               const c = m.commerce
               if (!c) continue
               const isStars = c.prog_type === 'stars'
               const bal = isStars ? (m.stars || 0) : (m.points || 0)
-              const list = (c.prizes || []).filter(p =>
+              // Premios
+              const prizeList = (c.prizes || []).filter(p =>
                 p.active && (p.system_type || c.prog_type) === c.prog_type
               )
-              for (const p of list) {
+              for (const p of prizeList) {
                 all.push({
-                  prize: p,
-                  commerce: c,
+                  kind:      'prize',
+                  data:      p,
+                  commerce:  c,
                   bal,
                   isStars,
-                  pct: p.cost > 0 ? Math.min(100, Math.round((bal / p.cost) * 100)) : 0,
+                  pct:       p.cost > 0 ? Math.min(100, Math.round((bal / p.cost) * 100)) : 0,
                   canRedeem: bal >= p.cost,
                 })
               }
+              // Promos activas (discount_next + double_points)
+              const now = Date.now()
+              const promoList = (c.promotions || []).filter(p =>
+                p.active && (!p.expires_at || new Date(p.expires_at).getTime() > now)
+              )
+              for (const pr of promoList) {
+                if (pr.type !== 'discount_next' && pr.type !== 'double_points') continue
+                all.push({
+                  kind:      pr.type === 'discount_next' ? 'discount' : 'double',
+                  data:      pr,
+                  commerce:  c,
+                  bal,
+                  isStars,
+                  pct:       100,         // promos están "siempre activas"
+                  canRedeem: true,        // siempre disponibles para usar
+                })
+              }
             }
+            // Orden: canjeables primero, luego por porcentaje de progreso
             all.sort((a, b) => {
               if (a.canRedeem !== b.canRedeem) return a.canRedeem ? -1 : 1
               return b.pct - a.pct
@@ -5687,54 +6915,120 @@ function ClientView({ setView, user, profile, onLogout }) {
             if (all.length === 0) {
               return (
                 <div style={{ textAlign:'center', padding:'52px 24px 32px' }}>
-                  <div style={{ width:76, height:76, borderRadius:24, background:'rgba(236,72,153,0.10)', border:'1px solid rgba(236,72,153,0.22)', display:'flex', alignItems:'center', justifyContent:'center', margin:'0 auto 18px' }}>
-                    <Gift size={32} strokeWidth={1.5} color='rgba(236,72,153,0.70)' />
+                  <div style={{ width:76, height:76, borderRadius:24, background:'rgba(189,75,248,0.10)', border:'1px solid rgba(189,75,248,0.22)', display:'flex', alignItems:'center', justifyContent:'center', margin:'0 auto 18px' }}>
+                    <Gift size={32} strokeWidth={1.5} color='rgba(189,75,248,0.70)' />
                   </div>
-                  <div style={{ fontFamily:FN, fontSize:17, fontWeight:800, color:'rgba(255,255,255,0.80)', marginBottom:8 }}>Sin premios disponibles</div>
+                  <div style={{ fontFamily:FN, fontSize:17, fontWeight:800, color:'rgba(255,255,255,0.80)', marginBottom:8 }}>Sin beneficios disponibles</div>
                   <div style={{ fontSize:13, color:'rgba(255,255,255,0.50)', lineHeight:1.6, maxWidth:280, margin:'0 auto' }}>
-                    Cuando tus clubs carguen premios, los vas a ver acá ordenados por los que estás más cerca de canjear.
+                    Cuando tus clubs carguen premios o promociones, los vas a ver acá ordenados por los que estás más cerca de aprovechar.
                   </div>
                 </div>
               )
             }
 
+            // ── Render de cada item ──
             return (
               <div style={{ display:'flex', flexDirection:'column', gap:8 }}>
-                {all.map(({ prize, commerce, bal, isStars, pct, canRedeem }) => {
-                  const unitColor = isStars ? '#8B5CF6' : '#EC4899'
-                  const unitLabel = isStars ? 'estrellas' : 'puntos'
-                  const unitIcon  = isStars ? Star : Gem
-                  const UI = unitIcon
-                  const missing = Math.max(0, prize.cost - bal)
+                {all.map((item, idx) => {
+                  const { kind, data, commerce, bal, isStars, pct, canRedeem } = item
+                  // Display vars según el tipo. LeftIcon en mayúscula para
+                  // que JSX la trate como componente React (sino la renderiza
+                  // como un elemento HTML <lefticon> que no existe → no se ve).
+                  let title, subtitle, LeftIcon, leftIconColor, costDisplay, statusText
+                  if (kind === 'prize') {
+                    title         = data.name
+                    subtitle      = commerce.name
+                    LeftIcon      = data.img_url ? null : Gift
+                    leftIconColor = '#BD4BF8'
+                    const UI      = isStars ? Star : Gem
+                    costDisplay   = (
+                      <span style={{ display:'inline-flex', alignItems:'center', gap:4, fontFamily:FN, fontSize:13, fontWeight:800, color:'#BD4BF8' }}>
+                        <UI size={11} {...(isStars ? { strokeWidth:0, fill:'currentColor' } : { strokeWidth:2 })} />
+                        {data.cost}
+                      </span>
+                    )
+                    const missing = Math.max(0, data.cost - bal)
+                    statusText    = canRedeem ? '¡Canjeable!' : `Faltan ${missing}`
+                  } else if (kind === 'discount') {
+                    title         = `${data.value || 10}% OFF en próxima compra`
+                    subtitle      = commerce.name
+                    LeftIcon      = Percent
+                    leftIconColor = '#BD4BF8'
+                    costDisplay   = (
+                      <span style={{ fontFamily:FN, fontSize:13, fontWeight:800, color:'#BD4BF8' }}>
+                        {data.value || 10}%
+                      </span>
+                    )
+                    statusText    = 'Beneficio activo'
+                  } else { // double
+                    const DAY_LABELS = { monday:'Lun', tuesday:'Mar', wednesday:'Mié', thursday:'Jue', friday:'Vie', saturday:'Sáb', sunday:'Dom' }
+                    const days = (data.days || []).map(d => DAY_LABELS[d] || d).join(', ')
+                    title         = `Doble ${isStars ? 'estrellas' : 'puntos'}${days ? ` los ${days.toLowerCase()}` : ''}`
+                    subtitle      = commerce.name
+                    LeftIcon      = Sparkles
+                    leftIconColor = '#BD4BF8'
+                    costDisplay   = (
+                      <span style={{ fontFamily:FN, fontSize:13, fontWeight:800, color:'#BD4BF8' }}>
+                        ×2
+                      </span>
+                    )
+                    statusText    = 'Activo'
+                  }
+
                   return (
-                    <div key={`${commerce.id}-${prize.id}`} style={{
-                      background:'rgba(255,255,255,0.04)',
-                      border:'1px solid rgba(255,255,255,0.08)',
-                      borderRadius:14, padding:'12px 14px',
-                      display:'flex', alignItems:'center', gap:12,
-                    }}>
-                      <div style={{ width:48, height:48, borderRadius:11, background:`${unitColor}1F`, border:`1px solid ${unitColor}40`, display:'flex', alignItems:'center', justifyContent:'center', flexShrink:0, overflow:'hidden' }}>
-                        {prize.img_url
-                          ? <img src={prize.img_url} alt="" style={{ width:'100%', height:'100%', objectFit:'cover' }} />
-                          : <Gift size={20} color={unitColor} strokeWidth={2} />}
+                    <button key={`${kind}-${commerce.id}-${data.id}`}
+                      onClick={() => setSelectedBenefit(item)}
+                      style={{
+                        background:'rgba(255,255,255,0.04)',
+                        border:'1px solid rgba(255,255,255,0.08)',
+                        borderRadius:14, padding:'12px 14px',
+                        display:'flex', alignItems:'center', gap:12,
+                        width:'100%', textAlign:'left',
+                        cursor:'pointer',
+                        fontFamily:'inherit',
+                        transition:'transform 160ms ease, border-color 160ms ease, background 160ms ease',
+                      }}
+                      onMouseEnter={e => { e.currentTarget.style.borderColor = 'rgba(189,75,248,0.32)'; e.currentTarget.style.background = 'rgba(189,75,248,0.06)' }}
+                      onMouseLeave={e => { e.currentTarget.style.borderColor = 'rgba(255,255,255,0.08)'; e.currentTarget.style.background = 'rgba(255,255,255,0.04)' }}>
+                      {/* Imagen / ícono */}
+                      <div style={{ width:48, height:48, borderRadius:11, background:'rgba(189,75,248,0.14)', border:'1px solid rgba(189,75,248,0.30)', display:'flex', alignItems:'center', justifyContent:'center', flexShrink:0, overflow:'hidden' }}>
+                        {kind === 'prize' && data.img_url
+                          ? <img src={data.img_url} alt="" style={{ width:'100%', height:'100%', objectFit:'cover' }} />
+                          : LeftIcon ? <LeftIcon size={20} color={leftIconColor} strokeWidth={2} /> : null}
                       </div>
+                      {/* Texto + barra */}
                       <div style={{ flex:1, minWidth:0 }}>
-                        <div style={{ fontFamily:FN, fontSize:13, fontWeight:700, color:'#fff', marginBottom:2, overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>{prize.name}</div>
-                        <div style={{ fontSize:11, color:'rgba(255,255,255,0.55)', marginBottom:6, overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>{commerce.name}</div>
-                        <div style={{ height:4, borderRadius:99, background:'rgba(255,255,255,0.08)', overflow:'hidden' }}>
-                          <div style={{ width:`${pct}%`, height:'100%', background:unitColor, borderRadius:99, transition:'width .35s ease' }} />
+                        <div style={{ fontFamily:FN, fontSize:13, fontWeight:700, color:'#fff', marginBottom:2, overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>{title}</div>
+                        <div style={{ fontSize:11, color:'rgba(255,255,255,0.55)', marginBottom:6, overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>{subtitle}</div>
+                        {/* Barra: misma estética que el club page — track oscuro,
+                            fill con degradé de marca cuando canRedeem (con flow
+                            lento), violeta pleno con pulse cuando todavía no. */}
+                        <div style={{ height:6, borderRadius:99, background:'rgba(0,0,0,0.55)', overflow:'hidden', border:'1px solid rgba(255,255,255,0.06)' }}>
+                          <div style={{
+                            width:`${pct}%`, height:'100%',
+                            borderRadius:99,
+                            background: canRedeem
+                              ? 'linear-gradient(90deg, #FE5000 0%, #BD4BF8 50%, #FE5000 100%)'
+                              : '#BD4BF8',
+                            backgroundSize: canRedeem ? '200% 100%' : 'auto',
+                            boxShadow: canRedeem
+                              ? '0 0 8px rgba(254,80,0,0.55), 0 0 16px rgba(189,75,248,0.45), inset 0 0 6px rgba(255,255,255,0.25)'
+                              : '0 0 6px rgba(189,75,248,0.40), inset 0 0 4px rgba(255,255,255,0.15)',
+                            animation: canRedeem
+                              ? 'brand-bar-flow 4.5s ease-in-out infinite'
+                              : 'brand-bar-pulse 2.8s ease-in-out infinite',
+                            transition:'width .35s ease',
+                          }} />
                         </div>
                       </div>
+                      {/* Costo + status — todo en violeta */}
                       <div style={{ flexShrink:0, textAlign:'right' }}>
-                        <div style={{ display:'inline-flex', alignItems:'center', gap:4, fontFamily:FN, fontSize:13, fontWeight:800, color: canRedeem ? '#22c55e' : unitColor }}>
-                          <UI size={11} {...(isStars ? { strokeWidth:0, fill:'currentColor' } : { strokeWidth:2 })} />
-                          {prize.cost}
-                        </div>
-                        <div style={{ fontSize:10, color:'rgba(255,255,255,0.45)', marginTop:2, whiteSpace:'nowrap' }}>
-                          {canRedeem ? '¡Canjeable!' : `Faltan ${missing}`}
+                        {costDisplay}
+                        <div style={{ fontSize:10, color: canRedeem ? '#BD4BF8' : 'rgba(255,255,255,0.45)', fontWeight: canRedeem ? 700 : 400, marginTop:2, whiteSpace:'nowrap' }}>
+                          {statusText}
                         </div>
                       </div>
-                    </div>
+                    </button>
                   )
                 })}
               </div>
@@ -5750,55 +7044,165 @@ function ClientView({ setView, user, profile, onLogout }) {
           {isMockClient && (
             <div style={{ marginBottom:12, padding:'9px 13px', background:'rgba(255,255,255,0.04)', border:'1px solid rgba(255,255,255,0.10)', borderRadius:10, fontSize:11, color:'rgba(255,255,255,0.5)', display:'flex', alignItems:'center', gap:7 }}>
               <Eye size={13} strokeWidth={2} color="rgba(255,255,255,0.5)" />
-              Ejemplo — así se verá tu historial de visitas.
+              Ejemplo — así se verá tu historial de actividad.
             </div>
           )}
 
-          <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:8, marginBottom:16 }}>
-            <div style={{ ...glass, padding:'14px 13px', textAlign:'center' }}>
-              <div style={{ fontFamily:FN, fontSize:28, fontWeight:900, background:G, WebkitBackgroundClip:'text', WebkitTextFillColor:'transparent', backgroundClip:'text' }}>{totalVisits}</div>
-              <div style={{ fontSize:10, color:'rgba(255,255,255,0.4)', marginTop:2 }}>visitas totales</div>
-            </div>
-            <div style={{ ...glass, padding:'14px 13px', textAlign:'center' }}>
-              <div style={{ fontFamily:FN, fontSize:28, fontWeight:900, color:'#fff' }}>{displayMemberships.length}</div>
-              <div style={{ fontSize:10, color:'rgba(255,255,255,0.4)', marginTop:2 }}>clubs activos</div>
-            </div>
-          </div>
-
-          {!isMockClient && displayVisits.length === 0 && (
-            <EmptyState type="historial" actionLabel="Ver mis clubs" onAction={() => setTab('mis clubs')} />
-          )}
-
-          {displayVisits.map((v, i) => {
-            const isStars = v.prog_type === 'stars'
-            const earned  = v.points_earned || 1
-            const UnitIc  = isStars ? Star : Gem
+          {/* Stats cards: visitas, clubs, canjes totales */}
+          {(() => {
+            const totalRedeems = redemptions.length
             return (
-              <div key={v.id} className="fu" style={{ ...glass, display:'flex', alignItems:'center', overflow:'hidden', marginBottom:8, animationDelay:`${i*50}ms` }}>
-                {v.commerce?.img_url
-                  ? <img src={v.commerce.img_url} alt="" style={{ width:50, height:50, objectFit:'cover', flexShrink:0, filter:'brightness(.5)' }} />
-                  : <div style={{ width:50, height:50, background:'rgba(255,255,255,0.05)', display:'flex', alignItems:'center', justifyContent:'center', flexShrink:0 }}>
-                      <Building2 size={18} strokeWidth={1.5} color="rgba(255,255,255,0.35)" />
-                    </div>
-                }
-                <div style={{ flex:1, padding:'9px 12px' }}>
-                  <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:4 }}>
-                    <span style={{ fontSize:12, fontWeight:700, color:'#fff', fontFamily:FN }}>{v.commerce?.name}</span>
-                    {v.amount_spent && <span style={{ fontSize:11, color:'rgba(255,255,255,0.4)' }}>${fmt(v.amount_spent)}</span>}
-                  </div>
-                  <div style={{ display:'flex', gap:8, alignItems:'center' }}>
-                    <span style={{ fontSize:10, color:'rgba(255,255,255,0.35)' }}>
-                      {new Date(v.scanned_at).toLocaleDateString('es-AR', { day:'2-digit', month:'short', year:'numeric' })}
-                    </span>
-                    <span style={{ display:'inline-flex', alignItems:'center', gap:4, padding:'2px 8px', background:`${C.v}18`, border:`1px solid ${C.v}40`, borderRadius:50, fontSize:10, fontWeight:600, color:C.v }}>
-                      <UnitIc size={10} strokeWidth={2} color={C.v} />
-                      +{earned}
-                    </span>
-                  </div>
+              <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr 1fr', gap:8, marginBottom:16 }}>
+                <div style={{ ...glass, padding:'14px 8px', textAlign:'center' }}>
+                  <div style={{ fontFamily:FN, fontSize:24, fontWeight:900, background:G, WebkitBackgroundClip:'text', WebkitTextFillColor:'transparent', backgroundClip:'text' }}>{totalVisits}</div>
+                  <div style={{ fontSize:10, color:'rgba(255,255,255,0.4)', marginTop:2 }}>visitas</div>
+                </div>
+                <div style={{ ...glass, padding:'14px 8px', textAlign:'center' }}>
+                  <div style={{ fontFamily:FN, fontSize:24, fontWeight:900, color:'#BD4BF8' }}>{totalRedeems}</div>
+                  <div style={{ fontSize:10, color:'rgba(255,255,255,0.4)', marginTop:2 }}>canjes</div>
+                </div>
+                <div style={{ ...glass, padding:'14px 8px', textAlign:'center' }}>
+                  <div style={{ fontFamily:FN, fontSize:24, fontWeight:900, color:'#fff' }}>{displayMemberships.length}</div>
+                  <div style={{ fontSize:10, color:'rgba(255,255,255,0.4)', marginTop:2 }}>clubs</div>
                 </div>
               </div>
             )
-          })}
+          })()}
+
+          {/* Timeline unificado: visitas + canjes + adhesiones a clubs.
+              Cada evento se acomoda en orden cronológico DESC y se renderiza
+              con su propio color/ícono según el tipo. */}
+          {(() => {
+            const events = []
+            // Visitas
+            for (const v of (displayVisits || [])) {
+              events.push({
+                kind:    'visit',
+                date:    v.scanned_at || v.created_at,
+                commerce: v.commerce,
+                isStars: v.prog_type === 'stars',
+                amount:  v.points_earned || 1,
+                amountSpent: v.amount_spent,
+                id:      `v-${v.id}`,
+              })
+            }
+            // Canjes (premios y descuentos)
+            for (const r of (redemptions || [])) {
+              events.push({
+                kind:    r.kind === 'discount' ? 'redeem-discount' : 'redeem-prize',
+                date:    r.redeemed_at || r.created_at,
+                commerce: r.commerce,
+                isStars: r.commerce?.prog_type === 'stars',
+                prizeName: r.prize?.name,
+                prizeImg:  r.prize?.img_url,
+                pointsSpent: r.points_spent,
+                discountValue: r.discount_value,
+                id:      `r-${r.id}`,
+              })
+            }
+            // Adhesiones a clubs (joins)
+            for (const m of (memberships || [])) {
+              if (!m.joined_at) continue
+              events.push({
+                kind:    'join',
+                date:    m.joined_at,
+                commerce: m.commerce,
+                isStars: m.commerce?.prog_type === 'stars',
+                id:      `j-${m.id}`,
+              })
+            }
+            // Orden cronológico descendente (más reciente arriba)
+            events.sort((a, b) => new Date(b.date || 0) - new Date(a.date || 0))
+
+            if (!isMockClient && events.length === 0) {
+              return <EmptyState type="historial" actionLabel="Ver mis clubs" onAction={() => setTab('mis clubs')} />
+            }
+
+            // Helpers para el render
+            const ICONS = {
+              'visit':           { Icon: Star,    color: '#A855F7', bg: 'rgba(168,85,247,0.16)', border: 'rgba(168,85,247,0.36)' },
+              'redeem-prize':    { Icon: Gift,    color: '#22E698', bg: 'rgba(34,230,152,0.14)', border: 'rgba(34,230,152,0.34)' },
+              'redeem-discount': { Icon: Percent, color: '#FE5000', bg: 'rgba(254,80,0,0.14)',   border: 'rgba(254,80,0,0.34)' },
+              'join':            { Icon: UserPlus,color: '#EC4899', bg: 'rgba(236,72,153,0.14)', border: 'rgba(236,72,153,0.34)' },
+            }
+
+            return events.map((ev, i) => {
+              const meta = ICONS[ev.kind]
+              const Icon = meta.Icon
+              // Texto principal y secundario por tipo de evento
+              let title, badge
+              if (ev.kind === 'visit') {
+                const UnitIc = ev.isStars ? Star : Gem
+                title = `Visitaste ${ev.commerce?.name || 'un comercio'}`
+                badge = (
+                  <span style={{ display:'inline-flex', alignItems:'center', gap:4, padding:'2px 8px', background:`${meta.color}22`, border:`1px solid ${meta.border}`, borderRadius:50, fontSize:10, fontWeight:700, color:meta.color, fontFamily:FN }}>
+                    <UnitIc size={10} strokeWidth={2} {...(ev.isStars ? { strokeWidth:0, fill:'currentColor' } : {})} />
+                    +{ev.amount}
+                  </span>
+                )
+              } else if (ev.kind === 'redeem-prize') {
+                title = `Canjeaste "${ev.prizeName || 'un premio'}"`
+                badge = (
+                  <span style={{ display:'inline-flex', alignItems:'center', gap:4, padding:'2px 8px', background:`${meta.color}22`, border:`1px solid ${meta.border}`, borderRadius:50, fontSize:10, fontWeight:700, color:meta.color, fontFamily:FN }}>
+                    <Gift size={10} strokeWidth={2.4} />
+                    -{ev.pointsSpent || 0}
+                  </span>
+                )
+              } else if (ev.kind === 'redeem-discount') {
+                title = `Usaste descuento del ${ev.discountValue || 0}%`
+                badge = (
+                  <span style={{ display:'inline-flex', alignItems:'center', gap:4, padding:'2px 8px', background:`${meta.color}22`, border:`1px solid ${meta.border}`, borderRadius:50, fontSize:10, fontWeight:700, color:meta.color, fontFamily:FN }}>
+                    <Percent size={10} strokeWidth={2.4} />
+                    {ev.discountValue || 0}% OFF
+                  </span>
+                )
+              } else { // join
+                title = `Te uniste a ${ev.commerce?.name || 'un club'}`
+                badge = (
+                  <span style={{ display:'inline-flex', alignItems:'center', gap:4, padding:'2px 8px', background:`${meta.color}22`, border:`1px solid ${meta.border}`, borderRadius:50, fontSize:10, fontWeight:700, color:meta.color, fontFamily:FN }}>
+                    <UserPlus size={10} strokeWidth={2.4} />
+                    Nuevo socio
+                  </span>
+                )
+              }
+
+              return (
+                <div key={ev.id} className="fu"
+                  style={{ ...glass, display:'flex', alignItems:'center', overflow:'hidden', marginBottom:8, animationDelay:`${Math.min(i,10)*40}ms` }}>
+                  {/* Icono del tipo de evento (en vez de imagen del comercio) */}
+                  <div style={{
+                    width:50, height:50, flexShrink:0,
+                    background: meta.bg,
+                    border:`1px solid ${meta.border}`,
+                    display:'flex', alignItems:'center', justifyContent:'center',
+                  }}>
+                    <Icon size={18} color={meta.color} strokeWidth={2.2} />
+                  </div>
+                  <div style={{ flex:1, padding:'10px 12px', minWidth:0 }}>
+                    <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:4, gap:8 }}>
+                      <span style={{ fontSize:12, fontWeight:700, color:'#fff', fontFamily:FN, overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap', minWidth:0, flex:1 }}>
+                        {title}
+                      </span>
+                      {ev.amountSpent && <span style={{ fontSize:11, color:'rgba(255,255,255,0.4)', flexShrink:0 }}>${fmt(ev.amountSpent)}</span>}
+                    </div>
+                    <div style={{ display:'flex', gap:8, alignItems:'center' }}>
+                      <span style={{ fontSize:10, color:'rgba(255,255,255,0.40)' }}>
+                        {ev.date
+                          ? new Date(ev.date).toLocaleDateString('es-AR', { day:'2-digit', month:'short', year:'numeric' })
+                          : '—'}
+                      </span>
+                      {ev.commerce?.name && ev.kind !== 'visit' && ev.kind !== 'join' && (
+                        <span style={{ fontSize:10, color:'rgba(255,255,255,0.40)', overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>
+                          · {ev.commerce.name}
+                        </span>
+                      )}
+                      {badge}
+                    </div>
+                  </div>
+                </div>
+              )
+            })
+          })()}
         </div>
       )}
 
@@ -6123,6 +7527,191 @@ function ClientView({ setView, user, profile, onLogout }) {
       )}
 
       <ClientBottomNav tab={tab} setTab={setTab} profile={profile} setView={setView} />
+
+      {/* ── DETAIL MODAL del beneficio (premio o promo) ──
+            Estilo ecommerce: imagen grande arriba, info, costo en violeta,
+            descripción y CTA. Para premios habilita canjear (lleva al club
+            del comercio). Para promos solo muestra info (la promo se aplica
+            automáticamente cuando el cliente vuelve al comercio). */}
+      {selectedBenefit && (() => {
+        const { kind, data, commerce, bal, isStars, pct, canRedeem } = selectedBenefit
+        const unitLabel = isStars ? 'estrellas' : 'puntos'
+        const UI        = isStars ? Star : Gem
+        // Texto + visual según tipo
+        let heroIcon, heroTitle, heroValueLine, descLines, ctaText, ctaSub
+        if (kind === 'prize') {
+          heroIcon      = data.img_url ? null : Gift
+          heroTitle     = data.name
+          heroValueLine = (
+            <span style={{ display:'inline-flex', alignItems:'center', gap:8, padding:'8px 14px', borderRadius:99, background:'rgba(189,75,248,0.14)', border:'1px solid rgba(189,75,248,0.40)', color:'#c084fc', fontFamily:FN, fontSize:14, fontWeight:800 }}>
+              <UI size={14} {...(isStars ? { strokeWidth:0, fill:'currentColor' } : { strokeWidth:2 })} />
+              {data.cost} {unitLabel}
+            </span>
+          )
+          descLines = data.description || `Canjeá ${data.cost} ${unitLabel} por este premio en ${commerce.name}.`
+          ctaText   = canRedeem ? `Ir a ${commerce.name} a canjear` : `Te faltan ${data.cost - bal} ${unitLabel}`
+          ctaSub    = canRedeem ? 'Mostrá la pantalla en el local' : 'Seguí visitando el club para sumar'
+        } else if (kind === 'discount') {
+          heroIcon      = Percent
+          heroTitle     = `${data.value || 10}% OFF en próxima compra`
+          heroValueLine = (
+            <span style={{ display:'inline-flex', alignItems:'center', gap:8, padding:'8px 14px', borderRadius:99, background:'rgba(189,75,248,0.14)', border:'1px solid rgba(189,75,248,0.40)', color:'#c084fc', fontFamily:FN, fontSize:14, fontWeight:800 }}>
+              <Percent size={14} strokeWidth={2.4} />
+              {data.value || 10}% OFF
+            </span>
+          )
+          descLines = data.description || `En tu próxima compra en ${commerce.name} aplicás un ${data.value || 10}% de descuento. Se aplica automáticamente cuando el comercio escanee tu QR.`
+          ctaText   = `Ir a ${commerce.name}`
+          ctaSub    = 'El descuento se aplica al escanearte'
+        } else { // double
+          const DAY_LABELS = { monday:'lunes', tuesday:'martes', wednesday:'miércoles', thursday:'jueves', friday:'viernes', saturday:'sábados', sunday:'domingos' }
+          const days = (data.days || []).map(d => DAY_LABELS[d] || d).join(' y ')
+          heroIcon      = Sparkles
+          heroTitle     = `Doble ${unitLabel}${days ? ` los ${days}` : ''}`
+          heroValueLine = (
+            <span style={{ display:'inline-flex', alignItems:'center', gap:8, padding:'8px 14px', borderRadius:99, background:'rgba(189,75,248,0.14)', border:'1px solid rgba(189,75,248,0.40)', color:'#c084fc', fontFamily:FN, fontSize:14, fontWeight:800 }}>
+              <Sparkles size={14} strokeWidth={2.4} />
+              ×2 {unitLabel}
+            </span>
+          )
+          descLines = data.description || `${days ? `Los ${days} ` : ''}cada visita a ${commerce.name} te suma el doble de ${unitLabel}. Sin código, sin trámite — el comercio lo aplica al escanearte el QR.`
+          ctaText   = `Ir a ${commerce.name}`
+          ctaSub    = days ? `Aprovechalo los ${days}` : 'Aplica al escanearte'
+        }
+
+        return (
+          <div style={{ position:'fixed', inset:0, zIndex:1500, display:'flex', alignItems:'flex-end', justifyContent:'center' }}>
+            <div onClick={() => setSelectedBenefit(null)}
+              style={{ position:'absolute', inset:0, background:'rgba(0,0,0,0.85)', backdropFilter:'blur(14px)', WebkitBackdropFilter:'blur(14px)' }} />
+            <div style={{
+              position:'relative',
+              width:'100%', maxWidth:520,
+              maxHeight:'92vh',
+              background:'#0a0a14',
+              border:'1px solid rgba(255,255,255,0.08)',
+              borderRadius:'24px 24px 0 0',
+              overflow:'hidden',
+              display:'flex', flexDirection:'column',
+              animation:'fadeUp .3s cubic-bezier(0.16,1,0.3,1)',
+              boxShadow:'0 -16px 64px rgba(0,0,0,0.55)',
+            }}>
+              {/* Cerrar */}
+              <button onClick={() => setSelectedBenefit(null)} aria-label="Cerrar"
+                style={{
+                  position:'absolute', top:14, right:14, zIndex:5,
+                  width:38, height:38, borderRadius:'50%',
+                  background:'rgba(0,0,0,0.55)',
+                  backdropFilter:'blur(10px)', WebkitBackdropFilter:'blur(10px)',
+                  border:'1px solid rgba(255,255,255,0.18)',
+                  color:'#fff', cursor:'pointer', padding:0,
+                  display:'flex', alignItems:'center', justifyContent:'center',
+                }}>
+                <ChevronDown size={20} strokeWidth={2.4} />
+              </button>
+
+              {/* Scrollable content */}
+              <div style={{ flex:1, overflowY:'auto' }}>
+                {/* Hero solo para premios — los promos (descuento próxima
+                    compra, doble puntos en días) no tienen galería ni área
+                    de imagen: se cuentan con el título + pill de valor. */}
+                {kind === 'prize' && (
+                  <div style={{
+                    width:'100%',
+                    aspectRatio:'4 / 3',
+                    background:'linear-gradient(135deg, rgba(168,85,247,0.30), rgba(189,75,248,0.20))',
+                    position:'relative',
+                    display:'flex', alignItems:'center', justifyContent:'center',
+                  }}>
+                    {data.img_url
+                      ? <img src={data.img_url} alt={data.name} style={{ width:'100%', height:'100%', objectFit:'cover' }} />
+                      : <Gift size={84} strokeWidth={1.2} color="rgba(255,255,255,0.85)" />}
+                  </div>
+                )}
+
+                {/* Body */}
+                <div style={{ padding:'20px 20px 12px' }}>
+                  <div style={{ fontFamily:FN, fontSize:10, fontWeight:700, color:'rgba(255,255,255,0.40)', letterSpacing:'.14em', textTransform:'uppercase', marginBottom:8 }}>
+                    {kind === 'prize' ? 'Premio' : 'Promoción'} · {commerce.name}
+                  </div>
+                  <h2 style={{ fontFamily:FN, fontSize:22, fontWeight:900, color:'#fff', margin:'0 0 12px', lineHeight:1.2, letterSpacing:'-0.01em' }}>
+                    {heroTitle}
+                  </h2>
+                  <div style={{ marginBottom:18 }}>{heroValueLine}</div>
+                  <p style={{ fontSize:14, color:'rgba(255,255,255,0.78)', lineHeight:1.6, margin:'0 0 18px', whiteSpace:'pre-wrap' }}>
+                    {descLines}
+                  </p>
+
+                  {/* Solo para premios: progreso */}
+                  {kind === 'prize' && (
+                    <div style={{
+                      background:'rgba(255,255,255,0.04)',
+                      border:'1px solid rgba(255,255,255,0.08)',
+                      borderRadius:14, padding:'12px 14px',
+                      marginBottom:14,
+                    }}>
+                      <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:8 }}>
+                        <span style={{ fontSize:12, color:'rgba(255,255,255,0.65)', fontWeight:600 }}>Tu progreso</span>
+                        <span style={{ fontSize:12, color:'#BD4BF8', fontWeight:700 }}>
+                          {bal} / {data.cost} {unitLabel}
+                        </span>
+                      </div>
+                      <div style={{ height:10, background:'rgba(0,0,0,0.55)', borderRadius:99, overflow:'hidden', border:'1px solid rgba(255,255,255,0.08)' }}>
+                        <div style={{
+                          height:'100%', width:`${pct}%`,
+                          minWidth: pct > 0 ? 10 : 0,
+                          borderRadius:99,
+                          background: canRedeem
+                            ? 'linear-gradient(90deg, #FE5000 0%, #BD4BF8 50%, #FE5000 100%)'
+                            : '#BD4BF8',
+                          backgroundSize: canRedeem ? '200% 100%' : 'auto',
+                          boxShadow: canRedeem
+                            ? '0 0 14px rgba(254,80,0,0.70), 0 0 26px rgba(189,75,248,0.60), inset 0 0 12px rgba(255,255,255,0.35)'
+                            : '0 0 8px rgba(189,75,248,0.45), inset 0 0 6px rgba(255,255,255,0.20)',
+                          animation: canRedeem
+                            ? 'brand-bar-flow 4.5s ease-in-out infinite'
+                            : 'brand-bar-pulse 2.8s ease-in-out infinite',
+                        }} />
+                      </div>
+                    </div>
+                  )}
+                </div>
+              </div>
+
+              {/* CTA sticky */}
+              <div style={{
+                padding:'14px 20px calc(14px + env(safe-area-inset-bottom, 0px))',
+                background:'rgba(10,10,20,0.92)',
+                borderTop:'1px solid rgba(255,255,255,0.08)',
+                backdropFilter:'blur(20px)', WebkitBackdropFilter:'blur(20px)',
+              }}>
+                <button
+                  onClick={() => {
+                    setSelectedBenefit(null)
+                    if (commerce?.slug) window.location.href = `/club/${commerce.slug}`
+                  }}
+                  style={{
+                    width:'100%', padding:'14px 0',
+                    background: canRedeem
+                      ? 'linear-gradient(135deg, #7C3AED, #BD4BF8)'
+                      : 'rgba(189,75,248,0.18)',
+                    border: canRedeem ? 'none' : '1px solid rgba(189,75,248,0.40)',
+                    borderRadius:14,
+                    color:'#fff', fontFamily:FN, fontSize:15, fontWeight:800,
+                    letterSpacing:'.02em', cursor:'pointer',
+                    boxShadow: canRedeem ? '0 8px 24px rgba(189,75,248,0.50)' : 'none',
+                    display:'flex', alignItems:'center', justifyContent:'center', gap:8,
+                  }}>
+                  {kind === 'prize' ? <Gift size={18} strokeWidth={2.4} /> : <ArrowRight size={18} strokeWidth={2.4} />}
+                  {ctaText}
+                </button>
+                <div style={{ textAlign:'center', fontSize:11, color:'rgba(255,255,255,0.45)', marginTop:8 }}>
+                  {ctaSub}
+                </div>
+              </div>
+            </div>
+          </div>
+        )
+      })()}
     </div>
   )
 }
@@ -8236,6 +9825,107 @@ function CommerceSettingsView({ user, profile, setView, onLogout, onOwnerProfile
   // Acordeón de la pestaña Configuración: solo una sección abierta a la vez,
   // todas colapsadas por default para no saturar la pantalla.
   const [expandedConfigSection, setExpandedConfigSection] = useState(null)
+  // Slider de "Configurá tu negocio" en el intent picker — index de la card
+  // activa (para iluminar el dot) + ref al contenedor scrolleable (para
+  // navegar programáticamente con las flechas).
+  const [configSlideIdx, setConfigSlideIdx] = useState(0)
+  const configSliderRef = useRef(null)
+  // Flag: el dueño llegó al tab actual desde el slider de tarjetas de
+  // configuración. Lo usamos para mostrar un botón "← Volver a tarjetas"
+  // al tope del panel para que no pierda el contexto de qué estaba
+  // configurando. Se limpia cuando vuelve al intent picker.
+  const [cameFromConfigCards, setCameFromConfigCards] = useState(false)
+  // Radial menu — el dueño mantiene el cog presionado y arrastra el dedo
+  // por los íconos para seleccionar; al soltar, navega al icono que tenía
+  // debajo. Si solo tappea (sin drag), abre el menú y queda como tap-mode
+  // (puede tappear íconos individuales). Tap en el cog cuando ya está
+  // abierto = cerrar.
+  const [radialOpen, setRadialOpen]           = useState(false)
+  const [radialActiveIdx, setRadialActiveIdx] = useState(-1)
+  const radialDraggedRef  = useRef(false)
+  const radialStartRef    = useRef({ x: 0, y: 0 })
+  const radialWasOpenRef  = useRef(false)
+  // Listeners globales mientras el radial esté abierto: detectan sobre
+  // qué ícono está el dedo (vía elementFromPoint) y manejan el release.
+  useEffect(() => {
+    if (!radialOpen) return
+    const onMove = (e) => {
+      const x = e.clientX, y = e.clientY
+      const dx = x - radialStartRef.current.x
+      const dy = y - radialStartRef.current.y
+      if (Math.abs(dx) + Math.abs(dy) > 10) radialDraggedRef.current = true
+      const el = document.elementFromPoint(x, y)
+      const itemEl = el?.closest?.('[data-radial-idx]')
+      if (itemEl) {
+        const idx = parseInt(itemEl.getAttribute('data-radial-idx'), 10)
+        setRadialActiveIdx(prev => (prev === idx ? prev : idx))
+      } else {
+        setRadialActiveIdx(prev => (prev === -1 ? prev : -1))
+      }
+    }
+    const onUp = () => {
+      const dragged = radialDraggedRef.current
+      const idx = radialActiveIdx
+      if (dragged) {
+        if (idx >= 0 && idx < MENU.length) {
+          const item = MENU[idx]
+          // setIntentPickerActive(false) sin check previo — la state setter
+          // es idempotente y siempre la queremos cerrada al navegar. Esto
+          // evita el TDZ que tendríamos al leer `intentPickerActive` acá
+          // (se declara más abajo en el componente).
+          setIntentPickerActive(false)
+          // El user navegó vía radial — NO viene de las tarjetas, así que
+          // el botón "Volver a tarjetas" no debe aparecer.
+          setCameFromConfigCards(false)
+          if (item.locked) { setUpgradeModal('promotions'); setTab(item.id) } else setTab(item.id)
+        }
+        setRadialOpen(false)
+        setRadialActiveIdx(-1)
+      } else {
+        // Tap sin drag: si ya estaba abierto antes de este press, cerrar.
+        // Si recién se abrió, dejar abierto en modo tap.
+        if (radialWasOpenRef.current) {
+          setRadialOpen(false)
+          setRadialActiveIdx(-1)
+        }
+      }
+      radialDraggedRef.current = false
+    }
+    window.addEventListener('pointermove',   onMove, { passive: true })
+    window.addEventListener('pointerup',     onUp)
+    window.addEventListener('pointercancel', onUp)
+    return () => {
+      window.removeEventListener('pointermove',   onMove)
+      window.removeEventListener('pointerup',     onUp)
+      window.removeEventListener('pointercancel', onUp)
+    }
+  }, [radialOpen, radialActiveIdx, setTab])
+  // Cuando el dueño llega acá vía un Pen icon de la vista pública del club
+  // (?edit=1), guardamos en sessionStorage qué sección quiere editar.
+  // Al montar el panel, leemos ese flag, lo consumimos y expandimos el
+  // accordion correspondiente. También seteamos el tab a 'configuracion'.
+  useEffect(() => {
+    if (typeof window === 'undefined') return
+    try {
+      const section = sessionStorage.getItem('benefix:edit-section')
+      if (section) {
+        sessionStorage.removeItem('benefix:edit-section')
+        // Pequeño delay para que la pestaña configuracion esté montada
+        // antes de tocar el state del accordion.
+        setTimeout(() => {
+          _setTabRaw('configuracion')
+          setExpandedConfigSection(section)
+          // Scroll al accordion elegido para que quede a la vista.
+          setTimeout(() => {
+            const el = document.querySelector(`[data-config-section="${section}"]`)
+            if (el && typeof el.scrollIntoView === 'function') {
+              el.scrollIntoView({ behavior:'smooth', block:'start' })
+            }
+          }, 250)
+        }, 100)
+      }
+    } catch {}
+  }, [])
   const [autoTeaser, setAutoTeaser]       = useState(null)  // 'reactivacion'|'cercaPremio'|'primeraVisita' — modal marketinero
   const [autoConfigs, setAutoConfigs]     = useState({
     reactivacion:  { active: true, days: 7  },
@@ -8252,7 +9942,64 @@ function CommerceSettingsView({ user, profile, setView, onLogout, onOwnerProfile
   // descarta tocando el contenido (sin navegar) o tocando un ícono (que navega).
   // Una vez colapsado se queda como "pestaña" delgada al borde hasta la próxima
   // entrada al panel.
-  const [railExpanded, setRailExpanded]   = useState(true)
+  // Rail arranca COLAPSADO (solo íconos). El usuario no quiere ver los
+  // labels completos por defecto cada vez que entra al panel — la nueva
+  // UX deja el rail con la pill angosta de íconos siempre, y solo se
+  // expande si el user explícitamente toca el chevron/logo.
+  const [railExpanded, setRailExpanded]   = useState(false)
+  // Backdrop blur desactivado: la pantalla anterior con "Tocá para ver"
+  // ya no se usa. El rail y el contenido coexisten sin overlay.
+  const [railBackdropVisible, setRailBackdropVisible] = useState(false)
+  const railAutoCollapseRef = useRef(null)
+  // ── Auto-hide del rail después de navegar ──
+  // El usuario quiere que después de tappear un ícono del rail, se vea
+  // 2 segundos en pantalla (para confirmar visualmente la pestaña activa)
+  // y después se "esconda" — colapsando hasta una pequeña solapa en el
+  // borde izquierdo. Esa solapa pulsa/anima sutilmente para que el user
+  // se dé cuenta que el menú "se puede llamar de vuelta" tappeándola.
+  const [railHidden, setRailHidden]   = useState(false)
+  const showRail = () => setRailHidden(false)
+  // useEffect que se dispara en cada cambio de `tab` y arma el timer de
+  // 2 segundos para esconder el rail. Evitamos el primer render (cuando
+  // `tab` arranca con su default 'dashboard') con un ref-flag, para que
+  // al entrar al panel el rail quede visible hasta que el user navegue
+  // por primera vez.
+  const isFirstTabRenderRef = useRef(true)
+  useEffect(() => {
+    if (isFirstTabRenderRef.current) {
+      isFirstTabRenderRef.current = false
+      return
+    }
+    // Si el rail está mostrándose (railHidden=false) o si el user acaba de
+    // expandirlo de nuevo, programamos el auto-hide. La cleanup function
+    // de useEffect cancela el timer anterior si tab cambia rápido.
+    const id = setTimeout(() => setRailHidden(true), 2000)
+    return () => clearTimeout(id)
+  }, [tab])
+  // Cleanup del timer si el componente se desmonta.
+  useEffect(() => {
+    return () => { if (railAutoCollapseRef.current) clearTimeout(railAutoCollapseRef.current) }
+  }, [])
+  // Auto-colapso en tap-outside: durante la ventana de 3s después de
+  // dismissear el backdrop, si el user toca CUALQUIER parte de la pantalla
+  // que no sea el rail mismo (data-rail-menu), el rail se colapsa al
+  // instante en lugar de esperar el timer completo.
+  useEffect(() => {
+    if (!(railExpanded && !railBackdropVisible)) return
+    function onPointerDown(e) {
+      if (e.target?.closest && e.target.closest('[data-rail-menu]')) return
+      if (railAutoCollapseRef.current) {
+        clearTimeout(railAutoCollapseRef.current)
+        railAutoCollapseRef.current = null
+      }
+      setRailExpanded(false)
+    }
+    // Capture: para que dispare antes que cualquier handler de los hijos
+    // del documento (incluido React onClick), evitando que se "trague" el
+    // primer tap. Usamos pointerdown, no click, para sentirse instantáneo.
+    document.addEventListener('pointerdown', onPointerDown, true)
+    return () => document.removeEventListener('pointerdown', onPointerDown, true)
+  }, [railExpanded, railBackdropVisible])
   // showRailHint: tooltip "Recordá que tocando esta solapa..." que aparece 5
   // segundos después de la primera vez que el user cierra el rail expandido.
   // Solo se muestra UNA VEZ por user (persistido en localStorage). El user lo
@@ -8353,6 +10100,32 @@ function CommerceSettingsView({ user, profile, setView, onLogout, onOwnerProfile
   // qué pestaña está activa.
   const [showBusinessQrModal, setShowBusinessQrModal] = useState(false)
 
+  // ── Accesos directos personalizables del intent picker ──
+  // El user puede editar la lista: borrar (X en edit mode) y agregar
+  // (modal con todas las pestañas del menú). El orden y la lista quedan
+  // persistidos en localStorage para que cada dueño tenga el suyo.
+  const SHORTCUT_DEFAULT_IDS = ['clientes', 'recompensas', 'analisis', 'configuracion']
+  const [shortcutIds, setShortcutIds] = useState(() => {
+    if (typeof window === 'undefined') return SHORTCUT_DEFAULT_IDS
+    try {
+      const saved = JSON.parse(localStorage.getItem('benefix:panelShortcuts') || 'null')
+      if (Array.isArray(saved) && saved.length > 0) return saved
+    } catch {}
+    return SHORTCUT_DEFAULT_IDS
+  })
+  const [editingShortcuts, setEditingShortcuts] = useState(false)
+  const [addShortcutOpen,  setAddShortcutOpen]  = useState(false)
+  // Drag-to-reorder en edit mode. Guardamos refs a cada card y al
+  // contenedor para poder calcular cuándo el dedo cruzó el midpoint del
+  // card vecino → swap en el array.
+  const [draggingShortcutId, setDraggingShortcutId] = useState(null)
+  const dragStateRef     = useRef(null)
+  const cardRefs         = useRef({})
+  const shortcutsBoxRef  = useRef(null)
+  useEffect(() => {
+    try { localStorage.setItem('benefix:panelShortcuts', JSON.stringify(shortcutIds)) } catch {}
+  }, [shortcutIds])
+
   const supabase = getSupabase()
 
   // Listener para el evento "benefix:merchant-intent" — disparado por el
@@ -8388,6 +10161,10 @@ function CommerceSettingsView({ user, profile, setView, onLogout, onOwnerProfile
   // componente que necesite navegar a una pestaña específica del panel comerciante.
   // Algunos tabs "virtuales" (promociones) no tienen render propio, viven adentro
   // de otros (recompensas). Mapeamos para que el navigate caiga en el lugar correcto.
+  // IMPORTANTE: cuando llega un set-tab vía deep-link (ej: el lápiz del slider de
+  // beneficios redirige a `commerce-settings&tab=recompensas`), también
+  // dismisseamos el intent picker — sino el usuario ve la pantalla inicial con
+  // los dos botones grandes en lugar de la pestaña a la que pidió ir.
   useEffect(() => {
     const TAB_ALIASES = {
       promociones:   'recompensas',  // las promos viven dentro de recompensas
@@ -8402,6 +10179,8 @@ function CommerceSettingsView({ user, profile, setView, onLogout, onOwnerProfile
       if (!next) return
       if (TAB_ALIASES[next]) next = TAB_ALIASES[next]
       setTab(next)
+      // Salir del intent picker para que se vea el contenido del tab.
+      setIntentPickerActive(false)
     }
     window.addEventListener('benefix:set-tab', onSetTab)
     return () => window.removeEventListener('benefix:set-tab', onSetTab)
@@ -8871,6 +10650,20 @@ function CommerceSettingsView({ user, profile, setView, onLogout, onOwnerProfile
       if (data) {
         setPrizes(p => [...p, data])
         logActivity('prize_added', `Premio agregado: "${data.name}" (${data.cost} ${unitLabel})`)
+        // Fire-and-forget: notificar a los suscriptos del club. El endpoint
+        // valida ownership server-side y dispara push + notif in-app a
+        // todos los clients que tienen activada la campanita para premios.
+        fetch('/api/notify-club-update', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            commerce_id: commerce.id,
+            kind: 'prize',
+            name: data.name,
+            value: data.cost,
+            image: data.img_url || null,
+          }),
+        }).catch(() => {})
       }
     }
     // Reset form + cerrar accordion
@@ -8985,6 +10778,18 @@ function CommerceSettingsView({ user, profile, setView, onLogout, onOwnerProfile
       setNewPromo({ type:'discount_next', value:10, duration:'today', custom_date:'', days:[], expiration_type:'fixed', expiration_date:'', expiration_days:7 })
       logActivity('promo_added', `Promo activada: "${description}"`)
       showToast('success', '¡Promoción activada!')
+      // Fire-and-forget: notificar a los suscriptos del club que tienen la
+      // campanita activada para promos.
+      fetch('/api/notify-club-update', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          commerce_id: commerce.id,
+          kind: 'promo',
+          name: description,
+          value: data.value,
+        }),
+      }).catch(() => {})
     }
     setAddingPromo(false)
   }
@@ -9300,86 +11105,364 @@ function CommerceSettingsView({ user, profile, setView, onLogout, onOwnerProfile
   // ruedita girando en bursts) y mientras el user no la haya tocado nunca
   // tiene una manito de lucide superpuesta tocando insistentemente. Al
   // tocarla, marcamos `railTabHandSeen` y la manito ya no vuelve.
-  const renderRailTab = (onActivate) => (
+  // ── Solapa "Llamar al menú" ──
+  // Cuando el rail está escondido (railHidden=true), aparece esta solapa
+  // angosta en el borde izquierdo. Tiene un pulse continuo + un "ping"
+  // periódico para que el user se dé cuenta que se puede volver a llamar.
+  // Tap → muestra el rail entero deslizándose desde la izquierda, y
+  // re-arma el auto-hide para que vuelva a esconderse después de 2s sin
+  // interacción (o más, si el user navega a otro tab desde ahí).
+  // ── Radial menu (mobile) ──
+  // Reemplaza al rail lateral tradicional. Un botón semi-circular violeta
+  // glass al fondo de la pantalla, centrado horizontalmente. Al tappearlo,
+  // el botón gira a una X y los 9 íconos del menú se despliegan en arco
+  // (180° hacia arriba) con un stagger animado. Tap en un ícono navega a
+  // ese tab + cierra el radial. Tap en el backdrop también cierra.
+  const renderRadialMenu = () => {
+    if (!isMobile) return null
+    const items = MENU
+    const N      = items.length
+    const arcDeg = 180
+    const startAngle = 180  // izquierda
+    const stepAngle  = arcDeg / (N - 1)
+    const radius     = 118
+    return (
+      <>
+        {/* Backdrop oscuro cuando está abierto — tap fuera cierra */}
+        {radialOpen && (
+          <div
+            onClick={() => setRadialOpen(false)}
+            style={{
+              position: 'fixed', inset: 0, zIndex: 198,
+              background: 'rgba(8,4,18,0.55)',
+              backdropFilter: 'blur(8px)', WebkitBackdropFilter: 'blur(8px)',
+              animation: 'fadeIn 200ms ease',
+            }}
+          />
+        )}
+
+        {/* Items en arco — solo cuando radialOpen=true */}
+        {radialOpen && items.map((item, i) => {
+          const angleDeg = startAngle - i * stepAngle
+          const angleRad = angleDeg * Math.PI / 180
+          const x = radius * Math.cos(angleRad)
+          const y = radius * Math.sin(angleRad)  // positivo = arriba (visualmente)
+          const I = MENU_ICONS[item.id]
+          const isLocked = item.locked
+          const isProLocked = item.pro && planKey !== 'pro'
+          const dimmed = isLocked || isProLocked
+          const active = tab === item.id
+          const isHovered = radialActiveIdx === i  // dedo encima durante el drag
+          return (
+            <button
+              key={item.id}
+              data-rail-menu="true"
+              data-radial-idx={i}
+              onClick={(e) => {
+                e.stopPropagation()
+                if (intentPickerActive) setIntentPickerActive(false)
+                setCameFromConfigCards(false)  // navegó vía radial, no via tarjetas
+                if (isLocked) { setUpgradeModal('promotions'); setTab(item.id) } else setTab(item.id)
+                setRadialOpen(false)
+              }}
+              title={item.label}
+              aria-label={item.label}
+              style={{
+                position: 'fixed',
+                bottom: `calc(28px + env(safe-area-inset-bottom, 0px) + ${y}px)`,
+                left: '50%',
+                marginLeft: x - 26,  // medio width del item para centrarlo
+                zIndex: 200,
+                width: 52, height: 52, borderRadius: '50%',
+                background: (active || isHovered)
+                  ? 'linear-gradient(135deg, #BD4BF8 0%, #EC4899 100%)'
+                  : 'rgba(40,18,62,0.55)',
+                backdropFilter: 'blur(22px) saturate(180%)',
+                WebkitBackdropFilter: 'blur(22px) saturate(180%)',
+                border: (active || isHovered) ? '1px solid rgba(255,255,255,0.40)' : '1px solid rgba(216,180,254,0.42)',
+                color: '#fff',
+                cursor: 'pointer',
+                display: 'flex', alignItems: 'center', justifyContent: 'center',
+                padding: 0,
+                boxShadow: isHovered
+                  ? '0 8px 28px rgba(189,75,248,0.85), inset 0 1px 0 rgba(255,255,255,0.25)'
+                  : active
+                    ? '0 6px 22px rgba(189,75,248,0.65), inset 0 1px 0 rgba(255,255,255,0.18)'
+                    : '0 6px 18px rgba(0,0,0,0.45), inset 0 1px 0 rgba(255,255,255,0.10)',
+                opacity: dimmed ? 0.55 : 1,
+                transform: isHovered ? 'scale(1.18)' : 'scale(1)',
+                transition: 'transform 180ms cubic-bezier(0.34,1.56,0.64,1), box-shadow 180ms ease, background 180ms ease',
+                animation: `radial-item-in 320ms cubic-bezier(0.34,1.56,0.64,1) ${i * 0.04}s both`,
+                transformOrigin: 'center center',
+                touchAction: 'none',
+              }}
+            >
+              {I && <I size={20} color="#fff" strokeWidth={2.2} />}
+              {isProLocked && (
+                <span style={{
+                  position: 'absolute', top: -4, right: -4,
+                  fontSize: 7, fontWeight: 800, color: '#fff',
+                  background: PLANS.pro.color, borderRadius: 99, padding: '1px 5px',
+                  fontFamily: FN, letterSpacing: '.04em',
+                }}>PRO</span>
+              )}
+              {isLocked && !isProLocked && (
+                <Lock size={9} color={C.dust} strokeWidth={2.5} style={{ position: 'absolute', top: 4, right: 4 }} />
+              )}
+            </button>
+          )
+        })}
+
+        {/* Botón principal — semicirculo en el bottom center */}
+        <button
+          data-rail-menu="true"
+          onClick={() => {
+            if (!railTabHandSeen) setRailTabHandSeen(true)
+            setRadialOpen(v => !v)
+          }}
+          aria-label={radialOpen ? 'Cerrar menú' : 'Abrir menú de configuración'}
+          title="Menú"
+          style={{
+            position: 'fixed',
+            bottom: 0,
+            left: '50%',
+            transform: `translateX(-50%) ${radialOpen ? 'rotate(135deg)' : 'rotate(0deg)'}`,
+            zIndex: 199,
+            width: 86, height: 50,
+            borderRadius: '50px 50px 0 0',
+            background: radialOpen
+              ? 'rgba(40,18,62,0.92)'
+              : 'linear-gradient(180deg, rgba(40,18,62,0.65) 0%, rgba(20,8,40,0.88) 100%)',
+            backdropFilter: 'blur(28px) saturate(180%)',
+            WebkitBackdropFilter: 'blur(28px) saturate(180%)',
+            border: '1px solid rgba(216,180,254,0.50)',
+            borderBottom: 'none',
+            color: '#fff',
+            cursor: 'pointer',
+            display: 'flex', alignItems: 'center', justifyContent: 'center',
+            padding: 0,
+            paddingTop: 6,
+            boxShadow: radialOpen
+              ? '0 -6px 24px rgba(189,75,248,0.55)'
+              : '0 -4px 18px rgba(189,75,248,0.40)',
+            transition: 'transform 320ms cubic-bezier(0.34,1.56,0.64,1), background 220ms ease, box-shadow 220ms ease',
+            // Animación de hint cuando todavía no fue tappeado nunca: pulso
+            // sutil para que el dueño descubra que hay un menú acá.
+            animation: railTabHandSeen ? 'none' : 'radial-cog-pulse 2.4s ease-in-out infinite',
+          }}
+        >
+          {radialOpen
+            ? <X size={22} strokeWidth={2.6} />
+            : <Settings size={22} strokeWidth={2.2} />
+          }
+        </button>
+
+        <style>{`
+          @keyframes radial-item-in {
+            0%   { opacity: 0; transform: scale(0.4) translateY(20px); }
+            100% { opacity: 1; transform: scale(1)   translateY(0); }
+          }
+          @keyframes radial-cog-pulse {
+            0%, 100% {
+              box-shadow: 0 -4px 18px rgba(189,75,248,0.40), 0 0 0 0 rgba(189,75,248,0.55);
+            }
+            50% {
+              box-shadow: 0 -4px 22px rgba(189,75,248,0.65), 0 0 0 14px rgba(189,75,248,0);
+            }
+          }
+        `}</style>
+      </>
+    )
+  }
+
+  const renderRailSummonHandle = () => (
     <button
-      onClick={() => {
-        if (!railTabHandSeen) setRailTabHandSeen(true)
-        onActivate()
-      }}
-      aria-label="Abrir menú de configuraciones"
+      data-rail-menu="true"
+      onClick={e => { e.stopPropagation(); showRail() }}
+      aria-label="Mostrar menú lateral"
+      title="Mostrar menú"
       style={{
         position: 'fixed',
-        left: -14,
+        left: 0,
         top: '50%',
         transform: 'translateY(-50%)',
-        zIndex: 200,
-        // Forma más fina y alargada — pestaña vertical estilo "lengüeta"
-        // que asoma del borde izquierdo. Width angosto, height alto.
-        width: 36,
-        height: 84,
+        zIndex: 199,
+        width: 30,
+        height: 110,
         padding: 0,
         border: 'none',
-        borderRadius: '0 12px 12px 0',
-        background: 'linear-gradient(135deg, #DB2777 0%, #EC4899 60%, #F472B6 100%)',
-        boxShadow: '4px 0 18px rgba(236,72,153,0.55), inset -1px 0 0 rgba(255,255,255,0.15)',
+        borderRadius: '0 16px 16px 0',
+        background: 'linear-gradient(135deg, #7C3AED 0%, #BD4BF8 50%, #EC4899 100%)',
+        boxShadow: '4px 0 22px rgba(189,75,248,0.65), inset -1px 0 0 rgba(255,255,255,0.20)',
         color: '#fff',
         cursor: 'pointer',
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'flex-end',
-        paddingRight: 6,
-        animation: 'rail-tab-tease 2.2s ease-in-out infinite',
-        // overflow visible para que la manito que sale por la derecha no se corte
-        overflow: 'visible',
+        display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
+        gap: 6,
+        animation: 'rail-summon-pulse 2.4s ease-in-out infinite',
       }}
     >
-      <Settings
-        size={18}
-        strokeWidth={2.4}
-        color="#fff"
-        style={{ animation: 'rail-tab-spin-burst 3.5s ease-in-out infinite' }}
-      />
-      {/* Manito apuntando con el dedo a la solapa, asomada desde la derecha.
-          Solo se muestra mientras el user no haya tocado la solapa nunca. */}
-      {!railTabHandSeen && (
-        <Hand
-          size={26}
-          strokeWidth={2}
-          color="#fff"
-          style={{
-            position: 'absolute',
-            left: '100%',
-            top: '50%',
-            marginLeft: 6,
-            transform: 'translateY(-50%) rotate(-90deg)',
-            filter: 'drop-shadow(0 3px 8px rgba(0,0,0,0.55))',
-            animation: 'rail-tab-hand 1.4s ease-in-out infinite',
-            pointerEvents: 'none',
-          }}
-        />
-      )}
+      {/* Texto "MENÚ" rotado vertical para que el user descubra que la
+          solapa abre un menú lateral. La rotación de -90deg lo lee de
+          abajo hacia arriba; con writing-mode quedaría más correcto en
+          algunos browsers pero rotation funciona universal. */}
+      <span style={{
+        fontFamily: FN, fontSize: 10, fontWeight: 800,
+        letterSpacing: '.18em',
+        writingMode: 'vertical-rl',
+        transform: 'rotate(180deg)',
+        color: '#fff',
+        textShadow: '0 1px 2px rgba(0,0,0,0.30)',
+      }}>
+        MENÚ
+      </span>
+      <ChevronRight size={14} strokeWidth={2.8} style={{ animation: 'rail-summon-arrow 1.6s ease-in-out infinite' }} />
       <style>{`
-        @keyframes rail-tab-tease {
-          0%, 100% { transform: translate(-2px, -50%); }
-          50%      { transform: translate(6px,  -50%); }
+        @keyframes rail-summon-pulse {
+          0%, 100% {
+            transform: translateY(-50%) translateX(0);
+            box-shadow: 4px 0 22px rgba(189,75,248,0.65), inset -1px 0 0 rgba(255,255,255,0.20), 0 0 0 0 rgba(189,75,248,0.6);
+          }
+          50% {
+            transform: translateY(-50%) translateX(4px);
+            box-shadow: 4px 0 28px rgba(189,75,248,0.85), inset -1px 0 0 rgba(255,255,255,0.20), 0 0 0 12px rgba(189,75,248,0);
+          }
         }
-        /* Burst: hace un giro completo en ~1.2s acelerando y
-           desacelerando (cubic-bezier ease-in-out implícito), después
-           se queda quieto ~2.3s, y vuelve a girar. */
-        @keyframes rail-tab-spin-burst {
-          0%   { transform: rotate(0deg); }
-          35%  { transform: rotate(360deg); }
-          100% { transform: rotate(360deg); }
-        }
-        /* Manito tocando: se acerca a la solapa (translateX hacia la izquierda)
-           y se aleja, rotation -90 la deja con el dedo apuntando hacia la izq. */
-        @keyframes rail-tab-hand {
-          0%, 100% { transform: translate(0, -50%) rotate(-90deg) scale(1);   opacity: 0.95; }
-          50%      { transform: translate(-10px, -50%) rotate(-90deg) scale(0.92); opacity: 1; }
+        @keyframes rail-summon-arrow {
+          0%, 100% { transform: translateX(0); }
+          50%      { transform: translateX(2px); }
         }
       `}</style>
     </button>
   )
+
+  // Rail colapsado: pill vertical que muestra TODOS los íconos del menú
+  // (logo arriba + items + más opciones abajo). Estilo inspirado en
+  // sidebars modernos tipo dashboard SaaS — dark glass background,
+  // active item con círculo blanco que destaca, items inactivos con
+  // ícono blanco sobre fondo transparente. Tap en un ícono navega
+  // directamente y el rail se auto-esconde a los 2s.
+  const renderRailTab = (onActivate) => {
+    // Necesitamos los items del menú filtrados igual que el rail expandido
+    // — usamos los IDs del MENU completo (mismo array que RAIL_ITEMS).
+    const ITEMS = MENU.map(m => m.id)
+    return (
+      <aside
+        data-rail-menu="true"
+        style={{
+          position: 'fixed',
+          left: railHidden ? -64 : 8,
+          top: 70, bottom: 14,
+          width: 50, zIndex: 200,
+          // Vidrio difuso: opacidad baja en el fondo + blur fuerte +
+          // saturate. Esto hace que se vea lo que hay detrás "borroseado",
+          // como un panel de cristal esmerilado real.
+          background: 'linear-gradient(180deg, rgba(40,20,60,0.42), rgba(25,12,45,0.55))',
+          backdropFilter: 'blur(28px) saturate(180%)',
+          WebkitBackdropFilter: 'blur(28px) saturate(180%)',
+          borderRadius: 16,
+          border: '1px solid rgba(255,255,255,0.10)',
+          overflow: 'hidden',
+          display: 'flex', flexDirection: 'column', alignItems: 'center',
+          padding: '10px 6px',
+          gap: 6,
+          boxShadow: '4px 0 28px rgba(0,0,0,0.45), inset 0 1px 0 rgba(255,255,255,0.10), inset 0 0 0 1px rgba(255,255,255,0.04)',
+          transition: 'left 360ms cubic-bezier(0.22, 1, 0.36, 1), opacity 280ms ease',
+          opacity: railHidden ? 0 : 1,
+          pointerEvents: railHidden ? 'none' : 'auto',
+        }}
+      >
+        {/* Logo de marca arriba — solo decorativo, marca el rail.
+            En mobile NO expande a versión con labels (eso se sacó). */}
+        <div
+          style={{
+            width: 38, height: 38, borderRadius: 12, flexShrink: 0,
+            background: G,
+            display: 'flex', alignItems: 'center', justifyContent: 'center',
+            boxShadow: '0 4px 14px rgba(168,85,247,0.45)',
+            marginBottom: 4,
+          }}
+        >
+          <Settings size={18} color="#fff" strokeWidth={2.4} />
+        </div>
+
+        {/* Items del menú — todos los íconos stackeados verticalmente */}
+        <div className="rail-scroll" style={{
+          flex: 1, width: '100%',
+          overflowY: 'auto', overflowX: 'hidden',
+          display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 4,
+          paddingTop: 2, paddingBottom: 2,
+          scrollbarWidth: 'none',
+        }}>
+          {ITEMS.map(itemId => {
+            const item        = MENU.find(m => m.id === itemId)
+            if (!item) return null
+            const I           = MENU_ICONS[item.id]
+            const active      = tab === item.id
+            const isLocked    = item.locked
+            const isProLocked = item.pro && planKey !== 'pro'
+            const dimmed      = isLocked || isProLocked
+            return (
+              <button key={item.id} title={item.label}
+                onClick={e => {
+                  e.stopPropagation()
+                  if (!railTabHandSeen) setRailTabHandSeen(true)
+                  // Si el usuario está en el intent picker, dismisseamos
+                  // para que el tab elegido se muestre. El rail queda
+                  // colapsado — el usuario quería navegar, no abrir el
+                  // menú. El auto-hide se maneja vía useEffect[tab].
+                  if (intentPickerActive) setIntentPickerActive(false)
+                  if (isLocked) { setUpgradeModal('promotions'); setTab(item.id) } else setTab(item.id)
+                }}
+                style={{
+                  position: 'relative', flexShrink: 0,
+                  width: 38, height: 38, borderRadius: '50%',
+                  background: active ? '#ffffff' : 'transparent',
+                  border: 'none', cursor: 'pointer',
+                  display: 'flex', alignItems: 'center', justifyContent: 'center',
+                  transition: 'background 220ms ease, transform 200ms ease',
+                  opacity: dimmed ? 0.55 : 1,
+                  boxShadow: active ? '0 4px 12px rgba(0,0,0,0.40)' : 'none',
+                }}>
+                {I && <I size={17} color={active ? '#0a0612' : 'rgba(255,255,255,0.80)'} strokeWidth={2.2} />}
+                {isProLocked && (
+                  <span style={{ position: 'absolute', top: -2, right: -2, fontSize: 7, fontWeight: 800, color: '#fff', background: PLANS.pro.color, borderRadius: 99, padding: '1px 4px', fontFamily: FN, letterSpacing: '.04em' }}>PRO</span>
+                )}
+                {isLocked && !isProLocked && (
+                  <Lock size={9} color={C.dust} strokeWidth={2.5} style={{ position: 'absolute', top: 2, right: 2 }} />
+                )}
+              </button>
+            )
+          })}
+        </div>
+
+        {/* Botón "Más opciones" al fondo — abre el drawer con perfil del
+            comercio + scanner + logout (las acciones que antes vivían
+            adentro del rail expandido con labels). Como ya no expandimos
+            el rail en mobile, este es el acceso directo al drawer. */}
+        <button
+          onClick={e => { e.stopPropagation(); setDrawerOpen(true); setRailHidden(true) }}
+          aria-label="Más opciones"
+          title="Más opciones"
+          style={{
+            flexShrink: 0,
+            width: 38, height: 38, borderRadius: '50%',
+            background: 'rgba(255,255,255,0.06)',
+            border: '1px solid rgba(255,255,255,0.10)',
+            cursor: 'pointer',
+            display: 'flex', alignItems: 'center', justifyContent: 'center',
+            marginTop: 6,
+            color: '#fff',
+          }}
+        >
+          <Menu size={16} strokeWidth={2.4} />
+        </button>
+
+        <style>{`
+          .rail-scroll::-webkit-scrollbar { display: none; }
+        `}</style>
+      </aside>
+    )
+  }
 
   // ── PANTALLA INICIAL: INTENT PICKER ──────────────────────────────────────
   // Saludo + dos botones grandes con las dos acciones más comunes que un
@@ -9455,16 +11538,163 @@ function CommerceSettingsView({ user, profile, setView, onLogout, onOwnerProfile
       </span>
     )
 
-    const PANEL_SHORTCUTS = [
-      { id: 'clientes',     title: 'Clientes',     Icon: Users,     onClick: goToTab('clientes'),
-        desc: 'Lista completa de clientes, búsqueda, fichas individuales y beneficios manuales.', ...VIOLET_THEME },
-      { id: 'recompensas',  title: 'Recompensas',  Icon: AnimatedRewardIcon, onClick: goToTab('recompensas'),
-        desc: 'Sistema base (estrellas/puntos), premios del catálogo y promociones extra.',       ...VIOLET_THEME },
-      { id: 'analisis',     title: 'Análisis',     Icon: BarChart2, onClick: goToTab('analisis'),
-        desc: 'Reportes de visitas, canjes y descuentos + segmentación de clientes por actividad.', ...VIOLET_THEME },
-      { id: 'configuracion',title: 'Mi negocio',   Icon: Settings,  onClick: goToTab('configuracion'),
-        desc: 'Datos del local, horarios, ubicación, plan, foto de portada y más.',               ...VIOLET_THEME },
-    ]
+    // Metadata por id de pestaña — title, ícono y descripción que se muestran
+    // dentro de la card de acceso directo. Usamos esto tanto para construir
+    // los shortcuts visibles (`shortcutIds`) como para el modal "Agregar
+    // accesos directos" donde mostramos las pestañas todavía no agregadas.
+    const SHORTCUT_META = {
+      dashboard: {
+        title: 'Dashboard',
+        Icon:  LayoutDashboard,
+        desc:  'Resumen rápido del negocio: visitas, clientes activos y premios canjeados.',
+      },
+      clientes: {
+        title: 'Clientes',
+        Icon:  Users,
+        desc:  'Lista completa de clientes, búsqueda, fichas individuales y beneficios manuales.',
+      },
+      recompensas: {
+        title: 'Recompensas',
+        Icon:  AnimatedRewardIcon,
+        desc:  'Sistema base (estrellas/puntos), premios del catálogo y promociones extra.',
+      },
+      premios: {
+        title: 'Premios',
+        Icon:  Gift,
+        desc:  'Catálogo de premios canjeables: crear, editar, pausar y ver canjes.',
+      },
+      mensajes: {
+        title: 'Mensajes',
+        Icon:  MessageCircle,
+        desc:  'Automatizaciones de WhatsApp: bienvenida, reactivación de inactivos y más.',
+      },
+      analisis: {
+        title: 'Análisis',
+        Icon:  BarChart2,
+        desc:  'Reportes de visitas, canjes y descuentos + segmentación de clientes por actividad.',
+      },
+      historial: {
+        title: 'Historial',
+        Icon:  History,
+        desc:  'Historial completo de visitas y canjes registrados en el comercio.',
+      },
+      configuracion: {
+        title: 'Mi negocio',
+        Icon:  Settings,
+        desc:  'Datos del local, horarios, ubicación, plan, foto de portada y más.',
+      },
+      planes: {
+        title: 'Planes',
+        Icon:  CreditCard,
+        desc:  'Comparación de planes y opciones para cambiar tu plan actual.',
+      },
+    }
+    // PANEL_SHORTCUTS — armado dinámico desde shortcutIds. El orden de los
+    // ids define el orden visual.
+    const PANEL_SHORTCUTS = shortcutIds
+      .map(id => {
+        const meta = SHORTCUT_META[id]
+        if (!meta) return null
+        return { id, title: meta.title, Icon: meta.Icon, onClick: goToTab(id), desc: meta.desc, ...VIOLET_THEME }
+      })
+      .filter(Boolean)
+    const removeShortcut = (id) => setShortcutIds(prev => prev.filter(x => x !== id))
+    const addShortcut    = (id) => setShortcutIds(prev => prev.includes(id) ? prev : [...prev, id])
+
+    // ── Drag-to-reorder de los accesos directos en edit mode ──
+    // Pointer events (no HTML5 drag) para que funcione idéntico en mobile y
+    // desktop. Mientras el user arrastra, vamos calculando si el dedo cruzó
+    // el midpoint del card vecino y, si sí, splice del array → re-render con
+    // el nuevo orden. La translateY del card arrastrado se setea via DOM
+    // directo (no state) para que la sensación sea inmediata.
+    const handleShortcutPointerDown = (e, id) => {
+      if (!editingShortcuts) return
+      // Click en la X de borrar no inicia drag.
+      if (e.target?.closest && e.target.closest('[data-shortcut-x]')) return
+      const cardEl = cardRefs.current[id]
+      if (!cardEl) return
+      const cardRect = cardEl.getBoundingClientRect()
+      dragStateRef.current = {
+        id,
+        pointerOffsetInCard: e.clientY - cardRect.top,
+      }
+      setDraggingShortcutId(id)
+      // setPointerCapture: pointerMove y pointerUp siguen llegando aunque el
+      // dedo salga del card (queda anclado al element donde arrancó).
+      try { e.currentTarget.setPointerCapture?.(e.pointerId) } catch {}
+      // Estilo destacado del card arrastrado.
+      cardEl.style.zIndex      = '10'
+      cardEl.style.boxShadow   = '0 18px 48px rgba(168,85,247,0.55)'
+      cardEl.style.animation   = 'none'
+      cardEl.style.transition  = 'none'
+      cardEl.style.transform   = 'scale(1.03)'
+      cardEl.style.cursor      = 'grabbing'
+    }
+    const handleShortcutPointerMove = (e) => {
+      const state = dragStateRef.current
+      if (!state) return
+      const draggingId = state.id
+      const containerEl = shortcutsBoxRef.current
+      if (!containerEl) return
+      const containerRect = containerEl.getBoundingClientRect()
+      // 1) Aplicar translateY al card arrastrado para seguir al dedo.
+      const draggedEl = cardRefs.current[draggingId]
+      if (draggedEl) {
+        const desiredTopVp   = e.clientY - state.pointerOffsetInCard
+        const naturalTopVp   = containerRect.top + draggedEl.offsetTop
+        const offset         = desiredTopVp - naturalTopVp
+        draggedEl.style.transform = `translateY(${offset}px) scale(1.03)`
+      }
+      // 2) Detectar si tenemos que hacer swap con el card de arriba o abajo.
+      const pointerYInBox = e.clientY - containerRect.top
+      const currentIdx    = shortcutIds.indexOf(draggingId)
+      if (currentIdx === -1) return
+      // Cruzó hacia arriba el midpoint del de arriba?
+      if (currentIdx > 0) {
+        const aboveId = shortcutIds[currentIdx - 1]
+        const aboveEl = cardRefs.current[aboveId]
+        if (aboveEl) {
+          const aboveMidY = aboveEl.offsetTop + aboveEl.offsetHeight / 2
+          if (pointerYInBox < aboveMidY) {
+            const next = [...shortcutIds]
+            ;[next[currentIdx], next[currentIdx - 1]] = [next[currentIdx - 1], next[currentIdx]]
+            setShortcutIds(next)
+            return
+          }
+        }
+      }
+      // Cruzó hacia abajo el midpoint del de abajo?
+      if (currentIdx < shortcutIds.length - 1) {
+        const belowId = shortcutIds[currentIdx + 1]
+        const belowEl = cardRefs.current[belowId]
+        if (belowEl) {
+          const belowMidY = belowEl.offsetTop + belowEl.offsetHeight / 2
+          if (pointerYInBox > belowMidY) {
+            const next = [...shortcutIds]
+            ;[next[currentIdx], next[currentIdx + 1]] = [next[currentIdx + 1], next[currentIdx]]
+            setShortcutIds(next)
+            return
+          }
+        }
+      }
+    }
+    const handleShortcutPointerUp = () => {
+      const state = dragStateRef.current
+      if (!state) return
+      const draggedEl = cardRefs.current[state.id]
+      if (draggedEl) {
+        // Limpiamos los estilos inline; el resto vuelve al render normal
+        // (incluyendo el jiggle si seguimos en edit mode).
+        draggedEl.style.zIndex     = ''
+        draggedEl.style.boxShadow  = ''
+        draggedEl.style.animation  = ''
+        draggedEl.style.transition = ''
+        draggedEl.style.transform  = ''
+        draggedEl.style.cursor     = ''
+      }
+      dragStateRef.current = null
+      setDraggingShortcutId(null)
+    }
 
     // Header chico para cada grupo de botones — barrita con gradient + label
     // en mayúsculas. Mismo formato que el scanner del cliente, así toda la
@@ -9487,26 +11717,67 @@ function CommerceSettingsView({ user, profile, setView, onLogout, onOwnerProfile
     // Accordion card — colapsada muestra ícono + título + chevron.
     // Click expande la descripción y un botón "Ir →" que ejecuta la acción.
     // Solo una card abierta a la vez (toggle entre ids).
-    const renderActionCard = opt => {
-      const isOpen = expandedIntentAction === opt.id
+    // En edit mode: aparece X en la esquina top-right para borrar el shortcut
+    // y la card "vibra" para indicar que se puede manipular.
+    const renderActionCard = (opt, idx) => {
+      const isOpen = !editingShortcuts && expandedIntentAction === opt.id
+      // Delays alternados para que las cards no jiggleen sincronizadas (look más natural).
+      const jiggleDelay = (idx % 3) * 0.07
+      const isDragging  = draggingShortcutId === opt.id
       return (
         <div key={opt.id}
+          ref={(el) => { if (el) cardRefs.current[opt.id] = el; else delete cardRefs.current[opt.id] }}
+          onPointerDown={(e) => handleShortcutPointerDown(e, opt.id)}
+          onPointerMove={handleShortcutPointerMove}
+          onPointerUp={handleShortcutPointerUp}
+          onPointerCancel={handleShortcutPointerUp}
           style={{
+            position:'relative',
             background: opt.bg,
             border: `1px solid ${opt.border}`,
             borderRadius:16,
-            overflow:'hidden',
+            overflow: editingShortcuts ? 'visible' : 'hidden',
             transition:'border-color 160ms ease',
+            // Pausamos el jiggle del card que se está arrastrando (lo
+            // estilizamos directamente vía DOM en pointerdown).
+            animation: editingShortcuts && !isDragging ? `shortcut-jiggle 0.42s ease-in-out ${jiggleDelay}s infinite` : 'none',
+            transformOrigin: 'center',
+            // touchAction:'none' evita que el browser intercepte el gesto
+            // (scroll vertical) y nos robe los pointermove cuando el user
+            // arrastra hacia arriba/abajo en mobile.
+            touchAction: editingShortcuts ? 'none' : 'auto',
           }}>
-          {/* Header cliqueable: ícono + título + chevron */}
+          {/* X de borrar — solo en edit mode. Posicionado afuera de la esquina
+              para que se vea destacado, estilo iOS jiggle-mode. */}
+          {editingShortcuts && (
+            <button
+              data-shortcut-x="true"
+              onClick={(e) => { e.stopPropagation(); removeShortcut(opt.id) }}
+              onPointerDown={(e) => e.stopPropagation()}
+              aria-label={`Quitar ${opt.title}`}
+              style={{
+                position:'absolute', top:-7, right:-7, zIndex:5,
+                width:24, height:24, borderRadius:'50%',
+                background:'#0a0a0a',
+                border:'2px solid rgba(168,85,247,0.85)',
+                color:'#fff',
+                cursor:'pointer', padding:0,
+                display:'flex', alignItems:'center', justifyContent:'center',
+                boxShadow:'0 4px 12px rgba(0,0,0,0.55)',
+              }}>
+              <X size={12} strokeWidth={2.6} />
+            </button>
+          )}
+          {/* Header cliqueable: ícono + título + chevron. En edit mode el
+              click no hace nada (la card está "manipulable"). */}
           <button
-            onClick={() => setExpandedIntentAction(isOpen ? null : opt.id)}
+            onClick={() => { if (editingShortcuts) return; setExpandedIntentAction(isOpen ? null : opt.id) }}
             style={{
               width:'100%', textAlign:'left',
               padding:'18px 18px',
               background:'transparent',
               border:'none',
-              cursor:'pointer',
+              cursor: editingShortcuts ? 'grab' : 'pointer',
               display:'flex', alignItems:'center', gap:14,
               fontFamily:'inherit',
             }}>
@@ -9516,16 +11787,18 @@ function CommerceSettingsView({ user, profile, setView, onLogout, onOwnerProfile
             <div style={{ flex:1, minWidth:0, fontFamily:FN, fontSize:15, fontWeight:800, color:'#fff' }}>
               {opt.title}
             </div>
-            <ChevronDown
-              size={18}
-              color={opt.arrowColor}
-              strokeWidth={2.4}
-              style={{
-                flexShrink:0,
-                transition: 'transform 200ms ease',
-                transform: isOpen ? 'rotate(180deg)' : 'rotate(0)',
-              }}
-            />
+            {!editingShortcuts && (
+              <ChevronDown
+                size={18}
+                color={opt.arrowColor}
+                strokeWidth={2.4}
+                style={{
+                  flexShrink:0,
+                  transition: 'transform 200ms ease',
+                  transform: isOpen ? 'rotate(180deg)' : 'rotate(0)',
+                }}
+              />
+            )}
           </button>
           {/* Body: descripción a la izquierda + botón "Ir" a la derecha */}
           {isOpen && (
@@ -9575,53 +11848,539 @@ function CommerceSettingsView({ user, profile, setView, onLogout, onOwnerProfile
       )
     }
 
+    // ── CONFIGURACIÓN: estado de cada ítem clave del negocio ──
+    // Cada item tiene un id, un título, un subtítulo descriptivo, un
+    // ícono, un flag `done` (calculado desde commerce/form) y un destino
+    // a dónde llevar al dueño cuando lo tappea. La lista se ordena con
+    // los pendientes primero para que el ojo caiga en lo que falta.
+    const configItems = [
+      {
+        id: 'logo',
+        title: 'Foto del negocio',
+        description: 'Tu logo es lo primero que ven los clientes.',
+        Icon: Camera,
+        done: !!commerce.img_url,
+        thumb: commerce.img_url,
+        goTo: 'configuracion',
+        section: 'basica',
+      },
+      {
+        id: 'cover',
+        title: 'Portada',
+        description: 'Una foto que muestre tu local o productos.',
+        Icon: Camera,
+        done: !!commerce.cover_image,
+        thumb: commerce.cover_image,
+        goTo: 'configuracion',
+        section: 'basica',
+      },
+      {
+        id: 'description',
+        title: 'Descripción',
+        description: 'Contale a tus clientes qué hacés y qué te diferencia.',
+        Icon: AlignLeft,
+        done: !!form?.description && form.description.trim().length >= 10,
+        goTo: 'configuracion',
+        section: 'basica',
+      },
+      {
+        id: 'category',
+        title: 'Rubro',
+        description: 'Para que te encuentren en el directorio.',
+        Icon: Tag,
+        done: !!commerce.category,
+        goTo: 'configuracion',
+        section: 'basica',
+      },
+      {
+        id: 'system',
+        title: 'Sistema de recompensas',
+        description: 'Estrellas o puntos. Lo que mejor te funcione.',
+        Icon: Sparkles,
+        done: !!commerce.prog_type,
+        goTo: 'recompensas',
+      },
+      {
+        id: 'firstPrize',
+        title: 'Primer premio',
+        description: 'Cargá un premio para que tus clientes canjeen.',
+        Icon: Gift,
+        done: prizes.filter(p => p.active).length > 0,
+        goTo: 'premios',
+      },
+      {
+        id: 'hours',
+        title: 'Horarios',
+        description: 'Decile a tus clientes cuándo estás abierto.',
+        Icon: Clock,
+        done: !!(hoursForm && Object.values(hoursForm).some(d => d.open)),
+        goTo: 'configuracion',
+        section: 'horarios',
+      },
+      {
+        id: 'address',
+        title: 'Ubicación',
+        description: 'Dirección para que te encuentren en el mapa.',
+        Icon: MapPin,
+        done: !!form?.address && !!form?.city_name,
+        goTo: 'configuracion',
+        section: 'ubicacion',
+      },
+      {
+        id: 'phone',
+        title: 'Teléfono',
+        description: 'Para que te contacten por WhatsApp.',
+        Icon: Phone,
+        done: !!form?.phone,
+        goTo: 'configuracion',
+        section: 'contacto',
+      },
+      {
+        id: 'social',
+        title: 'Redes sociales',
+        description: 'Instagram o Facebook para que te sigan.',
+        Icon: AtSign,
+        done: !!(form?.instagram || form?.facebook),
+        goTo: 'configuracion',
+        section: 'contacto',
+      },
+    ]
+    const sortedItems = [...configItems].sort((a, b) => Number(a.done) - Number(b.done))
+    const doneCount   = configItems.filter(i => i.done).length
+    const totalCount  = configItems.length
+    const cfgPct      = Math.round(doneCount / totalCount * 100)
+    const motivMsg    = cfgPct === 0   ? 'Empezá a configurar tu negocio'
+                      : cfgPct < 30    ? 'Empezaste — seguí completando'
+                      : cfgPct < 70    ? 'Vas muy bien — seguí completando'
+                      : cfgPct < 100   ? '¡Casi listo! Te falta poco'
+                      :                  '¡Negocio listo para arrancar!'
+    const navigateConfigItem = (item) => {
+      setIntentPickerActive(false)
+      _setTabRaw(item.goTo)
+      setRailExpanded(false)
+      // Marcamos que el dueño llegó al tab desde el slider de tarjetas,
+      // para mostrar el botón "Volver a tarjetas" en el tope del panel.
+      setCameFromConfigCards(true)
+      // Si el item especifica una sección dentro de un tab con accordions
+      // (como "configuracion" → basica/horarios/ubicacion/contacto), la
+      // abrimos y la scrolleamos a la vista. El setTimeout le da tiempo a
+      // React para montar la vista del tab antes de buscar el DOM.
+      if (item.section) {
+        setExpandedConfigSection(item.section)
+        setTimeout(() => {
+          const el = document.querySelector(`[data-config-section="${item.section}"]`)
+          if (el) el.scrollIntoView({ behavior: 'smooth', block: 'start' })
+        }, 120)
+      }
+    }
+
     return (
-      <div style={{ maxWidth:520, margin:'0 auto', padding: isMobile ? '24px 18px 80px' : '32px 28px 80px' }}>
-        {/* Cartel de ayuda — primero, inmediatamente debajo del navbar */}
-        <HelpBanner
-          id="merchant-intent"
-          title="Tu panel de negocio"
-          body="Acá tenés todas las configuraciones, funciones y reportes del funcionamiento de tu negocio."
-          details={<>
-            Cada sección tiene su propio cartel con la explicación detallada. Para navegar entre ellas tocá la <strong style={{ color:'#fff' }}>solapa fucsia</strong> del borde izquierdo, y para mostrar/escanear QRs usá el ícono <strong style={{ color:'#fff' }}>Escanear</strong> del navbar superior.
-          </>}
-        />
+      <div style={{ maxWidth:520, margin:'0 auto', padding: isMobile ? '24px 0 80px' : '32px 0 80px' }}>
+        {/* Padding lateral para el contenido principal — el slider rompe
+            con margin negativo para llegar a los bordes. */}
+        <div style={{ padding: isMobile ? '0 18px' : '0 28px' }}>
+          <HelpBanner
+            id="merchant-intent"
+            title="Tu panel de negocio"
+            body="Configurá lo esencial. A medida que vayas completando, los clientes te van a encontrar mejor."
+            details={<>
+              Cada tarjeta abre la pestaña donde podés cargar ese dato. Las pestañas adicionales (clientes, mensajes, análisis, historial) viven en el menú lateral del borde izquierdo.
+            </>}
+          />
 
-        <h1 style={{ fontFamily:FN, fontSize:'clamp(22px,4vw,28px)', fontWeight:900, color:C.white, marginBottom:4, letterSpacing:'-.01em' }}>
-          Configurá tu negocio
-        </h1>
-        <div style={{ fontFamily:FN, fontSize:11.5, fontWeight:700, color:C.mist, letterSpacing:'.10em', textTransform:'uppercase', marginBottom:14 }}>
-          Accesos directos
+          <h1 style={{ fontFamily:FN, fontSize:'clamp(22px,4vw,28px)', fontWeight:900, color:C.white, marginBottom:14, marginTop:14, letterSpacing:'-.01em' }}>
+            Configurá tu negocio
+          </h1>
+
+          {/* ── Stepped progress (1 nodo por tarjeta) ──
+              Reemplaza la barra lineal por una secuencia de círculos
+              numerados con líneas conectoras. Los completados van violeta
+              sólido con check; los pendientes en outline gris con el
+              número. La transición de la línea entre nodos se hace en
+              gradient que aparece "lleno" hasta el último nodo done. */}
+          <div style={{ marginBottom: 22 }}>
+            <div style={{ display:'flex', alignItems:'flex-end', justifyContent:'space-between', gap:12, marginBottom:14 }}>
+              <div style={{ flex:1, minWidth:0 }}>
+                <div style={{ fontSize: 13, color: '#fff', fontWeight: 700, fontFamily: FN, lineHeight: 1.3 }}>
+                  {motivMsg}
+                </div>
+                <div style={{ fontSize: 11, color: 'rgba(255,255,255,0.55)', marginTop: 3 }}>
+                  {doneCount} de {totalCount} configuraciones completadas
+                </div>
+              </div>
+              <div style={{
+                fontFamily: FN, fontSize: 28, fontWeight: 900,
+                letterSpacing: '-0.025em', lineHeight: 1,
+                position: 'relative',
+                // Gradient violeta de marca con un highlight más claro en
+                // el medio. backgroundSize 300% + animación de
+                // background-position hace que el highlight recorra el
+                // texto de derecha a izquierda en loop, simulando un
+                // shimmer/brillo continuo. Filter drop-shadow añade un
+                // glow violeta sutil alrededor del trazo.
+                background: cfgPct === 100
+                  ? 'linear-gradient(110deg, #22E698 0%, #4ade80 50%, #22E698 100%)'
+                  : 'linear-gradient(110deg, #7C3AED 0%, #7C3AED 30%, #F0C2FF 50%, #7C3AED 70%, #7C3AED 100%)',
+                backgroundSize: '300% 100%',
+                WebkitBackgroundClip: 'text',
+                backgroundClip: 'text',
+                WebkitTextFillColor: 'transparent',
+                filter: cfgPct === 100
+                  ? 'drop-shadow(0 0 10px rgba(34,230,152,0.55))'
+                  : 'drop-shadow(0 0 10px rgba(189,75,248,0.55))',
+                animation: 'cfg-pct-shimmer 3.2s linear infinite',
+              }}>
+                {cfgPct}%
+                <style>{`
+                  @keyframes cfg-pct-shimmer {
+                    0%   { background-position: 150% 0; }
+                    100% { background-position: -50% 0; }
+                  }
+                `}</style>
+              </div>
+            </div>
+
+            {/* LEDs de progreso — un puntito por configItem en su orden
+                original. Done = violeta brillante con glow tipo "LED
+                encendido". Pendiente = puntito gris apagado. Los LEDs
+                están unidos por una línea fina blanca que pasa horizontal
+                detrás de ellos, dando la sensación de "circuito impreso". */}
+            <div style={{ position:'relative', padding:'4px 2px', display:'flex', alignItems:'center' }}>
+              {/* Línea blanca de fondo que conecta todos los LEDs */}
+              <div style={{
+                position: 'absolute',
+                left: 7, right: 7, top: '50%',
+                height: 1,
+                background: 'rgba(255,255,255,0.18)',
+                transform: 'translateY(-50%)',
+                zIndex: 0,
+              }} />
+              {/* LEDs encima de la línea */}
+              <div style={{ position:'relative', zIndex:1, display:'flex', alignItems:'center', justifyContent:'space-between', width:'100%' }}>
+                {configItems.map((it) => {
+                  const done = it.done
+                  return (
+                    <div key={it.id} style={{
+                      width: 10, height: 10, borderRadius: '50%',
+                      flexShrink: 0,
+                      background: done
+                        ? 'radial-gradient(circle at 35% 30%, #F0C2FF 0%, #BD4BF8 45%, #7C3AED 100%)'
+                        : 'rgba(255,255,255,0.10)',
+                      boxShadow: done
+                        ? '0 0 6px rgba(189,75,248,0.85), 0 0 14px rgba(189,75,248,0.45)'
+                        : 'inset 0 0 0 1px rgba(255,255,255,0.06)',
+                      transition: 'background 400ms ease, box-shadow 400ms ease',
+                    }} />
+                  )
+                })}
+              </div>
+            </div>
+          </div>
         </div>
 
-        {/* Accesos directos — 4 cards accordion. Cada una abre la pestaña
-            correspondiente del panel al hacer click en "Ir →". */}
-        <div style={{
-          padding:'14px 12px',
-          background:'rgba(255,255,255,0.025)',
-          border:'1px solid rgba(255,255,255,0.08)',
-          borderRadius:18,
-          display:'flex', flexDirection:'column', gap:10,
-        }}>
-          {PANEL_SHORTCUTS.map(renderActionCard)}
+        {/* ── Slider horizontal de tarjetas ──
+            Cada tarjeta es una config: pendiente con gradient violeta
+            llamativo + CTA "Cargar →", o completada con check verde y
+            CTA "Editar →". Las pendientes van primero (a la izquierda)
+            para que el dueño caiga primero en lo que falta. */}
+        {/* Wrapper del slider con position:relative para anclar las flechas
+            laterales por encima del scroll horizontal de las cards. */}
+        <div style={{ position: 'relative' }}>
+        <div
+          ref={configSliderRef}
+          onScroll={(e) => {
+            const el = e.currentTarget
+            const cards = el.querySelectorAll('[data-config-card]')
+            // Detecta cuál card está más cerca del centro del viewport del slider.
+            const center = el.scrollLeft + el.clientWidth / 2
+            let closestIdx = 0, closestDist = Infinity
+            cards.forEach((c, i) => {
+              const cardCenter = c.offsetLeft + c.offsetWidth / 2
+              const dist = Math.abs(cardCenter - center)
+              if (dist < closestDist) { closestDist = dist; closestIdx = i }
+            })
+            if (closestIdx !== configSlideIdx) setConfigSlideIdx(closestIdx)
+          }}
+          style={{
+            overflowX: 'auto',
+            overflowY: 'visible',
+            scrollSnapType: 'x mandatory',
+            WebkitOverflowScrolling: 'touch',
+            scrollbarWidth: 'none',
+            msOverflowStyle: 'none',
+            paddingBottom: 8,
+          }}
+          className="config-slider"
+        >
+          <style>{`
+            .config-slider::-webkit-scrollbar { display: none; }
+          `}</style>
+          <div style={{
+            display: 'flex',
+            gap: 12,
+            paddingLeft: isMobile ? 18 : 28,
+            paddingRight: isMobile ? 18 : 28,
+            width: 'max-content',
+          }}>
+            {sortedItems.map((item, idx) => {
+              const Icon = item.Icon
+              const done = item.done
+              return (
+                <button
+                  key={item.id}
+                  data-config-card={idx}
+                  onClick={() => navigateConfigItem(item)}
+                  style={{
+                    width: `min(calc(100vw - ${isMobile ? 56 : 76}px), 380px)`,
+                    flexShrink: 0,
+                    scrollSnapAlign: 'center',
+                    // Base oscura + gradient violeta sutil al fondo. Sin
+                    // tinte fuerte como antes; el "lujo" lo dan el inner
+                    // border-radius grande, el divider con glow y el CTA
+                    // grande al pie.
+                    background: 'linear-gradient(180deg, #0a0612 0%, #150823 100%)',
+                    border: '1px solid rgba(189,75,248,0.32)',
+                    borderRadius: 24,
+                    padding: '22px 22px 0',
+                    textAlign: 'left',
+                    cursor: 'pointer',
+                    fontFamily: 'inherit',
+                    transition: 'transform 180ms ease, border-color 180ms ease, box-shadow 180ms ease',
+                    display: 'flex', flexDirection: 'column',
+                    minHeight: 320,
+                    position: 'relative',
+                    overflow: 'hidden',
+                    boxShadow: '0 18px 40px rgba(0,0,0,0.45), 0 6px 18px rgba(189,75,248,0.18)',
+                    animation: `fadeUp .35s ease ${idx * 0.05}s both`,
+                  }}
+                  onMouseEnter={(e) => { e.currentTarget.style.transform = 'translateY(-2px)' }}
+                  onMouseLeave={(e) => { e.currentTarget.style.transform = 'translateY(0)' }}
+                >
+                  {/* Glow ambiente al fondo de la card — halo violeta suave
+                      similar a la "luz desde abajo" del reference image. */}
+                  <div style={{
+                    position: 'absolute', bottom: -60, left: '50%',
+                    transform: 'translateX(-50%)',
+                    width: '120%', height: 120,
+                    background: 'radial-gradient(ellipse at center, rgba(189,75,248,0.40) 0%, transparent 70%)',
+                    filter: 'blur(20px)',
+                    pointerEvents: 'none',
+                  }} />
+
+                  {/* Header: pill de estado top-right (estilo "MOST POPULAR") */}
+                  <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', marginBottom: 6, position: 'relative' }}>
+                    {/* Categoría / etiqueta superior */}
+                    <div style={{
+                      fontFamily: FN, fontSize: 11, fontWeight: 700,
+                      color: 'rgba(216,180,254,0.85)',
+                      letterSpacing: '.10em', textTransform: 'uppercase',
+                    }}>
+                      {done ? 'Configurado' : 'A completar'}
+                    </div>
+                    {done ? (
+                      <span style={{
+                        display: 'inline-flex', alignItems: 'center', gap: 4,
+                        fontSize: 9.5, fontWeight: 800, color: '#22E698',
+                        letterSpacing: '.10em', textTransform: 'uppercase',
+                        background: 'rgba(34,230,152,0.10)',
+                        border: '1px solid rgba(34,230,152,0.35)',
+                        padding: '4px 9px', borderRadius: 99,
+                      }}>
+                        <Check size={10} strokeWidth={2.8} /> Listo
+                      </span>
+                    ) : (
+                      <span style={{
+                        fontSize: 9.5, fontWeight: 800, color: '#fff',
+                        letterSpacing: '.10em', textTransform: 'uppercase',
+                        background: 'linear-gradient(135deg, #7C3AED, #BD4BF8)',
+                        border: '1px solid rgba(255,255,255,0.20)',
+                        padding: '4px 10px', borderRadius: 99,
+                        boxShadow: '0 4px 12px rgba(189,75,248,0.50)',
+                      }}>
+                        Pendiente
+                      </span>
+                    )}
+                  </div>
+
+                  {/* Título grande tipo "$19" */}
+                  <div style={{
+                    fontFamily: FN, fontSize: 26, fontWeight: 900,
+                    color: '#fff', marginBottom: 2, lineHeight: 1.15,
+                    letterSpacing: '-0.025em',
+                    position: 'relative',
+                  }}>
+                    {item.title}
+                  </div>
+
+                  {/* Subtítulo descriptivo */}
+                  <div style={{
+                    fontSize: 13, fontWeight: 500,
+                    color: 'rgba(229,221,255,0.70)',
+                    lineHeight: 1.45,
+                    marginBottom: 18,
+                    position: 'relative',
+                  }}>
+                    {item.description}
+                  </div>
+
+                  {/* Divider con glow violeta — característica visual del reference */}
+                  <div style={{
+                    height: 1, width: '100%',
+                    background: 'linear-gradient(90deg, transparent 0%, rgba(189,75,248,0.85) 50%, transparent 100%)',
+                    boxShadow: '0 0 16px rgba(189,75,248,0.55), 0 0 4px rgba(189,75,248,0.35)',
+                    marginBottom: 16,
+                    position: 'relative',
+                  }} />
+
+                  {/* Bloque del ícono + microcopy con check (estilo lista) */}
+                  <div style={{ flex: 1, display: 'flex', alignItems: 'center', gap: 12, marginBottom: 18, position: 'relative' }}>
+                    {item.thumb && done ? (
+                      <div style={{ width: 44, height: 44, borderRadius: 12, overflow: 'hidden', flexShrink: 0, border: '1px solid rgba(255,255,255,0.14)' }}>
+                        <img src={item.thumb} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                      </div>
+                    ) : (
+                      <div style={{
+                        width: 44, height: 44, borderRadius: 12, flexShrink: 0,
+                        background: done
+                          ? 'rgba(34,230,152,0.12)'
+                          : 'rgba(189,75,248,0.16)',
+                        border: done
+                          ? '1px solid rgba(34,230,152,0.35)'
+                          : '1px solid rgba(189,75,248,0.40)',
+                        display: 'flex', alignItems: 'center', justifyContent: 'center',
+                      }}>
+                        <Icon size={20} color={done ? '#22E698' : '#D8B4FE'} strokeWidth={2.2} />
+                      </div>
+                    )}
+                    <div style={{ fontSize: 13, color: 'rgba(255,255,255,0.78)', fontWeight: 500, lineHeight: 1.4 }}>
+                      {done ? 'Está cargado y visible para tus clientes.' : 'Tap acá para configurar este dato.'}
+                    </div>
+                  </div>
+
+                  {/* CTA grande estilo "Get it now" — pill full-width con gradient */}
+                  <div style={{
+                    display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6,
+                    background: done
+                      ? 'rgba(255,255,255,0.06)'
+                      : 'linear-gradient(135deg, #7C3AED 0%, #BD4BF8 100%)',
+                    border: done ? '1px solid rgba(255,255,255,0.14)' : 'none',
+                    color: '#fff',
+                    fontFamily: FN, fontSize: 14, fontWeight: 800,
+                    letterSpacing: '.02em',
+                    padding: '13px 16px',
+                    borderRadius: 14,
+                    marginLeft: -22, marginRight: -22, marginBottom: 0,
+                    borderBottomLeftRadius: 22, borderBottomRightRadius: 22,
+                    borderTopLeftRadius: 0, borderTopRightRadius: 0,
+                    boxShadow: done ? 'none' : '0 6px 20px rgba(189,75,248,0.50)',
+                    position: 'relative',
+                  }}>
+                    {done ? 'Editar' : 'Cargar ahora'}
+                    <ChevronRight size={15} strokeWidth={2.6} />
+                  </div>
+                </button>
+              )
+            })}
+          </div>
         </div>
 
-        {/* La solapa fucsia se renderiza vía renderRailTab() — definido más
-            abajo y compartido con el resto del panel para que sea consistente. */}
-        {renderRailTab(() => { setIntentPickerActive(false); setRailExpanded(true) })}
+        {/* ── Flechas laterales del slider ──
+            Sobrepuestas en los bordes izquierdo y derecho del wrapper
+            position:relative. Se desactivan en los extremos. */}
+        {sortedItems.length > 1 && (
+          <>
+            <button
+              onClick={() => {
+                const el = configSliderRef.current
+                if (!el) return
+                const target = el.querySelector(`[data-config-card="${Math.max(0, configSlideIdx - 1)}"]`)
+                if (target) target.scrollIntoView({ behavior: 'smooth', inline: 'center', block: 'nearest' })
+              }}
+              aria-label="Anterior"
+              disabled={configSlideIdx === 0}
+              style={{
+                position: 'absolute',
+                left: 4, top: '50%', transform: 'translateY(-50%)',
+                zIndex: 5,
+                width: 36, height: 36, borderRadius: '50%',
+                background: 'rgba(15,8,28,0.85)',
+                border: '1px solid rgba(189,75,248,0.40)',
+                color: '#fff',
+                cursor: configSlideIdx === 0 ? 'not-allowed' : 'pointer',
+                opacity: configSlideIdx === 0 ? 0.30 : 1,
+                display: 'flex', alignItems: 'center', justifyContent: 'center',
+                backdropFilter: 'blur(8px)', WebkitBackdropFilter: 'blur(8px)',
+                boxShadow: '0 4px 12px rgba(0,0,0,0.40)',
+                padding: 0,
+                transition: 'opacity 200ms ease',
+              }}>
+              <ChevronLeft size={20} strokeWidth={2.4} />
+            </button>
+            <button
+              onClick={() => {
+                const el = configSliderRef.current
+                if (!el) return
+                const target = el.querySelector(`[data-config-card="${Math.min(sortedItems.length - 1, configSlideIdx + 1)}"]`)
+                if (target) target.scrollIntoView({ behavior: 'smooth', inline: 'center', block: 'nearest' })
+              }}
+              aria-label="Siguiente"
+              disabled={configSlideIdx === sortedItems.length - 1}
+              style={{
+                position: 'absolute',
+                right: 4, top: '50%', transform: 'translateY(-50%)',
+                zIndex: 5,
+                width: 36, height: 36, borderRadius: '50%',
+                background: 'rgba(15,8,28,0.85)',
+                border: '1px solid rgba(189,75,248,0.40)',
+                color: '#fff',
+                cursor: configSlideIdx === sortedItems.length - 1 ? 'not-allowed' : 'pointer',
+                opacity: configSlideIdx === sortedItems.length - 1 ? 0.30 : 1,
+                display: 'flex', alignItems: 'center', justifyContent: 'center',
+                backdropFilter: 'blur(8px)', WebkitBackdropFilter: 'blur(8px)',
+                boxShadow: '0 4px 12px rgba(0,0,0,0.40)',
+                padding: 0,
+                transition: 'opacity 200ms ease',
+              }}>
+              <ChevronRight size={20} strokeWidth={2.4} />
+            </button>
+          </>
+        )}
+        </div>
 
-        <style>{`
-          @keyframes intent-accordion-in {
-            from { opacity: 0; transform: translateY(-4px); }
-            to   { opacity: 1; transform: translateY(0); }
-          }
-          /* Flechita del botón "Ir" — pequeño nudge horizontal para invitar
-             al toque. Se mueve 4px a la derecha y vuelve, en loop suave. */
-          @keyframes ir-arrow-nudge {
-            0%, 100% { transform: translateX(0); }
-            50%      { transform: translateX(4px); }
-          }
-        `}</style>
+        {/* ── Dots de progreso del slider ──
+            Una bolita por cada card (10 en total). La activa se ensancha
+            y se vuelve violeta sólido; las inactivas quedan apagadas.
+            Tap en un dot scrollea a esa card. */}
+        <div style={{ display: 'flex', justifyContent: 'center', gap: 6, marginTop: 14, padding: isMobile ? '0 18px' : '0 28px' }}>
+          {sortedItems.map((_, i) => {
+            const active = i === configSlideIdx
+            return (
+              <button
+                key={i}
+                onClick={() => {
+                  const el = configSliderRef.current
+                  if (!el) return
+                  const card = el.querySelector(`[data-config-card="${i}"]`)
+                  if (card) card.scrollIntoView({ behavior: 'smooth', inline: 'center', block: 'nearest' })
+                }}
+                aria-label={`Ir a la tarjeta ${i + 1}`}
+                style={{
+                  width: active ? 28 : 7, height: 7, borderRadius: 99,
+                  background: active ? 'linear-gradient(135deg, #BD4BF8, #EC4899)' : 'rgba(255,255,255,0.18)',
+                  border: 'none', padding: 0, cursor: 'pointer',
+                  transition: 'width 320ms cubic-bezier(0.22,1,0.36,1), background 320ms ease',
+                }}
+              />
+            )
+          })}
+        </div>
+
+        {/* Radial menu — botón cog en el bottom-center que abre arco de
+            íconos. También está disponible en el intent picker para que
+            el dueño pueda saltar a cualquier pestaña sin pasar por una
+            tarjeta. */}
+        {renderRadialMenu()}
+
       </div>
     )
   }
@@ -9656,23 +12415,9 @@ function CommerceSettingsView({ user, profile, setView, onLogout, onOwnerProfile
     return ''
   }
 
-  const MENU = [
-    { id:'dashboard',        label:'Dashboard'        },
-    { id:'clientes',         label:'Clientes'         },
-    // Pestaña unificada: sistema base + promociones (sin automatizaciones).
-    { id:'recompensas',      label:'Recompensas'      },
-    { id:'premios',          label:'Premios'          },
-    // Mensajes = automatizaciones de WhatsApp, separadas porque son
-    // comunicación fuera del scan (no transaccional como recompensas).
-    { id:'mensajes',         label:'Mensajes',        pro: true },
-    // Análisis = reportes + segmentación mergeados.
-    { id:'analisis',         label:'Análisis'         },
-    { id:'historial',        label:'Historial'        },
-    { id:'configuracion',    label:'Configuración'    },
-    // Planes vuelve a ser pestaña propia: Configuración era demasiado larga
-    // con la sección de planes adentro.
-    { id:'planes',           label:'Planes'           },
-  ]
+  // MENU vive a nivel de módulo (definido afuera del componente, ver const
+  // arriba). Se mantiene este alias local por compatibilidad con código que
+  // hace referencia directa a `MENU` dentro del componente.
 
   // ── DETALLE DE CLIENTE ──
   if (selectedMember) {
@@ -10172,35 +12917,42 @@ function CommerceSettingsView({ user, profile, setView, onLogout, onOwnerProfile
         const collapsedW  = 14   // ancho de la "pestaña" cuando está colapsado
         const expandedW   = 52   // ancho cuando está abierto
         const railW       = railExpanded ? expandedW : collapsedW
+        // Auto-colapso del rail: 3 segundos después de que el user "destraba"
+        // (toca el backdrop) o cambia de pestaña. Durante esos 3s el rail
+        // queda visible para que el user vea qué tab está activa, después se
+        // recoge y reaparece la solapa fucsia.
+        const armRailAutoCollapse = () => {
+          if (railAutoCollapseRef.current) clearTimeout(railAutoCollapseRef.current)
+          railAutoCollapseRef.current = setTimeout(() => {
+            setRailExpanded(false)
+            railAutoCollapseRef.current = null
+          }, 3000)
+        }
+        const dismissBackdrop = () => {
+          setRailBackdropVisible(false)
+          armRailAutoCollapse()
+        }
         const handleNav = (itemId, isLocked) => {
           if (isLocked) { setUpgradeModal('promotions'); setTab(itemId) } else setTab(itemId)
-          setRailExpanded(false)
+          // Tap en una pestaña del rail: el backdrop se va (revela el
+          // contenido de la pestaña recién elegida) y armamos el auto-collapse
+          // de 3s. Antes el rail se cerraba al instante; ahora se queda 3s
+          // visible para que el user pueda saltar a otra pestaña sin tener
+          // que reabrir el rail con la solapa fucsia.
+          dismissBackdrop()
         }
         return (
           <>
-            {/* Backdrop con blur — solo cuando está expandido. Click cierra el rail.
+            {/* Backdrop con blur — solo cuando está expandido Y todavía no
+                fue dismissed. Click → dismissBackdrop (revela el contenido
+                detrás Y arma el auto-collapse de 3s).
                 inset:0 cubre toda la pantalla incluyendo el navbar para que la atención
                 quede solo en el rail.
                 Encima del backdrop va un coachmark "Tocá para ver" con manito animada,
                 que guía al usuario para que descubra que tiene que tocar para destrabar. */}
-            {railExpanded && (
-              <>
-                <div onClick={() => setRailExpanded(false)}
-                  style={{ position:'fixed', inset:0, zIndex:198, background:'rgba(0,0,0,0.40)', backdropFilter:'blur(8px)', WebkitBackdropFilter:'blur(8px)', transition:'backdrop-filter 280ms ease, background 280ms ease' }} />
-                <div style={{ position:'fixed', top:0, bottom:0, left:80, right:20, zIndex:199, display:'flex', alignItems:'center', justifyContent:'center', pointerEvents:'none' }}>
-                  <div style={{ display:'flex', flexDirection:'column', alignItems:'center', gap:14, textAlign:'center' }}>
-                    <Hand size={44} color="rgba(255,255,255,0.92)" strokeWidth={1.6} style={{ animation:'rail-tap 1.4s ease-in-out infinite' }} />
-                    <div style={{ fontFamily:FN, fontSize:13, fontWeight:700, color:'rgba(255,255,255,0.92)', letterSpacing:'.08em', textTransform:'uppercase' }}>Tocá para ver</div>
-                  </div>
-                </div>
-                <style>{`
-                  @keyframes rail-tap {
-                    0%, 100% { transform: scale(1) translateY(0) }
-                    45%, 55% { transform: scale(0.86) translateY(3px) }
-                  }
-                `}</style>
-              </>
-            )}
+            {/* Backdrop blur "Tocá para ver" removido — la nueva UX no lo usa.
+                El rail (colapsado o expandido) coexiste con el contenido sin
+                overlay encima. */}
 
             {/* ── Coachmark "Recordá que tocando esta solapa..." ──
                 Aparece a los 5 segundos DESPUÉS de la primera vez que el user
@@ -10260,81 +13012,125 @@ function CommerceSettingsView({ user, profile, setView, onLogout, onOwnerProfile
                 de antes — la solapa fucsia (renderRailTab) lo reemplaza y se
                 renderiza más abajo. El aside con los items solo aparece cuando
                 el user ya expandió el rail tocando la solapa. */}
-            {!railExpanded && renderRailTab(() => setRailExpanded(true))}
+            {/* Rail lateral viejo reemplazado por el radial menu del fondo
+                (renderRadialMenu) — un solo punto de acceso al menú,
+                consistente entre intent picker y vista regular. */}
+            {renderRadialMenu()}
             {railExpanded && (
-              <aside className="liquid-glass-strong"
+              <aside
+                data-rail-menu="true"
                 style={{
-                  position:'fixed', top:70, bottom:14, left:8, width:expandedW, zIndex:199,
-                  borderRadius: 14,
+                  position:'fixed', top:70, bottom:14, left:8, width:200, zIndex:199,
+                  background: 'linear-gradient(180deg, rgba(15,8,28,0.96), rgba(8,4,18,0.98))',
+                  backdropFilter: 'blur(22px)',
+                  WebkitBackdropFilter: 'blur(22px)',
+                  border: '1px solid rgba(255,255,255,0.06)',
+                  borderRadius: 18,
                   overflow:'hidden',
-                  display:'flex', flexDirection:'column', alignItems:'center', gap:4, padding:'8px 6px',
-                  boxShadow:'0 8px 32px rgba(0,0,0,0.5)',
+                  display:'flex', flexDirection:'column', alignItems:'stretch',
+                  padding:'10px 8px',
+                  boxShadow:'4px 0 28px rgba(0,0,0,0.60)',
                   cursor:'default',
-                  transition:'box-shadow 280ms ease',
                 }}>
-
-                {/* Items del rail — solo visibles cuando expandido (fade-in para evitar squishing al colapsar).
-                    Contenedor con scroll vertical para que en pantallas chicas se puedan ver todas
-                    las pestañas sin tener que abrir el drawer. */}
-                <>
-                  <div className="rail-scroll" style={{
-                    flex:1, width:'100%',
-                    overflowY:'auto', overflowX:'hidden',
-                    display:'flex', flexDirection:'column', alignItems:'center', gap:4,
-                    paddingTop:2, paddingBottom:2,
-                    // Hide scrollbar visually but keep functionality
-                    scrollbarWidth:'thin',
-                    scrollbarColor:'rgba(255,255,255,0.18) transparent',
+                {/* Header: logo de marca + chevron de colapsar */}
+                <div style={{ display:'flex', alignItems:'center', gap:8, padding:'2px 4px 8px', justifyContent:'space-between' }}>
+                  <div style={{
+                    width: 38, height: 38, borderRadius: 12, flexShrink: 0,
+                    background: G,
+                    display: 'flex', alignItems: 'center', justifyContent: 'center',
+                    boxShadow: '0 4px 14px rgba(168,85,247,0.45)',
                   }}>
-                    {RAIL_ITEMS.map(itemId => {
-                      const item        = MENU.find(m => m.id === itemId)
-                      if (!item) return null
-                      const I           = MENU_ICONS[item.id]
-                      const active      = tab === item.id
-                      const isLocked    = item.locked
-                      const isProLocked = item.pro && planKey !== 'pro'
-                      const dimmed      = isLocked || isProLocked
-                      return (
-                        <button key={item.id} title={item.label}
-                          onClick={e => { e.stopPropagation(); handleNav(item.id, isLocked) }}
-                          style={{
-                            position:'relative', zIndex:1, flexShrink:0,
-                            width:40, height:40, borderRadius:10,
-                            background: active ? G : 'transparent',
-                            boxShadow: active ? '0 2px 10px rgba(168,85,247,0.42)' : 'none',
-                            border:'none', cursor:'pointer',
-                            display:'flex', alignItems:'center', justifyContent:'center',
-                            transition:'background 220ms ease, box-shadow 220ms ease',
-                            opacity: dimmed ? 0.55 : 1,
-                          }}>
-                          {I && <I size={18} color={active ? '#fff' : 'rgba(255,255,255,0.70)'} strokeWidth={2} />}
-                          {isProLocked && (
-                            <span style={{ position:'absolute', top:-2, right:-2, fontSize:7, fontWeight:800, color:'#fff', background:PLANS.pro.color, borderRadius:99, padding:'1px 4px', fontFamily:FN, letterSpacing:'.04em' }}>PRO</span>
-                          )}
-                          {isLocked && !isProLocked && (
-                            <Lock size={9} color={C.dust} strokeWidth={2.5} style={{ position:'absolute', top:2, right:2 }} />
-                          )}
-                        </button>
-                      )
-                    })}
+                    <Settings size={18} color="#fff" strokeWidth={2.4} />
                   </div>
-                  {/* Hamburguesa al fondo — abre drawer con info del comercio + scanner + logout.
-                      Ya no es para "ver más pestañas" porque todas están arriba; ahora es solo
-                      acceso a las acciones extra (perfil del local, escáner, cerrar sesión). */}
-                  <button title="Más opciones"
-                    onClick={e => { e.stopPropagation(); setDrawerOpen(true); setRailExpanded(false) }}
+                  <button
+                    onClick={e => { e.stopPropagation(); setRailExpanded(false) }}
+                    aria-label="Colapsar menú"
                     style={{
-                      flexShrink:0,
-                      position:'relative', zIndex:1,
-                      width:40, height:40, borderRadius:10,
-                      background:'rgba(255,255,255,0.06)', border:`1px solid ${C.rim}`,
-                      cursor:'pointer',
-                      display:'flex', alignItems:'center', justifyContent:'center',
-                      marginTop:6,
+                      width: 28, height: 28, borderRadius: '50%',
+                      background: 'rgba(255,255,255,0.06)',
+                      border: '1px solid rgba(255,255,255,0.10)',
+                      cursor: 'pointer',
+                      display: 'flex', alignItems: 'center', justifyContent: 'center',
+                      color: '#fff', padding: 0,
                     }}>
-                    <Menu size={18} color="rgba(255,255,255,0.85)" strokeWidth={2} />
+                    <ChevronLeft size={14} strokeWidth={2.6} />
                   </button>
-                </>
+                </div>
+
+                {/* Items con labels — pill blanca completa para el activo */}
+                <div className="rail-scroll" style={{
+                  flex:1, width:'100%',
+                  overflowY:'auto', overflowX:'hidden',
+                  display:'flex', flexDirection:'column', gap:4,
+                  paddingTop:4, paddingBottom:4,
+                  scrollbarWidth: 'none',
+                }}>
+                  {RAIL_ITEMS.map(itemId => {
+                    const item        = MENU.find(m => m.id === itemId)
+                    if (!item) return null
+                    const I           = MENU_ICONS[item.id]
+                    const active      = tab === item.id
+                    const isLocked    = item.locked
+                    const isProLocked = item.pro && planKey !== 'pro'
+                    const dimmed      = isLocked || isProLocked
+                    return (
+                      <button key={item.id} title={item.label}
+                        onClick={e => { e.stopPropagation(); handleNav(item.id, isLocked) }}
+                        style={{
+                          position:'relative', flexShrink:0,
+                          height: 40, width: '100%',
+                          padding: '0 10px',
+                          borderRadius: 10,
+                          background: active ? '#ffffff' : 'transparent',
+                          border:'none', cursor:'pointer',
+                          display:'flex', alignItems:'center', gap: 10,
+                          transition:'background 220ms ease',
+                          opacity: dimmed ? 0.55 : 1,
+                          boxShadow: active ? '0 4px 12px rgba(0,0,0,0.30)' : 'none',
+                          textAlign: 'left',
+                          fontFamily: 'inherit',
+                        }}>
+                        {I && <I size={17} color={active ? '#0a0612' : 'rgba(255,255,255,0.85)'} strokeWidth={2.2} style={{ flexShrink: 0 }} />}
+                        <span style={{
+                          fontSize: 13, fontWeight: active ? 800 : 600,
+                          color: active ? '#0a0612' : 'rgba(255,255,255,0.92)',
+                          fontFamily: FN,
+                          whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis',
+                          flex: 1,
+                        }}>
+                          {item.label}
+                        </span>
+                        {isProLocked && (
+                          <span style={{ fontSize:8, fontWeight:800, color:'#fff', background:PLANS.pro.color, borderRadius:99, padding:'2px 5px', fontFamily:FN, letterSpacing:'.04em', flexShrink:0 }}>PRO</span>
+                        )}
+                        {isLocked && !isProLocked && (
+                          <Lock size={11} color={active ? '#0a0612' : C.dust} strokeWidth={2.5} style={{ flexShrink: 0 }} />
+                        )}
+                      </button>
+                    )
+                  })}
+                </div>
+
+                {/* "Más opciones" al fondo — abre drawer con perfil/scanner/logout */}
+                <button title="Más opciones"
+                  onClick={e => { e.stopPropagation(); setDrawerOpen(true); setRailExpanded(false) }}
+                  style={{
+                    flexShrink:0,
+                    width: '100%', height: 40,
+                    padding: '0 10px',
+                    borderRadius: 10,
+                    background: 'rgba(255,255,255,0.04)',
+                    border: '1px solid rgba(255,255,255,0.08)',
+                    cursor: 'pointer',
+                    display: 'flex', alignItems: 'center', gap: 10,
+                    marginTop: 6,
+                    color: '#fff',
+                    fontFamily: FN, fontSize: 13, fontWeight: 600,
+                    textAlign: 'left',
+                  }}>
+                  <Menu size={17} color="rgba(255,255,255,0.85)" strokeWidth={2.2} style={{ flexShrink: 0 }} />
+                  Más opciones
+                </button>
               </aside>
             )}
           </>
@@ -10343,6 +13139,37 @@ function CommerceSettingsView({ user, profile, setView, onLogout, onOwnerProfile
 
       {/* ── CONTENIDO ── */}
       <div style={{ flex:1, padding: isMobile ? '20px 16px 80px 30px' : '28px 28px 80px', overflowY:'auto', maxWidth:720 }}>
+
+        {/* ── Botón "Volver a tarjetas" ──
+            Siempre visible al tope de cualquier pestaña del panel.
+            Tap → reabre el intent picker con las tarjetas. Le da al
+            dueño una salida de un solo tap a la pantalla de progreso de
+            configuración, sin importar desde qué pestaña esté navegando
+            ni cómo haya llegado ahí. */}
+        <button
+          onClick={() => {
+            setIntentPickerActive(true)
+            setCameFromConfigCards(false)
+          }}
+          style={{
+            display: 'inline-flex', alignItems: 'center', gap: 7,
+            padding: '8px 14px',
+            marginBottom: 14,
+            background: 'rgba(189,75,248,0.12)',
+            border: '1px solid rgba(189,75,248,0.42)',
+            borderRadius: 99,
+            color: '#D8B4FE',
+            fontFamily: FN, fontSize: 12, fontWeight: 700,
+            letterSpacing: '.04em',
+            cursor: 'pointer',
+            transition: 'background 180ms ease, border-color 180ms ease, color 180ms ease',
+          }}
+          onMouseEnter={e => { e.currentTarget.style.background = 'rgba(189,75,248,0.22)'; e.currentTarget.style.color = '#fff' }}
+          onMouseLeave={e => { e.currentTarget.style.background = 'rgba(189,75,248,0.12)'; e.currentTarget.style.color = '#D8B4FE' }}
+        >
+          <ArrowLeft size={13} strokeWidth={2.6} />
+          Volver a tarjetas
+        </button>
 
         {/* ── DASHBOARD ── */}
         {tab === 'dashboard' && (
@@ -10382,8 +13209,12 @@ function CommerceSettingsView({ user, profile, setView, onLogout, onOwnerProfile
                     display:'flex', alignItems:'center', gap:14,
                     padding:'13px 16px', marginBottom:16,
                     width:'100%', textAlign:'left', cursor:'pointer',
-                    background:'linear-gradient(135deg, rgba(254,80,0,0.16) 0%, rgba(189,75,248,0.20) 100%)',
-                    border:'1px solid rgba(189,75,248,0.32)', borderRadius:14,
+                    // Tono violeta de marca (de los morados oscuros del logo
+                    // a los lilas claros). Antes era orange→violet pero
+                    // chocaba con el resto de la pantalla; ahora unificado
+                    // con la paleta violeta del navbar y la solapa.
+                    background:'linear-gradient(135deg, rgba(63,11,120,0.30) 0%, rgba(124,58,237,0.22) 50%, rgba(189,75,248,0.24) 100%)',
+                    border:'1px solid rgba(189,75,248,0.40)', borderRadius:14,
                   }}>
                   <div style={{ flex:1 }}>
                     <div style={{ fontSize:13, fontWeight:700, color:C.white, fontFamily:FN, marginBottom:3 }}>
@@ -10393,10 +13224,11 @@ function CommerceSettingsView({ user, profile, setView, onLogout, onOwnerProfile
                       Completalo para que tus clientes te vean mejor.
                     </div>
                     <div style={{ height:4, background:'rgba(255,255,255,0.10)', borderRadius:99, overflow:'hidden' }}>
-                      <div style={{ height:'100%', width:`${pct}%`, background:G, borderRadius:99, transition:'width 0.4s ease' }} />
+                      {/* Barra de progreso en violeta (antes naranja→violeta) */}
+                      <div style={{ height:'100%', width:`${pct}%`, background:'linear-gradient(135deg, #A855F7, #BD4BF8)', borderRadius:99, transition:'width 0.4s ease' }} />
                     </div>
                   </div>
-                  <ChevronRight size={20} color="rgba(255,255,255,0.65)" strokeWidth={2.4} style={{ flexShrink:0 }} />
+                  <ChevronRight size={20} color="rgba(216,180,254,0.85)" strokeWidth={2.4} style={{ flexShrink:0 }} />
                 </button>
               )
             })()}
@@ -10416,16 +13248,17 @@ function CommerceSettingsView({ user, profile, setView, onLogout, onOwnerProfile
               ))}
             </div>
 
-            {/* Alerta clientes cerca de premio */}
+            {/* Alerta clientes cerca de premio — paleta violeta de marca
+                para mantener coherencia visual con el resto del dashboard. */}
             {nearPrize.length > 0 && (
-              <div style={{ padding:'12px 14px', marginBottom:14, border:`1px solid ${C.o}44`, background:`${C.o}0F`, borderRadius:14, display:'flex', alignItems:'center', justifyContent:'space-between', gap:10 }}>
+              <div style={{ padding:'12px 14px', marginBottom:14, border:`1px solid ${C.v}55`, background:`${C.v}14`, borderRadius:14, display:'flex', alignItems:'center', justifyContent:'space-between', gap:10 }}>
                 <div style={{ display:'flex', alignItems:'center', gap:8, minWidth:0 }}>
-                  <Bell size={14} color={C.o} strokeWidth={2} style={{ flexShrink:0 }} />
-                  <span style={{ fontSize:12, color:C.o, fontWeight:600 }}>
+                  <Bell size={14} color={C.v} strokeWidth={2} style={{ flexShrink:0 }} />
+                  <span style={{ fontSize:12, color:C.v, fontWeight:600 }}>
                     {nearPrize.length} cliente{nearPrize.length>1?'s':''} a punto de canjear
                   </span>
                 </div>
-                <button onClick={() => setTab('clientes')} style={{ background:'transparent', border:'none', color:C.o, fontSize:11, cursor:'pointer', fontWeight:700, flexShrink:0 }}>Ver →</button>
+                <button onClick={() => setTab('clientes')} style={{ background:'transparent', border:'none', color:C.v, fontSize:11, cursor:'pointer', fontWeight:700, flexShrink:0 }}>Ver →</button>
               </div>
             )}
 
@@ -10876,24 +13709,14 @@ function CommerceSettingsView({ user, profile, setView, onLogout, onOwnerProfile
               {showQrModal && (() => {
                 const joinUrl = `${typeof window !== 'undefined' ? window.location.origin : ''}/join/${commerce?.slug || commerce?.id || ''}`
                 return (
-                  <div style={{ position:'fixed', inset:0, zIndex:9999, background:'rgba(0,0,0,0.75)', backdropFilter:'blur(8px)', WebkitBackdropFilter:'blur(8px)', display:'flex', alignItems:'center', justifyContent:'center', padding:20 }}
-                    onClick={() => setShowQrModal(false)}>
-                    <div style={{ background:C.card, border:`1px solid ${C.rim}`, borderRadius:20, padding:28, maxWidth:340, width:'100%', textAlign:'center' }}
-                      onClick={e => e.stopPropagation()}>
-                      <div style={{ fontFamily:FN, fontSize:18, fontWeight:900, color:C.white, marginBottom:4 }}>Tu QR</div>
-                      <div style={{ fontSize:12, color:C.mist, marginBottom:20 }}>{commerce?.name}</div>
-                      <div style={{ display:'inline-flex', background:'#ffffff', borderRadius:16, padding:16, marginBottom:16 }}>
-                        <QRCodeSVG value={joinUrl} size={260} bgColor="#ffffff" fgColor="#000000" level="M" />
-                      </div>
-                      <div style={{ fontSize:12, color:C.dust, lineHeight:1.6, marginBottom:20 }}>
-                        Mostrá este código a tus clientes para que se sumen a tu club.
-                      </div>
-                      <button onClick={() => setShowQrModal(false)}
-                        style={{ width:'100%', padding:'12px', background:'transparent', border:`1px solid ${C.rim}`, borderRadius:12, color:C.mist, fontFamily:FN, fontSize:13, fontWeight:600, cursor:'pointer' }}>
-                        Cerrar
-                      </button>
-                    </div>
-                  </div>
+                  <QrFullscreen
+                    open
+                    onClose={() => setShowQrModal(false)}
+                    qrValue={joinUrl}
+                    audience="merchant"
+                    shareUrl={joinUrl}
+                    shareTitle={commerce?.name || 'Mi club'}
+                  />
                 )
               })()}
             </div>
@@ -11239,7 +14062,10 @@ function CommerceSettingsView({ user, profile, setView, onLogout, onOwnerProfile
             <HelpBanner
               id="merchant-premios"
               title="Tu catálogo de premios"
-              body="Estos son los premios que tus clientes pueden canjear con sus estrellas o puntos. Cada uno tiene un costo, stock y se puede pausar sin borrarlo. Tocá ‘Crear premio’ para agregar uno nuevo."
+              body="Lo que tus clientes pueden canjear con sus estrellas o puntos."
+              details={<>
+                Cada premio tiene un <strong style={{ color:'#fff' }}>costo</strong>, <strong style={{ color:'#fff' }}>stock</strong> y se puede <strong style={{ color:'#fff' }}>pausar sin borrarlo</strong>. Tocá <strong style={{ color:'#fff' }}>"Crear premio"</strong> para agregar uno nuevo.
+              </>}
             />
             {/* Botón "← Volver a recompensas" si el usuario vino de ahí. */}
             {cameFromTab === 'recompensas' && (
@@ -12526,7 +15352,10 @@ function CommerceSettingsView({ user, profile, setView, onLogout, onOwnerProfile
               <HelpBanner
                 id="merchant-historial"
                 title="Línea de tiempo de tu club"
-                body="Cada cambio importante queda registrado: cuando creás o pausás un premio, cambiás el sistema de recompensas, agregás una promoción o se suma un cliente nuevo. Te sirve para tener trazabilidad de lo que hiciste."
+                body="Cada cambio importante de tu negocio queda registrado acá."
+                details={<>
+                  Cuando <strong style={{ color:'#fff' }}>creás o pausás un premio</strong>, <strong style={{ color:'#fff' }}>cambiás el sistema de recompensas</strong>, <strong style={{ color:'#fff' }}>agregás una promoción</strong> o <strong style={{ color:'#fff' }}>se suma un cliente nuevo</strong>, queda anotado. Te sirve para tener trazabilidad de lo que hiciste.
+                </>}
               />
               {activity.length === 0 ? (
                 <div style={{ textAlign:'center', padding:'40px 0', color:C.dust, fontSize:13 }}>
@@ -12656,10 +15485,32 @@ function CommerceSettingsView({ user, profile, setView, onLogout, onOwnerProfile
           // abierto a la vez en expandedConfigSection).
           const ConfigAccordion = ({ id, Icon: AIcon, label, children }) => {
             const isOpen = expandedConfigSection === id
+            // Cuando el dueño abre un accordion, el del que estaba abierto
+            // antes se cierra — eso reduce la altura de la página y mueve
+            // el accordion clickeado hacia arriba (a veces fuera de la
+            // pantalla). Para que el TÍTULO (con su flechita) quede en el
+            // MISMO lugar visual y el contenido se despliegue hacia abajo,
+            // hacemos scroll-into-view del header del accordion clickeado
+            // justo después de abrirlo. Pequeño setTimeout(60) le da
+            // tiempo a React para hacer el reflow.
+            const handleToggle = (e) => {
+              const next = isOpen ? null : id
+              setExpandedConfigSection(next)
+              if (next) {
+                // Solo scrolleamos cuando se abre (no cuando se cierra).
+                // Capturamos el botón del header desde el currentTarget.
+                const btn = e.currentTarget
+                setTimeout(() => {
+                  if (btn?.scrollIntoView) {
+                    btn.scrollIntoView({ behavior: 'smooth', block: 'start' })
+                  }
+                }, 60)
+              }
+            }
             return (
-              <div style={{ marginBottom:10, borderRadius:14, overflow:'hidden', background:C.card, border:`1px solid ${isOpen ? `${C.v}55` : C.rim}`, transition:'border-color .2s ease' }}>
-                <button onClick={() => setExpandedConfigSection(isOpen ? null : id)}
-                  style={{ width:'100%', padding:'14px 18px', background:'transparent', border:'none', cursor:'pointer', display:'flex', alignItems:'center', gap:10, textAlign:'left', fontFamily:'inherit' }}>
+              <div data-config-section={id} style={{ marginBottom:10, borderRadius:14, overflow:'hidden', background:C.card, border:`1px solid ${isOpen ? `${C.v}55` : C.rim}`, transition:'border-color .2s ease' }}>
+                <button onClick={handleToggle}
+                  style={{ width:'100%', padding:'14px 18px', background:'transparent', border:'none', cursor:'pointer', display:'flex', alignItems:'center', gap:10, textAlign:'left', fontFamily:'inherit', scrollMarginTop: 16 }}>
                   {AIcon && <AIcon size={16} color={isOpen ? C.v : 'rgba(255,255,255,0.55)'} strokeWidth={2} style={{ flexShrink:0 }} />}
                   <span style={{ flex:1, fontFamily:FN, fontSize:13, fontWeight:700, color:C.white }}>{label}</span>
                   <ChevronDown size={16} color={isOpen ? C.v : C.mist} strokeWidth={2}
@@ -12686,7 +15537,10 @@ function CommerceSettingsView({ user, profile, setView, onLogout, onOwnerProfile
               <HelpBanner
                 id="merchant-configuracion"
                 title="Configurás tu negocio"
-                body="Acá completás los datos que ven tus clientes (foto, descripción, dirección, horarios), elegís el plan, configurás el sistema y manejás tu cuenta. Cada sección abre y cierra como un acordeón — tocá la que quieras editar."
+                body="Acá completás los datos que ven tus clientes y manejás tu cuenta."
+                details={<>
+                  <strong style={{ color:'#fff' }}>Foto, descripción, dirección, horarios</strong>, <strong style={{ color:'#fff' }}>plan</strong>, <strong style={{ color:'#fff' }}>sistema de recompensas</strong> y <strong style={{ color:'#fff' }}>cuenta</strong>. Cada sección abre y cierra como un acordeón — tocá la que quieras editar.
+                </>}
               />
 
               {/* Onboarding banner */}
@@ -13284,7 +16138,10 @@ function CommerceSettingsView({ user, profile, setView, onLogout, onOwnerProfile
               <HelpBanner
                 id="merchant-mensajes"
                 title="Tus mensajes para clientes"
-                body="Acá la app detecta automáticamente clientes que se merecen un mensaje (los que no vienen hace tiempo, los que están cerca de un premio, los recién llegados) y te arma el WhatsApp listo. Vos lo revisás y lo mandás con un click. Disponible en plan PRO."
+                body="La app detecta a quién mandarle WhatsApp y te arma el mensaje listo."
+                details={<>
+                  Identifica clientes que <strong style={{ color:'#fff' }}>no vienen hace tiempo</strong>, los que están <strong style={{ color:'#fff' }}>cerca de un premio</strong> o los <strong style={{ color:'#fff' }}>recién llegados</strong>. Vos revisás el mensaje y lo mandás con un click. Disponible en plan <strong style={{ color:'#fff' }}>PRO</strong>.
+                </>}
               />
               <div style={{ fontSize:13, color:C.mist, marginBottom:20 }}>Mensajes listos para enviar a tus clientes.</div>
 
@@ -13353,31 +16210,14 @@ function CommerceSettingsView({ user, profile, setView, onLogout, onOwnerProfile
       {showBusinessQrModal && (() => {
         const joinUrl = `${typeof window !== 'undefined' ? window.location.origin : ''}/club/${commerce?.slug || commerce?.id || ''}?from_qr=1`
         return (
-          <div style={{ position:'fixed', inset:0, zIndex:9999, background:'rgba(0,0,0,0.82)', backdropFilter:'blur(10px)', WebkitBackdropFilter:'blur(10px)', display:'flex', alignItems:'center', justifyContent:'center', padding:20 }}
-            onClick={() => setShowBusinessQrModal(false)}>
-            <div style={{ background:C.card, border:`1px solid ${C.rim}`, borderRadius:24, padding:'28px 24px 24px', maxWidth:380, width:'100%', textAlign:'center', position:'relative' }}
-              onClick={e => e.stopPropagation()}>
-              <button onClick={() => setShowBusinessQrModal(false)}
-                style={{ position:'absolute', top:12, right:12, background:'transparent', border:'none', color:C.mist, cursor:'pointer', padding:6, display:'flex', alignItems:'center', justifyContent:'center' }}>
-                <X size={18} strokeWidth={2.2} />
-              </button>
-              <div style={{ fontFamily:FN, fontSize:10, fontWeight:800, color:C.v, letterSpacing:'.14em', textTransform:'uppercase', marginBottom:6 }}>QR de tu negocio</div>
-              <div style={{ fontFamily:FN, fontSize:20, fontWeight:900, color:C.white, marginBottom:6 }}>{commerce?.name}</div>
-              <div style={{ fontSize:12.5, color:C.mist, marginBottom:22, lineHeight:1.5 }}>
-                Mostralo a un cliente para que se sume al club escaneándolo desde su celular.
-              </div>
-              <div style={{ display:'inline-flex', background:'#ffffff', borderRadius:18, padding:18, marginBottom:14, boxShadow:'0 12px 32px rgba(189,75,248,0.20)' }}>
-                <QRCodeSVG value={joinUrl} size={260} bgColor="#ffffff" fgColor="#000000" level="M" />
-              </div>
-              <div style={{ fontSize:11, color:C.dust, fontFamily:FI, marginBottom:18, wordBreak:'break-all' }}>
-                {joinUrl.replace(/^https?:\/\//,'')}
-              </div>
-              <button onClick={() => setShowBusinessQrModal(false)}
-                style={{ width:'100%', padding:'12px', background:'rgba(255,255,255,0.05)', border:`1px solid ${C.rim}`, borderRadius:12, color:C.pearl, fontFamily:FN, fontSize:13, fontWeight:700, cursor:'pointer' }}>
-                Listo
-              </button>
-            </div>
-          </div>
+          <QrFullscreen
+            open
+            onClose={() => setShowBusinessQrModal(false)}
+            qrValue={joinUrl}
+            audience="merchant"
+            shareUrl={joinUrl}
+            shareTitle={commerce?.name || 'Mi club'}
+          />
         )
       })()}
     </div>
@@ -13633,12 +16473,11 @@ function ClientQRView({ user, profile, setView, headerExtra }) {
 // 2 opciones (sumarse a un club, mostrar QR personal).
 function ScannerView({ user, profile, setView }) {
   const isOwner = profile && ['commerce_owner', 'admin'].includes(profile.role)
-  if (!profile) return (
-    <div style={{ textAlign:'center', padding:'80px 20px' }}>
-      <div style={{ display:'flex', justifyContent:'center', marginBottom:16 }}><div style={{ width:52, height:52, borderRadius:14, background:'rgba(255,255,255,0.06)', display:'flex', alignItems:'center', justifyContent:'center' }}><Lock size={24} color='rgba(255,255,255,0.50)' strokeWidth={2} /></div></div>
-      <div style={{ fontFamily:FN, fontSize:18, fontWeight:900, color:C.white, marginBottom:8 }}>Iniciá sesión para usar el escáner</div>
-    </div>
-  )
+  // IMPORTANTE: NO hacer early return acá — todos los hooks tienen que correr
+  // antes que cualquier return condicional, sino React 19 dispara
+  // "Expected static flag was missing" porque el orden de hooks cambia
+  // entre el primer render (sin profile) y el segundo (con profile).
+  // El return de "iniciá sesión" se hace al final, después de todos los hooks.
   // Modo del scanner para owners: 'register-visit' (escanear QR del cliente que vino al local)
   // o 'join-club' (escanear QR de otro local para sumarse como cliente).
   // Default: null — la primera pantalla muestra dos botones grandes apilados
@@ -13706,6 +16545,16 @@ function ScannerView({ user, profile, setView }) {
   useEffect(() => {
     return () => { stopCamera() }
   }, [])
+
+  // Early return DESPUÉS de todos los hooks — sin profile no se puede usar el
+  // escáner. Esto va acá (no arriba) para preservar el orden de hooks que
+  // React 19 verifica estrictamente.
+  if (!profile) return (
+    <div style={{ textAlign:'center', padding:'80px 20px' }}>
+      <div style={{ display:'flex', justifyContent:'center', marginBottom:16 }}><div style={{ width:52, height:52, borderRadius:14, background:'rgba(255,255,255,0.06)', display:'flex', alignItems:'center', justifyContent:'center' }}><Lock size={24} color='rgba(255,255,255,0.50)' strokeWidth={2} /></div></div>
+      <div style={{ fontFamily:FN, fontSize:18, fontWeight:900, color:C.white, marginBottom:8 }}>Iniciá sesión para usar el escáner</div>
+    </div>
+  )
 
   async function startCamera() {
     if (!commerceId) return
@@ -14241,104 +17090,33 @@ function ScannerView({ user, profile, setView }) {
     const joinUrl = typeof window !== 'undefined' && selectedCommerce.slug
       ? `${window.location.origin}/club/${selectedCommerce.slug}?from_qr=1`
       : ''
+    // Modo fullscreen estilo "pase de evento" — sale del flujo normal y usa
+    // el QrFullscreen compartido. El X superior derecho lleva de vuelta al
+    // picker (mismo comportamiento que el "Volver" anterior).
     return (
-      <div style={{ maxWidth:440, margin:'0 auto', padding:'30px 18px 80px' }}>
-        {backToPicker}
-        <div style={{ fontFamily:FN, fontSize:10, color:C.o, fontWeight:800, letterSpacing:'.15em', textTransform:'uppercase', marginBottom:8 }}>✦ Escáner QR</div>
-        <h1 style={{ fontFamily:FN, fontSize:'clamp(22px,4vw,32px)', fontWeight:900, color:C.white, marginBottom:4 }}>QR de tu negocio</h1>
-        <p style={{ fontSize:13, color:C.mist, marginBottom:22 }}>Mostrale este código a un cliente nuevo para que se una al club desde su celular.</p>
-
-        {/* Selector si hay múltiples comercios */}
-        {myCommerces.length > 1 && (
-          <PCard style={{ padding:14, marginBottom:14 }}>
-            <div style={{ fontSize:11, color:C.mist, marginBottom:6, fontFamily:FN, fontWeight:600 }}>Tu comercio</div>
-            <select value={commerceId} onChange={e => setCommerceId(e.target.value)}
-              style={{ background:C.bg3, border:`1px solid ${C.rim}`, borderRadius:10, padding:'10px 13px', fontSize:13, color:C.pearl, width:'100%' }}>
-              <option value="">Seleccioná un comercio...</option>
-              {myCommerces.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
-            </select>
-          </PCard>
-        )}
-
-        <div style={{ display:'flex', justifyContent:'center', marginBottom:18 }}>
-          <div style={{ width:'100%', maxWidth:340, borderRadius:24, overflow:'hidden', boxShadow:'0 24px 64px rgba(168,85,247,0.30), 0 8px 24px rgba(0,0,0,0.50)' }}>
-            <div style={{ background:'linear-gradient(135deg, #6d28d9 0%, #a855f7 50%, #BD4BF8 100%)', padding:'22px 22px 20px', position:'relative' }}>
-              <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', marginBottom:18 }}>
-                <div>
-                  <div style={{ fontSize:9, color:'rgba(255,255,255,0.65)', textTransform:'uppercase', letterSpacing:'.10em', marginBottom:2 }}>Benefix</div>
-                  <div style={{ fontFamily:FN, fontSize:18, fontWeight:800, color:'#fff' }}>{selectedCommerce.name}</div>
-                </div>
-                <div style={{ width:38, height:38, borderRadius:'50%', background:'rgba(255,255,255,0.18)', display:'flex', alignItems:'center', justifyContent:'center' }}>
-                  <Store size={18} color="#fff" strokeWidth={2} />
-                </div>
-              </div>
-              <div style={{ display:'flex', justifyContent:'center' }}>
-                <div style={{ background:'#fff', borderRadius:14, padding:14 }}>
-                  {joinUrl
-                    ? <QRCodeSVG value={joinUrl} size={200} bgColor="#ffffff" fgColor="#000000" level="M" />
-                    : <div style={{ width:200, height:200, display:'flex', alignItems:'center', justifyContent:'center', color:'#999', fontSize:11 }}>Generando…</div>
-                  }
-                </div>
-              </div>
-              <div style={{ textAlign:'center', marginTop:14, fontSize:11, color:'rgba(255,255,255,0.70)' }}>
-                Escaneá para unirte al club
-              </div>
-            </div>
-            <div style={{ background:'#1a1132', padding:'12px 22px', textAlign:'center' }}>
-              <div style={{ fontFamily:FI, fontSize:11, color:'rgba(255,255,255,0.55)', wordBreak:'break-all' }}>
-                {joinUrl.replace(/^https?:\/\//, '')}
-              </div>
-            </div>
-          </div>
-        </div>
-      </div>
+      <QrFullscreen
+        open
+        onClose={() => { setScanMode(null); setModeSelected(false); stopCamera() }}
+        qrValue={joinUrl}
+        audience="merchant"
+        shareUrl={joinUrl}
+        shareTitle={selectedCommerce.name || 'Mi club'}
+      />
     )
   }
 
   if (scanMode === 'show-my-qr') {
     const passQrValue = `CLUB-${user?.id || 'demo'}`
-    const displayName = profile?.full_name || profile?.name || 'Tu cuenta'
+    // Modo fullscreen estilo "Apple Wallet pass" — usa el QrFullscreen
+    // compartido. Sin botones de compartir/copiar (solo merchant los tiene)
+    // — el cliente solo necesita mostrar el QR para que se lo escaneen.
     return (
-      <div style={{ maxWidth:440, margin:'0 auto', padding:'30px 18px 80px' }}>
-        {backToPicker}
-        <div style={{ fontFamily:FN, fontSize:10, color:C.o, fontWeight:800, letterSpacing:'.15em', textTransform:'uppercase', marginBottom:8 }}>✦ Escáner QR</div>
-        <h1 style={{ fontFamily:FN, fontSize:'clamp(22px,4vw,32px)', fontWeight:900, color:C.white, marginBottom:4 }}>Mostrá tu QR</h1>
-        <p style={{ fontSize:13, color:C.mist, marginBottom:22 }}>Mostrale este código al comerciante para que te sume visita en su local.</p>
-
-        <div style={{ display:'flex', justifyContent:'center', marginBottom:18 }}>
-          <div style={{ width:'100%', maxWidth:340, borderRadius:28, overflow:'hidden', boxShadow:'0 24px 64px rgba(189,75,248,0.30), 0 8px 24px rgba(0,0,0,0.50)' }}>
-            <div style={{ background:'linear-gradient(145deg, #7c3aed 0%, #a855f7 45%, #ec4899 100%)', padding:'24px 24px 28px', position:'relative', overflow:'hidden' }}>
-              <div style={{ position:'absolute', top:-32, right:-32, width:120, height:120, borderRadius:'50%', background:'rgba(255,255,255,0.10)', filter:'blur(24px)', pointerEvents:'none' }} />
-              <div style={{ position:'absolute', bottom:-24, left:-16, width:90, height:90, borderRadius:'50%', background:'rgba(236,72,153,0.25)', filter:'blur(20px)', pointerEvents:'none' }} />
-              <div style={{ display:'flex', alignItems:'flex-start', justifyContent:'space-between', marginBottom:24, position:'relative' }}>
-                <div>
-                  <div style={{ fontFamily:FN, fontSize:22, fontWeight:900, color:'#fff', letterSpacing:'-.01em', lineHeight:1 }}>BENEFIX PASS</div>
-                  <div style={{ fontFamily:FI, fontSize:12, color:'rgba(255,255,255,0.65)', marginTop:4 }}>Tu pase de beneficios</div>
-                </div>
-                <div style={{ width:38, height:38, borderRadius:12, background:'rgba(255,255,255,0.18)', display:'flex', alignItems:'center', justifyContent:'center', border:'1px solid rgba(255,255,255,0.25)' }}>
-                  <QrCode size={18} color="white" strokeWidth={2} />
-                </div>
-              </div>
-              <div style={{ display:'flex', justifyContent:'center', position:'relative' }}>
-                <div style={{ background:'#fff', borderRadius:14, padding:14 }}>
-                  <QRCodeSVG value={passQrValue} size={200} bgColor="#ffffff" fgColor="#000000" level="M" />
-                </div>
-              </div>
-              <div style={{ textAlign:'center', marginTop:22, position:'relative' }}>
-                <div style={{ fontFamily:FN, fontSize:17, fontWeight:800, color:'#fff', letterSpacing:'-.01em' }}>{displayName}</div>
-                <div style={{ fontFamily:'monospace', fontSize:10, color:'rgba(255,255,255,0.50)', marginTop:5, letterSpacing:'.12em', textTransform:'uppercase' }}>
-                  CLUB · {(user?.id || '').slice(0,8).toUpperCase()}
-                </div>
-              </div>
-            </div>
-            <div style={{ background:'linear-gradient(to bottom right, #4c1d95, #3b0764)', padding:'14px 24px 16px', textAlign:'center' }}>
-              <div style={{ fontFamily:FI, fontSize:11, color:'rgba(255,255,255,0.55)', letterSpacing:'.04em' }}>
-                Mostrá este código en caja para acumular beneficios
-              </div>
-            </div>
-          </div>
-        </div>
-      </div>
+      <QrFullscreen
+        open
+        onClose={() => { setScanMode(null); setModeSelected(false); stopCamera() }}
+        qrValue={passQrValue}
+        audience="client"
+      />
     )
   }
 
@@ -15351,10 +18129,34 @@ function DevToolbar({ user, profile, onRoleChange }) {
     </div>
   )
 }
-
 // ─── ROOT ─────────────────────────────────────────────────────────────────────
+//
+// Deep-link parser (síncrono, ANTES de cualquier render):
+// Cuando alguien navega a `/?view=X&tab=Y` (típicamente desde el navbar
+// de la página del club: Mi Negocio, Escanear, Mi cuenta), queremos que
+// la app aterrice directo en esa vista — sin pasar por el flujo de
+// "lastView de localStorage" que normalmente la mandaba al ojo viejo o
+// a Mi billetera. Lo hacemos a nivel de módulo (top-level, no dentro
+// del componente) para que el primer render de App ya use el view del
+// deep-link en vez del default. Limpiamos la URL inmediatamente para
+// que no quede pegada al refrescar.
+const _DEEP_LINK = (() => {
+  if (typeof window === 'undefined') return { view: null, tab: null }
+  try {
+    const params = new URLSearchParams(window.location.search)
+    const v = params.get('view')
+    const t = params.get('tab')
+    if (v || t) {
+      window.history.replaceState(null, '', window.location.pathname)
+    }
+    return { view: v || null, tab: t || null }
+  } catch { return { view: null, tab: null } }
+})()
+
 export default function App() {
-  const [view,     setView]     = useState('home')
+  // Si vino un deep-link en la URL (?view=X), arrancamos en esa vista
+  // directamente. Sino, 'home'.
+  const [view,     setView]     = useState(_DEEP_LINK.view || 'home')
   const [citySlug, setCitySlug] = useState(null)
   const [commerce, setCommerce] = useState(null)
   const [user,     setUser]     = useState(null)
@@ -15429,7 +18231,12 @@ export default function App() {
       }
     } catch {}
 
-    if (!consumedLoginNext && restoreView && data?.role) {
+    // Si vino un deep-link en la URL (?view=X) — y ya seteó la vista
+    // desde el módulo — NO sobreescribir con la lastView del localStorage.
+    // El usuario quiere ir a la vista pedida en la URL, no a la vista
+    // anterior. Esto arregla el caso "click en Mi Negocio desde el navbar
+    // del club terminaba volviendo al ojo viejo".
+    if (!consumedLoginNext && restoreView && data?.role && !_DEEP_LINK.view) {
       const saved = localStorage.getItem('benefix:lastView')
       const VALID = {
         client:         ['client', 'directory'],
@@ -15441,12 +18248,16 @@ export default function App() {
         // Caso especial: 'commerce' (preview del ojo) requiere cargar el comercio
         // del owner antes de renderizar; sino CommerceView se queda en blanco.
         if (saved === 'commerce') {
+          // Eye preview ahora vive en /club/[slug]?edit=1 — redirigimos.
           const { data: ownCommerce } = await supabase.from('commerces').select('*').eq('owner_id', userId).single()
+          if (ownCommerce?.slug && typeof window !== 'undefined') {
+            window.location.href = `/club/${ownCommerce.slug}?edit=1`
+            return
+          }
           if (ownCommerce) {
             setCommerce(ownCommerce)
             setView('commerce')
           } else {
-            // Sin comercio (caso raro) → fallback al default
             setView(defaults[data.role] || 'home')
           }
         } else {
@@ -15572,7 +18383,19 @@ export default function App() {
   async function handleOwnerProfile() {
     if (!user) return
     const { data } = await supabase.from('commerces').select('*').eq('owner_id', user.id).single()
-    if (data) { setCommerce(data); navigate('commerce') }
+    if (!data) return
+    // El ojo del dueño ahora navega a la página pública del club
+    // (/club/[slug]?edit=1) — esa página detecta el flag y muestra Pen
+    // icons al lado de cada campo editable. Antes el ojo renderizaba
+    // un componente CommerceView aparte que se desactualizaba del look
+    // real del club (no tenía los accordions ni el slider de promos).
+    if (data.slug && typeof window !== 'undefined') {
+      window.location.href = `/club/${data.slug}?edit=1`
+      return
+    }
+    // Fallback (sin slug) — comportamiento viejo.
+    setCommerce(data)
+    navigate('commerce')
   }
 
   // 'commerce' SÍ se persiste — el owner espera que al refrescar el preview
@@ -15636,17 +18459,17 @@ export default function App() {
           El buzón de sugerencias va apilado encima del botón del chat. */}
       {user && view !== 'home' && view !== 'directory' && (
         <>
-          {/* Stack de botones flotantes (bottom-right):
-              - SupportChat       → bottom: 90  (chat de soporte con IA)
-              - NotificationsBell → bottom: 156 (campana unificada con dos tabs:
-                                                 Movimientos + Sistema)
-              66px de gap vertical entre ambos para no superponerse en mobile.
-              SuggestionsInbox quedó absorbido dentro de NotificationsBell
-              como tab "Sistema" — un solo ícono = menos ruido visual. */}
-          <NotificationsBell bottom={156} role={view === 'commerce-settings' ? 'merchant' : 'client'} />
-          <SupportChat role={view === 'commerce-settings' ? 'merchant' : 'client'} />
-          {/* Banner para activar push del navegador. Solo aparece la 1a vez
-              (después de ~4s de entrar) y se descarta o acepta. */}
+          {/* FloatingActionsTab — solapa flotante violeta sobre el borde
+              derecho que agrupa los dos atajos del usuario en una sola
+              pill (campana de notifs + chat de soporte). Los componentes
+              NotificationsBell y SupportChat se siguen montando para que
+              sus drawers existan, pero con `hideButton` para que no
+              dupliquen botones flotantes. La interacción se delega vía
+              eventos `benefix:open-notifications` y `benefix:open-support`. */}
+          <FloatingActionsTab />
+          <NotificationsBell hideButton role={view === 'commerce-settings' ? 'merchant' : 'client'} />
+          <SupportChat hideButton role={view === 'commerce-settings' ? 'merchant' : 'client'} />
+          {/* Banner para activar push del navegador. */}
           <EnablePushPrompt />
         </>
       )}

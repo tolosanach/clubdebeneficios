@@ -35,7 +35,10 @@ export async function GET(request) {
       return NextResponse.json({ error: 'No autorizado' }, { status: 403 })
     }
 
-    // Construir query
+    // Construir query.
+    // OJO: la tabla `visits` NO tiene `created_at` (ese fue un error histórico
+    // de este endpoint que devolvía 500). Las columnas reales son `visited_at`
+    // y `scanned_at` — usamos visited_at como timestamp principal.
     let query = supabaseAdmin
       .from('visits')
       .select(`
@@ -43,18 +46,19 @@ export async function GET(request) {
         user_id,
         commerce_id,
         points_earned,
-        created_at,
+        amount_spent,
+        visited_at,
         profiles:user_id(id, full_name, name, email)
       `)
       .eq('commerce_id', commerce_id)
-      .order('created_at', { ascending: false })
+      .order('visited_at', { ascending: false })
 
     // Filtrar por fechas si se proporcionan
     if (start_date) {
-      query = query.gte('created_at', start_date)
+      query = query.gte('visited_at', start_date)
     }
     if (end_date) {
-      query = query.lte('created_at', end_date)
+      query = query.lte('visited_at', end_date)
     }
 
     query = query.limit(limit)
@@ -63,16 +67,20 @@ export async function GET(request) {
 
     if (error) throw error
 
-    // Formatear respuesta
-    const formatted = (visits || []).map(visit => ({
-      id: visit.id,
-      fecha: new Date(visit.created_at).toLocaleDateString('es-AR'),
-      hora: new Date(visit.created_at).toLocaleTimeString('es-AR'),
-      cliente: visit.profiles?.full_name || visit.profiles?.name || 'Desconocido',
-      email: visit.profiles?.email || '-',
-      puntos: visit.points_earned || 1,
-      unidad: commerce.prog_type === 'stars' ? '⭐' : '💎',
-    }))
+    // Formatear respuesta. visited_at puede venir null en filas viejas raras;
+    // fallback a string vacío en ese caso para no crashear toLocaleDateString.
+    const formatted = (visits || []).map(visit => {
+      const d = visit.visited_at ? new Date(visit.visited_at) : null
+      return {
+        id: visit.id,
+        fecha: d ? d.toLocaleDateString('es-AR') : '—',
+        hora:  d ? d.toLocaleTimeString('es-AR') : '—',
+        cliente: visit.profiles?.full_name || visit.profiles?.name || 'Desconocido',
+        email: visit.profiles?.email || '-',
+        puntos: visit.points_earned || 1,
+        unidad: commerce.prog_type === 'stars' ? '⭐' : '💎',
+      }
+    })
 
     return NextResponse.json({
       ok: true,

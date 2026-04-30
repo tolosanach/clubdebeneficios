@@ -56,6 +56,17 @@ body { background: var(--bg-primary); color: #F0EAFF; -webkit-font-smoothing: an
 }
 @keyframes float  { 0%,100%{transform:translateY(0)} 50%{transform:translateY(-5px)} }
 @keyframes spin   { to{transform:rotate(360deg)} }
+/* Bar de progreso con degradé de marca: orange→violet→orange en loop. */
+@keyframes brand-bar-flow {
+  0%, 100% { background-position: 100% 0; }
+  50%      { background-position:   0% 0; }
+}
+/* Pulse sutil para barras en violeta pleno (no canjeable todavía) — solo
+   varía el glow, el color del fill se mantiene quieto. */
+@keyframes brand-bar-pulse {
+  0%, 100% { box-shadow: 0 0 8px rgba(189,75,248,0.45), inset 0 0 6px rgba(255,255,255,0.20); }
+  50%      { box-shadow: 0 0 14px rgba(189,75,248,0.70), inset 0 0 10px rgba(255,255,255,0.32); }
+}
 @keyframes shimmer { 0%{background-position:-200% 0} 100%{background-position:200% 0} }
 
 /* Animation utilities */
@@ -138,45 +149,89 @@ button, input { font-family: inherit; }
 }
 .animate-arrow { animation: pulse-arrow 1.5s ease-in-out infinite; }
 
-/* Barra de progreso fluorescente */
+/* Barra de progreso — usa el degradé de marca (naranja → violeta → naranja
+   en bucle). El gradient de 5 stops con background-size 200% le da
+   movimiento horizontal infinito. */
 .fluorescent-bar {
   background: linear-gradient(
     90deg,
-    #9333ea 0%,
-    #c084fc 30%,
-    #e879f9 50%,
-    #c084fc 70%,
-    #9333ea 100%
+    #FE5000 0%,
+    #FE5000 15%,
+    #BD4BF8 50%,
+    #FE5000 85%,
+    #FE5000 100%
   );
   background-size: 200% 100%;
-  animation: fluorescent-flow 2s ease-in-out infinite;
+  animation: fluorescent-flow 2.4s ease-in-out infinite;
   box-shadow:
-    0 0 10px rgba(168, 85, 247, 0.5),
-    0 0 20px rgba(168, 85, 247, 0.3),
-    inset 0 0 10px rgba(255, 255, 255, 0.2);
+    0 0 10px rgba(189, 75, 248, 0.45),
+    0 0 18px rgba(254, 80, 0, 0.30),
+    inset 0 0 10px rgba(255, 255, 255, 0.22);
 }
 
 @keyframes fluorescent-flow {
   0% {
     background-position: 100% 0;
     box-shadow:
-      0 0 10px rgba(168, 85, 247, 0.5),
-      0 0 20px rgba(168, 85, 247, 0.3),
-      inset 0 0 10px rgba(255, 255, 255, 0.2);
+      0 0 10px rgba(189, 75, 248, 0.45),
+      0 0 18px rgba(254, 80, 0, 0.30),
+      inset 0 0 10px rgba(255, 255, 255, 0.22);
   }
   50% {
     background-position: 0% 0;
     box-shadow:
-      0 0 15px rgba(168, 85, 247, 0.7),
-      0 0 30px rgba(168, 85, 247, 0.4),
-      inset 0 0 15px rgba(255, 255, 255, 0.3);
+      0 0 14px rgba(189, 75, 248, 0.65),
+      0 0 26px rgba(254, 80, 0, 0.45),
+      inset 0 0 14px rgba(255, 255, 255, 0.32);
   }
   100% {
     background-position: 100% 0;
     box-shadow:
-      0 0 10px rgba(168, 85, 247, 0.5),
-      0 0 20px rgba(168, 85, 247, 0.3),
-      inset 0 0 10px rgba(255, 255, 255, 0.2);
+      0 0 10px rgba(189, 75, 248, 0.45),
+      0 0 18px rgba(254, 80, 0, 0.30),
+      inset 0 0 10px rgba(255, 255, 255, 0.22);
+  }
+}
+
+/* Variante "ready to redeem" — premio disponible para canjear. Mismo
+   degradé de marca pero más saturado y con glow pulsante más intenso
+   (orange-violet doble) para llamar la atención. */
+.fluorescent-bar.fluorescent-bar-ready {
+  background: linear-gradient(
+    90deg,
+    #FE5000 0%,
+    #FE5000 12%,
+    #BD4BF8 50%,
+    #FE5000 88%,
+    #FE5000 100%
+  );
+  background-size: 200% 100%;
+  animation: fluorescent-flow-ready 1.6s ease-in-out infinite;
+}
+@keyframes fluorescent-flow-ready {
+  0% {
+    background-position: 100% 0;
+    box-shadow:
+      0 0 14px rgba(254, 80, 0, 0.70),
+      0 0 28px rgba(189, 75, 248, 0.55),
+      0 0 44px rgba(189, 75, 248, 0.25),
+      inset 0 0 12px rgba(255, 255, 255, 0.35);
+  }
+  50% {
+    background-position: 0% 0;
+    box-shadow:
+      0 0 22px rgba(254, 80, 0, 0.90),
+      0 0 42px rgba(189, 75, 248, 0.75),
+      0 0 64px rgba(189, 75, 248, 0.35),
+      inset 0 0 18px rgba(255, 255, 255, 0.50);
+  }
+  100% {
+    background-position: 100% 0;
+    box-shadow:
+      0 0 14px rgba(254, 80, 0, 0.70),
+      0 0 28px rgba(189, 75, 248, 0.55),
+      0 0 44px rgba(189, 75, 248, 0.25),
+      inset 0 0 12px rgba(255, 255, 255, 0.35);
   }
 }
 
