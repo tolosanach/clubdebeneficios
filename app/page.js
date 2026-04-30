@@ -13,6 +13,7 @@ import SupportChat from '../lib/SupportChat'
 import NotificationsBell from '../lib/NotificationsBell'
 import FloatingActionsTab from '../lib/FloatingActionsTab'
 import EnablePushPrompt from '../lib/EnablePushPrompt'
+import MinimalSignupModal from '../lib/MinimalSignupModal'
 import SwRegister from '../lib/sw-register'
 import InfoHint from '../lib/InfoHint'
 import HelpBanner, { resetAllHelpBanners } from '../lib/HelpBanner'
@@ -2847,8 +2848,11 @@ function Navbar({ setView, cityName, user, profile, onLogin, onLogout, currentVi
   // billetera, Premios, Historial, Perfil) y el sub-nav marca Perfil como
   // activa.
   function goToAccount() {
+    // Tap en el ícono User → siempre lleva a "Mi billetera" (mis clubs).
+    // Antes iba a Perfil/Cuenta — pero la billetera es el "home" del
+    // cliente, donde tiene sus tarjetas y descubre clubes nuevos.
     window.dispatchEvent(new CustomEvent('benefix:navigate', {
-      detail: { view: 'client', tab: 'cuenta' },
+      detail: { view: 'client', tab: 'mis clubs' },
     }))
   }
 
@@ -3133,9 +3137,39 @@ function BlurText({ text, delay = 0, active }) {
 }
 
 // ─── HERO SECTION ─────────────────────────────────────────────────────────────
-function HeroSection({ setView, user, profile }) {
+function HeroSection({ setView, user, profile, onLogin }) {
   const [loaded, setLoaded] = useState(false)
   const isOwner = profile?.role === 'commerce_owner'
+
+  // ──────────────────────────────────────────────────────────────────────────
+  // Login redesign (abr 2026): los CTAs "Soy cliente" / "Soy comercio" del
+  // landing manejan dos casos:
+  //   • Usuario NO logueado → guardamos en sessionStorage el "rol" pretendido
+  //     (`benefix:signupAs`) y disparamos handleLogin(). Después del callback
+  //     OAuth, el boot flow lee ese flag y muestra MinimalSignupModal en el
+  //     modo correspondiente, en lugar del OnboardingFlow viejo de 6 pasos.
+  //   • Usuario logueado → ruteo directo a su panel (cliente o comerciante).
+  //     Si es cliente y elige "Soy comercio", abrimos el modal merchant en
+  //     línea (cross-rol) sin re-loguear.
+  // Esto reemplaza el flujo anterior donde "Soy cliente" iba a /client y
+  // "Soy comercio" iba a /register-commerce — eran dos destinos distintos
+  // que confundían a usuarios nuevos antes de identificarse.
+  function handleSignupCTA(role) {
+    if (!user) {
+      try { sessionStorage.setItem('benefix:signupAs', role) } catch {}
+      onLogin && onLogin()
+      return
+    }
+    if (role === 'client') {
+      setView(isOwner ? 'commerce-settings' : 'client')
+      return
+    }
+    // role === 'merchant'
+    if (isOwner) { setView('commerce-settings'); return }
+    // Usuario logueado pero sin negocio → abrimos modal merchant inline.
+    try { sessionStorage.setItem('benefix:signupAs', 'merchant') } catch {}
+    window.dispatchEvent(new CustomEvent('benefix:open-signup', { detail: { mode: 'merchant' } }))
+  }
 
   useEffect(() => {
     const t = setTimeout(() => setLoaded(true), 60)
@@ -3216,10 +3250,10 @@ function HeroSection({ setView, user, profile }) {
           transform: loaded ? 'translateY(0)' : 'translateY(20px)',
           transition:'opacity 0.7s ease 1.2s, transform 0.7s ease 1.2s',
         }}>
-          <Btn onClick={() => setView(user ? (isOwner ? 'commerce-settings' : 'client') : null) || (!user && profile === null && setView('client'))}>
+          <Btn onClick={() => handleSignupCTA('client')}>
             Soy cliente <ArrowRight size={16} strokeWidth={2.5} />
           </Btn>
-          <Btn variant="ghost" onClick={() => setView(isOwner ? 'commerce-settings' : 'register-commerce')}>
+          <Btn variant="ghost" onClick={() => handleSignupCTA('merchant')}>
             {isOwner ? 'Mi panel' : 'Soy comercio'} <ArrowRight size={16} strokeWidth={2.5} />
           </Btn>
         </div>
@@ -3936,11 +3970,11 @@ function SectionDivider() {
 }
 
 // ─── HOME ─────────────────────────────────────────────────────────────────────
-function HomeView({ setView, user, profile }) {
+function HomeView({ setView, user, profile, onLogin }) {
   return (
     <div>
       {/* ── HERO ── */}
-      <HeroSection setView={setView} user={user} profile={profile} />
+      <HeroSection setView={setView} user={user} profile={profile} onLogin={onLogin} />
 
       <SectionDivider />
 
@@ -7357,7 +7391,7 @@ function ClientView({ setView, user, profile, onLogout, initialTab }) {
                   <div style={{ fontSize:12, color:'rgba(255,255,255,0.65)', lineHeight:1.5, marginBottom:12 }}>
                     Registralo y empezá a fidelizar tus clientes. Es la misma cuenta — seguís siendo cliente también.
                   </div>
-                  <button onClick={() => setView('register-commerce')}
+                  <button onClick={() => window.dispatchEvent(new CustomEvent('benefix:open-signup', { detail: { mode: 'merchant' } }))}
                     style={{
                       display:'inline-flex', alignItems:'center', gap:6,
                       background:G, border:'none', borderRadius:10,
@@ -7465,7 +7499,7 @@ function ClientView({ setView, user, profile, onLogout, initialTab }) {
                   <div style={{ fontSize:12, color:'rgba(255,255,255,0.65)', lineHeight:1.5, marginBottom:12 }}>
                     Registralo y empezá a fidelizar tus clientes. Es la misma cuenta — seguís siendo cliente también.
                   </div>
-                  <button onClick={() => setView('register-commerce')}
+                  <button onClick={() => window.dispatchEvent(new CustomEvent('benefix:open-signup', { detail: { mode: 'merchant' } }))}
                     style={{
                       display:'inline-flex', alignItems:'center', gap:6,
                       background:G, border:'none', borderRadius:10,
@@ -8068,13 +8102,24 @@ function RegisterCommerceView({ setView, user, onProfileRefresh, onLoginRequired
                 </div>
                 <div style={{ fontSize:14, color:C.mist, marginBottom:16, lineHeight:1.5 }}>Buscá tu rubro o explorá por categoría</div>
 
-                {/* Search */}
-                <div style={{ position:'relative', marginBottom:16 }}>
+                {/* Search — funciona como input libre. Si no hay match en la
+                    lista, igual podés quedarte con lo que escribiste. */}
+                <div style={{ position:'relative', marginBottom:6 }}>
                   <Search size={15} color='rgba(255,255,255,0.35)' style={{ position:'absolute', left:14, top:'50%', transform:'translateY(-50%)', pointerEvents:'none' }} />
                   <input
                     value={catSearch}
                     onChange={e => { setCatSearch(e.target.value); if (e.target.value) setCatFamily(null) }}
-                    placeholder="Buscá tu rubro..."
+                    onKeyDown={e => {
+                      if (e.key === 'Enter') {
+                        const term = catSearch.trim()
+                        if (!term) return
+                        e.preventDefault()
+                        setForm(f => ({ ...f, category: '__otro__', customCategory: term }))
+                        setCatFamily('otro')
+                        setCatSearch('')
+                      }
+                    }}
+                    placeholder="Escribí tu rubro (ej: ropa, café, peluquería)"
                     style={{ width:'100%', padding:'12px 36px 12px 38px', background:'rgba(255,255,255,0.06)', border:'1px solid rgba(255,255,255,0.12)', borderRadius:12, color:C.white, fontSize:14, fontFamily:FI, boxSizing:'border-box' }}
                   />
                   {catSearch && (
@@ -8083,47 +8128,55 @@ function RegisterCommerceView({ setView, user, onProfileRefresh, onLoginRequired
                     </button>
                   )}
                 </div>
+                <div style={{ fontSize:11, color:'rgba(255,255,255,0.38)', marginBottom:14, lineHeight:1.5 }}>
+                  Si tu rubro no aparece en la lista, escribilo y dale Enter — está OK usar el tuyo.
+                </div>
 
                 {/* Search results */}
-                {catSearch.trim() && (
-                  <div style={{ marginBottom:16 }}>
-                    {searchResults.length > 0 ? (
-                      <div style={{ display:'flex', flexDirection:'column', gap:6 }}>
-                        {searchResults.map(({ fam, sub }) => {
-                          const sel = form.category === sub.name
-                          return (
-                            <button key={`${fam.id}-${sub.name}`}
-                              onClick={() => { setForm(f => ({ ...f, category: sub.name, customCategory:'' })); setCatSearch(''); setCatFamily(fam.id) }}
-                              style={{ display:'flex', alignItems:'center', gap:12, padding:'11px 14px', background: sel ? `${C.v}22` : 'rgba(255,255,255,0.04)', border:`1.5px solid ${sel ? C.v : 'rgba(255,255,255,0.10)'}`, borderRadius:12, cursor:'pointer', textAlign:'left' }}>
-                              <sub.Icon size={18} color={sel ? C.v : 'rgba(255,255,255,0.55)'} strokeWidth={1.5} />
-                              <span style={{ fontSize:14, fontWeight:600, color: sel ? C.white : 'rgba(255,255,255,0.85)', flex:1 }}>{sub.name}</span>
-                              <span style={{ fontSize:11, color:C.dust }}>{fam.name}</span>
-                            </button>
-                          )
-                        })}
-                      </div>
-                    ) : (
-                      <div style={{ textAlign:'center', padding:'18px 0 8px', color:C.mist, fontSize:13, lineHeight:1.6 }}>
-                        <div style={{ marginBottom:14 }}>No encontramos ese rubro en la lista.</div>
+                {catSearch.trim() && (() => {
+                  const term = catSearch.trim()
+                  const exactMatch = searchResults.some(({ sub }) => sub.name.toLowerCase() === term.toLowerCase())
+                  return (
+                    <div style={{ marginBottom:16, display:'flex', flexDirection:'column', gap:6 }}>
+                      {!exactMatch && (
                         <button
                           onClick={() => {
-                            const term = catSearch.trim()
                             setForm(f => ({ ...f, category: '__otro__', customCategory: term }))
                             setCatFamily('otro')
                             setCatSearch('')
                           }}
                           style={{
-                            display:'inline-flex', alignItems:'center', gap:8,
-                            padding:'12px 20px', background:G, border:'none', borderRadius:12,
+                            display:'flex', alignItems:'center', gap:10,
+                            padding:'11px 14px',
+                            background: 'rgba(189,75,248,0.18)',
+                            border: '1.5px solid rgba(189,75,248,0.45)',
+                            borderRadius:12, cursor:'pointer', textAlign:'left',
                             color:'#fff', fontFamily:FN, fontSize:13, fontWeight:700,
-                            cursor:'pointer', boxShadow:'0 4px 16px rgba(189,75,248,0.30)',
                           }}>
-                          Usar "<strong>{catSearch.trim()}</strong>" como mi rubro
+                          <span style={{ color:C.v, fontSize:14 }}>✦</span>
+                          Usar "<span style={{ fontWeight:800 }}>{term}</span>" como mi rubro
                         </button>
-                      </div>
-                    )}
-                  </div>
-                )}
+                      )}
+                      {searchResults.length === 0 && !exactMatch && (
+                        <div style={{ fontSize:11, color:'rgba(255,255,255,0.40)', textAlign:'center', padding:'4px 0' }}>
+                          Sin coincidencias en nuestra lista. Usá tu texto.
+                        </div>
+                      )}
+                      {searchResults.map(({ fam, sub }) => {
+                        const sel = form.category === sub.name
+                        return (
+                          <button key={`${fam.id}-${sub.name}`}
+                            onClick={() => { setForm(f => ({ ...f, category: sub.name, customCategory:'' })); setCatSearch(''); setCatFamily(fam.id) }}
+                            style={{ display:'flex', alignItems:'center', gap:12, padding:'11px 14px', background: sel ? `${C.v}22` : 'rgba(255,255,255,0.04)', border:`1.5px solid ${sel ? C.v : 'rgba(255,255,255,0.10)'}`, borderRadius:12, cursor:'pointer', textAlign:'left' }}>
+                            <sub.Icon size={18} color={sel ? C.v : 'rgba(255,255,255,0.55)'} strokeWidth={1.5} />
+                            <span style={{ fontSize:14, fontWeight:600, color: sel ? C.white : 'rgba(255,255,255,0.85)', flex:1 }}>{sub.name}</span>
+                            <span style={{ fontSize:11, color:C.dust }}>{fam.name}</span>
+                          </button>
+                        )
+                      })}
+                    </div>
+                  )
+                })()}
 
                 {/* Family grid */}
                 {!catSearch.trim() && !catFamily && (
@@ -10599,17 +10652,36 @@ function CommerceSettingsView({ user, profile, setView, onLogout, onOwnerProfile
     setUploadingLogo(false)
   }
 
-  async function uploadCover(file) {
+  async function uploadCover(file, slotIdx = 0) {
     if (!file || !commerce) return
     setUploadingCover(true)
     const ext = file.name.split('.').pop()
-    const path = `${commerce.id}/cover.${ext}`
+    // Path único por slot: cover-0, cover-1, ..., cover-4. Permite que
+    // el dueño tenga hasta 5 portadas distintas en storage. upsert:true
+    // sobreescribe si ya había una en ese slot (cambiar foto).
+    const path = `${commerce.id}/cover-${slotIdx}.${ext}`
     const { error } = await supabase.storage.from('commerce-images').upload(path, file, { upsert: true })
     if (!error) {
       const { data } = supabase.storage.from('commerce-images').getPublicUrl(path)
-      set('cover_image', data.publicUrl)
+      // Insertar la URL en la posición slotIdx del array form.cover_images.
+      // Si el array todavía no existe o es más corto, lo extendemos.
+      const current = Array.isArray(form.cover_images) ? [...form.cover_images] : []
+      current[slotIdx] = data.publicUrl
+      // Limpiar nulls/undefined que pudieran haber quedado entre slots.
+      const cleaned = current.filter(u => typeof u === 'string' && u.trim())
+      set('cover_images', cleaned)
+      // Espejo legacy: cover_image siempre es la primera del array.
+      set('cover_image', cleaned[0] || '')
     }
     setUploadingCover(false)
+  }
+  // Helper para sacar una portada del array (sin tocar el storage —
+  // queda el archivo huérfano pero no aparece en el perfil público).
+  function removeCover(slotIdx) {
+    const current = Array.isArray(form.cover_images) ? [...form.cover_images] : []
+    current.splice(slotIdx, 1)
+    set('cover_images', current)
+    set('cover_image', current[0] || '')
   }
 
   // savePrize — crea o actualiza según editingPrizeId.
@@ -11230,30 +11302,45 @@ function CommerceSettingsView({ user, profile, setView, onLogout, onOwnerProfile
             zIndex: 199,
             width: 86, height: 50,
             borderRadius: '50px 50px 0 0',
+            // Glass blanco translúcido — fondo lechoso con backdrop blur
+            // para que se vea lo de atrás filtrado. Cuando está abierto
+            // queda apenas más opaco para feedback. La rueda violeta
+            // contrasta sobre el blanco.
             background: radialOpen
-              ? 'rgba(40,18,62,0.92)'
-              : 'linear-gradient(180deg, rgba(40,18,62,0.65) 0%, rgba(20,8,40,0.88) 100%)',
+              ? 'rgba(255,255,255,0.95)'
+              : 'linear-gradient(180deg, rgba(255,255,255,0.78) 0%, rgba(255,255,255,0.92) 100%)',
             backdropFilter: 'blur(28px) saturate(180%)',
             WebkitBackdropFilter: 'blur(28px) saturate(180%)',
-            border: '1px solid rgba(216,180,254,0.50)',
+            borderTop:    '1px solid rgba(255,255,255,0.85)',
+            borderLeft:   '1px solid rgba(255,255,255,0.85)',
+            borderRight:  '1px solid rgba(255,255,255,0.85)',
             borderBottom: 'none',
-            color: '#fff',
+            color: '#BD4BF8',
             cursor: 'pointer',
             display: 'flex', alignItems: 'center', justifyContent: 'center',
             padding: 0,
             paddingTop: 6,
             boxShadow: radialOpen
-              ? '0 -6px 24px rgba(189,75,248,0.55)'
-              : '0 -4px 18px rgba(189,75,248,0.40)',
+              ? '0 -6px 24px rgba(189,75,248,0.45), inset 0 1px 0 rgba(255,255,255,0.95)'
+              : '0 -4px 18px rgba(189,75,248,0.30), inset 0 1px 0 rgba(255,255,255,0.95)',
             transition: 'transform 320ms cubic-bezier(0.34,1.56,0.64,1), background 220ms ease, box-shadow 220ms ease',
-            // Animación de hint cuando todavía no fue tappeado nunca: pulso
-            // sutil para que el dueño descubra que hay un menú acá.
-            animation: railTabHandSeen ? 'none' : 'radial-cog-pulse 2.4s ease-in-out infinite',
+            // Animación combinada:
+            //  • Antes de la primera interacción → pulso violeta más fuerte
+            //    como hint para que el dueño descubra el menú.
+            //  • Después → "heartbeat" cada ~6s: dos golpecitos suaves
+            //    seguidos de un descanso largo. Es lo suficientemente
+            //    discreto para no marear, pero recuerda al user que ahí
+            //    hay un control vivo.
+            animation: radialOpen
+              ? 'none'
+              : (railTabHandSeen
+                  ? 'radial-cog-heartbeat 6s ease-in-out infinite'
+                  : 'radial-cog-pulse 2.4s ease-in-out infinite'),
           }}
         >
           {radialOpen
-            ? <X size={22} strokeWidth={2.6} />
-            : <Settings size={22} strokeWidth={2.2} />
+            ? <X size={22} strokeWidth={2.8} color="#BD4BF8" />
+            : <Settings size={22} strokeWidth={2.4} color="#BD4BF8" />
           }
         </button>
 
@@ -11268,6 +11355,27 @@ function CommerceSettingsView({ user, profile, setView, onLogout, onOwnerProfile
             }
             50% {
               box-shadow: 0 -4px 22px rgba(189,75,248,0.65), 0 0 0 14px rgba(189,75,248,0);
+            }
+          }
+          /* Heartbeat: dos thumps cortos al inicio del ciclo (0–24%) y
+             después descanso largo. Total 6s. La idea es que cada tanto el
+             cog "respira" como un corazón sin ser molesto. */
+          @keyframes radial-cog-heartbeat {
+            0%, 24%, 100% {
+              transform: translateX(-50%) scale(1);
+              box-shadow: 0 -4px 18px rgba(189,75,248,0.30), inset 0 1px 0 rgba(255,255,255,0.95);
+            }
+            6% {
+              transform: translateX(-50%) scale(1.08);
+              box-shadow: 0 -6px 22px rgba(189,75,248,0.55), 0 0 0 8px rgba(189,75,248,0.20), inset 0 1px 0 rgba(255,255,255,0.95);
+            }
+            12% {
+              transform: translateX(-50%) scale(1);
+              box-shadow: 0 -4px 18px rgba(189,75,248,0.30), inset 0 1px 0 rgba(255,255,255,0.95);
+            }
+            18% {
+              transform: translateX(-50%) scale(1.05);
+              box-shadow: 0 -6px 22px rgba(189,75,248,0.50), 0 0 0 6px rgba(189,75,248,0.15), inset 0 1px 0 rgba(255,255,255,0.95);
             }
           }
         `}</style>
@@ -11866,11 +11974,13 @@ function CommerceSettingsView({ user, profile, setView, onLogout, onOwnerProfile
       },
       {
         id: 'cover',
-        title: 'Portada',
-        description: 'Una foto que muestre tu local o productos.',
+        title: 'Fotos de portada',
+        description: 'Hasta 5 fotos que muestren tu local o productos.',
         Icon: Camera,
-        done: !!commerce.cover_image,
-        thumb: commerce.cover_image,
+        // Done si tiene al menos 1 foto en cualquiera de las dos columnas
+        // (cover_images array nuevo o cover_image legacy).
+        done: !!(commerce.cover_image || (Array.isArray(commerce.cover_images) && commerce.cover_images.length > 0)),
+        thumb: (Array.isArray(commerce.cover_images) && commerce.cover_images[0]) || commerce.cover_image,
         goTo: 'configuracion',
         section: 'basica',
       },
@@ -15483,29 +15593,34 @@ function CommerceSettingsView({ user, profile, setView, onLogout, onOwnerProfile
           // Helper para acordeón: por default todas las secciones colapsadas,
           // al abrir una se cierra la anterior automáticamente (un único id
           // abierto a la vez en expandedConfigSection).
-          const ConfigAccordion = ({ id, Icon: AIcon, label, children }) => {
+          const ConfigAccordion = ({ id, Icon: AIcon, label, children, hideSave }) => {
             const isOpen = expandedConfigSection === id
-            // Cuando el dueño abre un accordion, el del que estaba abierto
-            // antes se cierra — eso reduce la altura de la página y mueve
-            // el accordion clickeado hacia arriba (a veces fuera de la
-            // pantalla). Para que el TÍTULO (con su flechita) quede en el
-            // MISMO lugar visual y el contenido se despliegue hacia abajo,
-            // hacemos scroll-into-view del header del accordion clickeado
-            // justo después de abrirlo. Pequeño setTimeout(60) le da
-            // tiempo a React para hacer el reflow.
+            // Anti-jump del header al togglear. Cuando se abre un accordion,
+            // el que estaba abierto antes se cierra y eso desplaza vertical-
+            // mente al header clickeado (puede saltar varios cm). El scroll-
+            // IntoView previo lo "recolocaba" arriba con smooth scroll, pero
+            // se sentía como que el título se movía solo. El fix: medimos el
+            // top del botón ANTES y DESPUÉS del cambio de state, y scrolleamos
+            // por el delta exacto para que el título quede VISUALMENTE en el
+            // mismo lugar de la pantalla donde el dueño lo tocó. Sin smooth
+            // scroll: queremos que el cambio sea imperceptible.
             const handleToggle = (e) => {
               const next = isOpen ? null : id
+              const btn = e.currentTarget
+              const beforeTop = btn.getBoundingClientRect().top
               setExpandedConfigSection(next)
-              if (next) {
-                // Solo scrolleamos cuando se abre (no cuando se cierra).
-                // Capturamos el botón del header desde el currentTarget.
-                const btn = e.currentTarget
-                setTimeout(() => {
-                  if (btn?.scrollIntoView) {
-                    btn.scrollIntoView({ behavior: 'smooth', block: 'start' })
+              // Dos rAFs porque React tiene que aplicar el state, luego el
+              // browser tiene que hacer el layout, y recién ahí podemos
+              // medir el nuevo top del header.
+              requestAnimationFrame(() => {
+                requestAnimationFrame(() => {
+                  const afterTop = btn.getBoundingClientRect().top
+                  const delta    = afterTop - beforeTop
+                  if (Math.abs(delta) > 1) {
+                    window.scrollBy({ top: delta, left: 0, behavior: 'auto' })
                   }
-                }, 60)
-              }
+                })
+              })
             }
             return (
               <div data-config-section={id} style={{ marginBottom:10, borderRadius:14, overflow:'hidden', background:C.card, border:`1px solid ${isOpen ? `${C.v}55` : C.rim}`, transition:'border-color .2s ease' }}>
@@ -15517,22 +15632,98 @@ function CommerceSettingsView({ user, profile, setView, onLogout, onOwnerProfile
                     style={{ transition:'transform .2s ease', transform: isOpen ? 'rotate(180deg)' : 'none', flexShrink:0 }} />
                 </button>
                 {isOpen && (
-                  <div style={{ padding:'4px 20px 20px', borderTop:`1px solid ${C.rim}` }}>
+                  <div data-config-section-body style={{ padding:'4px 20px 20px', borderTop:`1px solid ${C.rim}` }}>
                     {children}
+                    {!hideSave && (
+                      // Botón "Guardar cambios" inline al pie del bloque
+                      // expandido. Antes vivía solo como sticky bar al pie
+                      // de la pantalla, lo que obligaba al dueño a
+                      // scrollear hasta abajo después de editar. Ahora cada
+                      // celda tiene su propio guardar al final, en contexto.
+                      // Todas las celdas escriben en el mismo `form` y
+                      // disparan el mismo `saveConfiguracion()`, así que
+                      // este botón sirve para confirmar el bloque actual y
+                      // todo lo que esté pendiente.
+                      <div style={{
+                        marginTop: 16,
+                        paddingTop: 14,
+                        borderTop: `1px dashed ${C.rim}`,
+                        display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 10,
+                      }}>
+                        <div style={{ fontSize: 11, color: saved ? C.ok : isDirty ? C.mist : C.dust, lineHeight: 1.4 }}>
+                          {saved ? '✓ Cambios guardados' : isDirty ? 'Cambios sin guardar' : 'Sin cambios pendientes'}
+                        </div>
+                        <button onClick={saveConfiguracion} disabled={saving || !isDirty}
+                          style={{
+                            padding: '10px 18px', borderRadius: 12,
+                            background: (saving || !isDirty)
+                              ? 'rgba(255,255,255,0.06)'
+                              : G,
+                            border: (saving || !isDirty) ? '1px solid rgba(255,255,255,0.10)' : 'none',
+                            color: (saving || !isDirty) ? 'rgba(255,255,255,0.45)' : '#fff',
+                            fontFamily: FN, fontSize: 13, fontWeight: 700,
+                            cursor: (saving || !isDirty) ? 'default' : 'pointer',
+                            boxShadow: (saving || !isDirty) ? 'none' : '0 6px 18px rgba(189,75,248,0.40)',
+                            transition: 'background 180ms ease, color 180ms ease, box-shadow 180ms ease',
+                            whiteSpace: 'nowrap',
+                          }}>
+                          {saving ? '⟳ Guardando...' : 'Guardar cambios'}
+                        </button>
+                      </div>
+                    )}
                   </div>
                 )}
               </div>
             )
           }
-          const iStyle = (hasErr) => ({
+          // iStyle(hasErr, isEmpty) — el segundo argumento es opcional. Cuando
+          // es true, agregamos un glow violeta sutil que indica visualmente
+          // "este campo te falta llenarlo". Apenas el dueño escribe algo, el
+          // hint desaparece. No usamos animación: el glow estático ya destaca
+          // sin marear.
+          const iStyle = (hasErr, isEmpty = false) => ({
             background:'rgba(0,0,0,0.30)', backdropFilter:'blur(12px)', WebkitBackdropFilter:'blur(12px)',
-            border:`1px solid ${hasErr ? '#f87171' : C.rim}`,
+            border:`1px solid ${hasErr ? '#f87171' : (isEmpty ? 'rgba(189,75,248,0.45)' : C.rim)}`,
             borderRadius:10, padding:'10px 13px', fontSize:13, color:C.pearl,
             width:'100%', fontFamily:FI, boxSizing:'border-box',
+            boxShadow: hasErr
+              ? 'none'
+              : (isEmpty
+                  ? '0 0 0 1px rgba(189,75,248,0.18), 0 0 18px rgba(189,75,248,0.22)'
+                  : 'none'),
+            transition: 'border-color 180ms ease, box-shadow 220ms ease',
           })
 
           return (
             <div style={{ paddingBottom:72 }}>
+              {/* Divisores tipo "celda": cada hijo directo del body del
+                  accordion expandido (es decir cada bloque de campo) lleva
+                  una línea inferior sutil que separa visualmente los
+                  campos. El último campo no la lleva. Aplicado sólo a las
+                  celdas dentro de [data-config-section-body] para no
+                  ensuciar otros lugares. */}
+              <style>{`
+                [data-config-section-body] > div + div {
+                  border-top: 1px solid rgba(255,255,255,0.05);
+                  margin-top: 14px;
+                  padding-top: 14px;
+                }
+                /* Provincia + Localidad en una grilla de 2 con divisor
+                   vertical entre ambas. Los marcamos con la clase
+                   .cfg-cell-pair en el JSX de Ubicación. */
+                .cfg-cell-pair {
+                  display: grid;
+                  grid-template-columns: 1fr 1fr;
+                  gap: 0;
+                }
+                .cfg-cell-pair > div + div {
+                  border-left: 1px solid rgba(255,255,255,0.05);
+                  padding-left: 14px;
+                }
+                .cfg-cell-pair > div:first-child {
+                  padding-right: 14px;
+                }
+              `}</style>
 
               <HelpBanner
                 id="merchant-configuracion"
@@ -15596,29 +15787,69 @@ function CommerceSettingsView({ user, profile, setView, onLogout, onOwnerProfile
                   )}
                 </div>
 
-                {/* Cover image */}
-                <div style={{ marginBottom:16 }}>
-                  <FieldLabel optional>Foto de portada</FieldLabel>
-                  <input type="file" accept="image/*" id="cover-input" style={{ display:'none' }}
-                    onChange={e => { if (e.target.files[0]) uploadCover(e.target.files[0]); e.target.value='' }} />
-                  {form.cover_image ? (
-                    <div style={{ position:'relative', borderRadius:12, overflow:'hidden' }}>
-                      <img src={form.cover_image} alt="" style={{ width:'100%', height:96, objectFit:'cover', display:'block' }} />
-                      <div style={{ position:'absolute', bottom:0, left:0, right:0, display:'flex', gap:6, padding:8, background:'linear-gradient(to top,rgba(0,0,0,.7),transparent)' }}>
-                        <label htmlFor="cover-input" style={{ display:'inline-flex', alignItems:'center', gap:5, fontSize:11, color:C.pearl, background:'rgba(0,0,0,.5)', borderRadius:6, padding:'4px 10px', cursor:'pointer', border:'1px solid rgba(255,255,255,.2)' }}>
-                          <Upload size={11} strokeWidth={2} />
-                          {uploadingCover ? 'Subiendo...' : 'Cambiar portada'}
-                        </label>
-                        <button onClick={() => set('cover_image','')} style={{ background:'rgba(0,0,0,.5)', border:'1px solid rgba(255,255,255,.2)', borderRadius:6, padding:'4px 10px', color:C.dust, fontSize:11, cursor:'pointer' }}>Quitar</button>
+                {/* Fotos de portada — hasta 5 ──
+                    El dueño puede subir varias imágenes. En el perfil
+                    público se muestran como un slideshow con fade
+                    automático cada 4.5s. Tap en cualquiera abre lightbox. */}
+                {(() => {
+                  const MAX_COVERS = 5
+                  const covers = Array.isArray(form.cover_images) ? form.cover_images : (form.cover_image ? [form.cover_image] : [])
+                  const filled  = covers.filter(u => typeof u === 'string' && u.trim())
+                  const slots   = [...filled, ...Array(Math.max(0, MAX_COVERS - filled.length)).fill(null)]
+                  return (
+                    <div style={{ marginBottom:16 }}>
+                      <FieldLabel optional>Fotos de portada</FieldLabel>
+                      <div style={{ fontSize:11, color:C.dust, marginBottom:10 }}>
+                        Hasta {MAX_COVERS} fotos. Se muestran como slideshow en tu perfil público.
+                        {filled.length > 0 && ` (${filled.length}/${MAX_COVERS})`}
+                      </div>
+                      {/* Grid de 5 slots cuadrados */}
+                      <div style={{ display:'grid', gridTemplateColumns:'repeat(auto-fill, minmax(96px, 1fr))', gap:8 }}>
+                        {slots.map((url, idx) => {
+                          const inputId = `cover-input-${idx}`
+                          return (
+                            <div key={idx} style={{ position:'relative', aspectRatio:'1', borderRadius:12, overflow:'hidden', background: url ? 'transparent' : C.bg3, border: url ? '1px solid rgba(255,255,255,0.10)' : `1px dashed ${C.rim}` }}>
+                              <input type="file" accept="image/*" id={inputId} style={{ display:'none' }}
+                                onChange={e => { if (e.target.files[0]) uploadCover(e.target.files[0], idx); e.target.value='' }} />
+                              {url ? (
+                                <>
+                                  <img src={url} alt="" style={{ width:'100%', height:'100%', objectFit:'cover', display:'block' }} />
+                                  {/* Badge "principal" en la primera */}
+                                  {idx === 0 && (
+                                    <span style={{ position:'absolute', top:6, left:6, fontSize:9, fontWeight:800, color:'#fff', background:'rgba(189,75,248,0.85)', borderRadius:99, padding:'2px 7px', letterSpacing:'.04em', textTransform:'uppercase' }}>
+                                      Principal
+                                    </span>
+                                  )}
+                                  {/* Botones cambiar / quitar al pie */}
+                                  <div style={{ position:'absolute', bottom:0, left:0, right:0, display:'flex', gap:4, padding:4, background:'linear-gradient(to top,rgba(0,0,0,.85),transparent)' }}>
+                                    <label htmlFor={inputId} title="Cambiar foto" style={{ flex:1, display:'inline-flex', alignItems:'center', justifyContent:'center', fontSize:10, color:'#fff', background:'rgba(0,0,0,.55)', borderRadius:5, padding:'4px', cursor:'pointer', border:'1px solid rgba(255,255,255,.2)' }}>
+                                      <Upload size={11} strokeWidth={2.2} />
+                                    </label>
+                                    <button onClick={() => removeCover(idx)} title="Quitar foto" style={{ display:'inline-flex', alignItems:'center', justifyContent:'center', background:'rgba(0,0,0,.55)', border:'1px solid rgba(255,255,255,.2)', borderRadius:5, padding:'4px 8px', color:'#fff', cursor:'pointer' }}>
+                                      <Trash2 size={11} strokeWidth={2.2} />
+                                    </button>
+                                  </div>
+                                </>
+                              ) : idx === filled.length ? (
+                                /* Slot "siguiente disponible" — único activo. Los slots
+                                    posteriores quedan grises pero deshabilitados para
+                                    evitar huecos en el array. */
+                                <label htmlFor={inputId} style={{ position:'absolute', inset:0, display:'flex', flexDirection:'column', alignItems:'center', justifyContent:'center', gap:4, fontSize:11, color: uploadingCover ? C.pearl : C.mist, cursor:'pointer', textAlign:'center', padding:6 }}>
+                                  <Upload size={18} strokeWidth={1.8} />
+                                  <span style={{ fontFamily:FN, fontWeight:700, lineHeight:1.2 }}>{uploadingCover ? 'Subiendo...' : 'Sumar foto'}</span>
+                                </label>
+                              ) : (
+                                <div style={{ position:'absolute', inset:0, display:'flex', alignItems:'center', justifyContent:'center', color:'rgba(255,255,255,0.20)' }}>
+                                  <span style={{ fontSize:24, fontWeight:300 }}>+</span>
+                                </div>
+                              )}
+                            </div>
+                          )
+                        })}
                       </div>
                     </div>
-                  ) : (
-                    <label htmlFor="cover-input" style={{ display:'flex', alignItems:'center', justifyContent:'center', gap:8, background:C.bg3, border:`1px dashed ${C.rim}`, borderRadius:10, padding:'14px', fontSize:12, color:uploadingCover?C.pearl:C.mist, cursor:'pointer' }}>
-                      <Upload size={14} strokeWidth={2} />
-                      {uploadingCover ? 'Subiendo...' : 'Foto de portada (visible en tu perfil público)'}
-                    </label>
-                  )}
-                </div>
+                  )
+                })()}
 
                 {/* Color de tarjeta */}
                 {(() => {
@@ -15678,7 +15909,8 @@ function CommerceSettingsView({ user, profile, setView, onLogout, onOwnerProfile
                   <input value={form.name||''} maxLength={50}
                     onChange={e => { set('name', e.target.value); setConfigErrors(er => ({ ...er, name:'' })) }}
                     placeholder="Ej: Café El Encuentro"
-                    style={iStyle(configErrors.name)} />
+                    aria-required="true"
+                    style={iStyle(configErrors.name, !(form.name||'').trim())} />
                   <div style={{ display:'flex', justifyContent:'space-between', marginTop:3, alignItems:'flex-start' }}>
                     <FieldError field="name" />
                     <span style={{ fontSize:10, color:C.dust, marginLeft:'auto' }}>{(form.name||'').length}/50</span>
@@ -15689,7 +15921,7 @@ function CommerceSettingsView({ user, profile, setView, onLogout, onOwnerProfile
                 <div style={{ marginBottom:14 }}>
                   <FieldLabel required>Categoría</FieldLabel>
                   <select value={form.category||''} onChange={e => { set('category', e.target.value); setConfigErrors(er => ({ ...er, category:'' })) }}
-                    style={{ ...iStyle(configErrors.category), appearance:'none', cursor:'pointer' }}>
+                    style={{ ...iStyle(configErrors.category, !(form.category||'').trim()), appearance:'none', cursor:'pointer' }}>
                     <option value="">Seleccioná una categoría...</option>
                     {COMMERCE_FAMILIES.filter(f => f.subs.length > 0).map(fam => (
                       <optgroup key={fam.id} label={fam.name} style={{ background:'#0D0818', color:C.dust }}>
@@ -15717,7 +15949,7 @@ function CommerceSettingsView({ user, profile, setView, onLogout, onOwnerProfile
                   <textarea value={form.description||''} maxLength={200}
                     onChange={e => set('description', e.target.value)}
                     placeholder="Contá qué hace especial a tu negocio..."
-                    style={{ ...iStyle(false), minHeight:72, resize:'vertical' }} />
+                    style={{ ...iStyle(false, !(form.description||'').trim()), minHeight:72, resize:'vertical' }} />
                   <div style={{ display:'flex', justifyContent:'flex-end', marginTop:3 }}>
                     <span style={{ fontSize:10, color:C.dust }}>{(form.description||'').length}/200</span>
                   </div>
@@ -15749,7 +15981,7 @@ function CommerceSettingsView({ user, profile, setView, onLogout, onOwnerProfile
                     <input value={(form.instagram||'').replace(/^@/,'')}
                       onChange={e => set('instagram', e.target.value.replace(/^@/,''))}
                       placeholder="tunegocio"
-                      style={{ ...iStyle(false), paddingLeft:28 }} />
+                      style={{ ...iStyle(false, !(form.instagram||'').trim()), paddingLeft:28 }} />
                   </div>
                 </div>
 
@@ -15758,40 +15990,43 @@ function CommerceSettingsView({ user, profile, setView, onLogout, onOwnerProfile
                   <input value={form.facebook||''}
                     onChange={e => set('facebook', e.target.value)}
                     placeholder="facebook.com/tunegocio"
-                    style={iStyle(false)} />
+                    style={iStyle(false, !(form.facebook||'').trim())} />
                 </div>
               </ConfigAccordion>
 
               {/* ── UBICACIÓN ── */}
               <ConfigAccordion id="ubicacion" Icon={MapPin} label="Ubicación">
 
-                <div style={{ marginBottom:14 }}>
-                  <FieldLabel optional>Provincia</FieldLabel>
-                  <select value={form.province||'La Pampa'} onChange={e => { set('province', e.target.value); set('city_name', '') }}
-                    style={{ ...iStyle(false), appearance:'none', cursor:'pointer' }}>
-                    {Object.keys(ARGENTINA_PROVINCES).sort().map(prov => (
-                      <option key={prov} value={prov}>{prov}</option>
-                    ))}
-                  </select>
-                </div>
-
-                <div style={{ marginBottom:14 }}>
-                  <FieldLabel optional>Localidad</FieldLabel>
-                  <select value={form.city_name||''} onChange={e => { set('city_name', e.target.value); setConfigErrors(er => ({ ...er, city_name:'' })) }}
-                    style={{ ...iStyle(configErrors.city_name), appearance:'none', cursor:'pointer' }}>
-                    <option value="">Seleccionar localidad...</option>
-                    {(ARGENTINA_PROVINCES[form.province||'La Pampa'] || []).map(loc => (
-                      <option key={loc} value={loc}>{loc}</option>
-                    ))}
-                  </select>
-                  <FieldError field="city_name" />
+                {/* Provincia + Localidad lado a lado formando dos celdas
+                    con un divisor vertical entre ellas. */}
+                <div className="cfg-cell-pair">
+                  <div>
+                    <FieldLabel optional>Provincia</FieldLabel>
+                    <select value={form.province||'La Pampa'} onChange={e => { set('province', e.target.value); set('city_name', '') }}
+                      style={{ ...iStyle(false), appearance:'none', cursor:'pointer' }}>
+                      {Object.keys(ARGENTINA_PROVINCES).sort().map(prov => (
+                        <option key={prov} value={prov}>{prov}</option>
+                      ))}
+                    </select>
+                  </div>
+                  <div>
+                    <FieldLabel optional>Localidad</FieldLabel>
+                    <select value={form.city_name||''} onChange={e => { set('city_name', e.target.value); setConfigErrors(er => ({ ...er, city_name:'' })) }}
+                      style={{ ...iStyle(configErrors.city_name, !(form.city_name||'').trim()), appearance:'none', cursor:'pointer' }}>
+                      <option value="">Seleccionar localidad...</option>
+                      {(ARGENTINA_PROVINCES[form.province||'La Pampa'] || []).map(loc => (
+                        <option key={loc} value={loc}>{loc}</option>
+                      ))}
+                    </select>
+                    <FieldError field="city_name" />
+                  </div>
                 </div>
 
                 <div style={{ marginBottom:8 }}>
                   <FieldLabel optional>Dirección</FieldLabel>
                   <input value={form.address||''} onChange={e => set('address', e.target.value)}
                     placeholder="Ej: Av. San Martín 450"
-                    style={iStyle(false)} />
+                    style={iStyle(false, !(form.address||'').trim())} />
                 </div>
                 <div style={{ fontSize:11, color:C.dust, display:'flex', alignItems:'center', gap:5 }}>
                   <MapPin size={11} strokeWidth={2} />
@@ -15835,16 +16070,10 @@ function CommerceSettingsView({ user, profile, setView, onLogout, onOwnerProfile
                 Eliminar mi negocio
               </button>
 
-              {/* Sticky save bar */}
-              <div style={{ position:'fixed', bottom:0, left: isMobile ? 0 : 210, right:0, zIndex:100, background:'rgba(5,3,15,0.92)', backdropFilter:'blur(20px)', WebkitBackdropFilter:'blur(20px)', borderTop:`1px solid ${C.rim}`, padding:'12px 20px', display:'flex', alignItems:'center', justifyContent:'space-between', gap:12 }}>
-                <div style={{ fontSize:12, color: saved ? C.ok : isDirty ? C.mist : C.dust }}>
-                  {saved ? '✓ Perfil guardado' : isDirty ? 'Cambios sin guardar' : 'Sin cambios pendientes'}
-                </div>
-                <GBtn onClick={saveConfiguracion} disabled={saving || !isDirty}
-                  style={(!isDirty && !saving) ? { background:'rgba(255,255,255,0.07)', border:'1px solid rgba(255,255,255,0.14)', color:'rgba(255,255,255,0.30)', boxShadow:'none', cursor:'default', opacity:1 } : {}}>
-                  {saving ? '⟳ Guardando...' : 'Guardar cambios'}
-                </GBtn>
-              </div>
+              {/* Sticky save bar removida — cada ConfigAccordion expandido
+                  trae su propio botón "Guardar cambios" inline al pie de
+                  su bloque. Si en el futuro el dueño quiere un atajo
+                  global, se puede volver a montar acá una versión flotante. */}
 
             </div>
           )
@@ -18170,6 +18399,13 @@ export default function App() {
   const [citiesLoading, setCitiesLoading] = useState(true)
   const [showOnboarding, setShowOnboarding] = useState(false)
   const [showTerms,     setShowTerms]     = useState(false)
+  // signupModal: { mode: 'client' | 'merchant' } | null. Cuando está seteado,
+  // se renderiza MinimalSignupModal por encima de todo. Lo seteamos:
+  //   • Después de TermsAcceptance, si profile.onboarding_completed===false
+  //     (lee sessionStorage 'benefix:signupAs' para decidir el modo).
+  //   • Al recibir el evento 'benefix:open-signup' (cross-rol, ej: cliente
+  //     existente que quiere registrar negocio).
+  const [signupModal,    setSignupModal]    = useState(null)
   const [authReady,     setAuthReady]     = useState(false)
   const [isAppLoading,  setIsAppLoading]  = useState(false)
   const prevUserRef    = useRef(null)   // tracks user present before each auth event
@@ -18271,14 +18507,46 @@ export default function App() {
     }
     if (triggerOnboarding) {
       if (!data?.terms_accepted_at) { setShowTerms(true); return }
-      if (data?.onboarding_completed === false) setShowOnboarding(true)
+      // Login redesign (abr 2026): si el usuario ya aceptó términos pero
+      // todavía no completó onboarding, mostramos el MinimalSignupModal
+      // en el modo que pidió en el landing (sessionStorage 'benefix:signupAs').
+      // Si no hay flag, asumimos cliente — caso típico de quien entró por
+      // el botón "Entrar" del navbar sin tocar los CTAs grandes.
+      if (data?.onboarding_completed === false) {
+        let signupMode = 'client'
+        try {
+          const wanted = sessionStorage.getItem('benefix:signupAs')
+          if (wanted === 'merchant' || wanted === 'client') signupMode = wanted
+        } catch {}
+        setSignupModal({ mode: signupMode })
+      }
     }
   }
 
   function handleTermsAccepted() {
     setShowTerms(false)
-    if (profile?.onboarding_completed === false) setShowOnboarding(true)
+    if (profile?.onboarding_completed === false) {
+      let signupMode = 'client'
+      try {
+        const wanted = sessionStorage.getItem('benefix:signupAs')
+        if (wanted === 'merchant' || wanted === 'client') signupMode = wanted
+      } catch {}
+      setSignupModal({ mode: signupMode })
+    }
   }
+
+  // Listener cross-rol: cualquier parte de la app puede dispatchar este evento
+  // para abrir el modal de signup en un modo específico (típicamente desde el
+  // CTA "Soy comercio" cuando el user ya está logueado como cliente, o desde
+  // "Convertirme en cliente" desde el panel del comerciante).
+  useEffect(() => {
+    function onOpenSignup(e) {
+      const mode = e?.detail?.mode === 'merchant' ? 'merchant' : 'client'
+      setSignupModal({ mode })
+    }
+    window.addEventListener('benefix:open-signup', onOpenSignup)
+    return () => window.removeEventListener('benefix:open-signup', onOpenSignup)
+  }, [])
 
   // Cities con conteos
   useEffect(() => {
@@ -18380,6 +18648,17 @@ export default function App() {
     return () => window.removeEventListener('benefix:client-tab-changed', onClientTabChanged)
   }, [])
 
+  // Consume el deep-link una sola vez. Después del primer render (donde ya
+  // se aplicó view + initialTab a los componentes destino), nullificamos
+  // las propiedades de _DEEP_LINK para que futuros mounts de ClientView /
+  // CommerceSettingsView dentro de la misma sesión SPA no reusen el tab
+  // viejo y arranquen con su default. Si el user llega de nuevo via URL,
+  // _DEEP_LINK se reevalúa porque la nav del subnav del club es full-page.
+  useEffect(() => {
+    _DEEP_LINK.view = null
+    _DEEP_LINK.tab  = null
+  }, [])
+
   async function handleOwnerProfile() {
     if (!user) return
     const { data } = await supabase.from('commerces').select('*').eq('owner_id', user.id).single()
@@ -18444,12 +18723,35 @@ export default function App() {
           }}
         />
       )}
+      {signupModal && user && (
+        <MinimalSignupModal
+          user={user}
+          mode={signupModal.mode}
+          // Permitimos cerrar SIN guardar solo cuando el modal vino de un
+          // open-signup cross-rol manual (el user ya tiene cuenta funcionando).
+          // Si está completando el primer onboarding (profile.onboarding_completed=false),
+          // no exponemos X — necesitamos los datos para no dejarlo a medias.
+          onClose={profile?.onboarding_completed === false ? null : () => setSignupModal(null)}
+          onComplete={async ({ mode, slug }) => {
+            setSignupModal(null)
+            // Refresh del profile y de la sesión local. loadProfile no setea view
+            // porque restoreView=false por default — lo hacemos nosotros según
+            // el modo.
+            await loadProfile(user.id)
+            if (mode === 'merchant') {
+              navigate('commerce-settings')
+            } else {
+              navigate('client')
+            }
+          }}
+        />
+      )}
       <Navbar setView={navigate} cityName={currentCity?.name} user={user} profile={profile} onLogin={handleLogin} onLogout={handleLogout} currentView={view} clientTab={clientTab} onOwnerProfile={handleOwnerProfile} />
       <div style={{ height:80 }} />
-      {view === 'home'      && <HomeView setView={navigate} user={user} profile={profile} />}
+      {view === 'home'      && <HomeView setView={navigate} user={user} profile={profile} onLogin={handleLogin} />}
       {view === 'directory'          && <DirectoryView citySlug={citySlug} cities={cities} setView={navigate} setCommerce={setCommerce} />}
       {view === 'commerce'           && <CommerceView commerce={commerce} setView={navigate} user={user} onLoginRequired={handleLogin} onCommerceUpdate={updates => setCommerce(prev => ({ ...prev, ...updates }))} />}
-      {view === 'client'             && <ClientView setView={navigate} user={user} profile={profile} onLogout={handleLogout} />}
+      {view === 'client'             && <ClientView setView={navigate} user={user} profile={profile} onLogout={handleLogout} initialTab={_DEEP_LINK.tab} />}
       {view === 'scanner'            && <ScannerView user={user} profile={profile} setView={navigate} />}
       {view === 'admin'              && <AdminView cities={cities} profile={profile} />}
       {view === 'register-commerce'  && <RegisterCommerceView setView={navigate} cities={cities} user={user} onLoginRequired={() => handleLogin({ nextView: 'register-commerce' })} onProfileRefresh={() => loadProfile(user.id)} />}
