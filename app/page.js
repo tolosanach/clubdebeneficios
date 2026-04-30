@@ -19,6 +19,8 @@ import ProfileItemWizard from '../lib/ProfileItemWizard'
 import BizPromptBanner from '../lib/BizPromptBanner'
 import CrossRoleNudges from '../lib/CrossRoleNudges'
 import LogoCropper, { validateImageFile, checkImageDimensions } from '../lib/LogoCropper'
+import RedeemPendingModal from '../lib/RedeemPendingModal'
+import CanjesPendientesPanel from '../lib/CanjesPendientesPanel'
 import SwRegister from '../lib/sw-register'
 import InfoHint from '../lib/InfoHint'
 import HelpBanner, { resetAllHelpBanners } from '../lib/HelpBanner'
@@ -52,6 +54,8 @@ const MENU_ICONS = {
   // recompensas — sistema base + promociones (lo que el cliente recibe en el scan).
   recompensas:     Sparkles,
   premios:         Gift,
+  // canjes — pendientes de confirmar (vienen del wallet del cliente).
+  canjes:          CheckCircle,
   // mensajes — automatizaciones de WhatsApp (comunicación fuera del scan).
   mensajes:        MessageCircle,
   // analisis — mergea reportes + segmentación.
@@ -72,6 +76,10 @@ const MENU = [
   // Pestaña unificada: sistema base + promociones (sin automatizaciones).
   { id:'recompensas',      label:'Recompensas'      },
   { id:'premios',          label:'Premios'          },
+  // Canjes pendientes — donde el dueño confirma/rechaza los pedidos de
+  // canje que llegan desde el wallet del cliente. Tab dedicada para que
+  // sea fácil de encontrar desde la notificación push.
+  { id:'canjes',           label:'Canjes'           },
   // Mensajes = automatizaciones de WhatsApp, separadas porque son
   // comunicación fuera del scan (no transaccional como recompensas).
   { id:'mensajes',         label:'Mensajes',        pro: true },
@@ -7370,6 +7378,14 @@ function ClientView({ setView, user, profile, onLogout, initialTab }) {
   // abre una vista estilo ecommerce con la info completa. `selectedBenefit`
   // guarda { kind: 'prize'|'discount'|'double', data, commerce, bal, isStars }.
   const [selectedBenefit, setSelectedBenefit] = useState(null)
+  // Estado del flujo de canje pendiente: cuando el cliente toca "Canjear"
+  // en un premio, llamamos /api/redeem-request y guardamos la respuesta
+  // acá. RedeemPendingModal se renderea con esos datos (código + info
+  // del comercio) para que el cliente avise por WhatsApp. Se limpia al
+  // cerrar el modal.
+  const [pendingRedeem, setPendingRedeem]       = useState(null)
+  const [redeemRequesting, setRedeemRequesting] = useState(false)
+  const [redeemRequestError, setRedeemRequestError] = useState('')
   // Mi cuenta state
   const [acctForm,   setAcctForm]   = useState({ name: profile?.name || '', phone: profile?.phone || '' })
   const [acctSaving, setAcctSaving] = useState(false)
@@ -7689,7 +7705,12 @@ function ClientView({ setView, user, profile, onLogout, initialTab }) {
           {displayMemberships.length === 0 ? (
             /* Empty wallet state — sin clubes joinedados todavía. Mostramos
                 solo el CTA de escanear QR (el viejo marquee "Más clubes
-                cerca" con clubes de demo fue eliminado). */
+                cerca" con clubes de demo fue eliminado).
+                El botón "Escanear QR" abre el scanner del cliente con la
+                cámara directo en modo join-club (no muestra el picker
+                "Mostrar mi QR / Escanear" intermedio): seteamos un flag en
+                sessionStorage que ScannerView consume en su useEffect de
+                mount. */}
             <div style={{ textAlign:'center', padding:'52px 24px 24px' }}>
               <div style={{ width:76, height:76, borderRadius:24, background:'rgba(139,92,246,0.12)', border:'1px solid rgba(139,92,246,0.22)', display:'flex', alignItems:'center', justifyContent:'center', margin:'0 auto 20px' }}>
                 <Wallet size={34} strokeWidth={1.5} color="rgba(139,92,246,0.70)" />
@@ -7697,7 +7718,10 @@ function ClientView({ setView, user, profile, onLogout, initialTab }) {
               <div style={{ fontFamily:FN, fontSize:17, fontWeight:800, color:'rgba(255,255,255,0.80)', marginBottom:10 }}>Tu billetera está vacía</div>
               <div style={{ fontSize:13, color:'rgba(255,255,255,0.38)', maxWidth:240, margin:'0 auto 24px', lineHeight:1.65 }}>Escaneá el QR de un comercio para sumar tu primer club.</div>
               <button
-                onClick={() => setTab('mi qr')}
+                onClick={() => {
+                  try { sessionStorage.setItem('benefix:scanIntent', 'join-club') } catch {}
+                  setView('scanner')
+                }}
                 style={{ padding:'11px 26px', borderRadius:99, background:'linear-gradient(135deg,#8B5CF6,#EC4899)', border:'none', cursor:'pointer', fontFamily:FN, fontSize:13, fontWeight:700, color:'#fff', boxShadow:'0 4px 20px rgba(139,92,246,0.40)' }}
               >
                 Escanear QR
@@ -7794,13 +7818,14 @@ function ClientView({ setView, user, profile, onLogout, initialTab }) {
               )
               for (const p of prizeList) {
                 all.push({
-                  kind:      'prize',
-                  data:      p,
-                  commerce:  c,
+                  kind:       'prize',
+                  data:       p,
+                  commerce:   c,
+                  membership: m,             // necesario para /api/redeem-request
                   bal,
                   isStars,
-                  pct:       p.cost > 0 ? Math.min(100, Math.round((bal / p.cost) * 100)) : 0,
-                  canRedeem: bal >= p.cost,
+                  pct:        p.cost > 0 ? Math.min(100, Math.round((bal / p.cost) * 100)) : 0,
+                  canRedeem:  bal >= p.cost,
                 })
               }
               // Promos activas (discount_next + double_points)
@@ -8397,7 +8422,7 @@ function ClientView({ setView, user, profile, onLogout, initialTab }) {
             del comercio). Para promos solo muestra info (la promo se aplica
             automáticamente cuando el cliente vuelve al comercio). */}
       {selectedBenefit && (() => {
-        const { kind, data, commerce, bal, isStars, pct, canRedeem } = selectedBenefit
+        const { kind, data, commerce, membership, bal, isStars, pct, canRedeem } = selectedBenefit
         const unitLabel = isStars ? 'estrellas' : 'puntos'
         const UI        = isStars ? Star : Gem
         // Texto + visual según tipo
@@ -8412,8 +8437,8 @@ function ClientView({ setView, user, profile, onLogout, initialTab }) {
             </span>
           )
           descLines = data.description || `Canjeá ${data.cost} ${unitLabel} por este premio en ${commerce.name}.`
-          ctaText   = canRedeem ? `Ir a ${commerce.name} a canjear` : `Te faltan ${data.cost - bal} ${unitLabel}`
-          ctaSub    = canRedeem ? 'Mostrá la pantalla en el local' : 'Seguí visitando el club para sumar'
+          ctaText   = canRedeem ? 'Canjear ahora' : `Te faltan ${data.cost - bal} ${unitLabel}`
+          ctaSub    = canRedeem ? 'Avisamos al comercio por WhatsApp' : 'Seguí visitando el club para sumar'
         } else if (kind === 'discount') {
           heroIcon      = Percent
           heroTitle     = `${data.value || 10}% OFF en próxima compra`
@@ -8547,8 +8572,51 @@ function ClientView({ setView, user, profile, onLogout, initialTab }) {
                 borderTop:'1px solid rgba(255,255,255,0.08)',
                 backdropFilter:'blur(20px)', WebkitBackdropFilter:'blur(20px)',
               }}>
+                {redeemRequestError && (
+                  <div style={{ marginBottom:10, padding:'9px 12px', background:'rgba(248,116,68,0.12)', border:'1px solid rgba(248,116,68,0.35)', borderRadius:10, fontSize:12, color:'#f87444', textAlign:'center' }}>
+                    {redeemRequestError}
+                  </div>
+                )}
                 <button
-                  onClick={() => {
+                  disabled={canRedeem && kind === 'prize' && redeemRequesting}
+                  onClick={async () => {
+                    // Premios canjeables: nuevo flujo pending+WhatsApp.
+                    if (kind === 'prize' && canRedeem) {
+                      if (!membership || !user) {
+                        setRedeemRequestError('Iniciá sesión para canjear.')
+                        return
+                      }
+                      setRedeemRequesting(true)
+                      setRedeemRequestError('')
+                      try {
+                        const res = await fetch('/api/redeem-request', {
+                          method: 'POST',
+                          headers: { 'Content-Type': 'application/json' },
+                          body: JSON.stringify({
+                            membership_id: membership.id,
+                            prize_id:      data.id,
+                            commerce_id:   commerce.id,
+                            user_id:       user.id,
+                          }),
+                        })
+                        const json = await res.json()
+                        if (!res.ok || !json.ok) {
+                          setRedeemRequestError(json.error || 'No se pudo solicitar el canje.')
+                        } else {
+                          // Cerramos el modal del beneficio y abrimos el modal
+                          // pendiente con el código + WhatsApp.
+                          setSelectedBenefit(null)
+                          setPendingRedeem(json)
+                        }
+                      } catch (err) {
+                        setRedeemRequestError('Error de red. Probá de nuevo.')
+                      } finally {
+                        setRedeemRequesting(false)
+                      }
+                      return
+                    }
+                    // Resto de casos (premios sin saldo, promos): redirige al
+                    // club como antes (informativo, no genera canje).
                     setSelectedBenefit(null)
                     if (commerce?.slug) window.location.href = `/club/${commerce.slug}`
                   }}
@@ -8560,8 +8628,9 @@ function ClientView({ setView, user, profile, onLogout, initialTab }) {
                     border: canRedeem ? 'none' : '1px solid rgba(189,75,248,0.40)',
                     borderRadius:14,
                     color:'#fff', fontFamily:FN, fontSize:15, fontWeight:800,
-                    letterSpacing:'.02em', cursor:'pointer',
+                    letterSpacing:'.02em', cursor: redeemRequesting ? 'wait' : 'pointer',
                     boxShadow: canRedeem ? '0 8px 24px rgba(189,75,248,0.50)' : 'none',
+                    opacity: redeemRequesting ? 0.6 : 1,
                     display:'flex', alignItems:'center', justifyContent:'center', gap:8,
                   }}>
                   {kind === 'prize' ? <Gift size={18} strokeWidth={2.4} /> : <ArrowRight size={18} strokeWidth={2.4} />}
@@ -8575,6 +8644,23 @@ function ClientView({ setView, user, profile, onLogout, initialTab }) {
           </div>
         )
       })()}
+
+      {/* Modal de canje pendiente — se abre tras /api/redeem-request OK.
+          Muestra el código BNX-XXXX, datos del premio y el botón
+          "Avisar por WhatsApp" que abre wa.me con mensaje pre-armado. */}
+      {pendingRedeem && (
+        <RedeemPendingModal
+          data={pendingRedeem}
+          clientName={profile?.full_name || profile?.name || ''}
+          onClose={() => {
+            setPendingRedeem(null)
+            // Refrescamos los memberships para que el balance/canjes se
+            // vea actualizado cuando el dueño confirme — si todavía está
+            // pending no cambia nada, pero hace sync defensivo.
+            setRefreshTick(t => t + 1)
+          }}
+        />
+      )}
     </div>
   )
 }
@@ -10600,7 +10686,7 @@ function HoursEditor({ value, onChange }) {
 }
 
 // ─── PANEL DEL COMERCIO ───────────────────────────────────────────────────────
-function CommerceSettingsView({ user, profile, setView, onLogout, onOwnerProfile }) {
+function CommerceSettingsView({ user, profile, setView, onLogout, onOwnerProfile, initialTab }) {
   const [commerce, setCommerce]           = useState(null)
   const [loading, setLoading]             = useState(true)
   const [saving, setSaving]               = useState(false)
@@ -11036,7 +11122,17 @@ function CommerceSettingsView({ user, profile, setView, onLogout, onOwnerProfile
     // VALID_TABS — incluye los IDs nuevos (recompensas, analisis) y los viejos
     // (fidelizacion, etc.) por si quedó un valor en localStorage. Los viejos
     // se redirigen al nuevo via fallback al cargar.
-    const VALID_TABS = ['dashboard','clientes','recompensas','premios','mensajes','analisis','historial','configuracion','planes','fidelizacion','promociones','reportes','segmentacion','automatizaciones']
+    const VALID_TABS = ['dashboard','clientes','recompensas','premios','canjes','mensajes','analisis','historial','configuracion','planes','fidelizacion','promociones','reportes','segmentacion','automatizaciones']
+    // initialTab del deep-link tiene prioridad sobre lastTab guardado en
+    // localStorage. Cuando el dueño tap a la notif "Canjes pendientes" llega
+    // con `?tab=canjes` y queremos que aterrice ahí, no en su último tab.
+    if (initialTab && VALID_TABS.includes(initialTab)) {
+      setTab(initialTab)
+      // Tab de deep-link → desactivar el intent picker para que se vea el
+      // contenido del tab, no las cards de inicio.
+      setIntentPickerActive(false)
+      return
+    }
     const saved = localStorage.getItem('benefix:commerceTab')
     if (saved && VALID_TABS.includes(saved)) setTab(saved)
   }, [])
@@ -13143,8 +13239,48 @@ function CommerceSettingsView({ user, profile, setView, onLogout, onOwnerProfile
     // que las tarjetas no salgan cortadas. En mobile mantenemos el slider con
     // scroll horizontal y peek lateral porque ahí el espacio es limitado.
     const isDesktop = !isMobile
+    // En desktop, además, mostramos el sidebar lateral con los nombres de
+    // cada sección — el dueño puede saltar a Clientes / Premios / Canjes /
+    // etc. desde el menú sin tener que pasar por las tarjetas. En mobile
+    // sigue el flujo viejo (cards full-width + radial menu).
     return (
-      <div style={{ maxWidth: isDesktop ? 1120 : 520, margin:'0 auto', padding: isMobile ? '24px 0 80px' : '32px 0 80px' }}>
+      <div style={{ display:'flex', minHeight:'100vh' }}>
+        {/* Sidebar desktop — lista de secciones del MENU. Tap en una saca al
+            user del intent picker y lo lleva a esa pestaña directamente. */}
+        {isDesktop && (
+          <div style={{ width:210, flexShrink:0, background:'rgba(0,0,0,0.60)', backdropFilter:'blur(32px)', WebkitBackdropFilter:'blur(32px)', borderRight:`1px solid ${C.rim}`, display:'flex', flexDirection:'column', paddingTop:28 }}>
+            <div style={{ padding:'0 18px 18px', borderBottom:`1px solid ${C.rim}`, marginBottom:8, display:'flex', alignItems:'center', gap:10 }}>
+              <div style={{ width:38, height:38, borderRadius:9, background:`${C.v}33`, display:'flex', alignItems:'center', justifyContent:'center', flexShrink:0 }}>
+                {form?.img_url
+                  ? <img src={form.img_url} alt="" style={{ width:'100%', height:'100%', borderRadius:9, objectFit:'cover', display:'block' }} />
+                  : <Building2 size={18} color={C.v} strokeWidth={2} />}
+              </div>
+              <div>
+                <div style={{ fontFamily:FN, fontSize:12, fontWeight:900, color:C.white, lineHeight:1.3 }}>{commerce?.name || 'Tu negocio'}</div>
+                <div style={{ fontSize:10, color:unitColor, marginTop:1 }}>{unitIcon} {unitLabel}</div>
+              </div>
+            </div>
+            {MENU.map(m => {
+              const isProLocked = m.pro && planKey !== 'pro'
+              const isLocked    = m.locked
+              const dimmed      = isLocked || isProLocked
+              return (
+                <button key={m.id}
+                  onClick={() => {
+                    setIntentPickerActive(false)
+                    if (isLocked) { setUpgradeModal('promotions'); _setTabRaw(m.id) } else _setTabRaw(m.id)
+                  }}
+                  style={{ display:'flex', alignItems:'center', gap:10, padding:'11px 18px', background:'transparent', border:'none', borderRadius:8, color: dimmed ? C.dust : C.mist, fontSize:12, cursor:'pointer', textAlign:'left', width:'100%', transition:'background 130ms ease, color 130ms ease', fontFamily:'inherit', opacity: dimmed ? 0.75 : 1 }}>
+                  {(() => { const I = MENU_ICONS[m.id]; return I ? <I size={15} color={dimmed ? C.dust : C.mist} strokeWidth={2} style={{ flexShrink:0 }} /> : null })()}
+                  <span style={{ fontFamily:FN, fontWeight:400, flex:1 }}>{m.label}</span>
+                  {isProLocked && <span style={{ fontSize:9, color:PLANS.pro.color, fontFamily:FN, fontWeight:700 }}>PRO</span>}
+                  {isLocked && !isProLocked && <Lock size={10} color={C.dust} strokeWidth={2} />}
+                </button>
+              )
+            })}
+          </div>
+        )}
+      <div style={{ flex:1, maxWidth: isDesktop ? 1120 : 520, margin:'0 auto', padding: isMobile ? '24px 0 80px' : '32px 0 80px' }}>
         {/* Padding lateral para el contenido principal — el slider rompe
             con margin negativo para llegar a los bordes. */}
         <div style={{ padding: isMobile ? '0 18px' : '0 28px' }}>
@@ -13852,6 +13988,7 @@ function CommerceSettingsView({ user, profile, setView, onLogout, onOwnerProfile
           updatingSystem={updatingSystem}
         />
 
+      </div>
       </div>
     )
   }
@@ -16643,6 +16780,20 @@ function CommerceSettingsView({ user, profile, setView, onLogout, onOwnerProfile
           )
         })()}
 
+        {/* ── CANJES PENDIENTES ── */}
+        {/* Tab dedicada donde el dueño confirma o rechaza los canjes que
+            llegaron del wallet del cliente. Carga lazy desde
+            /api/redemptions-pending al activarse. Cada fila tiene info
+            del cliente, del premio, código + botones Confirmar/Rechazar. */}
+        {tab === 'canjes' && (
+          <CanjesPendientesPanel
+            commerce={commerce}
+            unitIcon={unitIcon}
+            unitLabel={unitLabel}
+            onChange={() => { /* refresh count handled internally */ }}
+          />
+        )}
+
         {/* ── HISTORIAL ── */}
         {tab === 'historial' && (() => {
           const TYPE_META = {
@@ -17969,6 +18120,23 @@ function ScannerView({ user, profile, setView }) {
   useEffect(() => {
     return () => { stopCamera() }
   }, [])
+
+  // Auto-arranque en modo "sumarme a un club" cuando el cliente vino del
+  // empty state de "Mi billetera está vacía" (sessionStorage benefix:scanIntent).
+  // Salta el picker de modos y abre la cámara directo para escanear el QR
+  // del comercio. El flag se consume al primer mount y se limpia.
+  useEffect(() => {
+    if (!profile) return
+    try {
+      const intent = sessionStorage.getItem('benefix:scanIntent')
+      if (intent === 'join-club') {
+        sessionStorage.removeItem('benefix:scanIntent')
+        setScanMode('join-club')
+        setModeSelected(true)
+        setJoinScanActive(true)
+      }
+    } catch {}
+  }, [profile])
 
   // Early return DESPUÉS de todos los hooks — sin profile no se puede usar el
   // escáner. Esto va acá (no arriba) para preservar el orden de hooks que
@@ -19581,14 +19749,72 @@ const _DEEP_LINK = (() => {
   } catch { return { view: null, tab: null, upgrade: null } }
 })()
 
+// Helper: lee y consume los query params de deep-link. Combina dos
+// fuentes de verdad para no perder el deep-link:
+//   1. URL viva (window.location.search) — hot path cuando App se monta
+//      sin que el IIFE módulo haya pasado todavía.
+//   2. _DEEP_LINK (IIFE módulo arriba) — fallback si la URL ya fue
+//      limpiada por el propio IIFE durante module load (que es el caso
+//      normal en producción: el módulo se evalúa antes que React monte).
+//
+// Sin este merge teníamos un bug nasty: el IIFE strippea la URL apenas
+// carga el módulo, y cuando App se monta, readFreshDeepLink leía una
+// URL ya vacía y devolvía null/null/null — perdiendo el ?view= y ?tab=
+// que el usuario venía a buscar (ej: tap en notif de canje pendiente).
+function readFreshDeepLink() {
+  if (typeof window === 'undefined') return _DEEP_LINK
+  try {
+    const params = new URLSearchParams(window.location.search)
+    const urlV = params.get('view')
+    const urlT = params.get('tab')
+    const urlU = params.get('upgrade')
+    if (urlV || urlT || urlU) {
+      // Por si quedó algo en la URL (caso raro: el IIFE no corrió),
+      // limpiamos.
+      window.history.replaceState(null, '', window.location.pathname)
+    }
+    // Merge: URL gana si tiene valor, sino caemos al _DEEP_LINK del IIFE.
+    return {
+      view:    urlV || _DEEP_LINK.view    || null,
+      tab:     urlT || _DEEP_LINK.tab     || null,
+      upgrade: urlU || _DEEP_LINK.upgrade || null,
+    }
+  } catch { return _DEEP_LINK }
+}
+
 export default function App() {
-  // Si vino un deep-link en la URL (?view=X), arrancamos en esa vista
-  // directamente. Sino, 'home'.
-  const [view,     setView]     = useState(_DEEP_LINK.view || 'home')
+  // El deep-link se aplica DESPUÉS del primer render via useEffect (ver
+  // más abajo). Si lo aplicáramos en el lazy initializer de useState,
+  // el SSR de Next renderiza el componente con `view='home'` (el server
+  // no tiene window y _DEEP_LINK queda en null), después el cliente
+  // hidrata el HTML y React conserva el valor del server — el deep-link
+  // capturado del lado cliente se pierde y CUALQUIER navegación con
+  // `?view=X` aterriza en home. La solución es arrancar siempre en
+  // 'home' y bumpearlo recién cuando React ya está vivo en el cliente.
+  const [deepLink, setDeepLink] = useState({ view: null, tab: null, upgrade: null })
+  const [view,     setView]     = useState('home')
   // upgradeResult: 'success' | 'pending' | 'failure' | null — vino del query
   // ?upgrade=... que MP setea al redirigir post-checkout. Mostramos un modal
   // de confirmación encima de cualquier vista.
-  const [upgradeResult, setUpgradeResult] = useState(_DEEP_LINK.upgrade)
+  const [upgradeResult, setUpgradeResult] = useState(null)
+
+  // Aplicar deep-link post-hidratación. Corre en el primer mount del App
+  // del lado cliente, lee window.location + el _DEEP_LINK módulo (que ya
+  // capturó al cargar el bundle), y setea view/upgrade si vino algún
+  // hint en la URL. Esto bypassa la limitación de useState/SSR donde el
+  // valor del server pisa al del cliente durante hydration.
+  useEffect(() => {
+    const fresh = readFreshDeepLink()
+    if (fresh.view || fresh.tab || fresh.upgrade) {
+      setDeepLink(fresh)
+    }
+    if (fresh.view) {
+      setView(fresh.view)
+    }
+    if (fresh.upgrade) {
+      setUpgradeResult(fresh.upgrade)
+    }
+  }, [])
   const [citySlug, setCitySlug] = useState(null)
   const [commerce, setCommerce] = useState(null)
   const [user,     setUser]     = useState(null)
@@ -19670,11 +19896,13 @@ export default function App() {
       }
     } catch {}
 
-    // Si vino un deep-link en la URL (?view=X) — y ya seteó la vista
-    // desde el módulo — NO sobreescribir con la lastView del localStorage.
-    // El usuario quiere ir a la vista pedida en la URL, no a la vista
-    // anterior. Esto arregla el caso "click en Mi Negocio desde el navbar
-    // del club terminaba volviendo al ojo viejo".
+    // Si vino un deep-link en la URL (?view=X) — NO sobreescribir con la
+    // lastView del localStorage. El usuario quiere ir a la vista pedida
+    // en la URL, no a la vista anterior.
+    // OJO: leemos `_DEEP_LINK` (módulo, capturado al cargar el bundle),
+    // NO el state `deepLink` de React, porque loadProfile se ejecuta
+    // ANTES del useEffect que setea el state — durante esa ventana, el
+    // state está en {view:null} y caeríamos al lastView equivocado.
     if (!consumedLoginNext && restoreView && data?.role && !_DEEP_LINK.view) {
       const saved = localStorage.getItem('benefix:lastView')
       const VALID = {
@@ -19856,10 +20084,14 @@ export default function App() {
   // las propiedades de _DEEP_LINK para que futuros mounts de ClientView /
   // CommerceSettingsView dentro de la misma sesión SPA no reusen el tab
   // viejo y arranquen con su default. Si el user llega de nuevo via URL,
-  // _DEEP_LINK se reevalúa porque la nav del subnav del club es full-page.
+  // readFreshDeepLink lee de nuevo en el siguiente mount.
   useEffect(() => {
-    _DEEP_LINK.view = null
-    _DEEP_LINK.tab  = null
+    // Limpiamos también el deepLink local para que useEffects que dependan
+    // de él no arrastren valores stale entre cambios de view.
+    if (deepLink.view || deepLink.tab) {
+      // No mutamos directamente — los flags ya cumplieron su rol y los
+      // siguientes mounts leen URL fresh.
+    }
   }, [])
 
   async function handleOwnerProfile() {
@@ -19977,11 +20209,11 @@ export default function App() {
       {view === 'home'      && <HomeView setView={navigate} user={user} profile={profile} onLogin={handleLogin} />}
       {view === 'directory'          && <DirectoryView citySlug={citySlug} cities={cities} setView={navigate} setCommerce={setCommerce} />}
       {view === 'commerce'           && <CommerceView commerce={commerce} setView={navigate} user={user} onLoginRequired={handleLogin} onCommerceUpdate={updates => setCommerce(prev => ({ ...prev, ...updates }))} />}
-      {view === 'client'             && <ClientView setView={navigate} user={user} profile={profile} onLogout={handleLogout} initialTab={_DEEP_LINK.tab} />}
+      {view === 'client'             && <ClientView setView={navigate} user={user} profile={profile} onLogout={handleLogout} initialTab={deepLink.tab} />}
       {view === 'scanner'            && <ScannerView user={user} profile={profile} setView={navigate} />}
       {view === 'admin'              && <AdminView cities={cities} profile={profile} />}
       {view === 'register-commerce'  && <RegisterCommerceView setView={navigate} cities={cities} user={user} onLoginRequired={() => handleLogin({ nextView: 'register-commerce' })} onProfileRefresh={() => loadProfile(user.id)} />}
-      {view === 'commerce-settings'  && <CommerceSettingsView user={user} profile={profile} setView={navigate} onLogout={handleLogout} onOwnerProfile={handleOwnerProfile} />}
+      {view === 'commerce-settings'  && <CommerceSettingsView user={user} profile={profile} setView={navigate} onLogout={handleLogout} onOwnerProfile={handleOwnerProfile} initialTab={deepLink.tab} />}
       {/* Chat de soporte con IA — visible cuando hay sesión. Pasa role según
           la vista activa: comerciante en commerce-settings, cliente en el resto.
           El buzón de sugerencias va apilado encima del botón del chat. */}

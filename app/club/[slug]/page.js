@@ -16,6 +16,15 @@ import {
 import PhoneInput from '../../../lib/PhoneInput'
 import HelpBanner from '../../../lib/HelpBanner'
 import { FAMILIES_DATA } from '../../../lib/commerce-families-data'
+// Floating action stack — los mismos que monta app/page.js. Se mantienen
+// en /club/[slug] para que el user logueado conserve el acceso a la
+// campana de notificaciones + chat de soporte sin importar qué página
+// está mirando.
+import FloatingActionsTab from '../../../lib/FloatingActionsTab'
+import NotificationsBell from '../../../lib/NotificationsBell'
+import SupportChat from '../../../lib/SupportChat'
+import EnablePushPrompt from '../../../lib/EnablePushPrompt'
+import SwRegister from '../../../lib/sw-register'
 
 // Feature flag — sistema de reseñas/rating apagado hasta tener masa crítica.
 // Sincronizado con el flag del mismo nombre en app/page.js.
@@ -4071,6 +4080,22 @@ export default function ClubProfilePage() {
             )
           })}
         </div>
+      )}
+
+      {/* ── FLOATING ACTIONS STACK (chat soporte + campana de notifs) ──
+          Espejamos lo que monta app/page.js para que el user logueado
+          conserve sus shortcuts también acá. Los componentes con
+          hideButton se montan para que sus drawers existan, y el
+          FloatingActionsTab agrupa los dos shortcuts en una sola pill
+          flotante a la derecha. */}
+      {user && (
+        <>
+          <SwRegister />
+          <FloatingActionsTab />
+          <NotificationsBell hideButton role="client" />
+          <SupportChat hideButton role="client" />
+          <EnablePushPrompt />
+        </>
       )}
     </div>
   )
