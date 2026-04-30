@@ -1,3 +1,8 @@
+/* Instrument Serif — fuente italic-elegante para acentos del home
+   (números grandes, palabras de énfasis, kickers). Pareada con Inter
+   para texto normal. La uso vía la utilidad .font-display abajo. */
+@import url('https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&display=swap');
+
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 html {
   scroll-behavior: smooth;
@@ -8,6 +13,49 @@ html {
   zoom: 1.06;
 }
 body { background: var(--bg-primary); color: #F0EAFF; -webkit-font-smoothing: antialiased; font-family: 'Inter', system-ui, sans-serif; overscroll-behavior-y: none; }
+
+/* Utility: tipografía display italic-serif para acentos del marketing.
+   Inspirada en el lenguaje de las landings cinematográficas (FIND
+   real estate, Vela space-travel) — la usamos en números grandes
+   ("01", "+180"), kickers de sección y palabras de énfasis dentro de
+   un título sans-serif. */
+.font-display {
+  font-family: 'Instrument Serif', 'Times New Roman', serif;
+  font-style: italic;
+  font-weight: 400;
+}
+
+/* CinematicSplash — ocupa toda la pantalla en mobile (efecto hero),
+   se ajusta al contenido en desktop (ahí no necesita 100vh porque el
+   contenido ya respira y forzar el alto deja huecos vacíos). */
+.cinematic-splash {
+  min-height: auto;
+  display: block;
+}
+
+/* Layout mobile: 100% de viewport con el marquee arriba (flex-start
+   natural) y el bloque BENEFIX centrado vertical (margin auto). */
+@media (max-width: 768px) {
+  .cinematic-splash {
+    min-height: 100vh;
+    /* svh respeta la barra dinámica de iOS Safari sin que la sección
+       se sobrescale cuando aparece/desaparece el address bar. Algunos
+       navegadores antiguos no la soportan — el fallback 100vh va arriba. */
+    min-height: 100svh;
+    display: flex;
+    flex-direction: column;
+    justify-content: flex-start;
+  }
+  .cinematic-splash .splash-marquee {
+    /* primer hijo: queda al tope sin auto margin */
+    flex-shrink: 0;
+  }
+  .cinematic-splash .splash-main {
+    /* segundo hijo: empujado al centro vertical del espacio restante */
+    margin-top: auto;
+    margin-bottom: auto;
+  }
+}
 .glass { background: rgba(255,255,255,0.06); backdrop-filter: blur(20px); -webkit-backdrop-filter: blur(20px); border: 1px solid rgba(255,255,255,0.10); }
 .glass-sm { background: rgba(255,255,255,0.04); backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px); border: 1px solid rgba(255,255,255,0.08); }
 ::-webkit-scrollbar { width: 3px; }
@@ -287,6 +335,18 @@ button, input { font-family: inherit; }
   font-family: 'Inter', system-ui, sans-serif;
   letter-spacing: .04em;
   white-space: nowrap;
+}
+
+/* Variante compacta del marquee usada en el Splash del home — íconos
+   y labels más chicos, padding reducido para que la cinta no monopolice
+   espacio en pantallas wide. */
+.trust-marquee--splash .trust-marquee-item {
+  padding: 0 16px;
+  gap: 4px;
+}
+.trust-marquee--splash .trust-marquee-item span {
+  font-size: 9px;
+  color: rgba(255, 255, 255, 0.42);
 }
 
 @media (max-width: 639px) {

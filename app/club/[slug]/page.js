@@ -341,7 +341,13 @@ function SlideToJoinButton({ onJoin, isDemoClub }) {
   const [isComplete, setIsComplete] = useState(false)
   const containerRef = useRef(null)
 
-  const maxSlide = () => (containerRef.current?.offsetWidth || 344) - 64
+  // Proporciones iOS-style del slider "Deslizá para apagar":
+  // - container alto: 78px (más generoso que el 64 anterior)
+  // - thumb: 70px de diámetro con 4px de padding en todos los lados
+  // - el offset del touch al centro del thumb es la mitad del diámetro = 35
+  // maxSlide queda = width - thumbDiameter - paddingLeft - paddingRight
+  //                = width - 70 - 4 - 4 = width - 78
+  const maxSlide = () => (containerRef.current?.offsetWidth || 344) - 78
 
   const handleStart = () => { if (!isDemoClub) setIsDragging(true) }
 
@@ -349,7 +355,8 @@ function SlideToJoinButton({ onJoin, isDemoClub }) {
     if (!isDragging || isComplete || isDemoClub) return
     const rect = containerRef.current?.getBoundingClientRect()
     if (!rect) return
-    setSlideX(Math.max(0, Math.min(clientX - rect.left - 32, maxSlide())))
+    // 39 = (thumb 70 / 2) + padding-left 4 — centra el thumb en el dedo.
+    setSlideX(Math.max(0, Math.min(clientX - rect.left - 39, maxSlide())))
   }
 
   const handleEnd = () => {
@@ -371,7 +378,9 @@ function SlideToJoinButton({ onJoin, isDemoClub }) {
     <div
       ref={containerRef}
       style={{
-        position:'relative', width:'100%', height:64,
+        // Altura 78px → mismas proporciones iOS-like del slider de "deslizar
+        // para apagar": pill bien generoso con thumb grande y padding parejo.
+        position:'relative', width:'100%', height:78,
         background:'rgba(168,85,247,0.08)',
         backdropFilter:'blur(20px)', WebkitBackdropFilter:'blur(20px)',
         border:'1px solid rgba(168,85,247,0.35)',
@@ -407,28 +416,29 @@ function SlideToJoinButton({ onJoin, isDemoClub }) {
         pointerEvents:'none',
       }} />
 
-      {/* Texto central */}
+      {/* Texto central — fontSize escalado al alto nuevo del pill (78px) */}
       <div style={{ position:'absolute', inset:0, display:'flex', alignItems:'center', justifyContent:'center', pointerEvents:'none' }}>
-        <span style={{ color:'rgba(255,255,255,0.9)', fontSize:14, fontFamily:FN, fontWeight:600, opacity: slideX > 50 ? 0 : 1, transition:'opacity 0.2s', letterSpacing:'-0.01em' }}>
+        <span style={{ color:'rgba(255,255,255,0.9)', fontSize:16, fontFamily:FN, fontWeight:600, opacity: slideX > 50 ? 0 : 1, transition:'opacity 0.2s', letterSpacing:'-0.01em' }}>
           {isDemoClub ? 'Negocio de ejemplo' : 'Deslizá para unirte'}
         </span>
-        <span style={{ color:'#fff', fontSize:14, fontFamily:FN, fontWeight:600, position:'absolute', opacity: isComplete ? 1 : 0, transition:'opacity 0.3s' }}>
+        <span style={{ color:'#fff', fontSize:16, fontFamily:FN, fontWeight:600, position:'absolute', opacity: isComplete ? 1 : 0, transition:'opacity 0.3s' }}>
           ¡Bienvenido!
         </span>
       </div>
 
-      {/* Flechas */}
-      <div style={{ position:'absolute', left:72, top:0, bottom:0, display:'flex', alignItems:'center', gap:1, pointerEvents:'none', opacity: slideX > 30 ? 0 : 1, transition:'opacity 0.2s' }}>
-        <ChevronRight size={16} color="rgba(168,85,247,0.9)" className="animate-arrow" style={{ animationDelay:'0ms' }} />
-        <ChevronRight size={16} color="rgba(168,85,247,0.6)" className="animate-arrow" style={{ animationDelay:'200ms' }} />
-        <ChevronRight size={16} color="rgba(168,85,247,0.35)" className="animate-arrow" style={{ animationDelay:'400ms' }} />
+      {/* Flechas — corridas a la derecha del thumb agrandado (thumb=70 + left=4 + 14gap = 88) */}
+      <div style={{ position:'absolute', left:88, top:0, bottom:0, display:'flex', alignItems:'center', gap:1, pointerEvents:'none', opacity: slideX > 30 ? 0 : 1, transition:'opacity 0.2s' }}>
+        <ChevronRight size={18} color="rgba(168,85,247,0.9)" className="animate-arrow" style={{ animationDelay:'0ms' }} />
+        <ChevronRight size={18} color="rgba(168,85,247,0.6)" className="animate-arrow" style={{ animationDelay:'200ms' }} />
+        <ChevronRight size={18} color="rgba(168,85,247,0.35)" className="animate-arrow" style={{ animationDelay:'400ms' }} />
       </div>
 
-      {/* Thumb */}
+      {/* Thumb — 70x70 con padding parejo de 4px arriba/abajo/izquierda
+          (78 - 70 = 8 → 4 cada lado), proporciones iOS-style. */}
       <div
         style={{
           position:'absolute', top:4, left:4,
-          width:56, height:56,
+          width:70, height:70,
           background: isComplete
             ? 'linear-gradient(135deg, #22c55e, #10b981)'
             : 'linear-gradient(135deg, #a855f7, #ec4899)',
@@ -444,8 +454,8 @@ function SlideToJoinButton({ onJoin, isDemoClub }) {
         onTouchStart={() => { if (!isDemoClub) handleStart() }}
       >
         {isComplete
-          ? <Check size={24} color="#fff" strokeWidth={2.5} />
-          : <ArrowRight size={22} color="#fff" strokeWidth={2.5} />
+          ? <Check size={30} color="#fff" strokeWidth={2.5} />
+          : <ArrowRight size={28} color="#fff" strokeWidth={2.5} />
         }
       </div>
     </div>

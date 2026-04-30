@@ -2220,6 +2220,93 @@ function CommerceQRCard({ commerce }) {
   )
 }
 
+// ─── UPGRADE RESULT MODAL ─────────────────────────────────────────────────────
+// Se muestra cuando el dueño vuelve del checkout de Mercado Pago vía la URL
+// con ?upgrade=success|pending|failure. El webhook MP es quien activa el plan
+// realmente (POST /api/webhooks/mercadopago) — este modal es solo el feedback
+// visual al usuario para que sepa que el flujo terminó (o no).
+function UpgradeResultModal({ result, onClose }) {
+  const isSuccess = result === 'success' || result === 'pending'
+  const title = isSuccess
+    ? '¡Pago en proceso!'
+    : 'No se completó el pago'
+  const body  = isSuccess
+    ? 'Recibimos tu suscripción. En unos minutos vamos a activar tu nuevo plan automáticamente. Si pasaron más de 10 minutos y no se activó, escribinos por soporte.'
+    : 'El pago no se completó o fue cancelado. Tu plan actual no cambió. Podés volver a intentarlo desde la pantalla de planes cuando quieras.'
+  const accentColor = isSuccess ? '#22E698' : '#F87171'
+  const accentBg    = isSuccess ? 'rgba(34,230,152,0.12)' : 'rgba(248,113,113,0.12)'
+  const accentBorder= isSuccess ? 'rgba(34,230,152,0.45)' : 'rgba(248,113,113,0.45)'
+  return (
+    <div
+      onClick={onClose}
+      style={{ position:'fixed', inset:0, background:'rgba(0,0,0,.78)', zIndex:300, display:'flex', alignItems:'center', justifyContent:'center', padding:20, backdropFilter:'blur(6px)', WebkitBackdropFilter:'blur(6px)' }}
+    >
+      <div
+        onClick={(e) => e.stopPropagation()}
+        style={{
+          background:'linear-gradient(180deg, #15091F 0%, #0a0612 100%)',
+          border:`1px solid ${accentBorder}`,
+          borderRadius:24,
+          padding:'32px 24px 24px',
+          maxWidth:400, width:'100%',
+          boxShadow:`0 24px 64px rgba(0,0,0,0.6), 0 0 0 2px ${accentBorder}`,
+          textAlign:'center',
+          fontFamily:'inherit',
+        }}
+      >
+        <div style={{
+          width:72, height:72, borderRadius:24,
+          background:`linear-gradient(135deg, ${accentColor}, ${accentColor}AA)`,
+          display:'flex', alignItems:'center', justifyContent:'center',
+          margin:'0 auto 18px',
+          boxShadow:`0 12px 36px ${accentColor}60`,
+        }}>
+          {isSuccess
+            ? <Check size={36} color="#fff" strokeWidth={3} />
+            : <X size={36} color="#fff" strokeWidth={3} />}
+        </div>
+        <div style={{ fontSize:22, fontWeight:900, color:'#fff', marginBottom:10, letterSpacing:'-.01em' }}>
+          {title}
+        </div>
+        <div style={{ fontSize:14, color:'rgba(255,255,255,0.74)', lineHeight:1.55, marginBottom:24 }}>
+          {body}
+        </div>
+        {isSuccess && (
+          <div style={{
+            padding:'10px 14px', borderRadius:12,
+            background: accentBg,
+            border:`1px solid ${accentBorder}`,
+            fontSize:12, color:`${accentColor}`,
+            fontWeight:700, marginBottom:16, textAlign:'left',
+            display:'flex', alignItems:'flex-start', gap:8,
+          }}>
+            <Sparkles size={14} strokeWidth={2.4} style={{ flexShrink:0, marginTop:1 }} />
+            <span style={{ color:'rgba(255,255,255,0.85)', fontWeight:500, lineHeight:1.45 }}>
+              Vas a recibir un email de Mercado Pago con el comprobante. La activación es automática — no hace falta hacer nada más.
+            </span>
+          </div>
+        )}
+        <button
+          onClick={onClose}
+          style={{
+            width:'100%', padding:'14px 18px', borderRadius:14,
+            background: isSuccess
+              ? 'linear-gradient(135deg, #FE5000, #BD4BF8)'
+              : 'rgba(255,255,255,0.08)',
+            border: isSuccess ? 'none' : '1px solid rgba(255,255,255,0.16)',
+            color:'#fff',
+            fontSize:14, fontWeight:800, letterSpacing:'.02em',
+            cursor:'pointer',
+            boxShadow: isSuccess ? '0 8px 24px rgba(189,75,248,0.45)' : 'none',
+          }}
+        >
+          {isSuccess ? 'Volver al panel' : 'Entendido'}
+        </button>
+      </div>
+    </div>
+  )
+}
+
 // ─── UPGRADE MODAL ────────────────────────────────────────────────────────────
 function UpgradeModal({ feature, onUpgrade, onViewPlans, onContactSupport, onClose }) {
   const gate = FEATURE_GATES[feature]
@@ -3013,6 +3100,13 @@ function ReviewCard({ review }) {
 }
 
 function ReviewsSection() {
+  // Sección de testimonios deshabilitada hasta que tengamos reseñas
+  // reales en producción. El array REVIEWS arriba contiene 20 testimonios
+  // ficticios con nombres inventados (Martín Rodríguez, Lucía Fernández,
+  // etc.) — los dejamos sin renderear para no mostrar demos al usuario.
+  // Cuando haya reseñas reales suficientes, flippear el feature flag.
+  if (!REVIEWS_ENABLED) return null
+
   const row1 = REVIEWS.slice(0, 10)
   const row2 = REVIEWS.slice(10, 20)
 
@@ -3334,35 +3428,115 @@ function CountUp({ end, duration = 2000, suffix = '', prefix = '', decimals = 0 
   return <span ref={ref}>{prefix}{display}{suffix}</span>
 }
 
-// ─── STATS ─────────────────────────────────────────────────────────────────────
-function StatsSection() {
-  const stats = [
-    { end: 500,   suffix: '+',  label: 'Comercios activos',  duration: 2000 },
-    { end: 15000, suffix: '+',  label: 'Clientes felices',   duration: 2200 },
-    { end: 50000, suffix: '+',  label: 'Puntos canjeados',   duration: 2400 },
-    { end: 4.9,   suffix: ' ★', label: 'Rating promedio',   duration: 2000, decimals: 1 },
+// ─── FEATURES ──────────────────────────────────────────────────────────────────
+// Reemplaza la vieja StatsSection ("500+ comercios, 15000+ clientes...") que
+// mostraba números fabricados. Acá enumeramos funcionalidades CONCRETAS y
+// reales del producto — eso convierte mejor que vanity metrics inventadas y
+// además marca la diferencia con tarjetas de papel o apps genéricas.
+//
+// 6 cards en grid responsive (3 cols desktop / 2 tablet / 1 mobile). Cada
+// feature tiene icon + título + descripción de 1-2 líneas. Los colores de los
+// íconos siguen el código de marca: violeta = sistema/QR, fucsia = clientes,
+// naranja = engagement, verde = analytics, ámbar = automatizaciones (PRO).
+function FeaturesSection() {
+  const features = [
+    {
+      Icon: QrCode,
+      title: 'QR único del negocio',
+      desc: 'Cada local tiene su QR personalizado. El cliente escanea, queda dentro del club. Cero tarjetas de papel que se pierden.',
+      color: '#8B5CF6',
+    },
+    {
+      Icon: Star,
+      title: 'Estrellas o puntos',
+      desc: 'Elegís el sistema que mejor te queda. Estrellas (1 por compra) para algo simple, o puntos (1 = $1) para algo flexible.',
+      color: '#EC4899',
+    },
+    {
+      Icon: Gift,
+      title: 'Catálogo de premios',
+      desc: 'Cargás tus premios con foto, costo y stock. Los clientes los ven y los canjean desde su tarjeta digital.',
+      color: '#F97316',
+    },
+    {
+      Icon: Percent,
+      title: 'Promos automáticas',
+      desc: 'Descuento en la próxima visita, doble puntos en días flojos. Lo activás una vez y se aplica solo a cada cliente.',
+      color: '#5B8DEF',
+    },
+    {
+      Icon: BarChart2,
+      title: 'Reportes y segmentación',
+      desc: 'Mirá quién viene seguido, quién se enfrió y cuánto te facturan tus VIP. Filtrá por segmentos y exportá a Excel.',
+      color: '#22E698',
+    },
+    {
+      Icon: Bell,
+      title: 'WhatsApp y notificaciones',
+      desc: 'Reactivá clientes inactivos por WhatsApp y llegales con notificaciones push directo al celular.',
+      color: '#F5A623',
+    },
   ]
   return (
     <section className="section-secondary" style={{ padding:'100px 20px', position:'relative' }}>
       <div style={{ position:'absolute', top:'50%', left:'50%', transform:'translate(-50%,-50%)', width:'70vw', maxWidth:900, height:'50vh', borderRadius:'50%', background:'radial-gradient(circle, rgba(147,51,234,0.18) 0%, transparent 70%)', filter:'blur(60px)', pointerEvents:'none' }} />
-      <div style={{ maxWidth:960, margin:'0 auto', position:'relative' }}>
+      <div style={{ maxWidth:1080, margin:'0 auto', position:'relative' }}>
         <div style={{ textAlign:'center', marginBottom:14 }}>
-          <span className="liquid-glass" style={{ display:'inline-block', borderRadius:99, padding:'6px 20px', fontSize:11, color:'rgba(255,255,255,0.55)', fontFamily:FN, fontWeight:700, letterSpacing:'.10em', textTransform:'uppercase' }}>Números que hablan</span>
+          <span className="liquid-glass" style={{ display:'inline-block', borderRadius:99, padding:'6px 20px', fontSize:11, color:'rgba(255,255,255,0.55)', fontFamily:FN, fontWeight:700, letterSpacing:'.10em', textTransform:'uppercase' }}>Todo lo que necesitás</span>
         </div>
-        <h2 style={{ fontFamily:FN, fontSize:'clamp(22px,3.5vw,38px)', fontWeight:900, color:C.white, textAlign:'center', marginBottom:52, lineHeight:1.1 }}>
-          <BlurText text="Resultados reales." delay={100} />
+        <h2 style={{ fontFamily:FN, fontSize:'clamp(22px,3.5vw,38px)', fontWeight:900, color:C.white, textAlign:'center', marginBottom:18, lineHeight:1.1 }}>
+          Tu club, <span className="font-display" style={{ fontWeight:400, letterSpacing:'-.01em' }}>completo.</span>
         </h2>
-        <div className="liquid-glass" style={{ borderRadius:28, padding:'52px 36px' }}>
-          <div style={{ display:'grid', gridTemplateColumns:'repeat(auto-fit, minmax(140px, 1fr))', gap:40 }}>
-            {stats.map((s, i) => (
-              <div key={i} style={{ textAlign:'center' }}>
-                <div style={{ fontFamily:FN, fontSize:'clamp(36px,4.5vw,54px)', fontWeight:900, marginBottom:10, background:'linear-gradient(135deg, #fff 0%, rgba(255,255,255,0.65) 100%)', WebkitBackgroundClip:'text', WebkitTextFillColor:'transparent', backgroundClip:'text', lineHeight:1 }}>
-                  <CountUp end={s.end} suffix={s.suffix} duration={s.duration} decimals={s.decimals || 0} />
+        <p style={{ fontSize:15, color:C.mist, textAlign:'center', maxWidth:540, margin:'0 auto 52px', lineHeight:1.6 }}>
+          Funcionalidades pensadas para comercios chicos. Sin curva de aprendizaje, todo en una sola pantalla.
+        </p>
+        <div style={{ display:'grid', gridTemplateColumns:'repeat(auto-fit, minmax(280px, 1fr))', gap:16 }}>
+          {features.map((f, i) => {
+            const Icon = f.Icon
+            return (
+              <div
+                key={i}
+                className="liquid-glass"
+                style={{
+                  borderRadius:20,
+                  padding:'28px 26px',
+                  display:'flex', flexDirection:'column', gap:14,
+                  position:'relative', overflow:'hidden',
+                  transition:'transform 280ms cubic-bezier(0.22,1,0.36,1)',
+                  // El borde gradient lo da .liquid-glass::before; no le
+                  // sumamos otro border encima para no romperlo.
+                }}
+                onMouseEnter={(e) => { e.currentTarget.style.transform = 'translateY(-3px)' }}
+                onMouseLeave={(e) => { e.currentTarget.style.transform = 'translateY(0)' }}
+              >
+                {/* Glow ambiental atrás del ícono — tinta el corner con
+                    el color de la feature, ahora más sutil para no
+                    competir con el chrome glass. */}
+                <div style={{
+                  position:'absolute', top:-40, left:-40,
+                  width:160, height:160, borderRadius:'50%',
+                  background:`radial-gradient(circle, ${f.color}28 0%, transparent 70%)`,
+                  filter:'blur(24px)', pointerEvents:'none',
+                }} />
+                {/* Icono container — ahora también liquid-glass anidado
+                    para mantener coherencia (mismo lenguaje que el
+                    space-travel landing del FIND/Vela). */}
+                <div className="liquid-glass" style={{
+                  width:46, height:46, borderRadius:12,
+                  display:'flex', alignItems:'center', justifyContent:'center',
+                  flexShrink:0, position:'relative',
+                }}>
+                  <Icon size={22} color={f.color} strokeWidth={2} style={{ position:'relative', zIndex:1, filter:`drop-shadow(0 0 8px ${f.color}99)` }} />
                 </div>
-                <div style={{ fontSize:13, color:C.mist, lineHeight:1.5 }}>{s.label}</div>
+                <div style={{ fontFamily:FN, fontSize:17, fontWeight:800, color:C.white, lineHeight:1.25, letterSpacing:'-.005em', position:'relative' }}>
+                  {f.title}
+                </div>
+                <div style={{ fontSize:13.5, color:'rgba(255,255,255,0.72)', lineHeight:1.6, position:'relative', fontWeight:300 }}>
+                  {f.desc}
+                </div>
               </div>
-            ))}
-          </div>
+            )
+          })}
         </div>
       </div>
     </section>
@@ -3370,11 +3544,48 @@ function StatsSection() {
 }
 
 // ─── HOW IT WORKS ──────────────────────────────────────────────────────────────
+// Cada step tiene su propia identidad: color de marca, motif decorativo
+// (visualización CSS/SVG única que evoca la acción), eyebrow chip, título
+// con underline accent, descripción y feature pills. Layout asimétrico
+// (texto izquierda, visual derecha) en desktop; stack en mobile.
 function HowItWorksSection() {
   const steps = [
-    { num:'01', Icon:QrCode, title:'Escaneá',  desc:'Mostrá tu QR en el local y unite al club en segundos.',        grad:'linear-gradient(135deg, #8B5CF6D9, #7C3AEDF2)' },
-    { num:'02', Icon:Plus,   title:'Sumás',    desc:'Cada visita suma puntos automáticamente en tu cuenta.',         grad:'linear-gradient(135deg, #EC4899D9, #DB2777F2)' },
-    { num:'03', Icon:Gift,   title:'Canjeás',  desc:'Usá tus puntos para canjear premios y beneficios exclusivos.',  grad:'linear-gradient(135deg, #F97316D9, #EA580CF2)' },
+    {
+      num:'01',
+      Icon:QrCode,
+      eyebrow:'PASO UNO',
+      title:'Escaneá',
+      desc:'Mostrá el QR del local y unite al club en segundos. Sin descargar nada, sin papelitos.',
+      pills:['QR único por local', 'Sin app extra', 'Funciona offline'],
+      accent:'#8B5CF6',         // violeta — sistema "stars"
+      accentDark:'#7C3AED',
+      grad:'linear-gradient(135deg, #2A1140 0%, #1A0626 60%, #0d0218 100%)',
+      visual:'qr',
+    },
+    {
+      num:'02',
+      Icon:Star,
+      eyebrow:'PASO DOS',
+      title:'Sumás',
+      desc:'Cada visita suma estrellas o puntos automáticos. El comerciante escanea tu tarjeta y listo.',
+      pills:['Estrellas o puntos', 'Suma automática', 'Sin trámite'],
+      accent:'#EC4899',         // fucsia — sistema "points"
+      accentDark:'#DB2777',
+      grad:'linear-gradient(135deg, #2A0E22 0%, #1B0612 60%, #0F0309 100%)',
+      visual:'sparks',
+    },
+    {
+      num:'03',
+      Icon:Gift,
+      eyebrow:'PASO TRES',
+      title:'Canjeás',
+      desc:'Usás lo acumulado para llevarte premios reales: cafés, descuentos, productos y más.',
+      pills:['Premios reales', 'Descuentos exclusivos', 'Stock en vivo'],
+      accent:'#FE5000',         // naranja — color CTA marca
+      accentDark:'#EA580C',
+      grad:'linear-gradient(135deg, #2B1308 0%, #1A0A04 60%, #0F0502 100%)',
+      visual:'gift',
+    },
   ]
 
   const containerRef = useRef(null)
@@ -3436,39 +3647,242 @@ function HowItWorksSection() {
 
   const topBase = isMobile ? 80  : 100
   const topStep = isMobile ? 25  : 30
-  const cardH   = isMobile ? 400 : 460
-  const cardMT  = isMobile ? 160 : 200
-  const iconSz  = isMobile ? 64  : 80
-  const iconISz = isMobile ? 28  : 36
+  // Altura de cada card. Achicada en desktop para que el contenido más
+  // chico (título 56, padding 36) no deje aire muerto. En mobile sigue
+  // siendo más alto porque texto + visual van stackeados.
+  const cardH   = isMobile ? 520 : 380
+  const cardMT  = isMobile ? 180 : 200
 
+  // Cada card es un container con grad oscuro tintado del color de marca
+  // de ese step + chrome de "liquid glass" (highlight superior + borde
+  // gradient via ::before). Sin padding fijo: el contenido interno
+  // maneja su propia geometría asimétrica.
+  // El className "liquid-glass" agrega el highlight superior y el frame
+  // gradient sutil que respira con el resto del lenguaje del home.
   const cardBase = (s, i, extra = {}) => ({
-    borderRadius:        32,
-    padding:             isMobile ? '32px 24px' : '48px',
+    borderRadius:        24,
     boxSizing:           'border-box',
-    background:          s.grad,
-    backdropFilter:      'blur(20px)',
-    WebkitBackdropFilter:'blur(20px)',
-    border:              '1px solid rgba(255,255,255,0.18)',
-    boxShadow:           '0 25px 50px -12px rgba(0,0,0,0.5), inset 0 1px 0 rgba(255,255,255,0.15)',
-    display:             'flex',
-    flexDirection:       'column',
-    alignItems:          'center',
-    justifyContent:      'center',
-    textAlign:           'center',
-    gap:                 isMobile ? 20 : 28,
+    background:          `${s.grad}, rgba(255,255,255,0.01)`,
+    backgroundBlendMode: 'normal, luminosity',
+    boxShadow:           `0 30px 60px -20px ${s.accentDark}66, inset 0 1px 1px rgba(255,255,255,0.10)`,
     position:            'relative',
     overflow:            'hidden',
     ...extra,
   })
 
-  const CardInner = ({ s }) => (<>
-    <div style={{ position:'absolute', top: isMobile ? 16 : 20, left: isMobile ? 20 : 28, fontFamily:FN, fontWeight:900, fontSize: isMobile ? 80 : 120, color:'rgba(255,255,255,0.12)', lineHeight:1, userSelect:'none', pointerEvents:'none' }}>{s.num}</div>
-    <div style={{ width:iconSz, height:iconSz, borderRadius:24, background:'rgba(255,255,255,0.18)', display:'flex', alignItems:'center', justifyContent:'center', flexShrink:0 }}>
-      <s.Icon size={iconISz} color="#fff" strokeWidth={1.8} />
+  // Visual decorativo único por step. Cada uno renderiza un patrón distinto
+  // que evoca la acción (QR, sparks/estrellas, gift+sparkles).
+  const StepVisual = ({ kind, accent }) => {
+    if (kind === 'qr') {
+      // Grid 7x7 estilo QR: marcadores en las 3 esquinas + dots aleatorios
+      // en el centro. Solo CSS/divs, sin assets.
+      const filled = new Set([
+        // esquina top-left (3x3)
+        0,1,2,7,9,14,15,16,
+        // esquina top-right (3x3)
+        4,5,6,11,13,18,19,20,
+        // esquina bottom-left (3x3)
+        28,29,30,35,37,42,43,44,
+        // dots dispersos en el medio
+        24,25,26,31,33,38,39,
+      ])
+      return (
+        <div style={{ display:'grid', gridTemplateColumns:'repeat(7, 1fr)', gap:5, width:'100%', maxWidth: isMobile ? 180 : 220, aspectRatio:'1/1' }}>
+          {Array.from({ length: 49 }).map((_, idx) => (
+            <div key={idx} style={{
+              borderRadius: 4,
+              background: filled.has(idx) ? accent : 'rgba(255,255,255,0.05)',
+              boxShadow: filled.has(idx) ? `0 0 8px ${accent}80` : 'none',
+              transition: 'all 280ms ease',
+            }} />
+          ))}
+        </div>
+      )
+    }
+    if (kind === 'sparks') {
+      // Estrellas flotantes. Tamaño base bajado: en desktop ahora ~1.1×
+      // (era 1.4×) para que no domine sobre el texto del lado izquierdo.
+      const scale = isMobile ? 0.9 : 1.1
+      const sparks = [
+        { left:'12%', top:'20%', size:38, delay:0    },
+        { left:'68%', top:'10%', size:26, delay:600  },
+        { left:'82%', top:'46%', size:42, delay:300  },
+        { left:'24%', top:'62%', size:30, delay:900  },
+        { left:'52%', top:'76%', size:22, delay:1200 },
+        { left:'46%', top:'34%', size:18, delay:450  },
+      ]
+      return (
+        <div style={{ position:'relative', width:'100%', height:'100%', minHeight: isMobile ? 180 : 220 }}>
+          {sparks.map((sp, idx) => (
+            <div key={idx} style={{
+              position:'absolute', left:sp.left, top:sp.top,
+              animation:`step-spark-pulse 2.4s ease-in-out ${sp.delay}ms infinite`,
+            }}>
+              <Star size={Math.round(sp.size * scale)} color={accent} fill={accent} strokeWidth={0} style={{ filter:`drop-shadow(0 0 12px ${accent}88)` }} />
+            </div>
+          ))}
+        </div>
+      )
+    }
+    if (kind === 'gift') {
+      // Caja de regalo grande en el centro con sparkles que irradian.
+      const sparkles = [
+        { x:'18%', y:'22%' }, { x:'78%', y:'18%' }, { x:'12%', y:'72%' },
+        { x:'82%', y:'78%' }, { x:'52%', y:'10%' }, { x:'92%', y:'48%' },
+        { x:'8%',  y:'46%' }, { x:'48%', y:'90%' },
+      ]
+      const giftSz = isMobile ? 100 : 120
+      const giftIconSz = isMobile ? 48 : 58
+      const sparkleSz = isMobile ? 18 : 20
+      return (
+        <div style={{ position:'relative', width:'100%', height:'100%', minHeight: isMobile ? 180 : 200, display:'flex', alignItems:'center', justifyContent:'center' }}>
+          {/* Halo radial detrás del regalo */}
+          <div style={{
+            position:'absolute', width:'70%', aspectRatio:'1/1',
+            background:`radial-gradient(circle, ${accent}55 0%, transparent 70%)`,
+            filter:'blur(24px)',
+          }} />
+          {/* Sparkles alrededor */}
+          {sparkles.map((sp, idx) => (
+            <div key={idx} style={{
+              position:'absolute', left:sp.x, top:sp.y,
+              animation:`step-spark-pulse 2s ease-in-out ${idx * 200}ms infinite`,
+            }}>
+              <Sparkles size={sparkleSz} color={accent} strokeWidth={1.8} style={{ filter:`drop-shadow(0 0 10px ${accent}99)` }} />
+            </div>
+          ))}
+          {/* Gift icon central, grande */}
+          <div style={{
+            position:'relative', zIndex:1,
+            width:giftSz, height:giftSz, borderRadius:28,
+            background:`linear-gradient(135deg, ${accent}, ${accent}AA)`,
+            display:'flex', alignItems:'center', justifyContent:'center',
+            boxShadow:`0 16px 40px ${accent}80, inset 0 2px 0 rgba(255,255,255,0.30)`,
+          }}>
+            <Gift size={giftIconSz} color="#fff" strokeWidth={1.6} />
+          </div>
+        </div>
+      )
+    }
+    return null
+  }
+
+  const CardInner = ({ s }) => (
+    <div style={{
+      position:'relative',
+      width:'100%', height:'100%',
+      padding: isMobile ? '28px 24px' : '36px 44px',
+      display:'grid',
+      gridTemplateColumns: isMobile ? '1fr' : '1.2fr 1fr',
+      gap: isMobile ? 24 : 36,
+      alignItems:'center',
+    }}>
+      {/* Número GIGANTE de fondo, ahora en Instrument Serif italic en
+          vez de sans-bold outline — le da elegancia tipo landing
+          cinematográfica. Pintado en color del step a baja opacidad. */}
+      <div className="font-display" style={{
+        position:'absolute',
+        top: isMobile ? -28 : -34,
+        right: isMobile ? -6 : -4,
+        fontSize: isMobile ? 220 : 200,
+        color: `${s.accent}26`,
+        lineHeight:1,
+        userSelect:'none', pointerEvents:'none',
+        letterSpacing:'-.02em',
+      }}>{s.num}</div>
+
+      {/* Glow ambiente del color de marca atrás del visual */}
+      <div style={{
+        position:'absolute',
+        right: isMobile ? '50%' : '15%',
+        top:'50%',
+        transform: isMobile ? 'translate(50%, -50%)' : 'translate(0, -50%)',
+        width: isMobile ? 280 : 380,
+        height: isMobile ? 280 : 380,
+        background: `radial-gradient(circle, ${s.accent}33 0%, transparent 65%)`,
+        filter:'blur(40px)',
+        pointerEvents:'none',
+      }} />
+
+      {/* COLUMNA IZQUIERDA — texto */}
+      <div style={{ position:'relative', zIndex:2, order: isMobile ? 2 : 1 }}>
+        {/* Eyebrow chip con el color de marca */}
+        <div style={{
+          display:'inline-flex', alignItems:'center', gap:8,
+          padding:'5px 12px', borderRadius:99,
+          background:`${s.accent}1A`,
+          border:`1px solid ${s.accent}55`,
+          fontSize:10.5, fontFamily:FN, fontWeight:800,
+          color:s.accent,
+          letterSpacing:'.16em', textTransform:'uppercase',
+          marginBottom:18,
+        }}>
+          <s.Icon size={12} strokeWidth={2.4} />
+          {s.eyebrow}
+        </div>
+
+        {/* Título grande con underline accent. Bajamos a 56px en desktop
+            (era 72) para que se sienta más balanceado en cards de 380px
+            de alto. */}
+        <div style={{ position:'relative', display:'inline-block', marginBottom:14 }}>
+          <h3 style={{
+            fontFamily:FN, fontSize: isMobile ? 40 : 56,
+            fontWeight:900, color:'#fff', margin:0,
+            lineHeight:1, letterSpacing:'-.025em',
+            textShadow:`0 6px 24px ${s.accent}50`,
+          }}>
+            {s.title}
+          </h3>
+          <div style={{
+            position:'absolute', left:0, bottom:-6,
+            height: 4, width:'60%',
+            background: `linear-gradient(90deg, ${s.accent}, ${s.accent}00)`,
+            borderRadius: 99,
+            boxShadow:`0 0 14px ${s.accent}, 0 0 4px ${s.accent}`,
+          }} />
+        </div>
+
+        {/* Descripción — más chica en desktop para que el bloque de texto
+            se vea proporcionado al título de 56px (no 72). */}
+        <p style={{
+          fontSize: isMobile ? 14.5 : 15,
+          color:'rgba(255,255,255,0.78)',
+          lineHeight:1.6, margin: isMobile ? '16px 0 20px' : '18px 0 20px',
+          maxWidth:400,
+        }}>
+          {s.desc}
+        </p>
+
+        {/* Feature pills — patrón "small liquid-glass tag" inspirado en
+            el space-travel landing: pill chiquito, glass casi
+            transparente, texto blanco al 90%, sin checks adentro
+            (más limpio). El borde lo da el ::before del liquid-glass. */}
+        <div style={{ display:'flex', flexWrap:'wrap', gap:6 }}>
+          {s.pills.map((p, idx) => (
+            <div key={idx} className="liquid-glass" style={{
+              padding:'5px 12px', borderRadius:99,
+              fontSize:11, fontFamily:FN, fontWeight:500,
+              color:'rgba(255,255,255,0.90)',
+              letterSpacing:'.01em',
+              whiteSpace:'nowrap',
+            }}>
+              {p}
+            </div>
+          ))}
+        </div>
+      </div>
+
+      {/* COLUMNA DERECHA — visual decorativo único del step */}
+      <div style={{
+        position:'relative', zIndex:2,
+        order: isMobile ? 1 : 2,
+        display:'flex', alignItems:'center', justifyContent:'center',
+        minHeight: isMobile ? 200 : 280,
+      }}>
+        <StepVisual kind={s.visual} accent={s.accent} />
+      </div>
     </div>
-    <div style={{ fontFamily:FN, fontSize: isMobile ? 26 : 32, fontWeight:700, color:'#fff' }}>{s.title}</div>
-    <div style={{ fontSize: isMobile ? 16 : 18, color:'rgba(255,255,255,0.85)', lineHeight:1.6, maxWidth:480 }}>{s.desc}</div>
-  </>)
+  )
 
   const sectionHeader = (
     <>
@@ -3476,7 +3890,7 @@ function HowItWorksSection() {
         <span className="liquid-glass" style={{ display:'inline-block', borderRadius:99, padding:'6px 20px', fontSize:11, color:'rgba(255,255,255,0.55)', fontFamily:FN, fontWeight:700, letterSpacing:'.10em', textTransform:'uppercase' }}>Así de fácil</span>
       </div>
       <h2 style={{ fontFamily:FN, fontSize:'clamp(22px,3.5vw,38px)', fontWeight:900, color:C.white, textAlign:'center', marginBottom: isMobile ? 40 : 52, lineHeight:1.1 }}>
-        <BlurText text="Cómo funciona." delay={100} />
+        Cómo <span className="font-display" style={{ fontWeight:400, letterSpacing:'-.01em' }}>funciona.</span>
       </h2>
     </>
   )
@@ -3484,10 +3898,16 @@ function HowItWorksSection() {
   /* ── Reduced motion: plain vertical stack ── */
   if (reducedMotion) return (
     <section style={{ padding:'100px 20px' }}>
+      <style>{`
+        @keyframes step-spark-pulse {
+          0%, 100% { transform: scale(1); opacity: 0.85; }
+          50%      { transform: scale(1.18); opacity: 1; }
+        }
+      `}</style>
       {sectionHeader}
-      <div style={{ maxWidth:720, margin:'0 auto', display:'flex', flexDirection:'column', gap:20 }}>
+      <div style={{ maxWidth:860, margin:'0 auto', display:'flex', flexDirection:'column', gap:20 }}>
         {steps.map((s, i) => (
-          <div key={i} style={cardBase(s, i, { minHeight: isMobile ? 280 : 320 })}>
+          <div key={i} style={cardBase(s, i, { minHeight: isMobile ? 540 : 460 })}>
             <CardInner s={s} />
           </div>
         ))}
@@ -3498,6 +3918,13 @@ function HowItWorksSection() {
   /* ── Scroll-stacking layout ── */
   return (
     <section style={{ padding:'100px 20px 0' }}>
+      {/* Keyframes para los visuals decorativos de los cards (sparks pulse). */}
+      <style>{`
+        @keyframes step-spark-pulse {
+          0%, 100% { transform: scale(1); opacity: 0.85; }
+          50%      { transform: scale(1.18); opacity: 1; }
+        }
+      `}</style>
       {sectionHeader}
 
       <div ref={containerRef} style={{ position:'relative', paddingBottom: isMobile ? 120 : 160 }}>
@@ -3509,7 +3936,7 @@ function HowItWorksSection() {
           >
             <div style={cardBase(s, i, {
               height:     cardH,
-              maxWidth:   720,
+              maxWidth:   860,
               margin:     '0 auto',
               transform:  `scale(${transforms[i].scale})`,
               opacity:    transforms[i].opacity,
@@ -3758,7 +4185,11 @@ function _HeroSlider({ setView, profile }) {
 }
 
 // ─── TESTIMONIALS ─────────────────────────────────────────────────────────────
+// Sección de testimonios deshabilitada hasta tener reseñas reales —
+// igual que ReviewsSection. Los 3 nombres ficticios (María González,
+// Carlos Rodríguez, Laura Martínez) eran demos.
 function TestimonialsSection() {
+  if (!REVIEWS_ENABLED) return null
   const items = [
     { name:'María González', role:'Dueña de Café Aroma',     location:'Buenos Aires', text:'Aumentamos un 40% las visitas recurrentes en solo 2 meses. Mis clientes aman juntar estrellitas.' },
     { name:'Carlos Rodríguez', role:'Barbería Premium',       location:'Córdoba',      text:'La app es súper fácil de usar. Mis clientes vuelven más seguido para completar su tarjeta.' },
@@ -3951,17 +4382,664 @@ function SectionDivider() {
   return <div className="section-divider" />
 }
 
+// ─── CINEMATIC SPLASH ─────────────────────────────────────────────────────────
+// "Momento marca" del home: tipografía gigante "Benefix" con la paleta de la
+// marca (naranja → fucsia → violeta), skyline urbano en silueta con ventanas
+// que brillan en colores de marca. Fondo oscuro coherente con el resto de la
+// app (NO cielo celeste).
+//
+// Efectos disparados por SCROLL (replica el feel del video FIND Real Estate):
+//   1. Ghost-text duplicado entra blureado y desplazado, converge al main
+//      a medida que el usuario hace scroll sobre la sección.
+//   2. Tipografía main entra con opacity 0 y crece a su tamaño final.
+//   3. Skyline hace parallax sutil — las ventanas iluminadas se desplazan
+//      vertical en sentido contrario al scroll para dar profundidad.
+//
+// Usa IntersectionObserver para arrancar la animación + un listener de scroll
+// para mapear el progreso visible de la sección a un valor 0..1 que conduce
+// las transformaciones (parallax + ghost-converge).
+function CinematicSplashSection({ setView, user, profile, onLogin }) {
+  const sectionRef = React.useRef(null)
+  const [revealed, setRevealed] = React.useState(false)
+  const isOwner = profile?.role === 'commerce_owner'
+
+  // Lógica de los CTAs heredada del viejo HeroSection que reemplazamos.
+  // "Soy cliente" / "Soy comercio" / "Mi panel" — según haya o no sesión y
+  // según el rol. Misma estrategia: si no está logueado, guardamos el rol
+  // pretendido en sessionStorage y disparamos handleLogin; si ya está
+  // logueado, ruteo directo al panel correspondiente.
+  function handleSignupCTA(role) {
+    if (!user) {
+      try { sessionStorage.setItem('benefix:signupAs', role) } catch {}
+      onLogin && onLogin()
+      return
+    }
+    if (role === 'client') {
+      setView(isOwner ? 'commerce-settings' : 'client')
+      return
+    }
+    if (isOwner) { setView('commerce-settings'); return }
+    try { sessionStorage.setItem('benefix:signupAs', 'merchant') } catch {}
+    window.dispatchEvent(new CustomEvent('benefix:open-signup', { detail: { mode: 'merchant' } }))
+  }
+
+  // Lista de rubros del marquee (mismos que tenía HeroSection).
+  const TRUST = [
+    { Icon: Coffee,          label: 'Cafeterías'   },
+    { Icon: Scissors,        label: 'Barberías'    },
+    { Icon: UtensilsCrossed, label: 'Restaurantes' },
+    { Icon: ShoppingBag,     label: 'Tiendas'      },
+    { Icon: Dumbbell,        label: 'Gimnasios'    },
+    { Icon: Sparkles,        label: 'Peluquerías'  },
+    { Icon: IceCream,        label: 'Heladerías'   },
+    { Icon: Croissant,       label: 'Panaderías'   },
+    { Icon: Flower2,         label: 'Spa'          },
+    { Icon: Car,             label: 'Lavaderos'    },
+    { Icon: Pizza,           label: 'Pizzerías'    },
+    { Icon: PawPrint,        label: 'Veterinarias' },
+  ]
+  // progress: 0 cuando la sección apenas entra, 1 cuando está bien centrada
+  // en viewport. Conduce parallax y la convergencia del ghost-text.
+  const [progress, setProgress] = React.useState(0)
+
+  React.useEffect(() => {
+    if (!sectionRef.current) return
+    // 1) Reveal único cuando entra al viewport (anima opacity/scale del
+    //    título principal). Esto se hace solo la primera vez para que no
+    //    re-animar al hacer scroll up/down repetido.
+    const obs = new IntersectionObserver(([entry]) => {
+      if (entry.isIntersecting) setRevealed(true)
+    }, { threshold: 0.15 })
+    obs.observe(sectionRef.current)
+    // 2) Listener de scroll continuo — mapea posición de la sección a
+    //    progreso 0..1. Lo usamos para parallax y convergencia.
+    function onScroll() {
+      const el = sectionRef.current
+      if (!el) return
+      const rect = el.getBoundingClientRect()
+      const vh = window.innerHeight
+      // 0 cuando la sección está apenas entrando por abajo, 1 cuando ya
+      // pasó por el centro y está saliendo por arriba.
+      const raw = 1 - (rect.top + rect.height * 0.3) / vh
+      setProgress(Math.max(0, Math.min(1, raw)))
+    }
+    window.addEventListener('scroll', onScroll, { passive: true })
+    onScroll()
+    return () => { obs.disconnect(); window.removeEventListener('scroll', onScroll) }
+  }, [])
+
+  // Convergencia del ghost-text: al inicio está bien desplazado y blureado;
+  // al avanzar el scroll se acerca al main hasta superponerse exactamente.
+  const ghostOffset = (1 - progress) * 24    // px
+  const ghostBlur   = 8 + (1 - progress) * 22 // px
+  const ghostOpacity= 0.35 + (1 - progress) * 0.40
+  // Parallax del skyline: se desplaza verticalmente en sentido inverso al
+  // scroll para dar la sensación de "los edificios están atrás".
+  const skylineY = (progress - 0.5) * -40   // -20 → +20 px
+
+  return (
+    <section ref={sectionRef} className="cinematic-splash" style={{
+      position:'relative',
+      padding:'80px 20px 100px',
+      overflow:'hidden',
+      // Mismo background oscuro que el resto de la app — gradiente sutil
+      // del violeta más oscuro al negro. Se integra con HeroSection arriba
+      // y BigBoldRowsSection abajo sin saltos de color.
+      // El min-height/100vh para mobile se maneja con la clase
+      // .cinematic-splash en globals.css (media query). En desktop la
+      // sección se ajusta al contenido — no fuerza altura.
+      background:'linear-gradient(180deg, #0a0612 0%, #15091F 40%, #1a0a28 70%, #0a0612 100%)',
+    }}>
+      {/* Halo violeta detrás del título, simulando una "luna" / spotlight
+          que ilumina las letras desde atrás. Pintado de marca. */}
+      <div style={{
+        position:'absolute', top:'25%', left:'50%',
+        transform:'translateX(-50%)',
+        width:'min(900px, 90vw)', height:380,
+        background:'radial-gradient(ellipse at center, rgba(189,75,248,0.30) 0%, rgba(254,80,0,0.12) 35%, transparent 65%)',
+        filter:'blur(40px)',
+        pointerEvents:'none',
+      }} />
+
+      {/* Estrellas/sparkles muy sutiles en el fondo — puntitos blancos
+          fijos repartidos. No se mueven (sin animación). */}
+      <div style={{ position:'absolute', inset:0, pointerEvents:'none', opacity:0.55 }}>
+        {[
+          { top:'12%', left:'8%' }, { top:'18%', left:'82%' }, { top:'22%', left:'45%' },
+          { top:'8%',  left:'62%' }, { top:'30%', left:'20%' }, { top:'15%', left:'30%' },
+          { top:'25%', left:'92%' }, { top:'10%', left:'95%' }, { top:'35%', left:'72%' },
+        ].map((s, i) => (
+          <div key={i} style={{
+            position:'absolute', top:s.top, left:s.left,
+            width:2, height:2, borderRadius:'50%',
+            background:'#fff',
+            boxShadow:'0 0 4px rgba(255,255,255,0.85), 0 0 8px rgba(189,75,248,0.45)',
+          }} />
+        ))}
+      </div>
+
+      {/* Trust marquee ARRIBA — afuera del wrapper principal para que en
+          mobile (cinematic-splash con flex column) quede pegado al tope
+          de la pantalla mientras el bloque BENEFIX se centra vertical
+          via .splash-main. En desktop ambos siguen su flujo normal. */}
+      <div className="splash-marquee" style={{
+        position:'relative', zIndex:2,
+        width:'100%',
+        marginBottom:32,
+        opacity: revealed ? 1 : 0,
+        transition:'opacity 700ms ease',
+      }}>
+        <div
+          aria-label="Rubros de comercios que usan Benefix"
+          style={{
+            overflow: 'hidden',
+            WebkitMaskImage: 'linear-gradient(to right, transparent 0%, black 80px, black calc(100% - 80px), transparent 100%)',
+            maskImage: 'linear-gradient(to right, transparent 0%, black 80px, black calc(100% - 80px), transparent 100%)',
+          }}
+        >
+          <div className="trust-marquee trust-marquee--splash">
+            {TRUST.map(({ Icon, label }) => (
+              <div key={label} className="trust-marquee-item">
+                <Icon size={18} color="#BD4BF8" strokeWidth={1.6} />
+                <span>{label}</span>
+              </div>
+            ))}
+            {TRUST.map(({ Icon, label }) => (
+              <div key={`d-${label}`} className="trust-marquee-item" aria-hidden="true">
+                <Icon size={18} color="#BD4BF8" strokeWidth={1.6} />
+                <span>{label}</span>
+              </div>
+            ))}
+          </div>
+        </div>
+      </div>
+
+      <div className="splash-main" style={{ maxWidth:1200, margin:'0 auto', position:'relative', textAlign:'center', width:'100%', zIndex:2 }}>
+
+        {/* Eyebrow chip — patrón "white pill chip + glass container" igual
+            que el space-travel landing: una pill blanca chiquita ("Nuevo")
+            adentro de una pill liquid-glass más grande que carga la copy. */}
+        <div style={{ marginBottom:36 }}>
+          <div className="liquid-glass" style={{
+            display:'inline-flex', alignItems:'center', gap:10,
+            padding:'4px 14px 4px 4px',
+            borderRadius:99,
+            opacity: revealed ? 1 : 0,
+            transform: revealed ? 'translateY(0)' : 'translateY(20px)',
+            transition: 'opacity 800ms ease 200ms, transform 800ms cubic-bezier(0.22,1,0.36,1) 200ms',
+          }}>
+            <span style={{
+              background:'#fff',
+              color:'#0a0612',
+              fontSize:10.5, fontWeight:800,
+              padding:'4px 11px',
+              borderRadius:99,
+              letterSpacing:'.04em',
+              textTransform:'uppercase',
+              fontFamily:FN,
+            }}>
+              Nuevo
+            </span>
+            <span style={{
+              fontSize:12, fontFamily:FN, fontWeight:500,
+              color:'rgba(255,255,255,0.85)',
+              letterSpacing:'.02em',
+            }}>
+              Tu negocio, en otro nivel
+            </span>
+          </div>
+        </div>
+
+        {/* TIPOGRAFÍA GIGANTE con ghost-text que CONVERGE al hacer scroll.
+            Dos h1 superpuestos: el de atrás está desplazado/blureado al
+            inicio y se va acercando al main según el progreso del scroll.
+            Se envuelve en un div block para forzar línea propia y centrarse
+            con el textAlign:center del padre. */}
+        <div style={{ position:'relative', display:'inline-block' }}>
+          {/* Ghost layer — duplicado blureado que converge al hacer scroll.
+              Tamaño máximo reducido fuerte: en wide screens ahora topa en
+              112px (antes 160). En mobile sigue en 56-72 con clamp. */}
+          <h1 aria-hidden="true" style={{
+            position:'absolute', top:0, left:0, right:0,
+            margin:0,
+            fontFamily:FN,
+            fontSize:'clamp(56px, 8vw, 112px)',
+            fontWeight:900,
+            letterSpacing:'-0.04em',
+            lineHeight:0.88,
+            textTransform:'uppercase',
+            color:'transparent',
+            backgroundImage:'linear-gradient(135deg, #FE5000 0%, #BD4BF8 50%, #7C3AED 100%)',
+            WebkitBackgroundClip:'text',
+            backgroundClip:'text',
+            WebkitTextFillColor:'transparent',
+            // Convergencia conducida por el scroll
+            filter:`blur(${ghostBlur}px) opacity(${ghostOpacity})`,
+            transform:`translate(${ghostOffset}px, ${ghostOffset * 0.5}px)`,
+            transition:'filter 80ms linear, transform 80ms linear',
+            pointerEvents:'none',
+            userSelect:'none',
+          }}>
+            Benefix
+          </h1>
+          {/* Foreground — gradient brand naranja→fucsia→violeta nítido.
+              Reveal: empieza con opacity 0 + scale 0.92 y se materializa. */}
+          <h1 style={{
+            position:'relative',
+            margin:0,
+            fontFamily:FN,
+            fontSize:'clamp(56px, 8vw, 112px)',
+            fontWeight:900,
+            letterSpacing:'-0.04em',
+            lineHeight:0.88,
+            textTransform:'uppercase',
+            backgroundImage:'linear-gradient(110deg, #FE5000 0%, #FF7A00 18%, #EC4899 45%, #BD4BF8 72%, #7C3AED 100%)',
+            WebkitBackgroundClip:'text',
+            backgroundClip:'text',
+            WebkitTextFillColor:'transparent',
+            // Glow violeta abajo de las letras
+            filter:'drop-shadow(0 4px 16px rgba(189,75,248,0.55)) drop-shadow(0 2px 6px rgba(254,80,0,0.30))',
+            opacity: revealed ? 1 : 0,
+            transform: revealed ? 'scale(1)' : 'scale(0.92)',
+            transition: 'opacity 1000ms cubic-bezier(0.22,1,0.36,1) 200ms, transform 1000ms cubic-bezier(0.22,1,0.36,1) 200ms',
+          }}>
+            Benefix
+          </h1>
+        </div>
+
+        {/* Subtítulo tipo "Real Estate" debajo del logo, en color marca */}
+        <div style={{
+          fontFamily:FN, fontSize:'clamp(15px, 2.2vw, 20px)',
+          fontWeight:700, color:'rgba(216,180,254,0.85)',
+          marginTop:18, letterSpacing:'.16em',
+          textTransform:'uppercase',
+          opacity: revealed ? 1 : 0,
+          transform: revealed ? 'translateY(0)' : 'translateY(16px)',
+          transition: 'opacity 700ms ease 600ms, transform 700ms cubic-bezier(0.22,1,0.36,1) 600ms',
+        }}>
+          Programa de beneficios
+        </div>
+
+        {/* Tagline */}
+        <p style={{
+          fontFamily:FI,
+          fontSize:'clamp(15px, 1.9vw, 19px)',
+          color:'rgba(255,255,255,0.55)',
+          maxWidth:520, margin:'24px auto 0',
+          lineHeight:1.6,
+          opacity: revealed ? 1 : 0,
+          transform: revealed ? 'translateY(0)' : 'translateY(16px)',
+          transition: 'opacity 700ms ease 800ms, transform 700ms cubic-bezier(0.22,1,0.36,1) 800ms',
+        }}>
+          No solo fidelizás. Cambiás cómo tus clientes se relacionan con tu marca.
+        </p>
+
+        {/* CTAs principales — heredados del viejo HeroSection que ahora
+            está reemplazado por este Splash. Reveal con delay > tagline. */}
+        <div style={{
+          display:'flex', flexWrap:'wrap', alignItems:'center', justifyContent:'center', gap:14,
+          marginTop:32,
+          opacity: revealed ? 1 : 0,
+          transform: revealed ? 'translateY(0)' : 'translateY(16px)',
+          transition:'opacity 700ms ease 1000ms, transform 700ms cubic-bezier(0.22,1,0.36,1) 1000ms',
+        }}>
+          <Btn onClick={() => handleSignupCTA('client')}>
+            Soy cliente <ArrowRight size={16} strokeWidth={2.5} />
+          </Btn>
+          <Btn variant="ghost" onClick={() => handleSignupCTA('merchant')}>
+            {isOwner ? 'Mi panel' : 'Soy comercio'} <ArrowRight size={16} strokeWidth={2.5} />
+          </Btn>
+        </div>
+
+      </div>
+
+      {/* SKYLINE silueta abajo con PARALLAX. Edificios en gradiente violeta
+          oscuro, con ventanas que brillan en colores de marca (violeta,
+          naranja, fucsia) puntuadas estratégicamente — no todas, para que
+          parezca real. Se desplaza vertical en sentido inverso al scroll
+          para dar sensación de profundidad. */}
+      <div style={{
+        position:'absolute', bottom:0, left:0, right:0, height:200,
+        pointerEvents:'none',
+        transform:`translateY(${skylineY}px)`,
+        transition:'transform 80ms linear',
+      }}>
+        {/* Capa silueta */}
+        <div style={{
+          position:'absolute', bottom:0, left:0, right:0, height:'100%',
+          background:'linear-gradient(180deg, transparent 0%, rgba(124,58,237,0.18) 30%, rgba(15,7,28,0.85) 75%, #0a0612 100%)',
+          clipPath:'polygon(0 100%, 0 65%, 4% 65%, 4% 40%, 8% 40%, 8% 60%, 12% 60%, 12% 25%, 16% 25%, 16% 50%, 20% 50%, 20% 35%, 24% 35%, 24% 70%, 28% 70%, 28% 45%, 32% 45%, 32% 20%, 38% 20%, 38% 55%, 42% 55%, 42% 40%, 48% 40%, 48% 68%, 52% 68%, 52% 30%, 58% 30%, 58% 50%, 62% 50%, 62% 15%, 68% 15%, 68% 45%, 72% 45%, 72% 60%, 78% 60%, 78% 35%, 84% 35%, 84% 55%, 88% 55%, 88% 40%, 92% 40%, 92% 65%, 100% 65%, 100% 100%)',
+        }} />
+        {/* Ventanas iluminadas en colores marca — cada una un puntito chiquito
+            con glow. Posiciones absolutas en % para que se ubiquen sobre los
+            edificios del clip-path de arriba. */}
+        {[
+          { l:'5%',  b:48, c:'#FE5000' },
+          { l:'9%',  b:62, c:'#BD4BF8' },
+          { l:'14%', b:80, c:'#FE5000' },
+          { l:'17%', b:55, c:'#EC4899' },
+          { l:'22%', b:42, c:'#7C3AED' },
+          { l:'26%', b:90, c:'#FE5000' },
+          { l:'34%', b:115, c:'#BD4BF8' },
+          { l:'40%', b:60, c:'#EC4899' },
+          { l:'45%', b:78, c:'#FE5000' },
+          { l:'50%', b:95, c:'#BD4BF8' },
+          { l:'56%', b:50, c:'#EC4899' },
+          { l:'64%', b:130, c:'#FE5000' },
+          { l:'69%', b:75, c:'#BD4BF8' },
+          { l:'75%', b:55, c:'#EC4899' },
+          { l:'81%', b:90, c:'#7C3AED' },
+          { l:'86%', b:60, c:'#FE5000' },
+          { l:'92%', b:80, c:'#BD4BF8' },
+          { l:'95%', b:48, c:'#EC4899' },
+        ].map((w, i) => (
+          <div key={i} style={{
+            position:'absolute',
+            left:w.l, bottom:w.b,
+            width:3, height:3, borderRadius:1,
+            background:w.c,
+            boxShadow:`0 0 6px ${w.c}, 0 0 12px ${w.c}99`,
+          }} />
+        ))}
+      </div>
+    </section>
+  )
+}
+
+// ─── BIG BOLD ROWS ────────────────────────────────────────────────────────────
+// Inspirado en el "Buy / Sell / Rent" de FIND: 3 filas grandes, cada una con
+// un verbo gigante a la derecha (con underline animado), descripción chiquita
+// a la izquierda, foto/gradient de fondo y flecha grande tipo "→" al final.
+// Hover: la imagen de fondo se expande y la flecha se desplaza.
+//
+// Para Benefix tomé los 3 momentos clave del journey del comerciante:
+//   SUMAR — captar nuevos clientes con QR
+//   FIDELIZAR — cargar premios + recompensas
+//   REACTIVAR — automatizaciones para los que no vuelven
+// Sub-componente: una fila individual que se anima al entrar al viewport
+// (scroll-reveal). El verbo gigante entra desplazado desde la derecha y la
+// descripción desde la izquierda, con un stagger del index para que
+// aparezcan secuenciales si el usuario scrollea rápido y todas entran a la
+// vez.
+function BigBoldRow({ row, index, onClick }) {
+  const ref = React.useRef(null)
+  const [revealed, setRevealed] = React.useState(false)
+  React.useEffect(() => {
+    if (!ref.current) return
+    const obs = new IntersectionObserver(([entry]) => {
+      if (entry.isIntersecting) setRevealed(true)
+    }, { threshold: 0.25 })
+    obs.observe(ref.current)
+    return () => obs.disconnect()
+  }, [])
+  const r = row
+  const i = index
+  return (
+    <button
+      ref={ref}
+      onClick={onClick}
+      className={`big-row${revealed ? ' big-row-revealed' : ''}`}
+      style={{
+        position:'relative',
+        width:'100%',
+        display:'grid',
+        gridTemplateColumns:'minmax(220px, 1.1fr) minmax(0, 2fr) auto',
+        alignItems:'center',
+        gap:24,
+        padding:'clamp(28px, 5vw, 56px) clamp(20px, 4vw, 40px)',
+        background:r.bg,
+        border:'none',
+        borderTop: i === 0 ? '1px solid rgba(255,255,255,0.10)' : 'none',
+        borderBottom:'1px solid rgba(255,255,255,0.10)',
+        cursor:'pointer',
+        fontFamily:'inherit',
+        color:'#fff', textAlign:'left',
+        overflow:'hidden',
+        // Reveal staggered: la fila entra con opacity 0 + translateY 40px
+        opacity: revealed ? 1 : 0,
+        transform: revealed ? 'translateY(0)' : 'translateY(40px)',
+        transition: `opacity 800ms cubic-bezier(0.22,1,0.36,1) ${i * 120}ms, transform 800ms cubic-bezier(0.22,1,0.36,1) ${i * 120}ms, background 400ms ease`,
+      }}
+    >
+      {/* Imagen-mancha decorativa de fondo, color del row */}
+      <div style={{
+        position:'absolute', top:0, bottom:0, right:'30%', width:'45%',
+        background:`radial-gradient(ellipse at right, ${r.accent}55 0%, transparent 70%)`,
+        pointerEvents:'none',
+        opacity:0.55,
+        transition:'opacity 400ms ease, transform 600ms ease',
+      }} className="big-row-glow" />
+
+      {/* Numbered + descripción a la izquierda — entra desde la izquierda */}
+      <div style={{
+        position:'relative', zIndex:2,
+        opacity: revealed ? 1 : 0,
+        transform: revealed ? 'translateX(0)' : 'translateX(-30px)',
+        transition: `opacity 700ms cubic-bezier(0.22,1,0.36,1) ${i * 120 + 200}ms, transform 700ms cubic-bezier(0.22,1,0.36,1) ${i * 120 + 200}ms`,
+      }}>
+        <div style={{
+          fontFamily:FN, fontSize:11, fontWeight:800,
+          color:r.accent, letterSpacing:'.18em', textTransform:'uppercase',
+          marginBottom:10,
+        }}>
+          0{i+1}
+        </div>
+        <div style={{
+          fontSize:14, color:'rgba(255,255,255,0.78)', lineHeight:1.55,
+          maxWidth:340,
+        }}>
+          {r.desc}
+        </div>
+      </div>
+
+      {/* Verbo gigante a la derecha — entra desde la derecha */}
+      <div style={{
+        position:'relative', zIndex:2, justifySelf:'end', textAlign:'right',
+        opacity: revealed ? 1 : 0,
+        transform: revealed ? 'translateX(0)' : 'translateX(60px)',
+        transition: `opacity 800ms cubic-bezier(0.22,1,0.36,1) ${i * 120 + 300}ms, transform 800ms cubic-bezier(0.22,1,0.36,1) ${i * 120 + 300}ms`,
+      }}>
+        <div className="big-row-title" style={{
+          fontFamily:FN, fontSize:'clamp(64px, 11vw, 140px)',
+          fontWeight:900, color:'#fff', lineHeight:0.95,
+          letterSpacing:'-.045em',
+          textShadow:`0 6px 30px ${r.accent}60`,
+          position:'relative', display:'inline-block',
+        }}>
+          {r.title}
+          {/* Underline que crece al revelarse + en hover llega al 100% */}
+          <span style={{
+            position:'absolute', left:0, bottom:'-4px', height:5,
+            background:`linear-gradient(90deg, transparent 0%, ${r.accent} 50%, transparent 100%)`,
+            boxShadow:`0 0 16px ${r.accent}, 0 0 4px ${r.accent}`,
+            borderRadius:99,
+          }} className="big-row-underline" />
+        </div>
+      </div>
+
+      {/* Flecha grande */}
+      <div style={{
+        position:'relative', zIndex:2, color:r.accent, fontSize:48, fontWeight:300, lineHeight:1, paddingLeft:8,
+        opacity: revealed ? 1 : 0,
+        transform: revealed ? 'translateX(0)' : 'translateX(40px)',
+        transition: `opacity 800ms ease ${i * 120 + 450}ms, transform 800ms cubic-bezier(0.22,1,0.36,1) ${i * 120 + 450}ms`,
+      }}>
+        <ArrowRight size={48} strokeWidth={1.5} className="big-row-arrow" />
+      </div>
+    </button>
+  )
+}
+
+function BigBoldRowsSection({ setView }) {
+  // Header reveal — el título "Fidelización, reinventada:" aparece cuando
+  // la sección entra al viewport.
+  const headerRef = React.useRef(null)
+  const [headerRevealed, setHeaderRevealed] = React.useState(false)
+  React.useEffect(() => {
+    if (!headerRef.current) return
+    const obs = new IntersectionObserver(([entry]) => {
+      if (entry.isIntersecting) setHeaderRevealed(true)
+    }, { threshold: 0.4 })
+    obs.observe(headerRef.current)
+    return () => obs.disconnect()
+  }, [])
+  const rows = [
+    {
+      key: 'sumar',
+      title: 'Sumar',
+      desc: 'Cada cliente que entra al local escanea tu QR y queda dentro del club. Cero tarjetas de papel, cero fricción.',
+      bg: 'linear-gradient(110deg, #1a0d2e 0%, #2a1340 50%, #4c1d95 100%)',
+      accent: '#BD4BF8',
+    },
+    {
+      key: 'fidelizar',
+      title: 'Fidelizar',
+      desc: 'Cargás premios con foto y costo. Tu cliente los ve desde su tarjeta y los canjea con las estrellas o puntos que acumuló.',
+      bg: 'linear-gradient(110deg, #2a0e1f 0%, #4a1936 50%, #be185d 100%)',
+      accent: '#EC4899',
+    },
+    {
+      key: 'reactivar',
+      title: 'Reactivar',
+      desc: 'Cupones automáticos para la próxima visita y mensajes a los que no vuelven. Lo configurás una vez, corre solo.',
+      bg: 'linear-gradient(110deg, #1f0e0a 0%, #3a1a0c 50%, #c2410c 100%)',
+      accent: '#FE5000',
+    },
+  ]
+  return (
+    <section style={{ padding:'100px 0 56px', background:'#000', position:'relative', overflow:'hidden' }}>
+      <div style={{ maxWidth:1280, margin:'0 auto', padding:'0 20px' }}>
+        {/* Section header — ghost-duplicado tipo "Real Estate, Rewired:".
+            Aparece con reveal: opacity + translateY al entrar. El ghost
+            duplicado atrás se desplaza desde más lejos y converge. */}
+        <div ref={headerRef} style={{ position:'relative', marginBottom:48, paddingLeft:'min(8%, 60px)' }}>
+          <div style={{ position:'relative', display:'inline-block' }}>
+            <h2 aria-hidden="true" style={{
+              position:'absolute', top:0, left:0,
+              fontFamily:FN, fontSize:'clamp(28px,4.5vw,52px)', fontWeight:900,
+              color:'rgba(255,255,255,0.20)', margin:0, letterSpacing:'-.02em',
+              filter:'blur(2px)',
+              pointerEvents:'none', userSelect:'none',
+              transform: headerRevealed ? 'translate(3px,3px)' : 'translate(20px, 20px)',
+              opacity: headerRevealed ? 1 : 0,
+              transition: 'transform 1000ms cubic-bezier(0.22,1,0.36,1), opacity 800ms ease',
+            }}>
+              Fidelización, reinventada:
+            </h2>
+            <h2 style={{
+              position:'relative',
+              fontFamily:FN, fontSize:'clamp(28px,4.5vw,52px)', fontWeight:900,
+              color:'#fff', margin:0, lineHeight:1.05, letterSpacing:'-.02em',
+              opacity: headerRevealed ? 1 : 0,
+              transform: headerRevealed ? 'translateY(0)' : 'translateY(24px)',
+              transition: 'opacity 800ms ease 200ms, transform 800ms cubic-bezier(0.22,1,0.36,1) 200ms',
+            }}>
+              Fidelización,<br />
+              <span className="font-display" style={{ color:'#BD4BF8', fontWeight:400, letterSpacing:'-.005em' }}>reinventada:</span>
+            </h2>
+          </div>
+        </div>
+
+        {/* Las 3 filas — cada una con reveal staggered usando BigBoldRow */}
+        <div>
+          {rows.map((r, i) => (
+            <BigBoldRow
+              key={r.key}
+              row={r}
+              index={i}
+              onClick={() => setView('register-commerce')}
+            />
+          ))}
+        </div>
+
+        {/* Footer CTA debajo de las filas */}
+        <div style={{ textAlign:'center', marginTop:56 }}>
+          <div style={{ fontFamily:FN, fontSize:18, fontWeight:600, color:'rgba(255,255,255,0.85)', marginBottom:18 }}>
+            Listo para arrancar tu propio club de beneficios?
+          </div>
+          <Btn size="lg" onClick={() => setView('register-commerce')}>
+            Crear mi negocio <ArrowRight size={18} strokeWidth={2.5} />
+          </Btn>
+          <p style={{ fontSize:12, color:'rgba(255,255,255,0.40)', marginTop:14 }}>
+            Setup en 2 min · Sin tarjeta · Cancelá cuando quieras
+          </p>
+        </div>
+      </div>
+
+      <style>{`
+        .big-row .big-row-underline {
+          width: 0%;
+          transition: width 700ms cubic-bezier(0.22,1,0.36,1) 200ms;
+        }
+        /* Cuando la fila entra al viewport, el underline crece a 50% como
+           "estado de reposo". En hover llega a 100%. */
+        .big-row-revealed .big-row-underline {
+          width: 50%;
+        }
+        .big-row:hover .big-row-underline,
+        .big-row:focus-visible .big-row-underline {
+          width: 100% !important;
+        }
+        .big-row .big-row-arrow {
+          transition: transform 360ms cubic-bezier(0.22,1,0.36,1);
+        }
+        .big-row:hover .big-row-arrow,
+        .big-row:focus-visible .big-row-arrow {
+          transform: translateX(12px);
+        }
+        .big-row .big-row-glow {
+          opacity: 0.55;
+        }
+        .big-row:hover .big-row-glow,
+        .big-row:focus-visible .big-row-glow {
+          opacity: 1;
+          transform: scale(1.15);
+        }
+        /* MOBILE: stackeamos a 1 columna, ocultamos la flecha lateral, y
+           sobre todo achicamos el verbo gigante (que en mobile cortaba el
+           texto al borde derecho con clamp 11vw). También alineamos el
+           verbo a la izquierda para que el texto no se salga del card. */
+        @media (max-width: 700px) {
+          .big-row {
+            grid-template-columns: 1fr !important;
+            gap: 4px !important;
+            padding: 28px 22px !important;
+          }
+          .big-row > div:last-child { display: none; }
+          .big-row > div:nth-child(3) {
+            justify-self: start !important;
+            text-align: left !important;
+            width: 100%;
+          }
+          .big-row .big-row-title {
+            font-size: 52px !important;
+            line-height: 0.95 !important;
+            letter-spacing: -0.035em !important;
+          }
+          .big-row .big-row-underline {
+            height: 4px !important;
+          }
+        }
+      `}</style>
+    </section>
+  )
+}
+
 // ─── HOME ─────────────────────────────────────────────────────────────────────
 function HomeView({ setView, user, profile, onLogin }) {
   return (
     <div>
-      {/* ── HERO ── */}
-      <HeroSection setView={setView} user={user} profile={profile} onLogin={onLogin} />
+      {/* ── CINEMATIC SPLASH ── (también es el hero ahora)
+          Reemplazó al viejo HeroSection. Tipografía gigante "Benefix" con
+          ghost-text que converge al scroll, skyline parallax con ventanas
+          en colores marca, CTAs principales (Soy cliente / Soy comercio /
+          Mi panel) y trust marquee de rubros de comercios. */}
+      <CinematicSplashSection setView={setView} user={user} profile={profile} onLogin={onLogin} />
 
       <SectionDivider />
 
-      {/* ── STATS ── */}
-      <StatsSection />
+      {/* ── FEATURES ── */}
+      <FeaturesSection />
 
       <SectionDivider />
 
@@ -3970,44 +5048,18 @@ function HomeView({ setView, user, profile, onLogin }) {
 
       <SectionDivider />
 
-      {/* ── PARA COMERCIOS ── */}
-      <section className="section-secondary" style={{ padding:'100px 20px', position:'relative', overflow:'hidden', textAlign:'center' }}>
-        {/* bg blob */}
-        <div style={{ position:'absolute', inset:0, background:'radial-gradient(ellipse at center, rgba(147,51,234,0.18) 0%, transparent 68%)', pointerEvents:'none' }} />
+      {/* ── BIG BOLD ROWS ──
+          Reemplaza la vieja "Para comercios": 3 filas con tipografía gigante
+          tipo Buy/Sell/Rent del video de FIND. Cuenta el journey completo
+          del comerciante (Sumar → Fidelizar → Reactivar) con efecto
+          underline animado y flecha que se desplaza en hover.
+          NOTA: NO va SectionDivider antes de Planes — el CTA "Crear mi
+          negocio" del cierre de esta sección encadena directo con el
+          header "✦ Planes para negocios" para no dejar un hueco vacío. */}
+      <BigBoldRowsSection setView={setView} />
 
-        <div style={{ maxWidth:640, margin:'0 auto', position:'relative' }}>
-          {/* Badge */}
-          <div style={{ display:'inline-block', borderRadius:99, padding:'6px 18px', fontSize:11, fontFamily:FN, fontWeight:700, letterSpacing:'.10em', textTransform:'uppercase', color:'#c084fc', background:'rgba(168,85,247,0.12)', border:'1px solid rgba(168,85,247,0.28)', marginBottom:28 }}>
-            Para comercios
-          </div>
-
-          {/* Title */}
-          <h2 style={{ fontFamily:FN, fontSize:'clamp(32px,6vw,60px)', fontWeight:900, color:C.white, lineHeight:1.05, marginBottom:20 }}>
-            Que tus clientes<br />
-            <span style={{ background:'linear-gradient(90deg,#a855f7,#ec4899)', WebkitBackgroundClip:'text', WebkitTextFillColor:'transparent', backgroundClip:'text' }}>siempre vuelvan.</span>
-          </h2>
-
-          {/* Subtitle */}
-          <p style={{ fontFamily:FI, fontSize:18, color:'rgba(255,255,255,0.55)', marginBottom:36, lineHeight:1.6 }}>
-            Creá tu programa de beneficios en 2 minutos. Gratis.
-          </p>
-
-          {/* CTA */}
-          <Btn size="lg" onClick={() => setView('register-commerce')}>
-            Empezá ahora <ArrowRight size={18} strokeWidth={2.5} />
-          </Btn>
-
-          {/* Trust microcopy */}
-          <p style={{ fontFamily:FI, fontSize:12, color:'rgba(255,255,255,0.30)', marginTop:16 }}>
-            Sin tarjeta · Setup en 2 min · Cancelá cuando quieras
-          </p>
-        </div>
-      </section>
-
-      <SectionDivider />
-
-      {/* ── PLANES ── */}
-      <div style={{ padding:'100px 20px 108px' }}>
+      {/* ── PLANES ── (sin SectionDivider arriba para pegar mejor al CTA) */}
+      <div style={{ padding:'40px 20px 108px' }}>
         <div style={{ maxWidth:920, margin:'0 auto' }}>
           <div style={{ textAlign:'center', marginBottom:48 }}>
             <div style={{ fontFamily:FN, fontSize:10, color:C.v, fontWeight:800, letterSpacing:'.15em', textTransform:'uppercase', marginBottom:10 }}>✦ Planes para negocios</div>
@@ -4026,10 +5078,10 @@ function HomeView({ setView, user, profile, onLogin }) {
         </div>
       </div>
 
-      <SectionDivider />
-
-      {/* ── TESTIMONIOS ── */}
-      <ReviewsSection />
+      {/* ── TESTIMONIOS ── (oculto hasta tener reseñas reales — el
+          componente ya devuelve null por el feature flag REVIEWS_ENABLED.
+          Ocultamos también los SectionDivider para no dejar el doble
+          separador colgando.) */}
 
       <SectionDivider />
 
@@ -5992,149 +7044,13 @@ function WalletCard({ club, variant, isActive, onScrollTo, isMock, userId }) {
   )
 }
 
-// ─── NEARBY CLUBS DEMO ──────────────────────────────────────────────────────
-// 10 clubes mock para mostrar el carousel "Más clubes cerca" debajo de la
-// billetera. Cada uno tiene id, name, slug y color de marca para el logo
-// generado. En producción esto va a venir de un endpoint que use la
-// ubicación del cliente, pero por ahora los hardcodeamos para ver el look.
-const NEARBY_DEMO_CLUBS = [
-  { id: 'demo-1',  name: 'Café Berlín',     slug: 'cafe-berlin',     color: '#A855F7' },
-  { id: 'demo-2',  name: 'Pasta Roma',      slug: 'pasta-roma',      color: '#EC4899' },
-  { id: 'demo-3',  name: 'Heladería Polo',  slug: 'heladeria-polo',  color: '#22D3EE' },
-  { id: 'demo-4',  name: 'Barbería Lions',  slug: 'barberia-lions',  color: '#F59E0B' },
-  { id: 'demo-5',  name: 'Fit Club',        slug: 'fit-club',        color: '#10B981' },
-  { id: 'demo-6',  name: 'Pet Store',       slug: 'pet-store',       color: '#8B5CF6' },
-  { id: 'demo-7',  name: 'Verdulería',      slug: 'verduleria',      color: '#22E698' },
-  { id: 'demo-8',  name: 'Pizzería Napoli', slug: 'pizzeria-napoli', color: '#FB923C' },
-  { id: 'demo-9',  name: 'Cervecería',      slug: 'cerveceria',      color: '#F4A261' },
-  { id: 'demo-10', name: 'Florería Edén',   slug: 'floreria-eden',   color: '#E879F9' },
-]
-
-function NearbyClubsMarquee() {
-  // Duplicamos la lista para hacer el loop seamless: cuando el scroll
-  // pasa por la mitad del ancho total (final de la 1ra copia / inicio de
-  // la 2da), reseteamos scrollLeft a 0 sin que el ojo note el corte —
-  // los items son idénticos en ambas copias.
-  const list = [...NEARBY_DEMO_CLUBS, ...NEARBY_DEMO_CLUBS]
-  const trackRef = useRef(null)
-  const [paused, setPaused] = useState(false)
-  // Auto-scroll continuo via requestAnimationFrame. Velocidad lenta —
-  // 28px/segundo — sensación hipnótica. Se pausa cuando el mouse pasa
-  // por encima (hover) para que el cliente pueda mirar/explorar sin
-  // que el carousel se le mueva.
-  useEffect(() => {
-    if (paused) return
-    let last = performance.now()
-    let raf
-    const SPEED = 28  // px/s
-    const tick = (now) => {
-      const el = trackRef.current
-      if (!el) { raf = requestAnimationFrame(tick); return }
-      const dt = now - last
-      last = now
-      el.scrollLeft += (SPEED * dt) / 1000
-      // Loop seamless: cuando el scroll cruzó la primera mitad (que
-      // contiene una copia entera de la lista), reseteamos para que
-      // muestre la 2da copia desde el principio. Como ambas son
-      // idénticas y los items pegados, el ojo no nota el reset.
-      const half = el.scrollWidth / 2
-      if (el.scrollLeft >= half) el.scrollLeft -= half
-      raf = requestAnimationFrame(tick)
-    }
-    raf = requestAnimationFrame(tick)
-    return () => cancelAnimationFrame(raf)
-  }, [paused])
-  return (
-    <div style={{ marginTop: 24 }}>
-      {/* Header del bloque */}
-      <h3 style={{
-        fontFamily: FN, fontSize: 13, fontWeight: 800,
-        color: '#fff', letterSpacing: '.10em', textTransform: 'uppercase',
-        marginBottom: 14, padding: '0 4px',
-      }}>
-        Más clubes cerca
-      </h3>
-      {/* Track scrollable horizontalmente. Auto-scrolls solo via rAF;
-          el user puede scrollear manualmente con el dedo o trackpad y
-          también puede pausar el auto-scroll pasando el mouse por
-          encima (onMouseEnter). Mask fadea los bordes para suavizar
-          la entrada/salida visual de los items. */}
-      <div
-        ref={trackRef}
-        onMouseEnter={() => setPaused(true)}
-        onMouseLeave={() => setPaused(false)}
-        onTouchStart={() => setPaused(true)}
-        onTouchEnd={()   => setPaused(false)}
-        style={{
-          overflowX: 'auto',
-          overflowY: 'hidden',
-          position: 'relative',
-          WebkitMaskImage: 'linear-gradient(90deg, transparent 0%, black 6%, black 94%, transparent 100%)',
-          maskImage:       'linear-gradient(90deg, transparent 0%, black 6%, black 94%, transparent 100%)',
-          scrollbarWidth: 'none',
-          msOverflowStyle: 'none',
-          WebkitOverflowScrolling: 'touch',
-        }}
-        className="nearby-marquee-track"
-      >
-        <style>{`.nearby-marquee-track::-webkit-scrollbar { display: none; }`}</style>
-        <div style={{
-          display: 'flex', gap: 16,
-          width: 'max-content',
-        }}>
-          {list.map((club, i) => (
-            <a
-              key={`${club.id}-${i}`}
-              href={`/club/${club.slug}`}
-              style={{
-                width: 110, flexShrink: 0,
-                display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 8,
-                textDecoration: 'none',
-              }}
-            >
-              {/* Logo: círculo con gradient del color de marca + inicial */}
-              <div style={{
-                width: 72, height: 72, borderRadius: '50%',
-                background: `linear-gradient(135deg, ${club.color}, ${club.color}AA)`,
-                display: 'flex', alignItems: 'center', justifyContent: 'center',
-                fontFamily: FN, fontSize: 28, fontWeight: 900, color: '#fff',
-                boxShadow: '0 8px 18px rgba(0,0,0,0.35), inset 0 1px 0 rgba(255,255,255,0.22)',
-                border: '1px solid rgba(255,255,255,0.10)',
-              }}>
-                {club.name[0]}
-              </div>
-              {/* Nombre */}
-              <div style={{
-                fontFamily: FN, fontSize: 11.5, fontWeight: 700,
-                color: '#fff', textAlign: 'center',
-                width: '100%',
-                overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
-                lineHeight: 1.2,
-              }}>
-                {club.name}
-              </div>
-              {/* Botón "Ir" — outline violeta, sin fondo. Solo la línea
-                  del border y las letras+icono en color de marca. */}
-              <span style={{
-                display: 'inline-flex', alignItems: 'center', gap: 3,
-                padding: '5px 14px',
-                background: 'transparent',
-                border: '1.5px solid #BD4BF8',
-                borderRadius: 99,
-                color: '#BD4BF8',
-                fontFamily: FN, fontSize: 11, fontWeight: 800,
-                letterSpacing: '.04em',
-              }}>
-                Ir
-                <ArrowRight size={11} strokeWidth={2.6} />
-              </span>
-            </a>
-          ))}
-        </div>
-      </div>
-    </div>
-  )
-}
+// ─── NEARBY CLUBS ──────────────────────────────────────────────────────
+// El carousel "Más clubes cerca" con clubes hardcodeados de demo (Café
+// Berlín, Pasta Roma, Heladería Polo, etc.) fue eliminado. En su lugar
+// el cliente ve la pantalla de billetera con el empty state "todavía no
+// te uniste a ningún club" cuando no tiene memberships, sin contenido
+// ficticio. Cuando integremos un endpoint de "clubes cercanos por
+// ubicación" recreamos el componente con datos reales.
 
 // ─── WALLET VIEW (cylindrical 3D carousel — infinite, rAF-driven) ─────────────
 function WalletView({ clubs, isMock, userId }) {
@@ -6223,10 +7139,7 @@ function WalletView({ clubs, isMock, userId }) {
   }, [navigate])
 
   if (n === 1) return (
-    <>
-      <WalletCard club={clubs[0]} variant="active" isActive isMock={isMock} userId={userId} />
-      <NearbyClubsMarquee />
-    </>
+    <WalletCard club={clubs[0]} variant="active" isActive isMock={isMock} userId={userId} />
   )
 
   const cardH      = stageW > 0 ? Math.round(stageW * 0.6304) : 220
@@ -6292,7 +7205,6 @@ function WalletView({ clubs, isMock, userId }) {
         )
       })}
     </div>
-    <NearbyClubsMarquee />
     </>
   )
 }
@@ -6618,28 +7530,14 @@ function ClientView({ setView, user, profile, onLogout, initialTab }) {
 
   const initials = profile?.name ? profile.name.split(' ').map(w=>w[0]).join('').slice(0,2).toUpperCase() : '??'
 
-  const isMockClient = !loading && memberships.length === 0
-  const mockMemberships = [
-    { id:'mock-mb1', commerce_id:'mock-c1', stars:0, points:340, visits_count:8,
-      commerce:{ id:'mock-c1', name:'Café Berlín', img_url:'data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCA0MCA0MCI+PHJlY3Qgd2lkdGg9IjQwIiBoZWlnaHQ9IjQwIiBmaWxsPSIjMkExNTA4Ii8+PHBhdGggZD0iTTkgMTZoMTZsLTIgMTBIMTF6IiBmaWxsPSIjQzQ3QjM1Ii8+PHJlY3QgeD0iOSIgeT0iMTYiIHdpZHRoPSIxNiIgaGVpZ2h0PSIzIiByeD0iMSIgZmlsbD0iI0Q5OTM0RiIvPjxwYXRoIGQ9Ik0yNSAxOCBRMzEgMTkgMzEgMjQgUTMxIDI5IDI1IDI5IiBzdHJva2U9IiNDNDdCMzUiIHN0cm9rZS13aWR0aD0iMiIgZmlsbD0ibm9uZSIgc3Ryb2tlLWxpbmVjYXA9InJvdW5kIi8+PGVsbGlwc2UgY3g9IjE3IiBjeT0iMjciIHJ4PSI5IiByeT0iMiIgZmlsbD0iIzlBNUMxRiIvPjxwYXRoIGQ9Ik0xNCAxNCBRMTUgMTEgMTQgOSIgc3Ryb2tlPSIjQzg3OTQxIiBzdHJva2Utd2lkdGg9IjEuNSIgZmlsbD0ibm9uZSIgc3Ryb2tlLWxpbmVjYXA9InJvdW5kIi8+PHBhdGggZD0iTTE4IDE0IFExOSAxMSAxOCA5IiBzdHJva2U9IiNDODc5NDEiIHN0cm9rZS13aWR0aD0iMS41IiBmaWxsPSJub25lIiBzdHJva2UtbGluZWNhcD0icm91bmQiLz48cGF0aCBkPSJNMjIgMTQgUTIzIDExIDIyIDkiIHN0cm9rZT0iI0M4Nzk0MSIgc3Ryb2tlLXdpZHRoPSIxLjUiIGZpbGw9Im5vbmUiIHN0cm9rZS1saW5lY2FwPSJyb3VuZCIvPjwvc3ZnPg==', slug:'cafe-berlin', prog_type:'points', prog_goal:500, category:'Cafetería', city_name:'Buenos Aires', rating:4.8,
-        promotions:[{ id:'mp1', type:'discount_next', value:10, active:true, expires_at:null }] } },
-    { id:'mock-mb2', commerce_id:'mock-c2', stars:3, points:0, visits_count:3,
-      commerce:{ id:'mock-c2', name:'Barbería Premium', img_url:'data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCA0MCA0MCI+PHJlY3Qgd2lkdGg9IjQwIiBoZWlnaHQ9IjQwIiBmaWxsPSIjMTExNDE5Ii8+PGNpcmNsZSBjeD0iMTMiIGN5PSIxMiIgcj0iNC41IiBzdHJva2U9IiNBMEIwQzgiIHN0cm9rZS13aWR0aD0iMS41IiBmaWxsPSJub25lIi8+PGNpcmNsZSBjeD0iMjciIGN5PSIxMiIgcj0iNC41IiBzdHJva2U9IiNBMEIwQzgiIHN0cm9rZS13aWR0aD0iMS41IiBmaWxsPSJub25lIi8+PGNpcmNsZSBjeD0iMTMiIGN5PSIxMiIgcj0iMS44IiBmaWxsPSIjQTBCMEM4Ii8+PGNpcmNsZSBjeD0iMjciIGN5PSIxMiIgcj0iMS44IiBmaWxsPSIjQTBCMEM4Ii8+PGxpbmUgeDE9IjE3IiB5MT0iMTUiIHgyPSIyOSIgeTI9IjMwIiBzdHJva2U9IiNBMEIwQzgiIHN0cm9rZS13aWR0aD0iMiIgc3Ryb2tlLWxpbmVjYXA9InJvdW5kIi8+PGxpbmUgeDE9IjIzIiB5MT0iMTUiIHgyPSIxMSIgeTI9IjMwIiBzdHJva2U9IiNBMEIwQzgiIHN0cm9rZS13aWR0aD0iMiIgc3Ryb2tlLWxpbmVjYXA9InJvdW5kIi8+PC9zdmc+', slug:'barberia-premium', prog_type:'stars', prog_goal:10, category:'Barbería', city_name:'Gral. Pico', rating:4.9,
-        promotions:[{ id:'mp2', type:'double_points', active:true, expires_at: new Date(Date.now()+2*864e5).toISOString() }] } },
-    { id:'mock-mb3', commerce_id:'mock-c3', stars:0, points:180, visits_count:4,
-      commerce:{ id:'mock-c3', name:'Heladería Coppola', img_url:'data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCA0MCA0MCI+PHJlY3Qgd2lkdGg9IjQwIiBoZWlnaHQ9IjQwIiBmaWxsPSIjMEQxRTJBIi8+PHBhdGggZD0iTTIwIDM1IEwxNCAyMSBIMjYgWiIgZmlsbD0iI0RCQTA2QSIvPjxsaW5lIHgxPSIyMCIgeTE9IjIxIiB4Mj0iMjAiIHkyPSIzNSIgc3Ryb2tlPSIjQzg4OTRFIiBzdHJva2Utd2lkdGg9IjEuMiIvPjxsaW5lIHgxPSIxNyIgeTE9IjI0IiB4Mj0iMjMiIHkyPSIyNCIgc3Ryb2tlPSIjQzg4OTRFIiBzdHJva2Utd2lkdGg9IjEiLz48bGluZSB4MT0iMTciIHkxPSIyOCIgeDI9IjIzIiB5Mj0iMjgiIHN0cm9rZT0iI0M4ODk0RSIgc3Ryb2tlLXdpZHRoPSIxIi8+PGVsbGlwc2UgY3g9IjIwIiBjeT0iMjEiIHJ4PSI2IiByeT0iNiIgZmlsbD0iIzVFQzhDMCIvPjxlbGxpcHNlIGN4PSIyMCIgY3k9IjE1IiByeD0iNSIgcnk9IjUiIGZpbGw9IiNGRjkwOTAiLz48Y2lyY2xlIGN4PSIyMiIgY3k9IjEyIiByPSIzIiBmaWxsPSIjRkZCMEIwIi8+PC9zdmc+', slug:'heladeria-coppola', prog_type:'points', prog_goal:300, category:'Heladería', city_name:'Buenos Aires', rating:4.7,
-        promotions:[] } },
-  ]
-  const mockVisits = [
-    { id:'mock-v1', commerce:{ name:'Café Berlín',      img_url:null }, amount_spent:850,  scanned_at: new Date(Date.now()-1*864e5).toISOString(),  prog_type:'points', points_earned:100 },
-    { id:'mock-v2', commerce:{ name:'Barbería Premium', img_url:null }, amount_spent:2500, scanned_at: new Date(Date.now()-3*864e5).toISOString(),  prog_type:'stars',  points_earned:1   },
-    { id:'mock-v3', commerce:{ name:'Café Berlín',      img_url:null }, amount_spent:650,  scanned_at: new Date(Date.now()-5*864e5).toISOString(),  prog_type:'points', points_earned:100 },
-    { id:'mock-v4', commerce:{ name:'Heladería Coppola',img_url:null }, amount_spent:980,  scanned_at: new Date(Date.now()-8*864e5).toISOString(),  prog_type:'points', points_earned:100 },
-    { id:'mock-v5', commerce:{ name:'Café Berlín',      img_url:null }, amount_spent:720,  scanned_at: new Date(Date.now()-12*864e5).toISOString(), prog_type:'points', points_earned:100 },
-    { id:'mock-v6', commerce:{ name:'Barbería Premium', img_url:null }, amount_spent:2500, scanned_at: new Date(Date.now()-18*864e5).toISOString(), prog_type:'stars',  points_earned:1   },
-  ]
-  const displayMemberships = isMockClient ? mockMemberships : memberships
-  const displayVisits      = isMockClient ? mockVisits      : visits
+  // Antes había `mockMemberships` y `mockVisits` con clubes ficticios
+  // (Café Berlín, Heladería Coppola, Barbería Premium) que se mostraban
+  // cuando el cliente todavía no tenía joins reales — daba sensación de
+  // datos truchos. Eliminados. Ahora cuando memberships está vacío se
+  // muestra el empty state limpio "Tu billetera está vacía".
+  const isMockClient       = false
+  const displayMemberships = memberships
+  const displayVisits      = visits
   const totalVisits        = displayVisits.length
 
   // Filter pill data — derived from real (or mock) memberships.
@@ -6790,25 +7688,21 @@ function ClientView({ setView, user, profile, onLogout, initialTab }) {
 
           {displayMemberships.length === 0 ? (
             /* Empty wallet state — sin clubes joinedados todavía. Mostramos
-                el CTA de escanear QR + el marquee "Más clubes cerca" para
-                que el cliente igual pueda descubrir negocios y sumarse a
-                alguno desde acá mismo. */
-            <>
-              <div style={{ textAlign:'center', padding:'52px 24px 24px' }}>
-                <div style={{ width:76, height:76, borderRadius:24, background:'rgba(139,92,246,0.12)', border:'1px solid rgba(139,92,246,0.22)', display:'flex', alignItems:'center', justifyContent:'center', margin:'0 auto 20px' }}>
-                  <Wallet size={34} strokeWidth={1.5} color="rgba(139,92,246,0.70)" />
-                </div>
-                <div style={{ fontFamily:FN, fontSize:17, fontWeight:800, color:'rgba(255,255,255,0.80)', marginBottom:10 }}>Tu billetera está vacía</div>
-                <div style={{ fontSize:13, color:'rgba(255,255,255,0.38)', maxWidth:240, margin:'0 auto 24px', lineHeight:1.65 }}>Escaneá el QR de un comercio para sumar tu primer club.</div>
-                <button
-                  onClick={() => setTab('mi qr')}
-                  style={{ padding:'11px 26px', borderRadius:99, background:'linear-gradient(135deg,#8B5CF6,#EC4899)', border:'none', cursor:'pointer', fontFamily:FN, fontSize:13, fontWeight:700, color:'#fff', boxShadow:'0 4px 20px rgba(139,92,246,0.40)' }}
-                >
-                  Escanear QR
-                </button>
+                solo el CTA de escanear QR (el viejo marquee "Más clubes
+                cerca" con clubes de demo fue eliminado). */
+            <div style={{ textAlign:'center', padding:'52px 24px 24px' }}>
+              <div style={{ width:76, height:76, borderRadius:24, background:'rgba(139,92,246,0.12)', border:'1px solid rgba(139,92,246,0.22)', display:'flex', alignItems:'center', justifyContent:'center', margin:'0 auto 20px' }}>
+                <Wallet size={34} strokeWidth={1.5} color="rgba(139,92,246,0.70)" />
               </div>
-              <NearbyClubsMarquee />
-            </>
+              <div style={{ fontFamily:FN, fontSize:17, fontWeight:800, color:'rgba(255,255,255,0.80)', marginBottom:10 }}>Tu billetera está vacía</div>
+              <div style={{ fontSize:13, color:'rgba(255,255,255,0.38)', maxWidth:240, margin:'0 auto 24px', lineHeight:1.65 }}>Escaneá el QR de un comercio para sumar tu primer club.</div>
+              <button
+                onClick={() => setTab('mi qr')}
+                style={{ padding:'11px 26px', borderRadius:99, background:'linear-gradient(135deg,#8B5CF6,#EC4899)', border:'none', cursor:'pointer', fontFamily:FN, fontSize:13, fontWeight:700, color:'#fff', boxShadow:'0 4px 20px rgba(139,92,246,0.40)' }}
+              >
+                Escanear QR
+              </button>
+            </div>
           ) : (
             <>
               {/* Counter — el "Limpiar" se removió, ahora cada tag activo tiene su propia ✕ */}
@@ -7062,7 +7956,10 @@ function ClientView({ setView, user, profile, onLogout, initialTab }) {
       {!loading && tab === 'historial' && (
         <div>
           {/* HelpBanner movido al tope (TAB_HELP['historial']) — ya no va acá */}
-          {isMockClient && (
+          {/* El banner "Ejemplo — así se verá tu historial" se eliminó junto
+              con los mocks. Ahora si no hay actividad real se muestra el
+              EmptyState abajo en el render del bloque events. */}
+          {false && (
             <div style={{ marginBottom:12, padding:'9px 13px', background:'rgba(255,255,255,0.04)', border:'1px solid rgba(255,255,255,0.10)', borderRadius:10, fontSize:11, color:'rgba(255,255,255,0.5)', display:'flex', alignItems:'center', gap:7 }}>
               <Eye size={13} strokeWidth={2} color="rgba(255,255,255,0.5)" />
               Ejemplo — así se verá tu historial de actividad.
@@ -7135,7 +8032,7 @@ function ClientView({ setView, user, profile, onLogout, initialTab }) {
             // Orden cronológico descendente (más reciente arriba)
             events.sort((a, b) => new Date(b.date || 0) - new Date(a.date || 0))
 
-            if (!isMockClient && events.length === 0) {
+            if (events.length === 0) {
               return <EmptyState type="historial" actionLabel="Ver mis clubs" onAction={() => setTab('mis clubs')} />
             }
 
@@ -11200,30 +12097,17 @@ function CommerceSettingsView({ user, profile, setView, onLogout, onOwnerProfile
     ),
   }
 
-  // Mock auto clients — se muestran cuando no hay clientes reales
-  const mockPrizeCost = cheapestActive?.cost || 500
-  const isMockAuto   = members.length === 0
-  const mockAutoClients = {
-    reactivacion: [
-      { id:'mock-ra1', user_id:'mock-u1', profiles:{ full_name:'Carlos Rodríguez', email:'carlos.r@gmail.com',  phone:'+54123456791' }, points:180, stars:2, visits_count:8,  last_visit: new Date(Date.now()-15*864e5).toISOString(), joined_at: new Date(Date.now()-90*864e5).toISOString() },
-      { id:'mock-ra2', user_id:'mock-u2', profiles:{ full_name:'Ana Martínez',     email:'ana.m@gmail.com',     phone:'+54123456792' }, points:95,  stars:1, visits_count:4,  last_visit: new Date(Date.now()-22*864e5).toISOString(), joined_at: new Date(Date.now()-45*864e5).toISOString() },
-      { id:'mock-ra3', user_id:'mock-u6', profiles:{ full_name:'Roberto Silva',    email:'roberto.s@gmail.com', phone:'+54123456793' }, points:230, stars:3, visits_count:11, last_visit: new Date(Date.now()-10*864e5).toISOString(), joined_at: new Date(Date.now()-70*864e5).toISOString() },
-    ],
-    cercaPremio: [
-      { id:'mock-cp1', user_id:'mock-u3', profiles:{ full_name:'María López',   email:'mlopez@hotmail.com',  phone:'+54123456790' }, points:Math.round(mockPrizeCost*.85), stars:Math.round(mockPrizeCost*.85), visits_count:12, last_visit: new Date(Date.now()-2*864e5).toISOString(), joined_at: new Date(Date.now()-60*864e5).toISOString() },
-      { id:'mock-cp2', user_id:'mock-u4', profiles:{ full_name:'Pedro Sánchez', email:'pedro.s@gmail.com',   phone:'+54123456794' }, points:Math.round(mockPrizeCost*.9),  stars:Math.round(mockPrizeCost*.9),  visits_count:15, last_visit: new Date(Date.now()-1*864e5).toISOString(), joined_at: new Date(Date.now()-120*864e5).toISOString() },
-    ],
-    primeraVisita: [
-      { id:'mock-pv1', user_id:'mock-u5', profiles:{ full_name:'Laura González', email:'laura.g@gmail.com', phone:'+54123456795' }, points:100, stars:1, visits_count:1, last_visit: new Date(Date.now()-3*864e5).toISOString(), joined_at: new Date(Date.now()-3*864e5).toISOString() },
-    ],
-  }
-  const displayAutoClients = isMockAuto ? mockAutoClients : autoClients
-  const mockCheapestActive = isMockAuto && !cheapestActive ? { name:'Premio ejemplo', cost: mockPrizeCost } : cheapestActive
+  // El bloque viejo de `mockAutoClients` (Carlos Rodríguez, Ana Martínez,
+  // María López, Pedro Sánchez, Laura González, Roberto Silva) que se
+  // mostraba como ejemplo cuando el dueño todavía no tenía clientes
+  // reales fue eliminado. Si el dueño no tiene clientes el panel ahora
+  // muestra empty states limpios — sin nombres ficticios.
+  const isMockAuto           = false
+  const displayAutoClients   = autoClients
+  const mockCheapestActive   = cheapestActive
 
   const totalDetected = Object.values(autoClients).reduce((s,arr) => s + arr.length, 0)
-  const displayTotalDetected = isMockAuto
-    ? Object.values(mockAutoClients).reduce((s,arr) => s + arr.length, 0)
-    : totalDetected
+  const displayTotalDetected = totalDetected
 
   // ── GUARD: todos los hooks deben estar ANTES de este return ──────────────────
   if (!profile || !['commerce_owner','admin'].includes(profile.role)) return (
@@ -12255,8 +13139,12 @@ function CommerceSettingsView({ user, profile, setView, onLogout, onOwnerProfile
       }
     }
 
+    // En desktop usamos grid de cards (no slider) y un wrapper más ancho para
+    // que las tarjetas no salgan cortadas. En mobile mantenemos el slider con
+    // scroll horizontal y peek lateral porque ahí el espacio es limitado.
+    const isDesktop = !isMobile
     return (
-      <div style={{ maxWidth:520, margin:'0 auto', padding: isMobile ? '24px 0 80px' : '32px 0 80px' }}>
+      <div style={{ maxWidth: isDesktop ? 1120 : 520, margin:'0 auto', padding: isMobile ? '24px 0 80px' : '32px 0 80px' }}>
         {/* Padding lateral para el contenido principal — el slider rompe
             con margin negativo para llegar a los bordes. */}
         <div style={{ padding: isMobile ? '0 18px' : '0 28px' }}>
@@ -12564,18 +13452,23 @@ function CommerceSettingsView({ user, profile, setView, onLogout, onOwnerProfile
           </div>
         )}
 
-        {/* ── Slider horizontal de tarjetas ──
+        {/* ── Slider horizontal de tarjetas (mobile) o Grid (desktop) ──
             Cada tarjeta es una config: pendiente con gradient violeta
             llamativo + CTA "Cargar →", o completada con check verde y
             CTA "Editar →". Las pendientes van primero (a la izquierda)
-            para que el dueño caiga primero en lo que falta. */}
+            para que el dueño caiga primero en lo que falta.
+
+            En desktop usamos un grid de 3 columnas (responsive con auto-fit)
+            para que las tarjetas no salgan cortadas — el peek-style del
+            slider tiene sentido en mobile, pero en pantallas anchas queda
+            feo y desperdicia espacio. */}
         {/* Wrapper del slider con position:relative para anclar las flechas
             laterales por encima del scroll horizontal de las cards. */}
         {sortedItems.length > 0 && (
         <div style={{ position: 'relative' }}>
         <div
           ref={configSliderRef}
-          onScroll={(e) => {
+          onScroll={isDesktop ? undefined : (e) => {
             const el = e.currentTarget
             const cards = el.querySelectorAll('[data-config-card]')
             // Detecta cuál card está más cerca del centro del viewport del slider.
@@ -12588,7 +13481,11 @@ function CommerceSettingsView({ user, profile, setView, onLogout, onOwnerProfile
             })
             if (closestIdx !== configSlideIdx) setConfigSlideIdx(closestIdx)
           }}
-          style={{
+          style={isDesktop ? {
+            // Desktop: bloque normal sin scroll horizontal — usa el grid
+            // interno de abajo. Sin scrollSnap ni overflow auto.
+            paddingBottom: 8,
+          } : {
             overflowX: 'auto',
             overflowY: 'visible',
             scrollSnapType: 'x mandatory',
@@ -12614,11 +13511,20 @@ function CommerceSettingsView({ user, profile, setView, onLogout, onOwnerProfile
               100% { transform: scale(1) rotate(0); opacity: 1; }
             }
           `}</style>
-          <div style={{
+          <div style={isDesktop ? {
+            // Desktop: grid responsive — 3 columnas en pantallas anchas, baja a
+            // 2 en medianas y a 1 si quedara muy chico (no debería pasar con
+            // maxWidth 1120). minmax(0, 1fr) evita overflow en titulares largos.
+            display: 'grid',
+            gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))',
+            gap: 16,
+            paddingLeft: 28,
+            paddingRight: 28,
+          } : {
             display: 'flex',
             gap: 12,
-            paddingLeft: isMobile ? 18 : 28,
-            paddingRight: isMobile ? 18 : 28,
+            paddingLeft: 18,
+            paddingRight: 18,
             width: 'max-content',
           }}>
             {sortedItems.map((item, idx) => {
@@ -12637,9 +13543,9 @@ function CommerceSettingsView({ user, profile, setView, onLogout, onOwnerProfile
                   data-config-card={idx}
                   onClick={() => navigateConfigItem(item)}
                   style={{
-                    width: `min(calc(100vw - ${isMobile ? 56 : 76}px), 380px)`,
+                    width: isDesktop ? '100%' : `min(calc(100vw - 56px), 380px)`,
                     flexShrink: 0,
-                    scrollSnapAlign: 'center',
+                    scrollSnapAlign: isDesktop ? 'none' : 'center',
                     // Base oscura + gradient violeta sutil al fondo. Sin
                     // tinte fuerte como antes; el "lujo" lo dan el inner
                     // border-radius grande, el divider con glow y el CTA
@@ -12820,8 +13726,9 @@ function CommerceSettingsView({ user, profile, setView, onLogout, onOwnerProfile
 
         {/* ── Flechas laterales del slider ──
             Sobrepuestas en los bordes izquierdo y derecho del wrapper
-            position:relative. Se desactivan en los extremos. */}
-        {sortedItems.length > 1 && (
+            position:relative. Se desactivan en los extremos.
+            En desktop no las mostramos: usamos grid, no slider. */}
+        {!isDesktop && sortedItems.length > 1 && (
           <>
             <button
               onClick={() => {
@@ -12884,9 +13791,10 @@ function CommerceSettingsView({ user, profile, setView, onLogout, onOwnerProfile
 
         {/* ── Dots de progreso del slider ──
             Una bolita por cada card. Solo se muestran si hay más de 1 card
-            (no tiene sentido un solo dot) Y si el slider está activo. */}
-        {sortedItems.length > 1 && (
-        <div style={{ display: 'flex', justifyContent: 'center', gap: 6, marginTop: 14, padding: isMobile ? '0 18px' : '0 28px' }}>
+            (no tiene sentido un solo dot) Y si el slider está activo.
+            En desktop no se muestran: la lista es un grid, no un slider. */}
+        {!isDesktop && sortedItems.length > 1 && (
+        <div style={{ display: 'flex', justifyContent: 'center', gap: 6, marginTop: 14, padding: '0 18px' }}>
           {sortedItems.map((_, i) => {
             const active = i === configSlideIdx
             return (
@@ -15006,19 +15914,13 @@ function CommerceSettingsView({ user, profile, setView, onLogout, onOwnerProfile
           const hasActiveDouble   = activePromos.some(p => p.type === 'double_points')
           const canAddMore        = !hasActiveDiscount || !hasActiveDouble
 
-          // Mock data para promociones
-          const mockActivePromos = [
-            { id: 'mock1', description: 'Descuento 15% próxima visita', expires_at: new Date(Date.now() + 7*24*60*60*1000).toISOString(), active: true, type: 'discount_next' },
-            { id: 'mock2', description: 'Suma doble viernes a domingo', expires_at: new Date(Date.now() + 30*24*60*60*1000).toISOString(), active: true, type: 'double_points' },
-          ]
-          const mockInactivePromos = [
-            { id: 'mock3', description: 'Descuento 10% (Vencida)', expires_at: new Date(Date.now() - 5*24*60*60*1000).toISOString(), active: false, type: 'discount_next' },
-          ]
-
-          // Usar mock data solo si no existe ninguna promo real
-          const hasRealPromos = promos.length > 0
-          const displayActivePromos = activePromos.length > 0 ? activePromos : (hasRealPromos ? [] : mockActivePromos)
-          const displayInactivePromos = inactivePromos.length > 0 ? inactivePromos : (hasRealPromos ? [] : mockInactivePromos)
+          // Antes acá había arrays mock con promos ficticias ("Descuento
+          // 15% próxima visita", "Suma doble viernes a domingo", etc.)
+          // que se mostraban cuando el dueño no tenía promos reales.
+          // Eliminados: ahora si no hay promos reales, las listas quedan
+          // vacías y se muestra el empty state correspondiente.
+          const displayActivePromos   = activePromos
+          const displayInactivePromos = inactivePromos
 
           return (
           <div>
@@ -15297,29 +16199,16 @@ function CommerceSettingsView({ user, profile, setView, onLogout, onOwnerProfile
           }
 
           // ── Datos base de cada tab ──────────────────────────────────
-          const mockVisitas = [
-            { fecha:'20/04/2026', hora:'14:30', cliente:'Juan García',     email:'juan.garcia@gmail.com', puntos:100, unidad:unitIcon, descuento:'-'   },
-            { fecha:'20/04/2026', hora:'12:15', cliente:'María López',     email:'mlopez@hotmail.com',    puntos:100, unidad:unitIcon, descuento:'10%' },
-            { fecha:'19/04/2026', hora:'18:45', cliente:'Carlos Rodríguez',email:'carlos.r@gmail.com',    puntos:200, unidad:unitIcon, descuento:'-'   },
-            { fecha:'19/04/2026', hora:'09:20', cliente:'Ana Martínez',    email:'ana.m@gmail.com',       puntos:100, unidad:unitIcon, descuento:'15%' },
-            { fecha:'18/04/2026', hora:'16:00', cliente:'Pedro Sánchez',   email:'pedro.s@gmail.com',     puntos:100, unidad:unitIcon, descuento:'-'   },
-          ]
-          const mockCanjes = [
-            { fecha:'20/04/2026', hora:'14:30', cliente:'Juan García',     email:'juan.garcia@gmail.com', premio:'Café Gratis',   puntos_gastados:500, unidad:unitIcon },
-            { fecha:'19/04/2026', hora:'11:00', cliente:'María López',     email:'mlopez@hotmail.com',    premio:'Descuento 20%', puntos_gastados:750, unidad:unitIcon },
-            { fecha:'18/04/2026', hora:'15:30', cliente:'Carlos Rodríguez',email:'carlos.r@gmail.com',    premio:'Café Gratis',   puntos_gastados:500, unidad:unitIcon },
-          ]
-          const mockClientRows = [
-            { profiles:{ full_name:'Juan García',      email:'juan.garcia@gmail.com', phone:'+54123456789' }, joined_at: new Date(Date.now()-60*864e5).toISOString(), visits_count:8,  points:340, stars:0, last_visit: new Date(Date.now()-2*864e5).toISOString()  },
-            { profiles:{ full_name:'María López',       email:'mlopez@hotmail.com',    phone:'+54123456790' }, joined_at: new Date(Date.now()-30*864e5).toISOString(), visits_count:4,  points:180, stars:0, last_visit: new Date(Date.now()-7*864e5).toISOString()  },
-            { profiles:{ full_name:'Carlos Rodríguez',  email:'carlos.r@gmail.com',    phone:'+54123456791' }, joined_at: new Date(Date.now()-90*864e5).toISOString(), visits_count:12, points:500, stars:0, last_visit: new Date(Date.now()-1*864e5).toISOString()  },
-          ]
-
-          const baseVisitas = reportsData.length > 0 ? reportsData : mockVisitas
-          const baseCanjes  = reportsData.length > 0 ? reportsData : mockCanjes
-          const baseClients = members.length > 0 ? members : mockClientRows
-          const isMockVisitas = reportsData.length === 0
-          const isMockClients = members.length === 0
+          // Los arrays mock con nombres ficticios (Juan García, María
+          // López, Carlos Rodríguez, Ana Martínez, Pedro Sánchez) que se
+          // usaban para previsualizar los reportes cuando todavía no
+          // había datos reales fueron eliminados. Si no hay datos,
+          // baseX = [] y los renderers muestran sus empty states.
+          const baseVisitas   = reportsData
+          const baseCanjes    = reportsData
+          const baseClients   = members
+          const isMockVisitas = false
+          const isMockClients = false
 
           // ── Aplicar filtros ─────────────────────────────────────────
           const q    = reportsSearch.toLowerCase().trim()
@@ -15516,11 +16405,7 @@ function CommerceSettingsView({ user, profile, setView, onLogout, onOwnerProfile
               {reportsTab === 'clientes' && (() => {
                 return (
                   <>
-                    {isMockClients && (
-                      <div style={{ marginBottom:10, padding:'8px 12px', background:`${C.info}11`, border:`1px solid ${C.info}33`, borderRadius:10, fontSize:11, color:C.info }}>
-                        👁 Ejemplo — así se verá tu base de clientes registrados.
-                      </div>
-                    )}
+                    {/* Banner "👁 Ejemplo" eliminado junto con mockClientRows. */}
                     {filteredClients.length === 0 && (
                       <div style={{ textAlign:'center', padding:'30px 0', color:C.dust, fontSize:13 }}>Sin resultados para los filtros aplicados.</div>
                     )}
@@ -15564,15 +16449,11 @@ function CommerceSettingsView({ user, profile, setView, onLogout, onOwnerProfile
               {/* ── Tabla visitas / canjes ── */}
               {reportsTab !== 'clientes' && (() => {
                 const displayData = reportsTab === 'visitas' ? filteredVisitas : filteredCanjes
-                const isMockData  = reportsData.length === 0
                 if (reportsLoading) return <div style={{ textAlign:'center', padding:'40px 0', color:C.dust }}>⟳ Cargando...</div>
                 return (
                   <>
-                    {isMockData && (
-                      <div style={{ marginBottom:10, padding:'8px 12px', background:`${C.info}11`, border:`1px solid ${C.info}33`, borderRadius:10, fontSize:11, color:C.info }}>
-                        👁 Ejemplo — así se verá el historial de {reportsTab === 'visitas' ? 'visitas' : 'canjes'} de tus clientes.
-                      </div>
-                    )}
+                    {/* Banner viejo "👁 Ejemplo — así se verá el historial..."
+                        eliminado junto con los datos mock. */}
                     {displayData.length === 0 && (
                       <div style={{ textAlign:'center', padding:'30px 0', color:C.dust, fontSize:13 }}>Sin resultados para los filtros aplicados.</div>
                     )}
@@ -15626,67 +16507,21 @@ function CommerceSettingsView({ user, profile, setView, onLogout, onOwnerProfile
           </div>
         )}
         {tab === 'analisis' && (() => {
+          // Antes los segmentos (Nuevos / Frecuentes / VIP / Inactivos)
+          // mostraban listas mock con nombres ficticios (Sofia Mendez,
+          // Diego Alvarez, Juan Pérez, Miguel Ángel Castro, etc.) cuando
+          // el endpoint devolvía vacío o fallaba. Eliminadas — ahora si
+          // no hay datos reales, segmentClients queda en [] y la UI
+          // muestra empty state real ("Sin clientes en este segmento").
           const handleSegmentClick = (seg) => {
             setSelectedSegment(seg)
             fetch(`/api/segments/${seg}?commerce_id=${commerce.id}&limit=200`)
               .then(r => r.json())
               .then(d => {
-                if (d.data && d.data.length > 0) {
-                  setSegmentClients(d.data)
-                } else {
-                  // Mock data de clientes por segmento
-                  const mockBySegment = {
-                    nuevos: [
-                      { nombre: 'Sofia Mendez', email: 'sofia@example.com', visitas: 1, saldo: 5, ultima_visita: '20/04/2026' },
-                      { nombre: 'Diego Alvarez', email: 'diego@example.com', visitas: 2, saldo: 8, ultima_visita: '19/04/2026' },
-                      { nombre: 'Laura Ponce', email: 'laura@example.com', visitas: 1, saldo: 3, ultima_visita: '18/04/2026' },
-                      { nombre: 'Roberto Silva', email: 'roberto@example.com', visitas: 2, saldo: 7, ultima_visita: '17/04/2026' },
-                      { nombre: 'Valentina Ruiz', email: 'val@example.com', visitas: 1, saldo: 4, ultima_visita: '16/04/2026' },
-                    ],
-                    frecuentes: [
-                      { nombre: 'Juan Pérez', email: 'juan@example.com', visitas: 8, saldo: 45, ultima_visita: '20/04/2026' },
-                      { nombre: 'María García', email: 'maria@example.com', visitas: 12, saldo: 78, ultima_visita: '20/04/2026' },
-                      { nombre: 'Carlos López', email: 'carlos@example.com', visitas: 6, saldo: 32, ultima_visita: '19/04/2026' },
-                      { nombre: 'Ana Rodríguez', email: 'ana@example.com', visitas: 10, saldo: 62, ultima_visita: '20/04/2026' },
-                      { nombre: 'Pedro Martínez', email: 'pedro@example.com', visitas: 7, saldo: 41, ultima_visita: '18/04/2026' },
-                      { nombre: 'Isabel Sánchez', email: 'isabel@example.com', visitas: 9, saldo: 55, ultima_visita: '17/04/2026' },
-                      { nombre: 'Fernando Díaz', email: 'fernando@example.com', visitas: 11, saldo: 71, ultima_visita: '19/04/2026' },
-                      { nombre: 'Gabriela Torres', email: 'gabriela@example.com', visitas: 5, saldo: 28, ultima_visita: '20/04/2026' },
-                    ],
-                    vip: [
-                      { nombre: 'Miguel Ángel Castro', email: 'miguel@example.com', visitas: 25, saldo: 180, ultima_visita: '20/04/2026' },
-                      { nombre: 'Carmen Valencia', email: 'carmen@example.com', visitas: 22, saldo: 165, ultima_visita: '20/04/2026' },
-                      { nombre: 'Francisco Herrera', email: 'francisco@example.com', visitas: 18, saldo: 145, ultima_visita: '19/04/2026' },
-                      { nombre: 'Patricia Molina', email: 'patricia@example.com', visitas: 20, saldo: 155, ultima_visita: '20/04/2026' },
-                    ],
-                    inactivos: [
-                      { nombre: 'Alejandro Vega', email: 'alejandro@example.com', visitas: 3, saldo: 12, ultima_visita: '02/03/2026' },
-                      { nombre: 'Mariela Costa', email: 'mariela@example.com', visitas: 2, saldo: 8, ultima_visita: '28/02/2026' },
-                      { nombre: 'Javier Rojas', email: 'javier@example.com', visitas: 4, saldo: 18, ultima_visita: '15/02/2026' },
-                    ]
-                  }
-                  setSegmentClients(mockBySegment[seg] || [])
-                }
+                setSegmentClients(d?.data || [])
               })
               .catch(() => {
-                // Mock data si hay error
-                const mockBySegment = {
-                  nuevos: [
-                    { nombre: 'Sofia Mendez', email: 'sofia@example.com', visitas: 1, saldo: 5, ultima_visita: '20/04/2026' },
-                    { nombre: 'Diego Alvarez', email: 'diego@example.com', visitas: 2, saldo: 8, ultima_visita: '19/04/2026' },
-                  ],
-                  frecuentes: [
-                    { nombre: 'Juan Pérez', email: 'juan@example.com', visitas: 8, saldo: 45, ultima_visita: '20/04/2026' },
-                    { nombre: 'María García', email: 'maria@example.com', visitas: 12, saldo: 78, ultima_visita: '20/04/2026' },
-                  ],
-                  vip: [
-                    { nombre: 'Miguel Ángel Castro', email: 'miguel@example.com', visitas: 25, saldo: 180, ultima_visita: '20/04/2026' },
-                  ],
-                  inactivos: [
-                    { nombre: 'Alejandro Vega', email: 'alejandro@example.com', visitas: 3, saldo: 12, ultima_visita: '02/03/2026' },
-                  ]
-                }
-                setSegmentClients(mockBySegment[seg] || [])
+                setSegmentClients([])
               })
           }
 
@@ -16738,10 +17573,12 @@ function CommerceSettingsView({ user, profile, setView, onLogout, onOwnerProfile
                   const count = displayAutoClients[key].length
                   return (
                     <AutoCard key={key} id={key} meta={meta} count={count}>
-                      {/* Mensaje preview */}
+                      {/* Mensaje preview — usamos un placeholder explícito
+                          ("[Nombre del cliente]") en vez de un nombre
+                          ficticio para que se entienda que es un sample. */}
                       <div style={{ background:C.bg3, borderRadius:10, padding:'10px 12px', marginBottom:12, fontSize:11, color:C.mist, lineHeight:1.65, whiteSpace:'pre-line', fontFamily:FI, border:`1px solid ${meta.color}22` }}>
                         {buildAutoMessage(key, {
-                          profiles: { full_name: 'Juan García' },
+                          profiles: { full_name: '[Nombre del cliente]' },
                           stars:  key === 'cercaPremio' ? Math.round((mockCheapestActive?.cost || 10)  * 0.85) : 0,
                           points: key === 'cercaPremio' ? Math.round((mockCheapestActive?.cost || 100) * 0.85) : 0,
                         })}
@@ -18728,22 +19565,30 @@ function DevToolbar({ user, profile, onRoleChange }) {
 // deep-link en vez del default. Limpiamos la URL inmediatamente para
 // que no quede pegada al refrescar.
 const _DEEP_LINK = (() => {
-  if (typeof window === 'undefined') return { view: null, tab: null }
+  if (typeof window === 'undefined') return { view: null, tab: null, upgrade: null }
   try {
     const params = new URLSearchParams(window.location.search)
     const v = params.get('view')
     const t = params.get('tab')
-    if (v || t) {
+    // upgrade=success|pending|failure → llega cuando MP redirige al merchant
+    // después del checkout de la suscripción. El App lo lee y muestra un
+    // modal de confirmación en lugar de aterrizar en la home pelada.
+    const u = params.get('upgrade')
+    if (v || t || u) {
       window.history.replaceState(null, '', window.location.pathname)
     }
-    return { view: v || null, tab: t || null }
-  } catch { return { view: null, tab: null } }
+    return { view: v || null, tab: t || null, upgrade: u || null }
+  } catch { return { view: null, tab: null, upgrade: null } }
 })()
 
 export default function App() {
   // Si vino un deep-link en la URL (?view=X), arrancamos en esa vista
   // directamente. Sino, 'home'.
   const [view,     setView]     = useState(_DEEP_LINK.view || 'home')
+  // upgradeResult: 'success' | 'pending' | 'failure' | null — vino del query
+  // ?upgrade=... que MP setea al redirigir post-checkout. Mostramos un modal
+  // de confirmación encima de cualquier vista.
+  const [upgradeResult, setUpgradeResult] = useState(_DEEP_LINK.upgrade)
   const [citySlug, setCitySlug] = useState(null)
   const [commerce, setCommerce] = useState(null)
   const [user,     setUser]     = useState(null)
@@ -19064,6 +19909,18 @@ export default function App() {
       <LoginPromptModal />
       <SwRegister />
       <InstallPrompt />
+      {/* Modal de resultado del checkout de Mercado Pago — se muestra cuando
+          la URL trae ?upgrade=success|pending|failure. MP redirige acá tras
+          el flujo de suscripción. La activación real del plan la hace el
+          webhook (POST /api/webhooks/mercadopago) cuando MP confirma el
+          preapproval — por eso "success" se muestra como "estamos activando"
+          y no como "ya estás activado": puede tardar segundos/minutos. */}
+      {upgradeResult && (
+        <UpgradeResultModal
+          result={upgradeResult}
+          onClose={() => setUpgradeResult(null)}
+        />
+      )}
       {showTerms && user && (
         <TermsAcceptance user={user} onAccept={handleTermsAccepted} />
       )}
@@ -19113,7 +19970,7 @@ export default function App() {
           ya esquiva el sub-nav). Para todas las otras vistas se renderiza
           acá en el flow general. */}
       {user && profile && view !== 'client' && (
-        <div style={{ maxWidth: 520, margin: '0 auto', padding: '0 15px' }}>
+        <div style={{ maxWidth: 1120, margin: '0 auto', padding: '0 15px' }}>
           <BizPromptBanner profile={profile} />
         </div>
       )}
