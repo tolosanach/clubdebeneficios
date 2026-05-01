@@ -14181,6 +14181,14 @@ function CommerceSettingsView({ user, profile, setView, onLogout, onOwnerProfile
         }
         return
       }
+      // discountNext / doubleDays / messages NO tienen wizard inline propio.
+      // Los lleva directo a su tab destino donde existe la UI completa
+      // (modal de edición de promos / configurador de mensajes). Sin esto
+      // el botón "Editar" del cupón próxima visita abría un wizard vacío.
+      if (item.id === 'discountNext' || item.id === 'doubleDays' || item.id === 'messages') {
+        handleWizardDeepLink({ tab: item.goTo })
+        return
+      }
       setWizardItemId(item.id)
     }
     // Callback del ProfileItemWizard cuando el dueño toca "Configurar" en
@@ -14222,9 +14230,13 @@ function CommerceSettingsView({ user, profile, setView, onLogout, onOwnerProfile
     // sigue el flujo viejo (cards full-width + radial menu).
     return (
       <div style={{ display:'flex', minHeight:'100vh', maxWidth:'100vw', overflowX:'hidden' }}>
-        {/* Sidebar desktop — lista de secciones del MENU. Tap en una saca al
-            user del intent picker y lo lleva a esa pestaña directamente. */}
-        {isDesktop && (
+        {/* Sidebar desktop — DESHABILITADO. Antes acá iba la lista vertical
+            de pestañas en una columna fija a la izquierda. Ahora la
+            navegación entre tabs vive arriba, en el MerchantTopTabs
+            horizontal scrolleable (que aplica también en desktop). El
+            código del sidebar queda comentado por si querés volver — bastá
+            con cambiar `false` por `isDesktop`. */}
+        {false && isDesktop && (
           <div style={{ width:210, flexShrink:0, background:'rgba(0,0,0,0.60)', backdropFilter:'blur(32px)', WebkitBackdropFilter:'blur(32px)', borderRight:`1px solid ${C.rim}`, display:'flex', flexDirection:'column', paddingTop:28 }}>
             <div style={{ padding:'0 18px 18px', borderBottom:`1px solid ${C.rim}`, marginBottom:8, display:'flex', alignItems:'center', gap:10 }}>
               <div style={{ width:38, height:38, borderRadius:9, background:`${C.v}33`, display:'flex', alignItems:'center', justifyContent:'center', flexShrink:0 }}>
@@ -14257,7 +14269,7 @@ function CommerceSettingsView({ user, profile, setView, onLogout, onOwnerProfile
             })}
           </div>
         )}
-      <div style={{ flex:1, maxWidth: isDesktop ? 1120 : 520, width:'100%', margin:'0 auto', padding: isMobile ? '70px 0 80px' : '32px 0 80px', overflowX:'hidden', minWidth:0 }}>
+      <div style={{ flex:1, maxWidth: isDesktop ? 1120 : 520, width:'100%', margin:'0 auto', padding: isMobile ? '70px 0 80px' : '78px 0 80px', overflowX:'hidden', minWidth:0 }}>
         {/* Padding lateral para el contenido principal — el slider rompe
             con margin negativo para llegar a los bordes. */}
         <div style={{ padding: isMobile ? '0 18px' : '0 28px', maxWidth:'100%', minWidth:0, overflowX:'hidden' }}>
@@ -14273,6 +14285,97 @@ function CommerceSettingsView({ user, profile, setView, onLogout, onOwnerProfile
           <h1 style={{ fontFamily:FN, fontSize:'clamp(22px,4vw,28px)', fontWeight:900, color:C.white, marginBottom:14, marginTop:14, letterSpacing:'-.01em' }}>
             Configurá tu negocio
           </h1>
+
+          {/* Resumen de beneficios activos — chips con %OFF / Suma doble / N
+              premios. Cada chip tiene un lápiz que lleva a la pestaña
+              correspondiente para editar. Solo se muestra si el plan permite
+              promos (canPromote=true) o si hay premios cargados. */}
+          {(() => {
+            const now = new Date()
+            const activeDiscount = (Array.isArray(promos) ? promos : []).find(p =>
+              p.active && p.type === 'discount_next' && (!p.expires_at || new Date(p.expires_at) > now)
+            )
+            const activeDouble = (Array.isArray(promos) ? promos : []).find(p =>
+              p.active && p.type === 'double_points' && (!p.expires_at || new Date(p.expires_at) > now)
+            )
+            const activePrizeCount = prizes.filter(p => p.active).length
+            // Si no hay nada activo Y el plan no soporta promos, no tiene
+            // sentido mostrar el resumen vacío — escondemos el bloque.
+            const showAny = !!activeDiscount || !!activeDouble || activePrizeCount > 0 || canPromote
+            if (!showAny) return null
+
+            const Chip = ({ Icon, label, value, color, onEdit, dimmed }) => (
+              <div style={{
+                flex: '0 0 auto',
+                display: 'flex', alignItems: 'center', gap: 9,
+                padding: '8px 10px 8px 12px',
+                borderRadius: 12,
+                background: dimmed ? 'rgba(255,255,255,0.04)' : `${color}1a`,
+                border: `1px solid ${dimmed ? 'rgba(255,255,255,0.10)' : `${color}55`}`,
+                opacity: dimmed ? 0.65 : 1,
+                whiteSpace: 'nowrap',
+              }}>
+                <Icon size={13} color={dimmed ? C.dust : color} strokeWidth={2.2} />
+                <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-start' }}>
+                  <span style={{ fontFamily: FN, fontSize: 9, fontWeight: 700, color: dimmed ? C.dust : `${color}cc`, letterSpacing: '.06em', textTransform: 'uppercase', lineHeight: 1 }}>{label}</span>
+                  <span style={{ fontFamily: FN, fontSize: 13, fontWeight: 800, color: dimmed ? 'rgba(255,255,255,0.50)' : '#fff', lineHeight: 1.2, marginTop: 2 }}>{value}</span>
+                </div>
+                <button onClick={onEdit}
+                  style={{
+                    width: 26, height: 26, borderRadius: 7,
+                    background: 'rgba(255,255,255,0.06)',
+                    border: `1px solid ${dimmed ? 'rgba(255,255,255,0.10)' : `${color}44`}`,
+                    color: dimmed ? C.dust : color,
+                    cursor: 'pointer',
+                    display: 'flex', alignItems: 'center', justifyContent: 'center',
+                    padding: 0, marginLeft: 2,
+                    transition: 'background 180ms ease',
+                  }}
+                  aria-label={`Editar ${label}`}
+                  title={`Editar ${label}`}
+                >
+                  <Pen size={11} strokeWidth={2.2} />
+                </button>
+              </div>
+            )
+
+            return (
+              <div style={{
+                display: 'flex',
+                gap: 8,
+                marginBottom: 16,
+                overflowX: 'auto',
+                paddingBottom: 4,
+                scrollbarWidth: 'none',
+                msOverflowStyle: 'none',
+              }}>
+                <Chip
+                  Icon={Percent}
+                  label="Cupón"
+                  value={activeDiscount ? `${activeDiscount.value}% OFF` : 'No activo'}
+                  color={C.o}
+                  dimmed={!activeDiscount}
+                  onEdit={() => handleWizardDeepLink({ tab: 'recompensas' })}
+                />
+                <Chip
+                  Icon={Zap}
+                  label="Bonus"
+                  value={activeDouble ? 'Suma ×2' : 'No activo'}
+                  color={C.v}
+                  dimmed={!activeDouble}
+                  onEdit={() => handleWizardDeepLink({ tab: 'recompensas' })}
+                />
+                <Chip
+                  Icon={Gift}
+                  label="Premios"
+                  value={`${activePrizeCount} ${activePrizeCount === 1 ? 'activo' : 'activos'}`}
+                  color="#22E698"
+                  dimmed={activePrizeCount === 0}
+                  onEdit={() => handleWizardDeepLink({ tab: 'premios' })}
+                />
+              </div>
+            )
+          })()}
 
           {/* ── Stepped progress (1 nodo por tarjeta) ──
               Reemplaza la barra lineal por una secuencia de círculos
@@ -14383,15 +14486,19 @@ function CommerceSettingsView({ user, profile, setView, onLogout, onOwnerProfile
           overflow: 'hidden',
         }}>
 
-        {/* ── Pestañas Pendientes / Listas (al tope del container) ── */}
+        {/* ── Pestañas Pendientes / Completos (al tope del container) ──
+            Pendientes: amarillo con signo ! para llamar la atención sobre
+            tareas por hacer. Completos: verde con tilde para reforzar el
+            mensaje "ya está listo". El color de cada tab pinta también el
+            badge de count y el underline cuando es la activa. */}
         <div style={{
           display: 'flex', gap: 0,
           borderBottom: '1px solid rgba(189,75,248,0.18)',
           padding: '4px 4px 0',
         }}>
           {[
-            { id: 'pendientes', label: 'Pendientes', count: pendingCount },
-            { id: 'listas',     label: 'Listas',     count: doneCount    },
+            { id: 'pendientes', label: 'Pendientes', count: pendingCount, color: '#F5A623', accentBg: 'rgba(245,166,35,0.14)', symbol: '!' },
+            { id: 'listas',     label: 'Completos',  count: doneCount,    color: '#22E698', accentBg: 'rgba(34,230,152,0.12)',  symbol: '✓' },
           ].map(t => {
             const active = intentFilter === t.id
             return (
@@ -14409,9 +14516,7 @@ function CommerceSettingsView({ user, profile, setView, onLogout, onOwnerProfile
                 style={{
                   flex: 1,
                   padding: '13px 14px 12px',
-                  // Tab activa "se merge" con el container: mismo bg que el
-                  // wrapper, sin borde inferior. Tab inactiva queda apagada.
-                  background: active ? 'rgba(189,75,248,0.12)' : 'transparent',
+                  background: active ? t.accentBg : 'transparent',
                   border: 'none',
                   borderTopLeftRadius: 14,
                   borderTopRightRadius: 14,
@@ -14424,14 +14529,26 @@ function CommerceSettingsView({ user, profile, setView, onLogout, onOwnerProfile
                   display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 7,
                   transition: 'background 200ms ease, color 200ms ease',
                 }}>
+                {/* Símbolo (! o ✓) en círculo del color de la tab */}
+                <span style={{
+                  width: 18, height: 18, borderRadius: '50%',
+                  background: active ? t.color : `${t.color}33`,
+                  border: active ? 'none' : `1px solid ${t.color}66`,
+                  color: active ? '#0a0a0a' : t.color,
+                  fontFamily: FN, fontSize: 11, fontWeight: 900,
+                  display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
+                  flexShrink: 0,
+                }}>
+                  {t.symbol}
+                </span>
                 {t.label}
                 <span style={{
                   fontSize: 10.5, fontWeight: 800,
                   padding: '2px 7px',
                   borderRadius: 99,
-                  background: active ? 'rgba(189,75,248,0.30)' : 'rgba(255,255,255,0.08)',
-                  color: active ? '#fff' : 'rgba(255,255,255,0.50)',
-                  border: `1px solid ${active ? 'rgba(189,75,248,0.50)' : 'rgba(255,255,255,0.10)'}`,
+                  background: active ? `${t.color}33` : 'rgba(255,255,255,0.08)',
+                  color: active ? t.color : 'rgba(255,255,255,0.50)',
+                  border: `1px solid ${active ? `${t.color}66` : 'rgba(255,255,255,0.10)'}`,
                   fontFamily: FN, letterSpacing: '.02em',
                 }}>
                   {t.count}
@@ -14440,7 +14557,8 @@ function CommerceSettingsView({ user, profile, setView, onLogout, onOwnerProfile
                   <span style={{
                     position: 'absolute', bottom: -1, left: '15%', right: '15%',
                     height: 2, borderRadius: 2,
-                    background: 'linear-gradient(135deg, #FE5000, #BD4BF8)',
+                    background: t.color,
+                    boxShadow: `0 0 12px ${t.color}80`,
                   }} />
                 )}
               </button>
@@ -15039,7 +15157,7 @@ function CommerceSettingsView({ user, profile, setView, onLogout, onOwnerProfile
             ClientBottomNav (Mi billetera / Mis beneficios / etc): pills
             con icono + label, underline gradient en el activo, scroll
             horizontal nativo. Se monta solo en mobile. */}
-        {isMobile && !intentPickerActive && (
+        {!intentPickerActive && (
           <nav style={{
             position: 'fixed',
             top: 62,
