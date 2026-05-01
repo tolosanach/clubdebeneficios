@@ -3338,7 +3338,7 @@ function HeroSection({ setView, user, profile, onLogin }) {
             Soy cliente <ArrowRight size={16} strokeWidth={2.5} />
           </Btn>
           <Btn variant="ghost" onClick={() => handleSignupCTA('merchant')}>
-            {isOwner ? 'Mi panel' : 'Soy comercio'} <ArrowRight size={16} strokeWidth={2.5} />
+            Soy comercio <ArrowRight size={16} strokeWidth={2.5} />
           </Btn>
         </div>
 
@@ -3486,7 +3486,15 @@ function FeaturesSection() {
     },
   ]
   return (
-    <section className="section-secondary" style={{ padding:'100px 20px', position:'relative' }}>
+    <section className="section-secondary" style={{
+      // Background pintado al mismo tono que la base de los edificios del
+      // skyline en CinematicSplashSection (#07040f / #0a0612). Cuando el
+      // user termina el scroll del hero las torres "fundieron" hacia esta
+      // sección sin que se note un corte de color entre las dos.
+      background: '#07040f',
+      padding:'100px 20px',
+      position:'relative',
+    }}>
       <div style={{ position:'absolute', top:'50%', left:'50%', transform:'translate(-50%,-50%)', width:'70vw', maxWidth:900, height:'50vh', borderRadius:'50%', background:'radial-gradient(circle, rgba(147,51,234,0.18) 0%, transparent 70%)', filter:'blur(60px)', pointerEvents:'none' }} />
       <div style={{ maxWidth:1080, margin:'0 auto', position:'relative' }}>
         <div style={{ textAlign:'center', marginBottom:14 }}>
@@ -4459,16 +4467,23 @@ function CinematicSplashSection({ setView, user, profile, onLogin }) {
       if (entry.isIntersecting) setRevealed(true)
     }, { threshold: 0.15 })
     obs.observe(sectionRef.current)
-    // 2) Listener de scroll continuo — mapea posición de la sección a
-    //    progreso 0..1. Lo usamos para parallax y convergencia.
+    // 2) Listener de scroll continuo — mapea cuánto del top de la sección
+    //    "salió" del viewport (scroll efectivo dentro del hero) a progreso 0..1.
+    //    Lo usamos para conducir el crecimiento del skyline + ghost-text.
+    //
+    //    Antes el cálculo era `1 - (rect.top + rect.height*0.3) / vh`, que
+    //    arrancaba en ~0.7 al cargar la página (sin scroll) porque la
+    //    sección está al tope del viewport con rect.top=0. Eso hacía que
+    //    el skyline ya estuviera grande al cargar y tapara el hero.
+    //    Ahora el cálculo es directo: progress = px scrolleados / alto
+    //    de la sección. Con scroll=0 → progress=0, con la sección
+    //    completamente fuera del viewport → progress=1.
     function onScroll() {
       const el = sectionRef.current
       if (!el) return
       const rect = el.getBoundingClientRect()
-      const vh = window.innerHeight
-      // 0 cuando la sección está apenas entrando por abajo, 1 cuando ya
-      // pasó por el centro y está saliendo por arriba.
-      const raw = 1 - (rect.top + rect.height * 0.3) / vh
+      const scrolledPast = Math.max(0, -rect.top)
+      const raw = scrolledPast / Math.max(1, rect.height)
       setProgress(Math.max(0, Math.min(1, raw)))
     }
     window.addEventListener('scroll', onScroll, { passive: true })
@@ -4481,22 +4496,34 @@ function CinematicSplashSection({ setView, user, profile, onLogin }) {
   const ghostOffset = (1 - progress) * 24    // px
   const ghostBlur   = 8 + (1 - progress) * 22 // px
   const ghostOpacity= 0.35 + (1 - progress) * 0.40
-  // Parallax del skyline: se desplaza verticalmente en sentido inverso al
-  // scroll para dar la sensación de "los edificios están atrás".
-  const skylineY = (progress - 0.5) * -40   // -20 → +20 px
+  // Skyline con efecto de crecimiento progresivo: arranca con buena
+  // presencia al pie del hero (290px en mobile, 260px en desktop — torres
+  // más grandes en mobile para que se sienta más cinematográfico, sin
+  // tapar los CTAs "Soy cliente / Mi panel") y al scrollear crecen hasta
+  // eclipsar la mitad superior del hero.
+  //
+  // Curva SQRT: crecimiento rápido al inicio, se desacelera al final — así
+  // el efecto "ciudad sube" se nota desde los primeros píxeles de scroll.
+  const isMobileViewport = typeof window !== 'undefined' && window.innerWidth < 768
+  const SKYLINE_MIN_H = isMobileViewport ? 290 : 260
+  const SKYLINE_MAX_H = isMobileViewport ? 820 : 780
+  const skylineGrowth = Math.sqrt(progress)
+  const skylineHeight = SKYLINE_MIN_H + skylineGrowth * (SKYLINE_MAX_H - SKYLINE_MIN_H)
 
   return (
     <section ref={sectionRef} className="cinematic-splash" style={{
       position:'relative',
-      padding:'80px 20px 100px',
+      // padding-top compensa el navbar fijo (top:10 + height:52 + margen
+      // ≈ 78px). En home el spacer del App está deshabilitado y el splash
+      // arranca pegado al navbar — esto evita que el marquee quede tapado.
+      // padding-bottom amplio para que el skyline tenga lugar a la base.
+      padding:'88px 20px 100px',
       overflow:'hidden',
-      // Mismo background oscuro que el resto de la app — gradiente sutil
-      // del violeta más oscuro al negro. Se integra con HeroSection arriba
-      // y BigBoldRowsSection abajo sin saltos de color.
-      // El min-height/100vh para mobile se maneja con la clase
-      // .cinematic-splash en globals.css (media query). En desktop la
-      // sección se ajusta al contenido — no fuerza altura.
-      background:'linear-gradient(180deg, #0a0612 0%, #15091F 40%, #1a0a28 70%, #0a0612 100%)',
+      // Background del hero. Cierra al pie en `#07040f` (mismo tono que la
+      // base de los edificios + el bg de FeaturesSection abajo) para que
+      // la transición scroll → siguiente sección sea continua, sin corte
+      // de color cuando termina el hero.
+      background:'linear-gradient(180deg, #0a0612 0%, #15091F 40%, #1a0a28 70%, #07040f 100%)',
     }}>
       {/* Halo violeta detrás del título, simulando una "luna" / spotlight
           que ilumina las letras desde atrás. Pintado de marca. */}
@@ -4695,51 +4722,62 @@ function CinematicSplashSection({ setView, user, profile, onLogin }) {
             Soy cliente <ArrowRight size={16} strokeWidth={2.5} />
           </Btn>
           <Btn variant="ghost" onClick={() => handleSignupCTA('merchant')}>
-            {isOwner ? 'Mi panel' : 'Soy comercio'} <ArrowRight size={16} strokeWidth={2.5} />
+            Soy comercio <ArrowRight size={16} strokeWidth={2.5} />
           </Btn>
         </div>
 
       </div>
 
-      {/* SKYLINE silueta abajo con PARALLAX. Edificios en gradiente violeta
-          oscuro, con ventanas que brillan en colores de marca (violeta,
-          naranja, fucsia) puntuadas estratégicamente — no todas, para que
-          parezca real. Se desplaza vertical en sentido inverso al scroll
-          para dar sensación de profundidad. */}
+      {/* SKYLINE silueta abajo. Edificios en gradiente violeta oscuro,
+          con ventanas que brillan en colores de marca (violeta, naranja,
+          fucsia). El alto del contenedor crece con el scroll (200 → 720px)
+          dando sensación de "la ciudad sube y eclipsa el hero": al
+          comienzo solo se ve la silueta al pie, a medida que el user
+          scrollea las torres crecen hasta tapar el contenido del hero.
+          z-index ALTO (10) para que pase POR ENCIMA del título BENEFIX,
+          tagline y CTAs (que están en zIndex 2) — la idea es justamente
+          que los edificios obstruyan visualmente el hero al subir. */}
       <div style={{
-        position:'absolute', bottom:0, left:0, right:0, height:200,
+        position:'absolute', bottom:0, left:0, right:0,
+        height: skylineHeight,
+        zIndex: 10,
         pointerEvents:'none',
-        transform:`translateY(${skylineY}px)`,
-        transition:'transform 80ms linear',
+        transition: 'height 80ms linear',
       }}>
-        {/* Capa silueta */}
+        {/* Capa silueta — solid en TODO el alto para que los edificios
+            cubran realmente lo que tienen detrás. El gradient solo
+            transiciona la opacidad en el extremo superior para que el
+            corte con el cielo se vea suave (no un edge cortado a cuchillo). */}
         <div style={{
           position:'absolute', bottom:0, left:0, right:0, height:'100%',
-          background:'linear-gradient(180deg, transparent 0%, rgba(124,58,237,0.18) 30%, rgba(15,7,28,0.85) 75%, #0a0612 100%)',
+          background:'linear-gradient(180deg, rgba(15,7,28,0.65) 0%, rgba(10,6,18,0.95) 12%, #0a0612 30%, #07040f 100%)',
           clipPath:'polygon(0 100%, 0 65%, 4% 65%, 4% 40%, 8% 40%, 8% 60%, 12% 60%, 12% 25%, 16% 25%, 16% 50%, 20% 50%, 20% 35%, 24% 35%, 24% 70%, 28% 70%, 28% 45%, 32% 45%, 32% 20%, 38% 20%, 38% 55%, 42% 55%, 42% 40%, 48% 40%, 48% 68%, 52% 68%, 52% 30%, 58% 30%, 58% 50%, 62% 50%, 62% 15%, 68% 15%, 68% 45%, 72% 45%, 72% 60%, 78% 60%, 78% 35%, 84% 35%, 84% 55%, 88% 55%, 88% 40%, 92% 40%, 92% 65%, 100% 65%, 100% 100%)',
         }} />
-        {/* Ventanas iluminadas en colores marca — cada una un puntito chiquito
-            con glow. Posiciones absolutas en % para que se ubiquen sobre los
-            edificios del clip-path de arriba. */}
+        {/* Ventanas iluminadas en colores marca. Posiciones en % del alto
+            del skyline para que se distribuyan a lo largo de los edificios
+            cuando la ciudad crece con el scroll (sino quedaban todas
+            apiladas al pie cuando el skyline subía a 720px). Los % son
+            sobre el rango 0-65% del alto, que es donde el clip-path tiene
+            edificios sólidos. */}
         {[
-          { l:'5%',  b:48, c:'#FE5000' },
-          { l:'9%',  b:62, c:'#BD4BF8' },
-          { l:'14%', b:80, c:'#FE5000' },
-          { l:'17%', b:55, c:'#EC4899' },
-          { l:'22%', b:42, c:'#7C3AED' },
-          { l:'26%', b:90, c:'#FE5000' },
-          { l:'34%', b:115, c:'#BD4BF8' },
-          { l:'40%', b:60, c:'#EC4899' },
-          { l:'45%', b:78, c:'#FE5000' },
-          { l:'50%', b:95, c:'#BD4BF8' },
-          { l:'56%', b:50, c:'#EC4899' },
-          { l:'64%', b:130, c:'#FE5000' },
-          { l:'69%', b:75, c:'#BD4BF8' },
-          { l:'75%', b:55, c:'#EC4899' },
-          { l:'81%', b:90, c:'#7C3AED' },
-          { l:'86%', b:60, c:'#FE5000' },
-          { l:'92%', b:80, c:'#BD4BF8' },
-          { l:'95%', b:48, c:'#EC4899' },
+          { l:'5%',  b:'24%', c:'#FE5000' },
+          { l:'9%',  b:'31%', c:'#BD4BF8' },
+          { l:'14%', b:'40%', c:'#FE5000' },
+          { l:'17%', b:'27%', c:'#EC4899' },
+          { l:'22%', b:'21%', c:'#7C3AED' },
+          { l:'26%', b:'45%', c:'#FE5000' },
+          { l:'34%', b:'58%', c:'#BD4BF8' },
+          { l:'40%', b:'30%', c:'#EC4899' },
+          { l:'45%', b:'39%', c:'#FE5000' },
+          { l:'50%', b:'48%', c:'#BD4BF8' },
+          { l:'56%', b:'25%', c:'#EC4899' },
+          { l:'64%', b:'62%', c:'#FE5000' },
+          { l:'69%', b:'37%', c:'#BD4BF8' },
+          { l:'75%', b:'27%', c:'#EC4899' },
+          { l:'81%', b:'45%', c:'#7C3AED' },
+          { l:'86%', b:'30%', c:'#FE5000' },
+          { l:'92%', b:'40%', c:'#BD4BF8' },
+          { l:'95%', b:'24%', c:'#EC4899' },
         ].map((w, i) => (
           <div key={i} style={{
             position:'absolute',
@@ -7702,15 +7740,15 @@ function ClientView({ setView, user, profile, onLogout, initialTab }) {
           </div>
           {/* HelpBanner movido al tope (TAB_HELP['mis clubs']) — ya no va acá */}
 
+          {/* Empty wallet state — sin clubes joinedados todavía. Mostramos
+              solo el CTA de escanear QR (el viejo marquee "Más clubes
+              cerca" con clubes de demo fue eliminado).
+              El botón "Escanear QR" abre el scanner del cliente con la
+              cámara directo en modo join-club (no muestra el picker
+              "Mostrar mi QR / Escanear" intermedio): seteamos un flag en
+              sessionStorage que ScannerView consume en su useEffect de
+              mount. */}
           {displayMemberships.length === 0 ? (
-            /* Empty wallet state — sin clubes joinedados todavía. Mostramos
-                solo el CTA de escanear QR (el viejo marquee "Más clubes
-                cerca" con clubes de demo fue eliminado).
-                El botón "Escanear QR" abre el scanner del cliente con la
-                cámara directo en modo join-club (no muestra el picker
-                "Mostrar mi QR / Escanear" intermedio): seteamos un flag en
-                sessionStorage que ScannerView consume en su useEffect de
-                mount. */}
             <div style={{ textAlign:'center', padding:'52px 24px 24px' }}>
               <div style={{ width:76, height:76, borderRadius:24, background:'rgba(139,92,246,0.12)', border:'1px solid rgba(139,92,246,0.22)', display:'flex', alignItems:'center', justifyContent:'center', margin:'0 auto 20px' }}>
                 <Wallet size={34} strokeWidth={1.5} color="rgba(139,92,246,0.70)" />
@@ -20194,7 +20232,11 @@ export default function App() {
         />
       )}
       <Navbar setView={navigate} cityName={currentCity?.name} user={user} profile={profile} onLogin={handleLogin} onLogout={handleLogout} currentView={view} clientTab={clientTab} onOwnerProfile={handleOwnerProfile} />
-      <div style={{ height:80 }} />
+      {/* Spacer del navbar — solo cuando NO es home. En home el splash
+          arranca pegado al navbar para que se sienta full-bleed (la
+          sección tiene su propio padding-top interno para que el
+          contenido no quede debajo del navbar fijo). */}
+      {view !== 'home' && <div style={{ height:80 }} />}
       {/* Banner top "¿Tenés un negocio?" — aparece debajo del navbar en las
           vistas que NO tienen sub-nav fijo propio. ClientView tiene su
           ClientBottomNav fijo en top:62, así que el banner se renderiza

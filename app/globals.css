@@ -25,33 +25,41 @@ body { background: var(--bg-primary); color: #F0EAFF; -webkit-font-smoothing: an
   font-weight: 400;
 }
 
-/* CinematicSplash — ocupa toda la pantalla en mobile (efecto hero),
-   se ajusta al contenido en desktop (ahí no necesita 100vh porque el
-   contenido ya respira y forzar el alto deja huecos vacíos). */
+/* CinematicSplash — ocupa toda la pantalla SIEMPRE (web y mobile).
+   Layout: marquee al tope (flex-start), bloque BENEFIX centrado en el
+   espacio restante (margin auto). El padding-top del section interno se
+   encarga de empujar el marquee debajo del navbar fijo (que vive en
+   top:10 con height:52, ocupando ~62-72px del viewport). */
 .cinematic-splash {
-  min-height: auto;
-  display: block;
+  min-height: 100vh;
+  /* svh respeta la barra dinámica de iOS Safari sin que la sección
+     se sobrescale cuando aparece/desaparece el address bar. Algunos
+     navegadores viejos no la soportan — usan el 100vh fallback de arriba. */
+  min-height: 100svh;
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-start;
+}
+.cinematic-splash .splash-marquee {
+  /* primer hijo: queda al tope sin auto margin, debajo del navbar fijo */
+  flex-shrink: 0;
+}
+.cinematic-splash .splash-main {
+  /* segundo hijo: empujado al centro vertical del espacio restante */
+  margin-top: auto;
+  margin-bottom: auto;
 }
 
-/* Layout mobile: 100% de viewport con el marquee arriba (flex-start
-   natural) y el bloque BENEFIX centrado vertical (margin auto). */
+/* Mobile: el splash-main se centra en TODO el flex space del section
+   (de padding-top hasta padding-bottom), o sea ~viewport center. El
+   skyline al pie es absolute y no afecta el centrado del flex.
+   Aplicamos un padding-bottom chico para que la centralización quede
+   sobre el centro visual del viewport (no más arriba). */
 @media (max-width: 768px) {
   .cinematic-splash {
-    min-height: 100vh;
-    /* svh respeta la barra dinámica de iOS Safari sin que la sección
-       se sobrescale cuando aparece/desaparece el address bar. Algunos
-       navegadores antiguos no la soportan — el fallback 100vh va arriba. */
-    min-height: 100svh;
-    display: flex;
-    flex-direction: column;
-    justify-content: flex-start;
-  }
-  .cinematic-splash .splash-marquee {
-    /* primer hijo: queda al tope sin auto margin */
-    flex-shrink: 0;
+    padding-bottom: 60px !important;
   }
   .cinematic-splash .splash-main {
-    /* segundo hijo: empujado al centro vertical del espacio restante */
     margin-top: auto;
     margin-bottom: auto;
   }
