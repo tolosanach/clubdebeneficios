@@ -10,9 +10,9 @@
 // Un banner sticky arriba lo aclara, y un CTA "Activá tu Benefix" lo
 // rebota al registro real.
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import {
-  ArrowRight, Bell, Camera, Check, ChevronRight, Clock, Coffee, CreditCard,
+  ArrowLeft, ArrowRight, Bell, Camera, Check, ChevronRight, Clock, Coffee, CreditCard,
   Gift, MapPin, Percent, Phone, Pizza, Plus, RefreshCw, Scissors, Settings,
   Sparkles, Star, Store, TrendingUp, User, UserPlus, Users, Wallet, X, Zap,
 } from 'lucide-react'
@@ -242,6 +242,25 @@ function DemoBanner({ onCta }) {
       gap: 12, flexWrap: 'wrap',
     }}>
       <div style={{ display: 'flex', alignItems: 'center', gap: 10, minWidth: 0 }}>
+        {/* Volver a la app real. href='/' lleva al home. Lo ponemos primero
+            para que sea el elemento más a la izquierda — patrón clásico de
+            navegación back. */}
+        <a
+          href="/"
+          aria-label="Volver a Benefix"
+          style={{
+            display: 'inline-flex', alignItems: 'center', gap: 4,
+            padding: '6px 10px', borderRadius: 99,
+            background: 'rgba(255,255,255,0.06)',
+            border: '1px solid rgba(255,255,255,0.12)',
+            color: 'rgba(255,255,255,0.85)',
+            fontFamily: FN, fontSize: 11, fontWeight: 700,
+            textDecoration: 'none', cursor: 'pointer',
+            whiteSpace: 'nowrap', flexShrink: 0,
+          }}
+        >
+          <ArrowLeft size={12} strokeWidth={2.4} /> Volver
+        </a>
         <Pill color={C.v} soft>Modo demo</Pill>
         <span style={{
           fontFamily: FI, fontSize: 12, color: 'rgba(255,255,255,0.65)',
@@ -539,6 +558,23 @@ function CommerceDemo() {
   const [prizes, setPrizes] = useState(DEMO_PRIZES_INIT)
   const [promos, setPromos] = useState(DEMO_PROMOS_INIT)
   const [savedFlash, setSavedFlash] = useState(false)
+  // Inicializamos con un check del window real (cuando estamos en cliente)
+  // para evitar el flash de "desktop layout" que aparecía en mobile entre
+  // hydration y el primer useEffect. typeof window guard para SSR.
+  const [isMobile, setIsMobile] = useState(() => {
+    if (typeof window === 'undefined') return false
+    return window.innerWidth < 768
+  })
+
+  // Detectar mobile para colapsar el sidebar lateral en un top-nav
+  // horizontal scrolleable. <768 es el breakpoint que usa el resto de la
+  // app real para dividir mobile/desktop.
+  useEffect(() => {
+    const check = () => setIsMobile(window.innerWidth < 768)
+    check()
+    window.addEventListener('resize', check)
+    return () => window.removeEventListener('resize', check)
+  }, [])
 
   function flashSaved() {
     setSavedFlash(true)
@@ -576,107 +612,176 @@ function CommerceDemo() {
     )
   }
 
+  // Header del comercio (ícono A + nombre + plan). Lo definimos una sola vez
+  // y lo reusamos en sidebar (desktop) y top-bar (mobile).
+  const CommerceHeader = (
+    <div style={{ display: 'flex', alignItems: 'center', gap: 11, minWidth: 0 }}>
+      <div style={{
+        width: 38, height: 38, borderRadius: 11,
+        background: G,
+        display: 'flex', alignItems: 'center', justifyContent: 'center',
+        fontFamily: FN, fontSize: 16, fontWeight: 900, color: '#fff',
+        flexShrink: 0,
+      }}>
+        A
+      </div>
+      <div style={{ minWidth: 0 }}>
+        <div style={{
+          fontFamily: FN, fontSize: 13, fontWeight: 800,
+          color: C.white, lineHeight: 1.2,
+          whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis',
+        }}>
+          Aurora · Café & Brunch
+        </div>
+        <div style={{ fontFamily: FI, fontSize: 11, color: C.mist, marginTop: 2 }}>
+          Cafetería · Plan PRO
+        </div>
+      </div>
+    </div>
+  )
+
   return (
     <div style={{
-      display: 'flex', maxWidth: 1180, margin: '0 auto',
+      display: 'flex',
+      flexDirection: isMobile ? 'column' : 'row',
+      maxWidth: 1180, margin: '0 auto',
       minHeight: 'calc(100vh - 50px)',
     }}>
-      {/* Sidebar */}
-      <aside style={{
-        width: 240, flexShrink: 0,
-        borderRight: '1px solid rgba(255,255,255,0.08)',
-        padding: '20px 0',
-        display: 'flex', flexDirection: 'column',
-        position: 'sticky', top: 50, alignSelf: 'flex-start',
-        height: 'calc(100vh - 50px)', overflowY: 'auto',
-      }}>
+      {isMobile ? (
+        // ─── MOBILE: header del comercio + tabs horizontales scrolleables ───
         <div style={{
-          padding: '0 18px 18px',
+          position: 'sticky', top: 50, zIndex: 30,
+          background: 'rgba(0, 0, 0, 0.86)',
+          backdropFilter: 'blur(16px)', WebkitBackdropFilter: 'blur(16px)',
           borderBottom: '1px solid rgba(255,255,255,0.08)',
-          marginBottom: 10,
         }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 11 }}>
-            <div style={{
-              width: 42, height: 42, borderRadius: 12,
-              background: G,
-              display: 'flex', alignItems: 'center', justifyContent: 'center',
-              fontFamily: FN, fontSize: 17, fontWeight: 900, color: '#fff',
-              flexShrink: 0,
-            }}>
-              A
-            </div>
-            <div style={{ minWidth: 0 }}>
-              <div style={{
-                fontFamily: FN, fontSize: 13, fontWeight: 800,
-                color: C.white, lineHeight: 1.2,
-                whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis',
-              }}>
-                Aurora · Café & Brunch
-              </div>
-              <div style={{ fontFamily: FI, fontSize: 11, color: C.mist, marginTop: 2 }}>
-                Cafetería · Plan PRO
-              </div>
-            </div>
+          <div style={{ padding: '12px 16px' }}>{CommerceHeader}</div>
+          <div style={{
+            display: 'flex',
+            overflowX: 'auto',
+            scrollbarWidth: 'none',
+            msOverflowStyle: 'none',
+            gap: 6,
+            padding: '0 14px 12px',
+          }}>
+            {TABS.map(({ id, label, Icon }) => {
+              const active = tab === id
+              const showBadge = id === 'automatizaciones' && totalDetected > 0
+              return (
+                <button
+                  key={id}
+                  onClick={() => setTab(id)}
+                  style={{
+                    display: 'inline-flex', alignItems: 'center', gap: 6,
+                    padding: '8px 12px',
+                    flexShrink: 0,
+                    background: active ? `${C.v}1f` : 'rgba(255,255,255,0.04)',
+                    border: `1px solid ${active ? `${C.v}66` : 'rgba(255,255,255,0.08)'}`,
+                    borderRadius: 99,
+                    color: active ? C.white : C.mist,
+                    fontFamily: FN, fontSize: 12,
+                    fontWeight: active ? 700 : 500,
+                    cursor: 'pointer',
+                    whiteSpace: 'nowrap',
+                    transition: 'all .15s',
+                  }}
+                >
+                  <Icon size={13} strokeWidth={active ? 2.4 : 2} color={active ? C.v : C.mist} />
+                  <span>{label}</span>
+                  {showBadge && (
+                    <span style={{
+                      fontFamily: FN, fontSize: 10, fontWeight: 700,
+                      color: '#fff', background: C.v,
+                      borderRadius: 99, padding: '1px 6px',
+                    }}>
+                      {totalDetected}
+                    </span>
+                  )}
+                </button>
+              )
+            })}
           </div>
         </div>
-
-        {TABS.map(({ id, label, Icon }) => {
-          const active = tab === id
-          const showBadge = id === 'automatizaciones' && totalDetected > 0
-          return (
-            <button
-              key={id}
-              onClick={() => setTab(id)}
-              style={{
-                display: 'flex', alignItems: 'center', gap: 11,
-                padding: '11px 18px',
-                background: active ? `${C.v}1a` : 'transparent',
-                border: 'none',
-                borderLeft: `3px solid ${active ? C.v : 'transparent'}`,
-                color: active ? C.white : C.mist,
-                fontFamily: FN, fontSize: 13,
-                fontWeight: active ? 700 : 500,
-                cursor: 'pointer', textAlign: 'left', width: '100%',
-                transition: 'all .15s',
-              }}
-            >
-              <Icon size={15} strokeWidth={active ? 2.4 : 2} color={active ? C.v : C.mist} />
-              <span style={{ flex: 1 }}>{label}</span>
-              {showBadge && (
-                <span style={{
-                  fontFamily: FN, fontSize: 10, fontWeight: 700,
-                  color: '#fff', background: C.v,
-                  borderRadius: 99, padding: '1px 7px',
-                }}>
-                  {totalDetected}
-                </span>
-              )}
-            </button>
-          )
-        })}
-
-        {/* Plan badge fondo */}
-        <div style={{
-          margin: 'auto 14px 14px', padding: '11px 13px',
-          background: `${PLANS.pro.color}1a`,
-          border: `1px solid ${PLANS.pro.color}55`,
-          borderRadius: 11,
+      ) : (
+        // ─── DESKTOP: sidebar lateral fija ───
+        <aside style={{
+          width: 240, flexShrink: 0,
+          borderRight: '1px solid rgba(255,255,255,0.08)',
+          padding: '20px 0',
+          display: 'flex', flexDirection: 'column',
+          position: 'sticky', top: 50, alignSelf: 'flex-start',
+          height: 'calc(100vh - 50px)', overflowY: 'auto',
         }}>
           <div style={{
-            fontFamily: FN, fontSize: 9, fontWeight: 800,
-            color: PLANS.pro.color, letterSpacing: '.10em',
-            textTransform: 'uppercase', marginBottom: 2,
+            padding: '0 18px 18px',
+            borderBottom: '1px solid rgba(255,255,255,0.08)',
+            marginBottom: 10,
           }}>
-            Plan PRO activo
+            {CommerceHeader}
           </div>
-          <div style={{ fontFamily: FI, fontSize: 11, color: C.mist }}>
-            Todas las funciones desbloqueadas.
+
+          {TABS.map(({ id, label, Icon }) => {
+            const active = tab === id
+            const showBadge = id === 'automatizaciones' && totalDetected > 0
+            return (
+              <button
+                key={id}
+                onClick={() => setTab(id)}
+                style={{
+                  display: 'flex', alignItems: 'center', gap: 11,
+                  padding: '11px 18px',
+                  background: active ? `${C.v}1a` : 'transparent',
+                  border: 'none',
+                  borderLeft: `3px solid ${active ? C.v : 'transparent'}`,
+                  color: active ? C.white : C.mist,
+                  fontFamily: FN, fontSize: 13,
+                  fontWeight: active ? 700 : 500,
+                  cursor: 'pointer', textAlign: 'left', width: '100%',
+                  transition: 'all .15s',
+                }}
+              >
+                <Icon size={15} strokeWidth={active ? 2.4 : 2} color={active ? C.v : C.mist} />
+                <span style={{ flex: 1 }}>{label}</span>
+                {showBadge && (
+                  <span style={{
+                    fontFamily: FN, fontSize: 10, fontWeight: 700,
+                    color: '#fff', background: C.v,
+                    borderRadius: 99, padding: '1px 7px',
+                  }}>
+                    {totalDetected}
+                  </span>
+                )}
+              </button>
+            )
+          })}
+
+          {/* Plan badge fondo (solo desktop, en mobile es ruido visual) */}
+          <div style={{
+            margin: 'auto 14px 14px', padding: '11px 13px',
+            background: `${PLANS.pro.color}1a`,
+            border: `1px solid ${PLANS.pro.color}55`,
+            borderRadius: 11,
+          }}>
+            <div style={{
+              fontFamily: FN, fontSize: 9, fontWeight: 800,
+              color: PLANS.pro.color, letterSpacing: '.10em',
+              textTransform: 'uppercase', marginBottom: 2,
+            }}>
+              Plan PRO activo
+            </div>
+            <div style={{ fontFamily: FI, fontSize: 11, color: C.mist }}>
+              Todas las funciones desbloqueadas.
+            </div>
           </div>
-        </div>
-      </aside>
+        </aside>
+      )}
 
       {/* Content */}
-      <main style={{ flex: 1, padding: '28px 28px 100px', minWidth: 0 }}>
+      <main style={{
+        flex: 1,
+        padding: isMobile ? '20px 16px 100px' : '28px 28px 100px',
+        minWidth: 0,
+      }}>
 
         {/* DASHBOARD */}
         {tab === 'dashboard' && (
