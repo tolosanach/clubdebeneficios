@@ -7197,15 +7197,21 @@ function WalletCardFront({ club, colors, onFlip, visible }) {
   const rating   = REVIEWS_ENABLED ? commerce?.rating : null
 
   const now = new Date()
+  // BUG fix: el find original NO filtraba por type, así que si el comercio
+  // tenía varias promos activas (típico: discount_next + double_points),
+  // agarraba la primera del array. Si esa primera era double_points, el
+  // badge 22% OFF nunca se mostraba aunque el cliente tuviera el cupón
+  // asignado en client_promotions. Ahora filtramos explícitamente por
+  // discount_next que es la única que se muestra como badge "X% OFF".
   const activePromo = (commerce?.promotions || []).find(p =>
-    p.active && (!p.expires_at || new Date(p.expires_at) > now)
+    p.active && p.type === 'discount_next' && (!p.expires_at || new Date(p.expires_at) > now)
   )
   // Cupón del cliente — solo cuenta si está activo y no venció. Si quedó
   // como 'used' o 'declined' (porque el dueño no le renovó tras canjearlo
   // en el último scan), o si pasó la fecha, no le mostramos el badge en
   // la tarjeta. Así el flujo es: nuevo cliente → cupón visible → escanea
   // y dueño no renueva → cupón se va de la tarjeta.
-  const clientPromo = activePromo?.type === 'discount_next'
+  const clientPromo = activePromo
     ? (client_promotions || []).find(cp =>
         cp.promotion_id === activePromo?.id
         && cp.status === 'active'
@@ -7407,15 +7413,22 @@ function WalletCardBack({ club, colors, onFlip, userId }) {
   const initial = (commerce?.name || '?')[0].toUpperCase()
 
   const now = new Date()
+  // Acá sí queremos cualquier promo activa porque el back de la card
+  // muestra distinto info según type (descuento o ×2). Pero filtramos
+  // discount_next al buscar el cupón del cliente, que solo aplica a ese
+  // type — para double_points no hay client_promotion individual.
   const activePromo = (commerce?.promotions || []).find(p =>
     p.active && (!p.expires_at || new Date(p.expires_at) > now)
+  )
+  const activeDiscountPromo = (commerce?.promotions || []).find(p =>
+    p.active && p.type === 'discount_next' && (!p.expires_at || new Date(p.expires_at) > now)
   )
   // Cupón del cliente — solo cuenta si status='active' Y todavía no venció.
   // Si quedó como 'used' o 'declined' (porque el dueño no le renovó tras
   // canjearlo), o si pasó la fecha, el badge desaparece.
-  const clientPromo = activePromo
+  const clientPromo = activeDiscountPromo
     ? (client_promotions || []).find(cp =>
-        cp.promotion_id === activePromo?.id
+        cp.promotion_id === activeDiscountPromo.id
         && cp.status === 'active'
         && (!cp.expires_at || new Date(cp.expires_at) > now)
       )
