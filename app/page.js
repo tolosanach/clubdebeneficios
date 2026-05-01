@@ -21,6 +21,7 @@ import CrossRoleNudges from '../lib/CrossRoleNudges'
 import LogoCropper, { validateImageFile, checkImageDimensions } from '../lib/LogoCropper'
 import RedeemPendingModal from '../lib/RedeemPendingModal'
 import CanjesPendientesPanel from '../lib/CanjesPendientesPanel'
+import HeroV2Section from '../lib/HeroV2Section'
 import SwRegister from '../lib/sw-register'
 import InfoHint from '../lib/InfoHint'
 import HelpBanner, { resetAllHelpBanners } from '../lib/HelpBanner'
@@ -3487,23 +3488,27 @@ function FeaturesSection() {
   ]
   return (
     <section className="section-secondary" style={{
-      // Background pintado al mismo tono que la base de los edificios del
-      // skyline en CinematicSplashSection (#07040f / #0a0612). Cuando el
-      // user termina el scroll del hero las torres "fundieron" hacia esta
-      // sección sin que se note un corte de color entre las dos.
-      background: '#07040f',
+      // Fondo negro puro — el dueño lo quiere así (no violeta oscuro,
+      // no overlay de marca, solo negro plano).
+      background: '#000',
       padding:'100px 20px',
       position:'relative',
+      overflow:'hidden',
     }}>
-      <div style={{ position:'absolute', top:'50%', left:'50%', transform:'translate(-50%,-50%)', width:'70vw', maxWidth:900, height:'50vh', borderRadius:'50%', background:'radial-gradient(circle, rgba(147,51,234,0.18) 0%, transparent 70%)', filter:'blur(60px)', pointerEvents:'none' }} />
-      <div style={{ maxWidth:1080, margin:'0 auto', position:'relative' }}>
-        <div style={{ textAlign:'center', marginBottom:14 }}>
-          <span className="liquid-glass" style={{ display:'inline-block', borderRadius:99, padding:'6px 20px', fontSize:11, color:'rgba(255,255,255,0.55)', fontFamily:FN, fontWeight:700, letterSpacing:'.10em', textTransform:'uppercase' }}>Todo lo que necesitás</span>
+      {/* Los keyframes feature-icon-float-{a,b,c,d,front} viven en
+          app/globals.css (movidos desde acá porque inline JSX <style>
+          tenía problemas de timing con SSR). */}
+      <div style={{ maxWidth:1080, margin:'0 auto', position:'relative', zIndex:2 }}>
+        <div style={{ textAlign:'center', marginBottom:18 }}>
+          <span className="liquid-glass" style={{ display:'inline-block', borderRadius:99, padding:'7px 18px', fontSize:11, color:'rgba(255,255,255,0.65)', fontFamily:FN, fontWeight:600, letterSpacing:'.10em', textTransform:'uppercase' }}>Todo lo que necesitás</span>
         </div>
-        <h2 style={{ fontFamily:FN, fontSize:'clamp(22px,3.5vw,38px)', fontWeight:900, color:C.white, textAlign:'center', marginBottom:18, lineHeight:1.1 }}>
-          Tu club, <span className="font-display" style={{ fontWeight:400, letterSpacing:'-.01em' }}>completo.</span>
+        {/* H2 con la misma escala y peso del headline del hero V2:
+            clamp grande, weight 600 (no 900), letter-spacing negativo y
+            line-height ajustado. Eso pega visualmente con "Tu club, tu marca." */}
+        <h2 style={{ fontFamily:FN, fontSize:'clamp(28px, 5vw, 48px)', fontWeight:600, letterSpacing:'-0.03em', color:'#fff', textAlign:'center', marginBottom:18, lineHeight:1.05 }}>
+          Tu club, <span style={{ fontStyle:'italic', fontWeight:500 }}>completo.</span>
         </h2>
-        <p style={{ fontSize:15, color:C.mist, textAlign:'center', maxWidth:540, margin:'0 auto 52px', lineHeight:1.6 }}>
+        <p style={{ fontFamily:FI, fontSize:'clamp(14px, 1.7vw, 17px)', color:'rgba(255,255,255,0.70)', textAlign:'center', maxWidth:480, margin:'0 auto 56px', lineHeight:1.55 }}>
           Funcionalidades pensadas para comercios chicos. Sin curva de aprendizaje, todo en una sola pantalla.
         </p>
         <div style={{ display:'grid', gridTemplateColumns:'repeat(auto-fit, minmax(280px, 1fr))', gap:16 }}>
@@ -3534,20 +3539,111 @@ function FeaturesSection() {
                   background:`radial-gradient(circle, ${f.color}28 0%, transparent 70%)`,
                   filter:'blur(24px)', pointerEvents:'none',
                 }} />
-                {/* Icono container — ahora también liquid-glass anidado
-                    para mantener coherencia (mismo lenguaje que el
-                    space-travel landing del FIND/Vela). */}
-                <div className="liquid-glass" style={{
-                  width:46, height:46, borderRadius:12,
-                  display:'flex', alignItems:'center', justifyContent:'center',
-                  flexShrink:0, position:'relative',
+                {/* Composición animada de íconos — ocupa toda la zona
+                    superior de la card (ancho completo, alto 110px) en
+                    vez del cuadradito chico de antes. Distribuyo 6
+                    instancias del MISMO ícono a distintos tamaños,
+                    opacidades y posiciones para llenar el área entera,
+                    cada una con su propia animación de drift suave (6-11s)
+                    que varía dirección + scale leves. Sin borde propio
+                    en el contenedor — solo un overflow:hidden por si
+                    alguna capa al expandirse roza el borde. */}
+                <div style={{
+                  width: '100%', height: 110,
+                  position:'relative',
+                  flexShrink: 0,
+                  overflow: 'hidden',
+                  marginBottom: 4,
                 }}>
-                  <Icon size={22} color={f.color} strokeWidth={2} style={{ position:'relative', zIndex:1, filter:`drop-shadow(0 0 8px ${f.color}99)` }} />
+                  {/* Capa background — ícono más grande, casi imperceptible,
+                      drift muy lento. Centrado, le da peso visual al medio.
+                      will-change:transform fuerza al browser a usar la GPU
+                      para compositar la animación, así no parpadea. */}
+                  <Icon
+                    size={104}
+                    color={f.color}
+                    strokeWidth={0.9}
+                    style={{
+                      position:'absolute', left:'50%', top:'50%',
+                      transform:'translate(-50%, -50%)',
+                      opacity: 0.08,
+                      animation: 'feature-icon-float-a 11s ease-in-out infinite',
+                      willChange: 'transform',
+                    }}
+                  />
+                  {/* Top-left mid-faded */}
+                  <Icon
+                    size={58}
+                    color={f.color}
+                    strokeWidth={1.2}
+                    style={{
+                      position:'absolute', left:'16%', top:'28%',
+                      transform:'translate(-50%, -50%)',
+                      opacity: 0.18,
+                      animation: 'feature-icon-float-b 9s ease-in-out infinite',
+                      willChange: 'transform',
+                    }}
+                  />
+                  {/* Top-right mid-faded */}
+                  <Icon
+                    size={54}
+                    color={f.color}
+                    strokeWidth={1.2}
+                    style={{
+                      position:'absolute', left:'84%', top:'32%',
+                      transform:'translate(-50%, -50%)',
+                      opacity: 0.16,
+                      animation: 'feature-icon-float-c 10s ease-in-out infinite 1s',
+                      willChange: 'transform',
+                    }}
+                  />
+                  {/* Bottom-left smaller */}
+                  <Icon
+                    size={42}
+                    color={f.color}
+                    strokeWidth={1.5}
+                    style={{
+                      position:'absolute', left:'26%', top:'74%',
+                      transform:'translate(-50%, -50%)',
+                      opacity: 0.28,
+                      animation: 'feature-icon-float-d 8s ease-in-out infinite 1.6s',
+                      willChange: 'transform',
+                    }}
+                  />
+                  {/* Bottom-right smaller */}
+                  <Icon
+                    size={40}
+                    color={f.color}
+                    strokeWidth={1.5}
+                    style={{
+                      position:'absolute', left:'74%', top:'72%',
+                      transform:'translate(-50%, -50%)',
+                      opacity: 0.26,
+                      animation: 'feature-icon-float-a 8.5s ease-in-out infinite 0.8s',
+                      willChange: 'transform',
+                    }}
+                  />
+                  {/* Front — ícono central nítido con glow, marca dónde
+                      vive el "ícono real" de la feature. Pulse leve sin
+                      moverse de posición. */}
+                  <Icon
+                    size={40}
+                    color={f.color}
+                    strokeWidth={2.2}
+                    style={{
+                      position:'absolute', left:'50%', top:'50%',
+                      transform:'translate(-50%, -50%)',
+                      zIndex: 2,
+                      filter:`drop-shadow(0 0 14px ${f.color}cc)`,
+                      animation: 'feature-icon-float-front 7s ease-in-out infinite',
+                      willChange: 'transform',
+                    }}
+                  />
                 </div>
-                <div style={{ fontFamily:FN, fontSize:17, fontWeight:800, color:C.white, lineHeight:1.25, letterSpacing:'-.005em', position:'relative' }}>
+                <div style={{ fontFamily:FN, fontSize:17, fontWeight:600, color:'#fff', lineHeight:1.25, letterSpacing:'-.015em', position:'relative' }}>
                   {f.title}
                 </div>
-                <div style={{ fontSize:13.5, color:'rgba(255,255,255,0.72)', lineHeight:1.6, position:'relative', fontWeight:300 }}>
+                <div style={{ fontFamily:FI, fontSize:13.5, color:'rgba(255,255,255,0.70)', lineHeight:1.6, position:'relative', fontWeight:400 }}>
                   {f.desc}
                 </div>
               </div>
@@ -3560,11 +3656,272 @@ function FeaturesSection() {
 }
 
 // ─── HOW IT WORKS ──────────────────────────────────────────────────────────────
-// Cada step tiene su propia identidad: color de marca, motif decorativo
-// (visualización CSS/SVG única que evoca la acción), eyebrow chip, título
-// con underline accent, descripción y feature pills. Layout asimétrico
-// (texto izquierda, visual derecha) en desktop; stack en mobile.
+// Versión video-feature-grid: 3 cards con video de fondo full-bleed
+// (autoplay, loop, muted) + overlay con número, kicker, título y párrafo.
+// Layout asimétrico inspirado en landing pages tipo Nexora:
+//   • Card 01: alto a la izquierda (col 1, span 2 filas)
+//   • Card 02: ancho top-right (cols 2-3)
+//   • Card 03: ancho bottom-right (cols 2-3)
+// Mantiene la utilidad .liquid-glass del CSS global para el CTA.
+// La función vieja (scroll-stacking con sticky cards y motifs decorativos
+// CSS) la guardamos abajo como _HowItWorksSectionLegacy por si quisiéramos
+// volver, pero la export por default es esta nueva.
 function HowItWorksSection() {
+  const HELV = "'Helvetica Neue', Helvetica, Arial, sans-serif"
+  const CARD_BG = '#252B4C'
+
+  // Hook a viewport size para ajustar layout (mobile = stack, desktop = grid asimétrico)
+  const [isMobileLocal, setIsMobileLocal] = useState(false)
+  useEffect(() => {
+    const check = () => setIsMobileLocal(window.innerWidth < 768)
+    check()
+    window.addEventListener('resize', check)
+    return () => window.removeEventListener('resize', check)
+  }, [])
+
+  const cards = [
+    {
+      num: '01/',
+      kicker: 'Sumate al club',
+      title: 'Escaneá un QR\npara empezar',
+      paragraph: 'Cada local tiene su propio código.\nMostralo, escaneá y ya sos miembro.',
+      videoSrc: 'https://d8j0ntlcm91z4.cloudfront.net/user_38xzZboKViGWJOttwIXH07lWA1P/hf_20260427_104605_2700410c-4303-4d44-a368-e1b8c84eca8c.mp4',
+      // Layout: tall left
+      gridArea: 'tall',
+    },
+    {
+      num: '02/',
+      kicker: 'Sumás con cada visita',
+      title: 'Tu progreso, en\ntiempo real',
+      paragraph: null,
+      videoSrc: 'https://d8j0ntlcm91z4.cloudfront.net/user_38xzZboKViGWJOttwIXH07lWA1P/hf_20260427_104731_bfd355f7-1f84-4f81-ad88-52c2bca70bad.mp4',
+      gridArea: 'topRight',
+    },
+    {
+      num: '03/',
+      kicker: 'Cuando querés',
+      title: 'Canjeás premios reales',
+      paragraph: 'De estrellas a cafés, descuentos o productos —\ntu acumulado se transforma en lo que vos elegís.',
+      videoSrc: 'https://d8j0ntlcm91z4.cloudfront.net/user_38xzZboKViGWJOttwIXH07lWA1P/hf_20260427_104758_e7d78f06-3700-4862-8c9b-595ed447e81a.mp4',
+      gridArea: 'bottomRight',
+    },
+  ]
+
+  // Render común para una card. children es el contenido del overlay
+  // (relative, va por encima del video de fondo).
+  function FeatureCard({ card, style, contentExtra }) {
+    return (
+      <div style={{
+        background: CARD_BG,
+        borderRadius: '1.25rem',
+        position: 'relative',
+        overflow: 'hidden',
+        padding: '28px',
+        display: 'flex',
+        flexDirection: 'column',
+        minHeight: 360,
+        ...style,
+      }}>
+        {/* Video full-bleed de fondo, desaturado para que el overlay de
+            marca tinte limpio. saturate(0.18) deja casi escala de grises
+            pero conserva un toque de información cromática del original
+            que no se ve plasta. brightness(0.85) baja un poco la luz
+            para que el texto blanco quede legible. */}
+        <video
+          src={card.videoSrc}
+          autoPlay
+          muted
+          loop
+          playsInline
+          preload="auto"
+          style={{
+            position: 'absolute',
+            inset: 0,
+            width: '100%',
+            height: '100%',
+            objectFit: 'cover',
+            zIndex: 0,
+            filter: 'saturate(0.18) brightness(0.85) contrast(1.08)',
+          }}
+        />
+        {/* Overlay 1: tint de marca (gradient naranja → fucsia → violeta).
+            mix-blend-mode 'overlay' aplica los colores de marca al video
+            en escala de grises preservando los highlights y shadows del
+            video original. Produce el "look Benefix": video tintado en
+            los tres tonos de marca según la zona de luminosidad. */}
+        <div style={{
+          position: 'absolute',
+          inset: 0,
+          zIndex: 0,
+          background: 'linear-gradient(135deg, rgba(254,80,0,0.85) 0%, rgba(236,72,153,0.80) 50%, rgba(189,75,248,0.85) 100%)',
+          mixBlendMode: 'overlay',
+          pointerEvents: 'none',
+        }} />
+        {/* Overlay 2: oscurecimiento sutil del bottom para legibilidad
+            del texto (kicker, título, paragraph) que cae en la zona
+            baja de las cards. */}
+        <div style={{
+          position: 'absolute',
+          inset: 0,
+          zIndex: 0,
+          background: 'linear-gradient(180deg, rgba(0,0,0,0) 35%, rgba(0,0,0,0.45) 100%)',
+          pointerEvents: 'none',
+        }} />
+        {/* Top row: número + kicker */}
+        <div style={{
+          position: 'relative', zIndex: 1,
+          display: 'flex',
+          justifyContent: 'space-between',
+          alignItems: 'flex-start',
+          fontSize: 14,
+          color: 'rgba(255,255,255,0.60)',
+          fontFamily: HELV,
+          gap: 12,
+        }}>
+          {card.gridArea === 'topRight' ? (
+            <>
+              {/* Card 02 invierte: heading a la izquierda, número a la derecha */}
+              <h2 style={{
+                fontSize: 'clamp(20px, 2.4vw, 26px)',
+                fontWeight: 500,
+                color: '#fff',
+                fontFamily: HELV,
+                lineHeight: 1.15,
+                whiteSpace: 'pre-line',
+                margin: 0,
+                maxWidth: '70%',
+              }}>{card.title}</h2>
+              <span>{card.num}</span>
+            </>
+          ) : (
+            <>
+              <span>{card.num}</span>
+              <span>{card.kicker}</span>
+            </>
+          )}
+        </div>
+
+        {/* Spacer flex */}
+        <div style={{ flex: 1, minHeight: card.gridArea === 'topRight' ? 192 : 24 }} />
+
+        {/* Bottom block con título + paragraph (excepto card 02 que tiene heading arriba) */}
+        {card.gridArea !== 'topRight' && (
+          <div style={{ position: 'relative', zIndex: 1 }}>
+            <h2 style={{
+              fontSize: 'clamp(20px, 2.4vw, 26px)',
+              fontWeight: 500,
+              color: '#fff',
+              fontFamily: HELV,
+              lineHeight: 1.15,
+              whiteSpace: 'pre-line',
+              margin: 0,
+            }}>{card.title}</h2>
+            {card.paragraph && card.gridArea === 'tall' && (
+              <>
+                <div style={{ marginTop: 16, height: 1, width: '100%', background: 'rgba(255,255,255,0.20)' }} />
+                <p style={{
+                  marginTop: 16,
+                  fontSize: 12,
+                  color: 'rgba(255,255,255,0.70)',
+                  fontFamily: HELV,
+                  lineHeight: 1.55,
+                  whiteSpace: 'pre-line',
+                  margin: '16px 0 0',
+                }}>{card.paragraph}</p>
+              </>
+            )}
+            {card.paragraph && card.gridArea === 'bottomRight' && (
+              <p style={{
+                marginTop: 12,
+                fontSize: 12,
+                color: 'rgba(255,255,255,0.80)',
+                fontFamily: HELV,
+                lineHeight: 1.55,
+                whiteSpace: 'pre-line',
+                margin: '12px 0 0',
+              }}>{card.paragraph}</p>
+            )}
+          </div>
+        )}
+
+        {/* Extra del fondo de la card (botón opcional) */}
+        {contentExtra && (
+          <div style={{ position: 'relative', zIndex: 1, marginTop: 24 }}>
+            {contentExtra}
+          </div>
+        )}
+      </div>
+    )
+  }
+
+  return (
+    <section style={{
+      padding: '100px 24px',
+      background: '#000',
+      position: 'relative',
+    }}>
+      <div style={{ maxWidth: 1200, margin: '0 auto' }}>
+        {/* Header de sección: kicker + título grande */}
+        <div style={{
+          marginBottom: 40,
+          display: 'flex',
+          flexDirection: isMobileLocal ? 'column' : 'row',
+          alignItems: isMobileLocal ? 'flex-start' : 'flex-start',
+          justifyContent: 'space-between',
+          gap: 24,
+        }}>
+          <h2 style={{
+            fontFamily: HELV,
+            fontSize: 'clamp(24px, 4.2vw, 44px)',
+            fontWeight: 400,
+            letterSpacing: '-0.02em',
+            color: '#fff',
+            lineHeight: 1.1,
+            margin: 0,
+            maxWidth: 720,
+          }}>
+            Cómo funciona, sin vueltas.
+            <span style={{ display: 'block', color: 'rgba(255,255,255,0.40)', marginTop: 8 }}>
+              Tres pasos para fidelizar.
+            </span>
+          </h2>
+        </div>
+
+        {/* Grid de cards: en mobile stack vertical, en desktop layout asimétrico */}
+        <div style={isMobileLocal ? {
+          display: 'flex',
+          flexDirection: 'column',
+          gap: 20,
+        } : {
+          display: 'grid',
+          gridTemplateColumns: 'repeat(3, 1fr)',
+          gridTemplateRows: 'auto auto',
+          gap: 20,
+        }}>
+          {/* Card 01 — tall left, span 2 rows */}
+          <FeatureCard
+            card={cards[0]}
+            style={isMobileLocal ? { minHeight: 360 } : { gridColumn: '1 / 2', gridRow: '1 / 3', minHeight: '28rem' }}
+          />
+          {/* Card 02 — wide top right, col span 2 */}
+          <FeatureCard
+            card={cards[1]}
+            style={isMobileLocal ? { minHeight: 280 } : { gridColumn: '2 / 4', gridRow: '1 / 2', minHeight: 220 }}
+          />
+          {/* Card 03 — wide bottom right, col span 2 */}
+          <FeatureCard
+            card={cards[2]}
+            style={isMobileLocal ? { minHeight: 320 } : { gridColumn: '2 / 4', gridRow: '2 / 3', minHeight: 220 }}
+          />
+        </div>
+      </div>
+    </section>
+  )
+}
+
+// Versión vieja (scroll-stacking) — preservada por si querés volver a ese
+// estilo. No se usa en HomeView pero queda como referencia.
+function _HowItWorksSectionLegacy() {
   const steps = [
     {
       num:'01',
@@ -4591,17 +4948,28 @@ function CinematicSplashSection({ setView, user, profile, onLogin }) {
 
       <div className="splash-main" style={{ maxWidth:1200, margin:'0 auto', position:'relative', textAlign:'center', width:'100%', zIndex:2 }}>
 
-        {/* Eyebrow chip — patrón "white pill chip + glass container" igual
-            que el space-travel landing: una pill blanca chiquita ("Nuevo")
-            adentro de una pill liquid-glass más grande que carga la copy. */}
+        {/* Animación staggered fade-in-up + blur-in para todos los
+            elementos del hero. Cada uno arranca con:
+              opacity:0 + translateY(28) + filter: blur(12px)
+            y termina en:
+              opacity:1 + translateY(0)  + filter: blur(0)
+            Con delays escalonados (cada elemento entra ~250ms después del
+            anterior) y easing cubic-bezier(0.22, 1, 0.36, 1). El blur-in
+            le da el efecto cinematográfico de "materializarse" desde
+            fuera de foco. La excepción es BENEFIX, que mantiene su glow
+            de marca y NO se le aplica blur en el filter (sino se cancela
+            el drop-shadow). */}
+
+        {/* Eyebrow chip — texto blanco. Stagger delay: 100ms */}
         <div style={{ marginBottom:36 }}>
           <div className="liquid-glass" style={{
             display:'inline-flex', alignItems:'center', gap:10,
             padding:'4px 14px 4px 4px',
             borderRadius:99,
             opacity: revealed ? 1 : 0,
-            transform: revealed ? 'translateY(0)' : 'translateY(20px)',
-            transition: 'opacity 800ms ease 200ms, transform 800ms cubic-bezier(0.22,1,0.36,1) 200ms',
+            transform: revealed ? 'translateY(0)' : 'translateY(28px)',
+            filter: revealed ? 'blur(0)' : 'blur(12px)',
+            transition: 'opacity 850ms cubic-bezier(0.22,1,0.36,1) 100ms, transform 850ms cubic-bezier(0.22,1,0.36,1) 100ms, filter 850ms cubic-bezier(0.22,1,0.36,1) 100ms',
           }}>
             <span style={{
               background:'#fff',
@@ -4617,7 +4985,7 @@ function CinematicSplashSection({ setView, user, profile, onLogin }) {
             </span>
             <span style={{
               fontSize:12, fontFamily:FN, fontWeight:500,
-              color:'rgba(255,255,255,0.85)',
+              color:'#fff',
               letterSpacing:'.02em',
             }}>
               Tu negocio, en otro nivel
@@ -4625,15 +4993,15 @@ function CinematicSplashSection({ setView, user, profile, onLogin }) {
           </div>
         </div>
 
-        {/* TIPOGRAFÍA GIGANTE con ghost-text que CONVERGE al hacer scroll.
-            Dos h1 superpuestos: el de atrás está desplazado/blureado al
-            inicio y se va acercando al main según el progreso del scroll.
-            Se envuelve en un div block para forzar línea propia y centrarse
-            con el textAlign:center del padre. */}
+        {/* TIPOGRAFÍA GIGANTE BENEFIX — gradient marca naranja→fucsia→violet
+            + glow violeta original. El blur-in no aplica acá porque el
+            filter ya está usado por el drop-shadow del glow (no podemos
+            tener dos filter independientes en el mismo elemento). En su
+            lugar el blur-in se simula con la animación de scale+opacity
+            que ya tenía la versión vieja. */}
         <div style={{ position:'relative', display:'inline-block' }}>
-          {/* Ghost layer — duplicado blureado que converge al hacer scroll.
-              Tamaño máximo reducido fuerte: en wide screens ahora topa en
-              112px (antes 160). En mobile sigue en 56-72 con clamp. */}
+          {/* Ghost layer — duplicado blureado en gradient marca, converge
+              al scroll con el filter dinámico. */}
           <h1 aria-hidden="true" style={{
             position:'absolute', top:0, left:0, right:0,
             margin:0,
@@ -4657,8 +5025,11 @@ function CinematicSplashSection({ setView, user, profile, onLogin }) {
           }}>
             Benefix
           </h1>
-          {/* Foreground — gradient brand naranja→fucsia→violeta nítido.
-              Reveal: empieza con opacity 0 + scale 0.92 y se materializa. */}
+          {/* Foreground — gradient nítido naranja→fucsia→violeta con glow
+              violeta característico de la marca. Stagger delay: 280ms.
+              Animación: scale 0.92 + opacity 0 → scale 1 + opacity 1.
+              (No usamos filter:blur acá porque pisaría el drop-shadow del
+              glow; el scale-in da una sensación similar de "materializarse".) */}
           <h1 style={{
             position:'relative',
             margin:0,
@@ -4672,51 +5043,54 @@ function CinematicSplashSection({ setView, user, profile, onLogin }) {
             WebkitBackgroundClip:'text',
             backgroundClip:'text',
             WebkitTextFillColor:'transparent',
-            // Glow violeta abajo de las letras
+            // Glow característico violeta + naranja (como antes)
             filter:'drop-shadow(0 4px 16px rgba(189,75,248,0.55)) drop-shadow(0 2px 6px rgba(254,80,0,0.30))',
             opacity: revealed ? 1 : 0,
-            transform: revealed ? 'scale(1)' : 'scale(0.92)',
-            transition: 'opacity 1000ms cubic-bezier(0.22,1,0.36,1) 200ms, transform 1000ms cubic-bezier(0.22,1,0.36,1) 200ms',
+            transform: revealed ? 'scale(1) translateY(0)' : 'scale(0.94) translateY(20px)',
+            transition: 'opacity 1000ms cubic-bezier(0.22,1,0.36,1) 280ms, transform 1000ms cubic-bezier(0.22,1,0.36,1) 280ms',
           }}>
             Benefix
           </h1>
         </div>
 
-        {/* Subtítulo tipo "Real Estate" debajo del logo, en color marca */}
+        {/* Subtítulo "Programa de beneficios" — blanco. Stagger: 500ms */}
         <div style={{
           fontFamily:FN, fontSize:'clamp(15px, 2.2vw, 20px)',
-          fontWeight:700, color:'rgba(216,180,254,0.85)',
+          fontWeight:700, color:'#fff',
           marginTop:18, letterSpacing:'.16em',
           textTransform:'uppercase',
           opacity: revealed ? 1 : 0,
-          transform: revealed ? 'translateY(0)' : 'translateY(16px)',
-          transition: 'opacity 700ms ease 600ms, transform 700ms cubic-bezier(0.22,1,0.36,1) 600ms',
+          transform: revealed ? 'translateY(0)' : 'translateY(28px)',
+          filter: revealed ? 'blur(0)' : 'blur(10px)',
+          transition: 'opacity 850ms cubic-bezier(0.22,1,0.36,1) 500ms, transform 850ms cubic-bezier(0.22,1,0.36,1) 500ms, filter 850ms cubic-bezier(0.22,1,0.36,1) 500ms',
         }}>
           Programa de beneficios
         </div>
 
-        {/* Tagline */}
+        {/* Tagline — blanco. Stagger: 700ms */}
         <p style={{
           fontFamily:FI,
           fontSize:'clamp(15px, 1.9vw, 19px)',
-          color:'rgba(255,255,255,0.55)',
+          color:'#fff',
           maxWidth:520, margin:'24px auto 0',
           lineHeight:1.6,
           opacity: revealed ? 1 : 0,
-          transform: revealed ? 'translateY(0)' : 'translateY(16px)',
-          transition: 'opacity 700ms ease 800ms, transform 700ms cubic-bezier(0.22,1,0.36,1) 800ms',
+          transform: revealed ? 'translateY(0)' : 'translateY(28px)',
+          filter: revealed ? 'blur(0)' : 'blur(10px)',
+          transition: 'opacity 850ms cubic-bezier(0.22,1,0.36,1) 700ms, transform 850ms cubic-bezier(0.22,1,0.36,1) 700ms, filter 850ms cubic-bezier(0.22,1,0.36,1) 700ms',
         }}>
           No solo fidelizás. Cambiás cómo tus clientes se relacionan con tu marca.
         </p>
 
-        {/* CTAs principales — heredados del viejo HeroSection que ahora
-            está reemplazado por este Splash. Reveal con delay > tagline. */}
+        {/* CTAs — staggered fade-in-up + blur-in con el delay más alto
+            (entran últimos en el orquestado del hero). Stagger: 900ms */}
         <div style={{
           display:'flex', flexWrap:'wrap', alignItems:'center', justifyContent:'center', gap:14,
           marginTop:32,
           opacity: revealed ? 1 : 0,
-          transform: revealed ? 'translateY(0)' : 'translateY(16px)',
-          transition:'opacity 700ms ease 1000ms, transform 700ms cubic-bezier(0.22,1,0.36,1) 1000ms',
+          transform: revealed ? 'translateY(0)' : 'translateY(28px)',
+          filter: revealed ? 'blur(0)' : 'blur(8px)',
+          transition:'opacity 850ms cubic-bezier(0.22,1,0.36,1) 900ms, transform 850ms cubic-bezier(0.22,1,0.36,1) 900ms, filter 850ms cubic-bezier(0.22,1,0.36,1) 900ms',
         }}>
           <Btn onClick={() => handleSignupCTA('client')}>
             Soy cliente <ArrowRight size={16} strokeWidth={2.5} />
@@ -5075,12 +5449,15 @@ function BigBoldRowsSection({ setView }) {
 function HomeView({ setView, user, profile, onLogin }) {
   return (
     <div>
-      {/* ── CINEMATIC SPLASH ── (también es el hero ahora)
-          Reemplazó al viejo HeroSection. Tipografía gigante "Benefix" con
-          ghost-text que converge al scroll, skyline parallax con ventanas
-          en colores marca, CTAs principales (Soy cliente / Soy comercio /
-          Mi panel) y trust marquee de rubros de comercios. */}
-      <CinematicSplashSection setView={setView} user={user} profile={profile} onLogin={onLogin} />
+      {/* ── HERO V2 ── (versión Synapse-style con video HLS de fondo)
+          Variante alternativa del hero, en evaluación. Si te gusta más,
+          dejala. Si querés volver al CinematicSplash, comentá esta línea
+          y descomentá la de abajo. */}
+      <HeroV2Section setView={setView} user={user} profile={profile} onLogin={onLogin} />
+
+      {/* ── CINEMATIC SPLASH ── (versión anterior con BENEFIX gigante +
+          edificios al pie + parallax al scroll). Disponible si querés volver. */}
+      {/* <CinematicSplashSection setView={setView} user={user} profile={profile} onLogin={onLogin} /> */}
 
       <SectionDivider />
 
@@ -5092,17 +5469,14 @@ function HomeView({ setView, user, profile, onLogin }) {
       {/* ── PROCESO: 3 PASOS ── */}
       <HowItWorksSection />
 
-      <SectionDivider />
-
-      {/* ── BIG BOLD ROWS ──
-          Reemplaza la vieja "Para comercios": 3 filas con tipografía gigante
-          tipo Buy/Sell/Rent del video de FIND. Cuenta el journey completo
-          del comerciante (Sumar → Fidelizar → Reactivar) con efecto
-          underline animado y flecha que se desplaza en hover.
-          NOTA: NO va SectionDivider antes de Planes — el CTA "Crear mi
-          negocio" del cierre de esta sección encadena directo con el
-          header "✦ Planes para negocios" para no dejar un hueco vacío. */}
-      <BigBoldRowsSection setView={setView} />
+      {/* ── BIG BOLD ROWS ELIMINADO ──
+          La sección "Fidelización, reinventada" con las 3 filas Sumar /
+          Fidelizar / Reactivar fue removida del flow del home a pedido
+          del dueño. La función BigBoldRowsSection sigue definida arriba
+          en el archivo por si quisiéramos volver a usarla en el futuro.
+          También sacamos el SectionDivider que iba antes — el header
+          de "✦ Planes para negocios" ahora viene directo después del
+          BigBoldRowsSection, manteniendo el flujo limpio. */}
 
       {/* ── PLANES ── (sin SectionDivider arriba para pegar mejor al CTA) */}
       <div style={{ padding:'40px 20px 108px' }}>

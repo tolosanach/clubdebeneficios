@@ -7,13 +7,6 @@
 html {
   scroll-behavior: smooth;
   overscroll-behavior-y: none;
-  /* overflow-x: hidden a nivel HTML + BODY para que NUNCA se scrollee la
-     página entera horizontalmente. Si algún componente interno tiene su
-     propio scroll-x (slider de cards, marquees), igual funciona porque
-     ese scroll vive dentro del contenedor del componente. Esto arregla
-     el bug donde el panel de "Configurá tu negocio" en mobile se podía
-     mover de costado y mostraba las tarjetas cortadas. */
-  overflow-x: hidden;
   /* Bump global del 6% — escala todo proporcionalmente (texto, padding,
      iconos) para que se sienta más grande sin tener que tocar cada estilo
      en px hardcodeado. Si algún layout rompe puntualmente, ajustar inline. */
@@ -25,9 +18,11 @@ body {
   -webkit-font-smoothing: antialiased;
   font-family: 'Inter', system-ui, sans-serif;
   overscroll-behavior-y: none;
-  overflow-x: hidden;
-  width: 100%;
-  max-width: 100vw;
+  /* overflow-x: clip impide scroll horizontal a nivel body sin afectar
+     el contexto de scroll vertical (a diferencia de overflow-x: hidden
+     que en algunos browsers rompe el scroll de la página entera cuando
+     se aplica al html element). Soporte: todos los navegadores modernos. */
+  overflow-x: clip;
 }
 
 /* Utility: tipografía display italic-serif para acentos del marketing.
@@ -686,4 +681,40 @@ input[type="week"]::-webkit-calendar-picker-indicator:hover {
     rgba(255, 255, 255, 0) 100%
   );
   border-radius: inherit;
+}
+
+/* ── Drift de íconos en FeaturesSection ─────────────────────────────
+   Animaciones lentas y orgánicas para la composición de íconos
+   superpuestos arriba de cada feature card. Cada keyframe combina:
+     - Centrado base con translate(-50%, -50%) (porque las capas están
+       absolutamente posicionadas con left/top y queremos centrar el
+       ícono SOBRE su ancla, no que su esquina superior coincida con
+       el ancla).
+     - Drift de ±18-22px en distintas direcciones para que cada ícono
+       se mueva por un camino distinto (sin todos drifting iguales).
+     - Scale ±15-20% para que se sienta el "respiro" de cada capa.
+   Las definimos como keyframes globales en lugar de inline en JSX
+   porque <style> dentro de un componente cliente puede tener
+   problemas de timing en SSR (la animación arrancaba antes de que
+   el browser parseara el CSS, y se quedaba en el frame 0 estático).
+*/
+@keyframes feature-icon-float-a {
+  0%, 100% { transform: translate(-50%, -50%) translate(0, 0)         scale(1); }
+  50%      { transform: translate(-50%, -50%) translate(-16px, -22px) scale(1.20); }
+}
+@keyframes feature-icon-float-b {
+  0%, 100% { transform: translate(-50%, -50%) translate(0, 0)        scale(1); }
+  50%      { transform: translate(-50%, -50%) translate(20px, 16px)  scale(0.82); }
+}
+@keyframes feature-icon-float-c {
+  0%, 100% { transform: translate(-50%, -50%) translate(0, 0)         scale(1); }
+  50%      { transform: translate(-50%, -50%) translate(18px, -20px)  scale(1.12); }
+}
+@keyframes feature-icon-float-d {
+  0%, 100% { transform: translate(-50%, -50%) translate(0, 0)          scale(1); }
+  50%      { transform: translate(-50%, -50%) translate(-22px, 18px)   scale(1.14); }
+}
+@keyframes feature-icon-float-front {
+  0%, 100% { transform: translate(-50%, -50%) scale(1); }
+  50%      { transform: translate(-50%, -50%) scale(1.12); }
 }
