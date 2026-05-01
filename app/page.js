@@ -21,7 +21,7 @@ import CrossRoleNudges from '../lib/CrossRoleNudges'
 import LogoCropper, { validateImageFile, checkImageDimensions } from '../lib/LogoCropper'
 import RedeemPendingModal from '../lib/RedeemPendingModal'
 import CanjesPendientesPanel from '../lib/CanjesPendientesPanel'
-import HeroV2Section from '../lib/HeroV2Section'
+import HeroV2Section, { HLSVideoPlayer } from '../lib/HeroV2Section'
 import SwRegister from '../lib/sw-register'
 import InfoHint from '../lib/InfoHint'
 import HelpBanner, { resetAllHelpBanners } from '../lib/HelpBanner'
@@ -146,8 +146,8 @@ const PLANS = {
     label:           'STARTER',
     limit:           60,
     price:           25000,
-    color:           '#5B8DEF',
-    badge:           '#1A2A4A',
+    color:           '#BD4BF8',
+    badge:           '#1F0935',
     // Link de pago recurrente de Mercado Pago. Al abrirse, le agregamos
     // `?external_reference={commerce.id}` para que cuando MP nos notifique
     // el pago sepamos qué comercio activar (ver upgradePlan).
@@ -157,8 +157,8 @@ const PLANS = {
     label:           'PRO',
     limit:           null,
     price:           45000,
-    color:           '#F5A623',
-    badge:           '#2A1E00',
+    color:           '#EC4899',
+    badge:           '#3D0F26',
     subscriptionUrl: 'https://www.mercadopago.com.ar/subscriptions/checkout?preapproval_plan_id=62e68b0c9a6d4e7697a6032fda8e95ec',
   },
 }
@@ -2509,14 +2509,17 @@ function PlanCards({ currentPlan=null, clientCount=0, planLimit=null, onUpgrade,
     const isUpgrade    = currentPlan && planOrder.indexOf(currentPlan) < planOrder.indexOf(key)
     const showUsageBar = isCurrent && planLimit !== null
 
-    // Acento de la card. Solo STARTER usa el violeta de marca como destacado.
-    // FREE y PRO quedan neutros (gris/blanco) para que la jerarquía visual
-    // empuje al ojo hacia el plan recomendado, igual que en la referencia.
-    const accent = isStarter ? C.v : 'rgba(255,255,255,0.55)'
+    // Acento general (tildes) → SIEMPRE violeta de marca en las 3 cards.
+    // El destacado del plan recomendado (STARTER) sigue dado por el glow,
+    // borde y CTA fill — los tildes en violeta refuerzan identidad de marca
+    // sin romper la jerarquía visual.
+    const accent = C.v
 
-    // Pretty plan label para el header de la card (Title Case en lugar de
-    // mayúsculas, alineado con la estética minimal de la referencia).
-    const prettyLabel = key === 'free' ? 'Free' : key === 'starter' ? 'Starter' : 'Pro'
+    // Plan label en MAYÚSCULAS (FREE / STARTER / PRO) — usamos def.label
+    // porque está en castellano de marca y Chrome no lo traduce. Una versión
+    // anterior usó Title Case en inglés ("Free", "Starter", "Pro") y Chrome
+    // detectó la página como inglés y tradujo TODO al castellano automático
+    // ("Starter" → "Motor de arranque", "/ mes" → "/ nosotros"...).
 
     return (
       <div key={key} style={{
@@ -2527,8 +2530,8 @@ function PlanCards({ currentPlan=null, clientCount=0, planLimit=null, onUpgrade,
           : isCurrent
             ? `1px solid ${def.color}55`
             : '1px solid rgba(255,255,255,0.08)',
-        borderRadius: 22,
-        padding: '32px 26px 26px',
+        borderRadius: 18,
+        padding: '22px 20px 20px',
         backdropFilter: 'blur(14px)', WebkitBackdropFilter: 'blur(14px)',
         // Glow exterior + halo interno solo en STARTER (equivalente al
         // resplandor teal de la referencia, en violeta de marca).
@@ -2544,14 +2547,14 @@ function PlanCards({ currentPlan=null, clientCount=0, planLimit=null, onUpgrade,
         {/* Badge "MÁS ELEGIDO" — pill arriba-derecha estilo ref. Para el
             plan ACTUAL del comerciante (no en home) sumamos un chip al lado. */}
         {badge && (
-          <div style={{
-            position: 'absolute', top: 16, right: 16,
+          <div translate="no" style={{
+            position: 'absolute', top: 12, right: 12,
             background: `${C.v}1f`,
             border: `1px solid ${C.v}66`,
             color: '#E9D5FF',
             borderRadius: 99,
-            padding: '5px 11px',
-            fontSize: 9, fontWeight: 700, fontFamily: FN,
+            padding: '4px 9px',
+            fontSize: 8.5, fontWeight: 700, fontFamily: FN,
             letterSpacing: '.10em',
             textTransform: 'uppercase',
             whiteSpace: 'nowrap',
@@ -2561,57 +2564,58 @@ function PlanCards({ currentPlan=null, clientCount=0, planLimit=null, onUpgrade,
           </div>
         )}
         {isCurrent && !badge && (
-          <div style={{
-            position: 'absolute', top: 16, right: 16,
+          <div translate="no" style={{
+            position: 'absolute', top: 12, right: 12,
             background: 'rgba(255,255,255,0.06)',
             border: '1px solid rgba(255,255,255,0.14)',
             color: C.pearl,
-            fontFamily: FN, fontSize: 9, fontWeight: 700,
-            padding: '5px 11px', borderRadius: 99,
+            fontFamily: FN, fontSize: 8.5, fontWeight: 700,
+            padding: '4px 9px', borderRadius: 99,
             letterSpacing: '.10em', textTransform: 'uppercase',
           }}>
             Plan actual
           </div>
         )}
 
-        {/* Plan name */}
-        <div style={{
-          fontFamily: FN, fontSize: 15, fontWeight: 700,
-          color: C.white, marginBottom: 4, letterSpacing: '-.01em',
+        {/* Plan name (mayúsculas + translate=no para evitar auto-traducción) */}
+        <div translate="no" style={{
+          fontFamily: FN, fontSize: 13, fontWeight: 800,
+          color: C.white, marginBottom: 2, letterSpacing: '.02em',
         }}>
-          {prettyLabel}
+          {def.label}
         </div>
         <div style={{
-          fontFamily: FI, fontSize: 12, color: 'rgba(255,255,255,0.45)',
-          marginBottom: 28,
+          fontFamily: FI, fontSize: 11, color: 'rgba(255,255,255,0.45)',
+          marginBottom: 18,
         }}>
           Facturación mensual
         </div>
 
-        {/* Precio grande con jerarquía: número 42px + "/ mes" en gris */}
-        <div style={{ display: 'flex', alignItems: 'baseline', gap: 6, marginBottom: 6, flexWrap: 'wrap' }}>
-          <span style={{
-            fontFamily: FN, fontSize: 'clamp(36px, 5vw, 44px)',
+        {/* Precio: número grande + "/ mes" en gris (con translate=no por las
+            dudas, "/ mes" se estaba traduciendo a "/ nosotros" en Chrome). */}
+        <div style={{ display: 'flex', alignItems: 'baseline', gap: 5, marginBottom: 4, flexWrap: 'wrap' }}>
+          <span translate="no" style={{
+            fontFamily: FN, fontSize: 'clamp(28px, 4.2vw, 36px)',
             fontWeight: 700, color: C.white, lineHeight: 1,
             letterSpacing: '-.03em',
           }}>
             {price === 0 ? 'Gratis' : `$${price.toLocaleString('es-AR')}`}
           </span>
           {price > 0 && (
-            <span style={{ fontFamily: FI, fontSize: 14, color: 'rgba(255,255,255,0.55)' }}>
+            <span translate="no" style={{ fontFamily: FI, fontSize: 12, color: 'rgba(255,255,255,0.55)' }}>
               / mes
             </span>
           )}
         </div>
         {/* Slot fijo para priceHint */}
-        <div style={{ fontSize: 11, color: isStarter ? `${C.v}dd` : 'rgba(255,255,255,0.35)', minHeight: 18, marginBottom: 22 }}>
+        <div style={{ fontSize: 10.5, color: isStarter ? `${C.v}dd` : 'rgba(255,255,255,0.35)', minHeight: 16, marginBottom: 14 }}>
           {priceHint ?? ''}
         </div>
 
         {/* Tagline corta tipo "Ideal for..." */}
         <div style={{
-          fontFamily: FI, fontSize: 13, color: 'rgba(255,255,255,0.65)',
-          lineHeight: 1.5, marginBottom: 24,
+          fontFamily: FI, fontSize: 12, color: 'rgba(255,255,255,0.65)',
+          lineHeight: 1.45, marginBottom: 16,
         }}>
           {tagline}
         </div>
@@ -2619,16 +2623,16 @@ function PlanCards({ currentPlan=null, clientCount=0, planLimit=null, onUpgrade,
         {/* Barra de uso — solo en panel comerciante con plan actual */}
         {showUsageBar && (
           <div style={{
-            marginBottom: 20,
+            marginBottom: 14,
             background: 'rgba(255,255,255,0.04)',
             border: '1px solid rgba(255,255,255,0.06)',
-            borderRadius: 12, padding: '11px 13px',
+            borderRadius: 10, padding: '9px 11px',
           }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 11, color: 'rgba(255,255,255,0.55)', marginBottom: 7 }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 10.5, color: 'rgba(255,255,255,0.55)', marginBottom: 6 }}>
               <span>Clientes usados</span>
               <span style={{ fontFamily: FN, fontWeight: 700, color: C.white }}>{clientCount} / {planLimit}</span>
             </div>
-            <div style={{ height: 4, borderRadius: 4, background: 'rgba(255,255,255,0.08)' }}>
+            <div style={{ height: 3, borderRadius: 3, background: 'rgba(255,255,255,0.08)' }}>
               <div style={{
                 height: '100%',
                 width: `${Math.min(100, (clientCount / planLimit) * 100)}%`,
@@ -2637,7 +2641,7 @@ function PlanCards({ currentPlan=null, clientCount=0, planLimit=null, onUpgrade,
                   : clientCount >= planLimit * .8
                     ? C.o
                     : (isStarter ? C.v : def.color),
-                borderRadius: 4, transition: 'width .4s',
+                borderRadius: 3, transition: 'width .4s',
               }} />
             </div>
           </div>
@@ -2645,23 +2649,23 @@ function PlanCards({ currentPlan=null, clientCount=0, planLimit=null, onUpgrade,
 
         {/* Lista de features con check en círculo sutil */}
         <ul style={{
-          margin: '0 0 28px', padding: 0, listStyle: 'none',
-          display: 'flex', flexDirection: 'column', gap: 12, flex: 1,
+          margin: '0 0 18px', padding: 0, listStyle: 'none',
+          display: 'flex', flexDirection: 'column', gap: 8, flex: 1,
         }}>
           {features.map(f => (
             <li key={f} style={{
-              display: 'flex', alignItems: 'flex-start', gap: 10,
-              fontFamily: FI, fontSize: 13,
-              color: 'rgba(255,255,255,0.78)',
-              lineHeight: 1.45,
+              display: 'flex', alignItems: 'flex-start', gap: 8,
+              fontFamily: FI, fontSize: 12,
+              color: 'rgba(255,255,255,0.80)',
+              lineHeight: 1.4,
             }}>
               <span style={{
-                width: 16, height: 16, borderRadius: '50%',
-                background: isStarter ? `${C.v}33` : 'rgba(255,255,255,0.06)',
+                width: 14, height: 14, borderRadius: '50%',
+                background: `${C.v}26`,           // siempre violeta sutil
                 display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
                 flexShrink: 0, marginTop: 1,
               }}>
-                <Check size={9} color={accent} strokeWidth={3.5} />
+                <Check size={8} color={accent} strokeWidth={3.5} />
               </span>
               <span>{f}</span>
             </li>
@@ -2701,10 +2705,10 @@ function PlanCards({ currentPlan=null, clientCount=0, planLimit=null, onUpgrade,
               onMouseLeave={(e) => { if (active && !isStarter) e.currentTarget.style.background = 'rgba(255,255,255,0.06)' }}
               style={{
                 width: '100%',
-                padding: '14px 16px',
-                borderRadius: 14,
+                padding: '11px 14px',
+                borderRadius: 12,
                 fontFamily: FN,
-                fontSize: 13, fontWeight: 700,
+                fontSize: 12, fontWeight: 700,
                 letterSpacing: '.005em',
                 cursor: active ? 'pointer' : 'default',
                 border: isStarter && active
@@ -4747,15 +4751,46 @@ function TestimonialsSection() {
 // ─── CTA FINAL ────────────────────────────────────────────────────────────────
 function CtaSection({ setView }) {
   return (
-    <section style={{ padding:'100px 20px', position:'relative' }}>
-      {/* bg gradient */}
-      <div style={{ position:'absolute', inset:0, background:'linear-gradient(180deg, transparent 0%, rgba(147,51,234,0.10) 50%, transparent 100%)', pointerEvents:'none' }} />
+    <section style={{
+      padding:'100px 20px',
+      position:'relative',
+      background:'#000',
+      overflow:'hidden',
+      isolation:'isolate',  // contiene el video al wrapper, no se filtra al resto
+    }}>
+      {/* Video de fondo — mismo HLS de Mux que el hero V2.
+          Full-bleed. SIN overlays de color (el dueño no quiere los gradients
+          de marca acá). Mantenemos solo un velo oscuro plano sutil para que
+          el texto siga siendo legible sobre el video. */}
+      <div style={{
+        position:'absolute', inset:0, zIndex:0,
+        pointerEvents:'none',
+      }}>
+        <HLSVideoPlayer
+          src="https://stream.mux.com/9JXDljEVWYwWu01PUkAemafDugK89o01BR6zqJ3aS9u00A.m3u8"
+          autoPlay muted loop playsInline preload="auto"
+          style={{
+            position:'absolute', inset:0,
+            width:'100%', height:'100%',
+            objectFit:'cover',
+            // Mismo mask radial elíptico que el hero para fundir bordes
+            // contra el negro de la página (sin corte duro).
+            WebkitMaskImage: 'radial-gradient(ellipse at center, #000 30%, rgba(0,0,0,0.85) 70%, rgba(0,0,0,0.4) 90%, transparent 100%)',
+            maskImage:       'radial-gradient(ellipse at center, #000 30%, rgba(0,0,0,0.85) 70%, rgba(0,0,0,0.4) 90%, transparent 100%)',
+          }}
+        />
+        {/* Velo oscuro neutro para legibilidad — sin tinte de color. */}
+        <div style={{
+          position:'absolute', inset:0,
+          background:'rgba(0,0,0,0.45)',
+        }} />
+      </div>
 
-      <div style={{ maxWidth:720, margin:'0 auto', textAlign:'center', position:'relative' }}>
+      <div style={{ maxWidth:720, margin:'0 auto', textAlign:'center', position:'relative', zIndex:1 }}>
         <h2 style={{ fontFamily:FN, fontSize:'clamp(28px,5vw,52px)', fontWeight:900, color:C.white, marginBottom:20, lineHeight:1.1 }}>
           <BlurText text="¿Listo para fidelizar?" delay={100} />
         </h2>
-        <p style={{ fontFamily:FI, fontSize:16, color:'rgba(255,255,255,0.55)', marginBottom:40, lineHeight:1.7, maxWidth:480, margin:'0 auto 40px' }}>
+        <p style={{ fontFamily:FI, fontSize:16, color:'rgba(255,255,255,0.65)', marginBottom:40, lineHeight:1.7, maxWidth:480, margin:'0 auto 40px' }}>
           Empezá gratis hoy. Sin tarjeta de crédito, sin compromiso.<br />
           Creá tu programa de beneficios en minutos.
         </p>
@@ -4767,7 +4802,7 @@ function CtaSection({ setView }) {
             Ver demo
           </Btn>
         </div>
-        <p style={{ fontFamily:FI, fontSize:12, color:'rgba(255,255,255,0.40)' }}>
+        <p style={{ fontFamily:FI, fontSize:12, color:'rgba(255,255,255,0.50)' }}>
           Sin contrato · Sin permanencia · Cancelá cuando quieras
         </p>
       </div>
@@ -7997,6 +8032,10 @@ function ClientView({ setView, user, profile, onLogout, initialTab }) {
   // CUALQUIERA de los seleccionados.
   const [filterCities,     setFilterCities]     = useState([])
   const [filterCategories, setFilterCategories] = useState([])
+  // Tab "Mis beneficios" — filtro multi-select por NOMBRE de comercio.
+  // Mismo patrón que filterCities / filterCategories pero para la pestaña
+  // de premios. Se persiste aparte para que no contamine la wallet.
+  const [filterBenefitsCommerces, setFilterBenefitsCommerces] = useState([])
 
   // El bloque de filtros + wallet usa position:sticky para que, al hacer scroll
   // hacia abajo, el saludo + header se oculten naturalmente y el bloque se
@@ -8020,12 +8059,19 @@ function ClientView({ setView, user, profile, onLogout, initialTab }) {
         setFilterCategories([saved.category])
       }
     } catch {}
+    try {
+      const savedB = JSON.parse(localStorage.getItem('benefix:benefitsFilter') || '{}')
+      if (Array.isArray(savedB.commerces)) setFilterBenefitsCommerces(savedB.commerces)
+    } catch {}
   }, [])
 
   // Persist filters
   useEffect(() => {
     try { localStorage.setItem('benefix:clubsFilter', JSON.stringify({ cities: filterCities, categories: filterCategories })) } catch {}
   }, [filterCities, filterCategories])
+  useEffect(() => {
+    try { localStorage.setItem('benefix:benefitsFilter', JSON.stringify({ commerces: filterBenefitsCommerces })) } catch {}
+  }, [filterBenefitsCommerces])
 
   const refresh = useCallback(() => { setRefreshTick(t => t + 1) }, [])
 
@@ -8146,10 +8192,23 @@ function ClientView({ setView, user, profile, onLogout, initialTab }) {
   const cityPills     = _uniqueCities.length >= 1 ? ['Todos', ..._uniqueCities] : null
   const categoryPills = _uniqueCats.length   >= 1 ? ['Todos', ..._uniqueCats]   : null
 
+  // Pills para "Mis beneficios" — nombres de negocio donde el cliente
+  // tiene membership. Mismo formato 'Todos' + lista única ordenada.
+  const _allCommerceNames    = _baseForFilters.map(m => m.commerce?.name).filter(Boolean)
+  const _commerceNameFreq    = {}
+  _allCommerceNames.forEach(n => { _commerceNameFreq[n] = (_commerceNameFreq[n] || 0) + 1 })
+  const _uniqueCommerceNames = [...new Set(_allCommerceNames)].sort((a, b) => a.localeCompare(b, 'es'))
+  const benefitsCommercePills = _uniqueCommerceNames.length >= 2
+    ? ['Todos', ..._uniqueCommerceNames]
+    : null  // si solo hay 1 club, no tiene sentido mostrar el filtro
+
   // Validated active filters — descartamos del array cualquier item que ya
   // no exista en las pills disponibles (por si cambió la lista de clubes).
   const safeCities     = (cityPills     ? filterCities.filter(c => cityPills.includes(c))         : [])
   const safeCategories = (categoryPills ? filterCategories.filter(c => categoryPills.includes(c)) : [])
+  const safeBenefitsCommerces = (benefitsCommercePills
+    ? filterBenefitsCommerces.filter(n => benefitsCommercePills.includes(n))
+    : [])
   const filtersActive  = safeCities.length > 0 || safeCategories.length > 0
 
   // Filtered clubs for the wallet — multi-match: un club pasa si su ciudad
@@ -8372,6 +8431,24 @@ function ClientView({ setView, user, profile, onLogout, initialTab }) {
       {/* ── Premios — lista combinada de premios disponibles en todos los clubs del cliente ── */}
       {!loading && tab === 'premios' && (
         <div>
+          {/* Filtros por nombre de comercio — mismo formato que los pills de
+              Mi billetera (FilterPills size="lg" multi). Solo se muestra si
+              el cliente tiene al menos 2 clubs (sino no tiene sentido filtrar).
+              No usamos sticky acá porque la lista de "Mis beneficios" es plana
+              y no necesita anclar el filtro al scroll. */}
+          {benefitsCommercePills && (
+            <div style={{ marginBottom:16 }}>
+              <FilterPills
+                pills={benefitsCommercePills}
+                selected={safeBenefitsCommerces}
+                onSelect={setFilterBenefitsCommerces}
+                label="Filtrar por negocio"
+                size="lg"
+                multi
+              />
+            </div>
+          )}
+
           {/* HelpBanner movido al tope (TAB_HELP['premios']) — ya no va acá */}
           {(() => {
             // Lista unificada: premios + promos (descuento próx. compra,
@@ -8381,6 +8458,9 @@ function ClientView({ setView, user, profile, onLogout, initialTab }) {
             for (const m of memberships) {
               const c = m.commerce
               if (!c) continue
+              // Filtro por nombre de negocio (solo aplica si el usuario
+              // seleccionó alguno; vacío = "Todos").
+              if (safeBenefitsCommerces.length > 0 && !safeBenefitsCommerces.includes(c.name)) continue
               const isStars = c.prog_type === 'stars'
               const bal = isStars ? (m.stars || 0) : (m.points || 0)
               // Premios
@@ -8424,15 +8504,30 @@ function ClientView({ setView, user, profile, onLogout, initialTab }) {
             })
 
             if (all.length === 0) {
+              // Si hay filtros activos y no hay matches, ofrecemos un escape
+              // para limpiarlos en lugar del mensaje genérico "Sin beneficios".
+              const hasFilter = safeBenefitsCommerces.length > 0
               return (
                 <div style={{ textAlign:'center', padding:'52px 24px 32px' }}>
                   <div style={{ width:76, height:76, borderRadius:24, background:'rgba(189,75,248,0.10)', border:'1px solid rgba(189,75,248,0.22)', display:'flex', alignItems:'center', justifyContent:'center', margin:'0 auto 18px' }}>
                     <Gift size={32} strokeWidth={1.5} color='rgba(189,75,248,0.70)' />
                   </div>
-                  <div style={{ fontFamily:FN, fontSize:17, fontWeight:800, color:'rgba(255,255,255,0.80)', marginBottom:8 }}>Sin beneficios disponibles</div>
-                  <div style={{ fontSize:13, color:'rgba(255,255,255,0.50)', lineHeight:1.6, maxWidth:280, margin:'0 auto' }}>
-                    Cuando tus clubs carguen premios o promociones, los vas a ver acá ordenados por los que estás más cerca de aprovechar.
+                  <div style={{ fontFamily:FN, fontSize:17, fontWeight:800, color:'rgba(255,255,255,0.80)', marginBottom:8 }}>
+                    {hasFilter ? 'Sin resultados con esos filtros' : 'Sin beneficios disponibles'}
                   </div>
+                  <div style={{ fontSize:13, color:'rgba(255,255,255,0.50)', lineHeight:1.6, maxWidth:280, margin:'0 auto 16px' }}>
+                    {hasFilter
+                      ? 'Probá quitar algún negocio del filtro o limpiarlo para ver todos tus beneficios.'
+                      : 'Cuando tus clubs carguen premios o promociones, los vas a ver acá ordenados por los que estás más cerca de aprovechar.'}
+                  </div>
+                  {hasFilter && (
+                    <button
+                      onClick={() => setFilterBenefitsCommerces([])}
+                      style={{ padding:'9px 22px', borderRadius:99, background:'rgba(255,255,255,0.08)', border:'1px solid rgba(255,255,255,0.16)', cursor:'pointer', fontFamily:FN, fontSize:12, fontWeight:600, color:'rgba(255,255,255,0.80)' }}
+                    >
+                      Limpiar filtros
+                    </button>
+                  )}
                 </div>
               )
             }
@@ -14120,7 +14215,7 @@ function CommerceSettingsView({ user, profile, setView, onLogout, onOwnerProfile
           }}>
             <Sparkles size={14} color="#BD4BF8" strokeWidth={2.2} style={{ flexShrink: 0, marginTop: 1 }} />
             <div style={{ fontSize: 11.5, color: 'rgba(255,255,255,0.72)', lineHeight: 1.5 }}>
-              Las tarjetas con chip <strong style={{ color: '#5B8DEF' }}>STARTER</strong> o <strong style={{ color: '#F5A623' }}>PRO</strong> son funciones premium. Aparecen acá para que las conozcas, pero no afectan tu progreso — son las que se desbloquean si actualizás tu plan.
+              Las tarjetas con chip <strong style={{ color: '#BD4BF8' }}>STARTER</strong> o <strong style={{ color: '#EC4899' }}>PRO</strong> son funciones premium. Aparecen acá para que las conozcas, pero no afectan tu progreso — son las que se desbloquean si actualizás tu plan.
             </div>
           </div>
         )}
@@ -14300,7 +14395,7 @@ function CommerceSettingsView({ user, profile, setView, onLogout, onOwnerProfile
               // chip del plan que las desbloquea + CTA "Actualizar plan".
               const isLocked = !!item.lockedByPlan
               const lockPlan = item.lockedByPlan && PLANS[item.lockedByPlan]
-              const lockColor = lockPlan?.color || '#5B8DEF'
+              const lockColor = lockPlan?.color || '#BD4BF8'
               return (
                 <button
                   key={item.id}
