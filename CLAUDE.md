@@ -221,6 +221,74 @@ También se reforzó el filtro de cupones en `WalletCard`: solo cuenta como acti
 - `install_dismissed` (sessionStorage) — banner instalá la app descartado en esta sesión
 - `cb_auto_<commerce_id>`, `cb_sent_<commerce_id>` — configs de automatizaciones
 
+## Cambios recientes (sprint may 2026 — home redesign)
+
+Sesión grande de iteración sobre el HOME público (la landing pre-login):
+
+### Nuevo `lib/HeroV2Section.js` — hero principal del home
+- **Está activo** en `app/page.js > HomeView`. El `CinematicSplashSection` viejo quedó comentado como fallback (no eliminado por si querés volver). El `BigBoldRowsSection` se sacó del flow.
+- **Estructura en 3 zonas** (flex column, `height: 100svh`, `minHeight: 580`, `background: #000`):
+  1. **Zona superior** (sin flex, `padding: '88px 0 0'`): marquee horizontal "Integrado con Mercado Pago / WhatsApp" en una sola línea con animación slide right-to-left infinita (keyframe `hero-v2-marquee-left` 22s linear). Track con `width: max-content`, items duplicados ×4 para seamless loop. Mask lateral linear-gradient transparent→#000→transparent para fade en bordes.
+  2. **Zona central** (`flex: 1`, `justifyContent: center`): headline "Tu club, tu marca." (`clamp(40px, 8vw, 80px)`, fontWeight 600, letter-spacing -0.03em) + subtext "Sumá puntos, dale beneficios y volvé a tus clientes recurrentes." + 2 CTAs (uno solid black con border blanco "Empezar gratis", uno glass "Quiero conocer más"). Vertical y horizontalmente centrado.
+  3. **Zona inferior** (sin flex, `padding-bottom: 110px`): marquee horizontal con rubros (Cafeterías, Barberías, Restaurantes, Tiendas, Gimnasios, Peluquerías, Heladerías, Panaderías, Spa, Lavaderos, Pizzerías, Veterinarias) en grayscale + opacity 0.40, slide right-to-left (`hero-v2-marquee-left` 38s). El padding-bottom alto deja respirar arriba de los flotantes (SupportChat bottom 90, NotificationsBell bottom 156).
+- **Background video full-bleed** (`inset: 0`): clip de Mux HLS `https://stream.mux.com/9JXDljEVWYwWu01PUkAemafDugK89o01BR6zqJ3aS9u00A.m3u8`. Carga via subcomponente interno `HLSVideoPlayer`:
+  - Para Safari/iOS native HLS: `video.src = src` directo.
+  - Para Chrome/Firefox/Edge: carga `hls.js@1.5.20` desde CDN (`cdn.jsdelivr.net`) en runtime, no como dep npm — evita issues de bundler con Turbopack.
+  - **Forzado agresivo de autoplay** (necesario porque Safari/iOS son inconsistentes con `autoPlay`):
+    - Setea `muted/playsInline/webkit-playsinline/autoplay` programáticamente vía property + setAttribute ANTES del src
+    - Llama `tryPlay()` en 4 eventos: `loadedmetadata`, `loadeddata`, `canplay`, `canplaythrough`
+    - Listeners globales en `document` (touchstart/click/scroll/keydown con capture) que disparan `tryPlay()` ante CUALQUIER interacción del usuario y se autodestruyen tras el primer intento. Eso garantiza que aunque el browser bloquee el autoplay inicial, apenas el user toca algo el video arranca.
+    - Console.warn si `play()` se rechaza, para debug.
+  - Wrapper del video tiene mask radial elíptica suave (`#000 30% → 70% → 90% → transparent`) que funde los bordes con el negro del fondo, y animación `hero-v2-water-drift` (16s alternate, scale 1→1.07 + rotación ±0.4°) que suma movimiento orgánico tipo "agua fluyendo".
+- **3 capas de overlay** sobre el video (todas con `pointerEvents: none`, dentro del wrapper del video):
+  1. **Gradiente de marca**: `linear-gradient(135deg, rgba(254,80,0,0.42), rgba(236,72,153,0.34), rgba(189,75,248,0.42))` con `mixBlendMode: overlay`. Tinta el video con el degradé orange→fucsia→violet sin aplastarlo (zonas claras toman color, zonas oscuras quedan oscuras).
+  2. **Bloom radial de color**: 3 halos (naranja 28%/42%, violeta 72%/60%, fucsia 50%/50%) con `mixBlendMode: screen` y animación `hero-v2-color-bloom` (22s alternate, drift ±3% + scale 1→1.06). Movimiento orgánico de "líquido coloreado" independiente del water-drift.
+  3. **Ruido SVG turbulence fractal** inline como data-URL (`feTurbulence baseFrequency='0.85' numOctaves='2' stitchTiles='stitch'`), opacity 0.10, `mixBlendMode: overlay`, animación `hero-v2-noise-drift` (28s linear) que mueve `background-position` para que el grano "respire".
+- Stagger fade-in-up con keyframes (`hero-v2-fade-in-up`, blur-in 12px→0 + translateY 36px→0). Disparado por IntersectionObserver con delay de 120ms para que se vea correr la animación incluso si el hero está en viewport al cargar (sino React rehidratase con revealed=true antes de que el ojo perciba el estado inicial).
+- **Por qué CSS keyframes en vez de transitions React-state**: las transitions con `revealed: false → true` se mostraban "ya animadas" después del SSR rehydrate (el DOM final ya estaba en el destino). Keyframes corren siempre from→to sin importar el state.
+
+### `FeaturesSection` (`app/page.js` ~line 3450) — refactor visual
+- **Fondo**: pasó de `#07040f` con blob violeta animado a `#000` plano sin overlays. El dueño explícitamente quiere fondo NEGRO ahí — quitamos los overlays naranja/fucsia que probamos primero porque tintaban hacia vino/rojo. Si querés volver a tintarlo, agregale capas STÁTICAS (sin animación) tipo `linear-gradient(135deg, rgba(254,80,0,0.14), rgba(236,72,153,0.10), rgba(189,75,248,0.16))` con `mixBlendMode: overlay`.
+- **Tipografía alineada al hero V2**:
+  - Chip "Todo lo que necesitás": `liquid-glass`, fontWeight 600, color blanco 0.65.
+  - H2 "Tu club, *completo.*": `fontWeight: 600` (no 900), `clamp(28px, 5vw, 48px)`, `letter-spacing: -0.03em`, `line-height: 1.05`. La palabra "completo." en italic con peso 500.
+  - Subtítulo: `fontFamily: FI`, `color: rgba(255,255,255,0.70)`, `clamp(14-17px)`, `maxWidth: 480`. Mismos exact valores del subtext del hero V2.
+  - Card title: `fontWeight: 600` (no 800), `letter-spacing: -0.015em`.
+  - Card desc: `fontWeight: 400`, `fontFamily: FI`.
+- **Composición animada de íconos por card** — reemplaza el cuadradito chico (46×46 con liquid-glass) por una composición full-width de 6 capas del MISMO ícono superpuestas. Container: `width: '100%', height: 110, position: relative, overflow: hidden, marginBottom: 4`, **sin borde propio**.
+  - 6 capas del `Icon` de la feature, todas `position: absolute` y centradas con `transform: translate(-50%, -50%)` sobre su ancla `{left, top}`:
+    - Background: 104px, opacity 0.08, strokeWidth 0.9, anchor 50%/50%, animación `feature-icon-float-a` 11s.
+    - Top-left: 58px, opacity 0.18, strokeWidth 1.2, anchor 16%/28%, animación `feature-icon-float-b` 9s.
+    - Top-right: 54px, opacity 0.16, strokeWidth 1.2, anchor 84%/32%, animación `feature-icon-float-c` 10s delay 1s.
+    - Bottom-left: 42px, opacity 0.28, strokeWidth 1.5, anchor 26%/74%, animación `feature-icon-float-d` 8s delay 1.6s.
+    - Bottom-right: 40px, opacity 0.26, strokeWidth 1.5, anchor 74%/72%, animación `feature-icon-float-a` 8.5s delay 0.8s.
+    - **Front** (z-index 2): 40px, opacity full, strokeWidth 2.2, `filter: drop-shadow(0 0 14px ${f.color}cc)`, animación `feature-icon-float-front` 7s.
+  - Cada capa usa `willChange: transform` para forzar GPU compositing (sin esto el animation se ve choppy o no corre).
+- **Keyframes en `app/globals.css`** (al final del archivo, no en JSX inline porque tenía problemas de timing con SSR/Turbopack — la animación arrancaba antes de que el browser parseara el CSS y se quedaba en frame 0 estático). 5 keyframes definidos:
+  ```
+  @keyframes feature-icon-float-a — drift (-16px, -22px) + scale 1.20
+  @keyframes feature-icon-float-b — drift (20px, 16px) + scale 0.82
+  @keyframes feature-icon-float-c — drift (18px, -20px) + scale 1.12
+  @keyframes feature-icon-float-d — drift (-22px, 18px) + scale 1.14
+  @keyframes feature-icon-float-front — pulse scale 1.12, sin drift
+  ```
+  Todos chainan dos `translate()`: el primero `(-50%, -50%)` para mantener el centrado base, el segundo en píxeles para el drift. 4 direcciones distintas (NO/NE/SE/SO) hacen que las capas se muevan en parallax.
+
+### `HowItWorksSection` (`app/page.js` ~line 3594) — sin cambios estructurales en este sprint
+Ya estaba con HLS videos (3 cards con video de fondo full-bleed Mux + overlay con kicker/título/párrafo, layout asimétrico tipo Nexora). El `_HowItWorksSectionLegacy` queda comentado abajo por si volvemos al scroll-stacking sticky.
+
+### Deploy actual
+- Commit live en main: `76a9d4b` ("HeroV2 + FeaturesSection animado", May 1 2026).
+- Vercel auto-deploya desde main. Si no se ven los cambios después del push, opciones:
+  - Revisar `https://vercel.com/dashboard` para ver si el build pasó (a veces falla por warnings de Next 16 + React 19).
+  - Hard refresh `Ctrl+Shift+R` para bypassear cache del browser.
+  - **Service Worker `public/sw-push.js`** se registra siempre — puede cachear el HTML viejo. DevTools → Application → Service Workers → Unregister + Storage → Clear site data, o desde la app cerrar la PWA por completo.
+  - Agregar `?v=N` al URL para bypass cache de Vercel/CDN.
+
+### Issues conocidos
+- **Hydration warning con `cz-shortcut-listen="true"`**: ColorZilla u otra extensión de Chrome modifica el `<body>` antes de que React rehidrate. NO es nuestro código — ignorable o desactivar la extensión en localhost.
+- **El sandbox del agent NO puede borrar `.git/index.lock`** en Windows mounts. Si te pasa, podés `mv .git/index.lock .git/index.lock.bak` y el commit suele andar (lo hicimos en este sprint).
+
 ## Cómo trabaja el dueño (Nacho)
 
 - Itera mucho sobre UX, le gusta debatir antes de codear cuando el cambio es estructural

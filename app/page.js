@@ -2509,115 +2509,236 @@ function PlanCards({ currentPlan=null, clientCount=0, planLimit=null, onUpgrade,
     const isUpgrade    = currentPlan && planOrder.indexOf(currentPlan) < planOrder.indexOf(key)
     const showUsageBar = isCurrent && planLimit !== null
 
+    // Acento de la card. Solo STARTER usa el violeta de marca como destacado.
+    // FREE y PRO quedan neutros (gris/blanco) para que la jerarquía visual
+    // empuje al ojo hacia el plan recomendado, igual que en la referencia.
+    const accent = isStarter ? C.v : 'rgba(255,255,255,0.55)'
+
+    // Pretty plan label para el header de la card (Title Case en lugar de
+    // mayúsculas, alineado con la estética minimal de la referencia).
+    const prettyLabel = key === 'free' ? 'Free' : key === 'starter' ? 'Starter' : 'Pro'
+
     return (
       <div key={key} style={{
-        background: isStarter ? 'linear-gradient(160deg,#1E0840 0%,#241255 100%)' : C.card,
-        border: isStarter ? `2px solid ${C.v}` : isCurrent ? `2px solid ${def.color}` : `1px solid ${C.rim}`,
-        borderRadius: 18,
-        padding: isStarter ? '28px 24px' : '20px',
         position: 'relative',
-        backdropFilter: 'blur(20px)', WebkitBackdropFilter: 'blur(20px)',
-        boxShadow: isStarter ? `0 0 0 1px ${C.v}33, 0 16px 56px rgba(189,75,248,.28), 0 4px 16px rgba(0,0,0,.4)` : 'none',
-        transform: (isStarter && !isMobile) ? 'scale(1.03)' : 'none',
+        background: 'rgba(255,255,255,0.025)',
+        border: isStarter
+          ? `1px solid ${C.v}80`
+          : isCurrent
+            ? `1px solid ${def.color}55`
+            : '1px solid rgba(255,255,255,0.08)',
+        borderRadius: 22,
+        padding: '32px 26px 26px',
+        backdropFilter: 'blur(14px)', WebkitBackdropFilter: 'blur(14px)',
+        // Glow exterior + halo interno solo en STARTER (equivalente al
+        // resplandor teal de la referencia, en violeta de marca).
+        boxShadow: isStarter
+          ? `0 0 0 1px ${C.v}40, 0 0 70px -10px ${C.v}80, inset 0 0 80px -30px ${C.v}55`
+          : 'none',
         overflow: 'visible',
-        display: 'flex', flexDirection: 'column', height: '100%', boxSizing: 'border-box',
-        transition: 'box-shadow .2s',
+        display: 'flex', flexDirection: 'column', height: '100%',
+        boxSizing: 'border-box',
+        transition: 'box-shadow .25s, border-color .25s, transform .25s',
       }}>
 
-        {/* Badge "Más elegido" */}
+        {/* Badge "MÁS ELEGIDO" — pill arriba-derecha estilo ref. Para el
+            plan ACTUAL del comerciante (no en home) sumamos un chip al lado. */}
         {badge && (
-          <div style={{ position:'absolute', top:-13, left:'50%', transform:'translateX(-50%)', background:GV, borderRadius:20, padding:'4px 14px', fontSize:10, fontWeight:700, fontFamily:FN, color:'#fff', letterSpacing:'.08em', whiteSpace:'nowrap', boxShadow:'0 4px 12px rgba(189,75,248,.5)' }}>
-            {badge}
+          <div style={{
+            position: 'absolute', top: 16, right: 16,
+            background: `${C.v}1f`,
+            border: `1px solid ${C.v}66`,
+            color: '#E9D5FF',
+            borderRadius: 99,
+            padding: '5px 11px',
+            fontSize: 9, fontWeight: 700, fontFamily: FN,
+            letterSpacing: '.10em',
+            textTransform: 'uppercase',
+            whiteSpace: 'nowrap',
+            boxShadow: `0 4px 16px ${C.v}40`,
+          }}>
+            ★ Más elegido
           </div>
         )}
         {isCurrent && !badge && (
-          <div style={{ position:'absolute', top:-11, right:14, background:def.color, color:'#000', fontFamily:FN, fontSize:9, fontWeight:700, padding:'3px 10px', borderRadius:20, letterSpacing:'.08em' }}>
-            PLAN ACTUAL
+          <div style={{
+            position: 'absolute', top: 16, right: 16,
+            background: 'rgba(255,255,255,0.06)',
+            border: '1px solid rgba(255,255,255,0.14)',
+            color: C.pearl,
+            fontFamily: FN, fontSize: 9, fontWeight: 700,
+            padding: '5px 11px', borderRadius: 99,
+            letterSpacing: '.10em', textTransform: 'uppercase',
+          }}>
+            Plan actual
           </div>
         )}
-        {isCurrent && badge && (
-          <div style={{ position:'absolute', top:12, right:14, background:`${def.color}33`, border:`1px solid ${def.color}66`, color:def.color, fontFamily:FN, fontSize:9, fontWeight:700, padding:'2px 8px', borderRadius:20, letterSpacing:'.06em' }}>
-            ACTUAL
-          </div>
-        )}
 
-        {/* Ícono + nombre */}
-        <div style={{ display:'flex', alignItems:'center', gap:10, marginBottom:10, marginTop: badge ? 8 : 0 }}>
-          {(() => { const I = Icon; return I ? <I size={20} color={def.color} strokeWidth={2} /> : null })()}
-          <span style={{ fontFamily:FN, fontSize:17, fontWeight:900, color:def.color, letterSpacing:'-.01em' }}>{def.label}</span>
+        {/* Plan name */}
+        <div style={{
+          fontFamily: FN, fontSize: 15, fontWeight: 700,
+          color: C.white, marginBottom: 4, letterSpacing: '-.01em',
+        }}>
+          {prettyLabel}
+        </div>
+        <div style={{
+          fontFamily: FI, fontSize: 12, color: 'rgba(255,255,255,0.45)',
+          marginBottom: 28,
+        }}>
+          Facturación mensual
         </div>
 
-        {/* Descripción */}
-        <div style={{ fontSize:12, color: isStarter ? C.pearl : C.white, fontFamily:FN, fontWeight:600, lineHeight:1.35, marginBottom:4 }}>{tagline}</div>
-        <div style={{ fontSize:11, color:C.mist, marginBottom:16, lineHeight:1.5 }}>{sub}</div>
-
-        {/* Precio */}
-        <div style={{ fontFamily:FN, fontSize:22, fontWeight:900, color: isStarter ? '#fff' : C.white, lineHeight:1.1, marginBottom:4 }}>
-          {fmtPrice(price)}
+        {/* Precio grande con jerarquía: número 42px + "/ mes" en gris */}
+        <div style={{ display: 'flex', alignItems: 'baseline', gap: 6, marginBottom: 6, flexWrap: 'wrap' }}>
+          <span style={{
+            fontFamily: FN, fontSize: 'clamp(36px, 5vw, 44px)',
+            fontWeight: 700, color: C.white, lineHeight: 1,
+            letterSpacing: '-.03em',
+          }}>
+            {price === 0 ? 'Gratis' : `$${price.toLocaleString('es-AR')}`}
+          </span>
+          {price > 0 && (
+            <span style={{ fontFamily: FI, fontSize: 14, color: 'rgba(255,255,255,0.55)' }}>
+              / mes
+            </span>
+          )}
         </div>
-        {/* Slot fijo para priceHint — mantiene alineación entre planes */}
-        <div style={{ fontSize:10, color: isStarter ? `${C.v}cc` : C.dust, minHeight:18, marginBottom:16 }}>
+        {/* Slot fijo para priceHint */}
+        <div style={{ fontSize: 11, color: isStarter ? `${C.v}dd` : 'rgba(255,255,255,0.35)', minHeight: 18, marginBottom: 22 }}>
           {priceHint ?? ''}
         </div>
 
-        {/* Barra de uso — solo en panel, plan actual */}
+        {/* Tagline corta tipo "Ideal for..." */}
+        <div style={{
+          fontFamily: FI, fontSize: 13, color: 'rgba(255,255,255,0.65)',
+          lineHeight: 1.5, marginBottom: 24,
+        }}>
+          {tagline}
+        </div>
+
+        {/* Barra de uso — solo en panel comerciante con plan actual */}
         {showUsageBar && (
-          <div style={{ marginBottom:14, background:C.bg3, borderRadius:10, padding:'10px 12px' }}>
-            <div style={{ display:'flex', justifyContent:'space-between', fontSize:11, color:C.mist, marginBottom:6 }}>
+          <div style={{
+            marginBottom: 20,
+            background: 'rgba(255,255,255,0.04)',
+            border: '1px solid rgba(255,255,255,0.06)',
+            borderRadius: 12, padding: '11px 13px',
+          }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 11, color: 'rgba(255,255,255,0.55)', marginBottom: 7 }}>
               <span>Clientes usados</span>
-              <span style={{ fontFamily:FN, fontWeight:700, color:C.white }}>{clientCount} / {planLimit}</span>
+              <span style={{ fontFamily: FN, fontWeight: 700, color: C.white }}>{clientCount} / {planLimit}</span>
             </div>
-            <div style={{ height:4, borderRadius:4, background:C.rim }}>
-              <div style={{ height:'100%', width:`${Math.min(100,(clientCount/planLimit)*100)}%`, background: clientCount>=planLimit ? '#f87444' : clientCount>=planLimit*.8 ? C.o : def.color, borderRadius:4, transition:'width .4s' }} />
+            <div style={{ height: 4, borderRadius: 4, background: 'rgba(255,255,255,0.08)' }}>
+              <div style={{
+                height: '100%',
+                width: `${Math.min(100, (clientCount / planLimit) * 100)}%`,
+                background: clientCount >= planLimit
+                  ? '#f87444'
+                  : clientCount >= planLimit * .8
+                    ? C.o
+                    : (isStarter ? C.v : def.color),
+                borderRadius: 4, transition: 'width .4s',
+              }} />
             </div>
           </div>
         )}
 
-        {/* Features — flex:1 ancla el CTA al fondo */}
-        <ul style={{ margin:'0 0 20px', padding:0, listStyle:'none', display:'flex', flexDirection:'column', gap:8, flex:1 }}>
+        {/* Lista de features con check en círculo sutil */}
+        <ul style={{
+          margin: '0 0 28px', padding: 0, listStyle: 'none',
+          display: 'flex', flexDirection: 'column', gap: 12, flex: 1,
+        }}>
           {features.map(f => (
-            <li key={f} style={{ fontSize:11, color: isStarter ? C.pearl : C.mist, display:'flex', alignItems:'flex-start', gap:7, lineHeight:1.45 }}>
-              <span style={{ color:def.color, fontWeight:700, flexShrink:0, marginTop:1 }}>✓</span>
-              {f}
+            <li key={f} style={{
+              display: 'flex', alignItems: 'flex-start', gap: 10,
+              fontFamily: FI, fontSize: 13,
+              color: 'rgba(255,255,255,0.78)',
+              lineHeight: 1.45,
+            }}>
+              <span style={{
+                width: 16, height: 16, borderRadius: '50%',
+                background: isStarter ? `${C.v}33` : 'rgba(255,255,255,0.06)',
+                display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
+                flexShrink: 0, marginTop: 1,
+              }}>
+                <Check size={9} color={accent} strokeWidth={3.5} />
+              </span>
+              <span>{f}</span>
             </li>
           ))}
         </ul>
 
-        {/* CTA — siempre al fondo */}
-        {isCurrent ? (
-          <div style={{ textAlign:'center', fontSize:11, color: isStarter ? `${def.color}cc` : C.dust, padding:'8px 0' }}>
-            ✓ Plan activo
-          </div>
-        ) : onUpgrade && isUpgrade ? (
-          <Btn
-            variant={isStarter ? 'primary' : 'secondary'}
-            style={{ width:'100%', padding:'11px', borderRadius:10, fontSize:12 }}
-            onClick={() => onUpgrade(key)}>
-            {isStarter ? <><Zap size={13} strokeWidth={2} />{cta}</> : cta}
-          </Btn>
-        ) : onUpgrade && !isUpgrade && currentPlan ? (
-          <Btn
-            variant="ghost"
-            style={{ width:'100%', padding:'9px', borderRadius:10, fontSize:11 }}
-            onClick={() => onUpgrade(key)}>
-            Cambiar a {def.label}
-          </Btn>
-        ) : onCTA && cta ? (
-          <Btn
-            variant={isStarter ? 'primary' : 'secondary'}
-            style={{ width:'100%', padding:'11px', borderRadius:10, fontSize:12 }}
-            onClick={onCTA}>
-            {isStarter ? <><Zap size={13} strokeWidth={2} />{cta}</> : cta}
-          </Btn>
-        ) : null}
+        {/* CTA — pill ancho al fondo. STARTER pintado violeta sólido,
+            FREE/PRO en gris oscuro neutro estilo referencia. */}
+        {(() => {
+          // Determina texto y handler según contexto (home / panel)
+          let label = null
+          let handler = null
+          let active = !isCurrent
+
+          if (isCurrent) {
+            label = '✓ Plan activo'
+            active = false
+          } else if (onUpgrade && isUpgrade) {
+            label = cta || `Activar ${def.label}`
+            handler = () => onUpgrade(key)
+          } else if (onUpgrade && !isUpgrade && currentPlan) {
+            label = `Cambiar a ${def.label}`
+            handler = () => onUpgrade(key)
+          } else if (onCTA && cta) {
+            label = cta
+            handler = onCTA
+          }
+
+          if (!label) return null
+
+          return (
+            <button
+              type="button"
+              disabled={!active}
+              onClick={handler || undefined}
+              onMouseEnter={(e) => { if (active && !isStarter) e.currentTarget.style.background = 'rgba(255,255,255,0.10)' }}
+              onMouseLeave={(e) => { if (active && !isStarter) e.currentTarget.style.background = 'rgba(255,255,255,0.06)' }}
+              style={{
+                width: '100%',
+                padding: '14px 16px',
+                borderRadius: 14,
+                fontFamily: FN,
+                fontSize: 13, fontWeight: 700,
+                letterSpacing: '.005em',
+                cursor: active ? 'pointer' : 'default',
+                border: isStarter && active
+                  ? 'none'
+                  : '1px solid rgba(255,255,255,0.10)',
+                background: !active
+                  ? 'rgba(255,255,255,0.03)'
+                  : isStarter
+                    ? C.v
+                    : 'rgba(255,255,255,0.06)',
+                color: !active
+                  ? 'rgba(255,255,255,0.45)'
+                  : isStarter
+                    ? '#fff'
+                    : C.pearl,
+                boxShadow: (isStarter && active)
+                  ? `0 10px 30px -8px ${C.v}99, inset 0 1px 0 rgba(255,255,255,.18)`
+                  : 'none',
+                transition: 'background .2s, transform .15s, box-shadow .2s',
+                display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8,
+              }}
+            >
+              {label}
+            </button>
+          )
+        })()}
       </div>
     )
   }
 
   return (
     <div style={isMobile
-      ? { display:'flex', flexDirection:'column', gap:20, paddingTop:16 }
-      : { display:'grid', gridTemplateColumns:'repeat(3, 1fr)', gap:16, alignItems:'stretch', paddingTop:16 }
+      ? { display:'flex', flexDirection:'column', gap:18 }
+      : { display:'grid', gridTemplateColumns:'repeat(3, 1fr)', gap:20, alignItems:'stretch' }
     }>
       {PLAN_LIST.map(plan => renderCard(plan))}
     </div>
@@ -5478,21 +5599,34 @@ function HomeView({ setView, user, profile, onLogin }) {
           de "✦ Planes para negocios" ahora viene directo después del
           BigBoldRowsSection, manteniendo el flujo limpio. */}
 
-      {/* ── PLANES ── (sin SectionDivider arriba para pegar mejor al CTA) */}
-      <div style={{ padding:'40px 20px 108px' }}>
-        <div style={{ maxWidth:920, margin:'0 auto' }}>
-          <div style={{ textAlign:'center', marginBottom:48 }}>
-            <div style={{ fontFamily:FN, fontSize:10, color:C.v, fontWeight:800, letterSpacing:'.15em', textTransform:'uppercase', marginBottom:10 }}>✦ Planes para negocios</div>
-            <h2 style={{ fontFamily:FN, fontSize:'clamp(22px,3.5vw,36px)', fontWeight:900, color:C.white, marginBottom:12, lineHeight:1.1 }}>
-              Empezá gratis.<br />
-              <span style={{ background:GV, WebkitBackgroundClip:'text', WebkitTextFillColor:'transparent', backgroundClip:'text' }}>Escalá cuando quieras.</span>
+      {/* ── PLANES ── (fondo negro plano, estética minimal alineada al hero V2) */}
+      <div style={{ background:'#000', padding:'96px 20px 120px', position:'relative' }}>
+        <div style={{ maxWidth:1100, margin:'0 auto' }}>
+          <div style={{ textAlign:'center', marginBottom:64 }}>
+            <h2 style={{
+              fontFamily:FN,
+              fontSize:'clamp(28px, 5vw, 48px)',
+              fontWeight:600,
+              color:C.white,
+              marginBottom:14,
+              lineHeight:1.05,
+              letterSpacing:'-.03em',
+            }}>
+              Elegí tu <span style={{ fontStyle:'italic', fontWeight:500 }}>plan.</span>
             </h2>
-            <p style={{ fontSize:14, color:C.mist, maxWidth:400, margin:'0 auto', lineHeight:1.7 }}>
-              Sin contratos, sin sorpresas. Cambiá de plan en cualquier momento.
+            <p style={{
+              fontFamily:FI,
+              fontSize:'clamp(14px, 1.6vw, 17px)',
+              color:'rgba(255,255,255,0.70)',
+              maxWidth:480,
+              margin:'0 auto',
+              lineHeight:1.5,
+            }}>
+              El plan ideal para empezar a fidelizar tus clientes desde hoy.
             </p>
           </div>
           <PlanCards onCTA={() => setView('register-commerce')} />
-          <div style={{ textAlign:'center', marginTop:28, fontSize:12, color:C.dust }}>
+          <div style={{ textAlign:'center', marginTop:36, fontSize:13, color:'rgba(255,255,255,0.45)', fontFamily:FI }}>
             Sin contrato · Sin permanencia · Cancelá cuando quieras
           </div>
         </div>
