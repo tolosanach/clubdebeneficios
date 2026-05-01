@@ -2437,14 +2437,14 @@ function PlanCards({ currentPlan=null, clientCount=0, planLimit=null, onUpgrade,
     {
       key:'free',
       Icon: Package,
-      tagline:'Probá la plataforma sin costo',
+      tagline:'Para clubes que recién arrancan.',
       sub:'Perfecto para empezar sin compromiso',
       features:[
         'Hasta 30 clientes activos',
         'Sistema de puntos o estrellas',
-        'Hasta 2 premios activos',
-        'Escáner QR desde el celular',
-        'Historial de actividad básico',
+        'Hasta 2 premios cargados',
+        'Escáner QR desde tu celular',
+        'Historial de visitas y canjes',
       ],
       price:0,
       priceHint:null,
@@ -2453,16 +2453,16 @@ function PlanCards({ currentPlan=null, clientCount=0, planLimit=null, onUpgrade,
     {
       key:'starter',
       Icon: Zap,
-      tagline:'El plan ideal para fidelizar clientes',
+      tagline:'Cuando ya tenés clientes que vuelven.',
       sub:'Convertí visitas en clientes recurrentes',
       badge:'★ Más elegido',
       features:[
         'Hasta 60 clientes activos',
         'Premios ilimitados',
-        'Promociones: descuentos y doble puntos',
-        'Carga manual de clientes',
-        'Soporte prioritario',
-        'Todo lo del plan Free incluido',
+        'Descuentos y días con bonus ×2',
+        'Carga manual de clientes nuevos',
+        'Soporte prioritario por chat',
+        'Todo lo del Free incluido',
       ],
       price:25000,
       priceHint:'Menos de $850 por día',
@@ -2471,15 +2471,15 @@ function PlanCards({ currentPlan=null, clientCount=0, planLimit=null, onUpgrade,
     {
       key:'pro',
       Icon: Rocket,
-      tagline:'Escalá sin límites',
+      tagline:'Para locales con mucho movimiento.',
       sub:'Para negocios con alto volumen de clientes',
       features:[
         'Clientes ilimitados',
-        'Automatizaciones con WhatsApp',
-        'Recordatorios a clientes inactivos',
-        'Alertas de premios próximos',
-        'Estadísticas avanzadas (próximamente)',
-        'Soporte dedicado 24/7',
+        'Mensajes automáticos por WhatsApp',
+        'Reactivar clientes que no vuelven',
+        'Avisar cuando un cliente puede canjear',
+        'Saludo automático en primera visita',
+        'Soporte dedicado, todos los días',
       ],
       price:45000,
       priceHint:null,
@@ -2902,6 +2902,37 @@ function Navbar({ setView, cityName, user, profile, onLogin, onLogout, currentVi
   // boot flow sepa qué modo del MinimalSignupModal abrir (si es nuevo). Si es
   // un user existente, el flag se ignora y va a su panel real.
   const [roleAskerOpen, setRoleAskerOpen] = useState(false)
+
+  // ── Scroll-aware: navbar transparente al tope, opaco con blur al scrollear ─
+  // Threshold 50px: arriba el navbar queda invisible (deja respirar al hero
+  // del home), pero apenas el usuario empieza a scrollear se solidifica para
+  // no superponerse con los títulos de las secciones siguientes.
+  const [scrolled, setScrolled] = useState(false)
+  useEffect(() => {
+    const onScroll = () => setScrolled(window.scrollY > 50)
+    onScroll()
+    window.addEventListener('scroll', onScroll, { passive: true })
+    return () => window.removeEventListener('scroll', onScroll)
+  }, [])
+
+  // Estilos inline que sobrescriben la CSS class `.navbar-glass` (que tiene
+  // bg + blur fijos). Inline gana, así controlamos la transición desde JS.
+  const NAV_TRANSITION = {
+    transition: 'background 220ms ease, backdrop-filter 220ms ease, border-color 220ms ease',
+  }
+  const NAV_SCROLL_STATE = scrolled
+    ? {
+        background: 'rgba(0, 0, 0, 0.72)',
+        backdropFilter: 'blur(14px)',
+        WebkitBackdropFilter: 'blur(14px)',
+        borderBottom: '1px solid rgba(255,255,255,0.06)',
+      }
+    : {
+        background: 'transparent',
+        backdropFilter: 'none',
+        WebkitBackdropFilter: 'none',
+        borderBottom: '1px solid transparent',
+      }
   function pickRole(r) {
     try { sessionStorage.setItem('benefix:signupAs', r) } catch {}
     setRoleAskerOpen(false)
@@ -2955,7 +2986,7 @@ function Navbar({ setView, cityName, user, profile, onLogin, onLogout, currentVi
   // ── No logged-in user ─────────────────────────────────────────────────────
   if (!user) return (
     <>
-      <nav className="navbar-glass" style={{ ...NAV, padding:'0 20px' }}>
+      <nav className="navbar-glass" style={{ ...NAV, ...NAV_TRANSITION, ...NAV_SCROLL_STATE, padding:'0 20px' }}>
         <div style={{ cursor:'pointer' }} onClick={() => setView('home')}><Logo /></div>
         <div style={{ display:'flex', gap:8, alignItems:'center' }}>
           {cityName && <span style={{ fontSize:11, color:C.mist, padding:'4px 10px', borderRadius:99, background:C.bg3, border:`1px solid ${C.rim}`, display:'inline-flex', alignItems:'center', gap:4 }}><MapPin size={10} color={C.mist} strokeWidth={2} />{cityName}</span>}
@@ -3077,7 +3108,7 @@ function Navbar({ setView, cityName, user, profile, onLogin, onLogout, currentVi
 
   // ── Logged-in user ────────────────────────────────────────────────────────
   return (
-    <nav className="navbar-glass" style={{ ...NAV, padding:'0 16px' }}>
+    <nav className="navbar-glass" style={{ ...NAV, ...NAV_TRANSITION, ...NAV_SCROLL_STATE, padding:'0 16px' }}>
       <div style={{ cursor:'pointer' }} onClick={() => setView('home')}><Logo /></div>
       <div className="liquid-glass-strong" style={{ position:'relative', display:'flex', gap:3, alignItems:'center', borderRadius:12, padding:4, overflow:'hidden' }}>
 
@@ -3589,13 +3620,13 @@ function FeaturesSection() {
     {
       Icon: Gift,
       title: 'Catálogo de premios',
-      desc: 'Cargás tus premios con foto, costo y stock. Los clientes los ven y los canjean desde su tarjeta digital.',
+      desc: 'El premio lo elegís vos: un café, un descuento, lo que vaya con tu local. El cliente lo canjea desde la tarjeta digital cuando llega.',
       color: '#F97316',
     },
     {
       Icon: Percent,
       title: 'Promos automáticas',
-      desc: 'Descuento en la próxima visita, doble puntos en días flojos. Lo activás una vez y se aplica solo a cada cliente.',
+      desc: 'Cupón de descuento para la próxima visita, o doble puntos los días que vos elijas (lunes flojos, miércoles muertos). Lo configurás una vez y corre solo.',
       color: '#5B8DEF',
     },
     {
@@ -3607,7 +3638,7 @@ function FeaturesSection() {
     {
       Icon: Bell,
       title: 'WhatsApp y notificaciones',
-      desc: 'Reactivá clientes inactivos por WhatsApp y llegales con notificaciones push directo al celular.',
+      desc: 'Mensajes de WhatsApp listos para mandar al cliente que hace tiempo no viene. Y notifs push cuando tiene un premio para canjear.',
       color: '#F5A623',
     },
   ]
@@ -3625,7 +3656,7 @@ function FeaturesSection() {
           tenía problemas de timing con SSR). */}
       <div style={{ maxWidth:1080, margin:'0 auto', position:'relative', zIndex:2 }}>
         <div style={{ textAlign:'center', marginBottom:18 }}>
-          <span className="liquid-glass" style={{ display:'inline-block', borderRadius:99, padding:'7px 18px', fontSize:11, color:'rgba(255,255,255,0.65)', fontFamily:FN, fontWeight:600, letterSpacing:'.10em', textTransform:'uppercase' }}>Todo lo que necesitás</span>
+          <span className="liquid-glass" style={{ display:'inline-block', borderRadius:99, padding:'7px 18px', fontSize:11, color:'rgba(255,255,255,0.65)', fontFamily:FN, fontWeight:600, letterSpacing:'.10em', textTransform:'uppercase' }}>Qué tiene Benefix</span>
         </div>
         {/* H2 con la misma escala y peso del headline del hero V2:
             clamp grande, weight 600 (no 900), letter-spacing negativo y
@@ -3634,7 +3665,7 @@ function FeaturesSection() {
           Tu club, <span style={{ fontStyle:'italic', fontWeight:500 }}>completo.</span>
         </h2>
         <p style={{ fontFamily:FI, fontSize:'clamp(14px, 1.7vw, 17px)', color:'rgba(255,255,255,0.70)', textAlign:'center', maxWidth:480, margin:'0 auto 56px', lineHeight:1.55 }}>
-          Funcionalidades pensadas para comercios chicos. Sin curva de aprendizaje, todo en una sola pantalla.
+          Configuralo desde tu celular, en minutos.
         </p>
         <div style={{ display:'grid', gridTemplateColumns:'repeat(auto-fit, minmax(280px, 1fr))', gap:16 }}>
           {features.map((f, i) => {
@@ -3807,26 +3838,26 @@ function HowItWorksSection() {
   const cards = [
     {
       num: '01/',
-      kicker: 'Sumate al club',
-      title: 'Escaneá un QR\npara empezar',
-      paragraph: 'Cada local tiene su propio código.\nMostralo, escaneá y ya sos miembro.',
+      kicker: 'El cliente se suma',
+      title: 'Tu QR vive\nen el mostrador',
+      paragraph: 'El cliente saca el celular, escanea, y queda anotado en tu club.\nSin app que descargar.',
       videoSrc: 'https://d8j0ntlcm91z4.cloudfront.net/user_38xzZboKViGWJOttwIXH07lWA1P/hf_20260427_104605_2700410c-4303-4d44-a368-e1b8c84eca8c.mp4',
       // Layout: tall left
       gridArea: 'tall',
     },
     {
       num: '02/',
-      kicker: 'Sumás con cada visita',
-      title: 'Tu progreso, en\ntiempo real',
-      paragraph: null,
+      kicker: 'Cada visita cuenta',
+      title: 'El puntaje sube\nen vivo',
+      paragraph: 'Cliente y dueño ven el balance al toque, desde el celular.',
       videoSrc: 'https://d8j0ntlcm91z4.cloudfront.net/user_38xzZboKViGWJOttwIXH07lWA1P/hf_20260427_104731_bfd355f7-1f84-4f81-ad88-52c2bca70bad.mp4',
       gridArea: 'topRight',
     },
     {
       num: '03/',
-      kicker: 'Cuando querés',
+      kicker: 'Cuando hay saldo',
       title: 'Canjeás premios reales',
-      paragraph: 'De estrellas a cafés, descuentos o productos —\ntu acumulado se transforma en lo que vos elegís.',
+      paragraph: 'Café, descuento, postre — cada premio del catálogo\nse canjea por los puntos que el cliente acumuló.',
       videoSrc: 'https://d8j0ntlcm91z4.cloudfront.net/user_38xzZboKViGWJOttwIXH07lWA1P/hf_20260427_104758_e7d78f06-3700-4862-8c9b-595ed447e81a.mp4',
       gridArea: 'bottomRight',
     },
@@ -4007,7 +4038,7 @@ function HowItWorksSection() {
           }}>
             Cómo funciona, sin vueltas.
             <span style={{ display: 'block', color: 'rgba(255,255,255,0.40)', marginTop: 8 }}>
-              Tres pasos para fidelizar.
+              Del QR al canje, en tres movimientos.
             </span>
           </h2>
         </div>
@@ -4792,7 +4823,7 @@ function CtaSection({ setView }) {
         </h2>
         <p style={{ fontFamily:FI, fontSize:16, color:'rgba(255,255,255,0.65)', marginBottom:40, lineHeight:1.7, maxWidth:480, margin:'0 auto 40px' }}>
           Empezá gratis hoy. Sin tarjeta de crédito, sin compromiso.<br />
-          Creá tu programa de beneficios en minutos.
+          En lo que dura un café tenés tu club andando.
         </p>
         <div style={{ display:'flex', flexWrap:'wrap', gap:12, justifyContent:'center', marginBottom:24 }}>
           <Btn style={{ fontSize:15, padding:'14px 32px' }} onClick={() => setView('register-commerce')}>
@@ -4826,7 +4857,7 @@ function Footer({ setView }) {
           <div style={{ gridColumn:'span 1' }}>
             <div style={{ marginBottom:14 }}><Logo /></div>
             <p style={{ fontFamily:FI, fontSize:13, color:'rgba(255,255,255,0.50)', lineHeight:1.7, maxWidth:220, marginBottom:20 }}>
-              Sistema de fidelización para comercios. Tus clientes suman puntos y canjean premios.
+              El club de tus clientes, sin tarjetas de cartón.
             </p>
             <div style={{ display:'flex', gap:8 }}>
               {[
@@ -5657,7 +5688,7 @@ function HomeView({ setView, user, profile, onLogin }) {
               margin:'0 auto',
               lineHeight:1.5,
             }}>
-              El plan ideal para empezar a fidelizar tus clientes desde hoy.
+              Arrancá con el plan Free. Cambialo cuando tu club crezca.
             </p>
           </div>
           <PlanCards onCTA={() => setView('register-commerce')} />
