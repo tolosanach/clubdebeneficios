@@ -14071,7 +14071,7 @@ function CommerceSettingsView({ user, profile, setView, onLogout, onOwnerProfile
     // etc. desde el menú sin tener que pasar por las tarjetas. En mobile
     // sigue el flujo viejo (cards full-width + radial menu).
     return (
-      <div style={{ display:'flex', minHeight:'100vh' }}>
+      <div style={{ display:'flex', minHeight:'100vh', maxWidth:'100vw', overflowX:'hidden' }}>
         {/* Sidebar desktop — lista de secciones del MENU. Tap en una saca al
             user del intent picker y lo lleva a esa pestaña directamente. */}
         {isDesktop && (
@@ -14107,10 +14107,10 @@ function CommerceSettingsView({ user, profile, setView, onLogout, onOwnerProfile
             })}
           </div>
         )}
-      <div style={{ flex:1, maxWidth: isDesktop ? 1120 : 520, margin:'0 auto', padding: isMobile ? '24px 0 80px' : '32px 0 80px' }}>
+      <div style={{ flex:1, maxWidth: isDesktop ? 1120 : 520, width:'100%', margin:'0 auto', padding: isMobile ? '24px 0 80px' : '32px 0 80px', overflowX:'hidden', minWidth:0 }}>
         {/* Padding lateral para el contenido principal — el slider rompe
             con margin negativo para llegar a los bordes. */}
-        <div style={{ padding: isMobile ? '0 18px' : '0 28px' }}>
+        <div style={{ padding: isMobile ? '0 18px' : '0 28px', maxWidth:'100%', minWidth:0, overflowX:'hidden' }}>
           <HelpBanner
             id="merchant-intent"
             title="Tu panel de negocio"
@@ -14428,7 +14428,18 @@ function CommerceSettingsView({ user, profile, setView, onLogout, onOwnerProfile
         {/* Wrapper del slider con position:relative para anclar las flechas
             laterales por encima del scroll horizontal de las cards. */}
         {sortedItems.length > 0 && (
-        <div style={{ position: 'relative' }}>
+        <div style={{
+          position: 'relative',
+          // Width:100% + maxWidth:100% + overflow:hidden contienen el
+          // `width: max-content` del inner que sino expandiría todo el padre
+          // (la "carpeta") y haría que la pantalla se desborde horizontalmente
+          // en mobile. minWidth:0 evita el clásico bug de flex children que
+          // se niegan a achicarse al ancho del padre.
+          width: '100%',
+          maxWidth: '100%',
+          minWidth: 0,
+          overflow: 'hidden',
+        }}>
         {/* En MOBILE no usamos scroll horizontal nativo — pasamos a un
             slider state-driven: solo la card en `configSlideIdx` se
             renderea (las demás no están en el DOM), y un touch-handler
@@ -14443,6 +14454,12 @@ function CommerceSettingsView({ user, profile, setView, onLogout, onOwnerProfile
             // Scroll-snap horizontal nativo en TODOS los viewports.
             // Mobile: swipe libre con snap. Desktop: scroll horizontal
             // con trackpad/rueda + parallax extra según scroll vertical.
+            // width:100% obliga al slider a respetar el ancho del padre,
+            // de lo contrario el `width: max-content` del inner expandía
+            // el slider al ancho de TODAS las cards (causando el desborde).
+            width: '100%',
+            maxWidth: '100%',
+            minWidth: 0,
             overflowX: 'auto',
             overflowY: 'visible',
             scrollSnapType: 'x mandatory',
