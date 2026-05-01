@@ -1403,112 +1403,36 @@ function InstagramStoryQR({ commerce, qrDataUrl }) {
 //   - QR negro sobre fondo blanco, en una card grande centrada.
 //   - X cerrar arriba a la derecha, glass discreto.
 function QrFullscreen({ open, onClose, qrValue, audience = 'client', shareUrl = '', shareTitle = 'Benefix' }) {
-  // Sets de títulos y subtítulos — uno por audiencia. Se eligen al abrir y
-  // se mantienen mientras el modal esté abierto. Tono rioplatense, mezcla
-  // de calor (familiar), confianza (te tratamos bien), pizca de humor y
-  // referencias al "scan" como acción mágica que activa todo. Sin clichés
-  // de marketing yanqui — esto es Argentina, hablamos como hablamos.
-  const TITLES_MERCHANT = [
-    'ESCANEAME, NO MUERDO',
-    'ACÁ EMPIEZA TU CLUB',
-    'PASÁ, SUMATE',
-    'YA SOS DE LA CASA',
-    'TURNO DE GANAR',
-    'NO ME HAGAS ESPERAR',
-    'ENGANCHATE AL CLUB',
-    'ESTO SE PONE BUENO',
-    'VENÍ QUE HAY PREMIOS',
-    'MENOS PROMESAS, MÁS DESCUENTOS',
-  ]
-  const TITLES_CLIENT = [
-    'ACÁ TENGO LO MÍO',
-    'AHORA ME TOCA A MÍ',
-    'ESCANEAME, GANEMOS JUNTOS',
-    'LISTO PARA SUMAR',
-    'YO YA ESTOY ADENTRO',
-    'DALE QUE SUMO',
-    'AGUANTE EL CLUB',
-    'TENGO EL PASE',
-    'A SUMAR SIN VUELTAS',
-    'MI MUNDO EN UN ESCANEO',
-    'NO TE LO OLVIDES, ESCANEÁ',
-  ]
-  const SUBS_MERCHANT = [
-    'EL CLUB QUE TE TRATA BIEN',
-    'NO HAY LETRA CHICA',
-    'ESCANEÁS Y EMPEZAMOS',
-    'ASÍ DE FÁCIL ES',
-    'SUMÁ · CANJEÁ · DISFRUTÁ',
-    'TURNO DE PREMIARTE',
-    'BIENVENIDO A LA FAMILIA',
-  ]
-  const SUBS_CLIENT = [
-    'CADA VISITA CUENTA',
-    'A FAVOR DEL DESCUENTO',
-    'MI AMIGO EL BENEFICIO',
-    'A SUMAR SIN VUELTAS',
-    'SUMÁ · CANJEÁ · DISFRUTÁ',
-    'EL CÓDIGO DE LA SUERTE',
-    'MOSTRÁ Y GANÁ',
-  ]
-  // ── Hooks primero (Rules of Hooks) ──
-  // Colores plenos de marca — el oscurecimiento se aplica via overlay 50%
-  // negro encima (ver `background` del modal). Así mantenemos el tono de
-  // marca pero apagado lo suficiente como para que la ticket card brillante
-  // destaque arriba.
-  const BG_COLORS = ['#BD4BF8', '#EC4899']  // violeta · fucsia plenos
-  const [title, setTitle] = useState(() => {
-    const pool = audience === 'merchant' ? TITLES_MERCHANT : TITLES_CLIENT
-    return pool[Math.floor(Math.random() * pool.length)]
-  })
-  const [subtitle, setSubtitle] = useState(() => {
-    const pool = audience === 'merchant' ? SUBS_MERCHANT : SUBS_CLIENT
-    return pool[Math.floor(Math.random() * pool.length)]
-  })
-  const [bgColor, setBgColor] = useState(() => BG_COLORS[Math.floor(Math.random() * BG_COLORS.length)])
+  // Títulos fijos por audiencia. Antes había arrays con frases rioplatenses
+  // aleatorias ("ESCANEAME, NO MUERDO", "TENGO EL PASE", etc.) y se elegían
+  // random al abrir. El dueño los pidió fuera — ahora son títulos planos y
+  // descriptivos que dicen exactamente qué QR es.
+  const title    = audience === 'merchant' ? 'QR NEGOCIO' : 'QR PERSONAL'
+  // Subtítulo descriptivo — explica concretamente qué pasa al escanear,
+  // sin tagline marketinero. El comerciante muestra el QR para que un
+  // cliente se sume; el cliente lo muestra para que le sumen en cada compra.
+  const subtitle = audience === 'merchant'
+    ? 'MOSTRALO PARA QUE SE SUMEN AL CLUB'
+    : 'MOSTRALO PARA SUMAR EN CADA COMPRA'
+  // Color de fondo según el rol: violeta para el dueño (acción primaria del
+  // panel), fucsia para el cliente (mismo color de "Mi billetera"). Así
+  // visualmente se distingue qué QR estás mirando aunque no leas el título.
+  const bgColor  = audience === 'merchant' ? '#BD4BF8' : '#EC4899'
+
+  // ── Hooks ──
   const [copied, setCopied] = useState(false)
-  // Animación de "generación" del QR: durante los primeros 5 segundos, el QR
-  // muestra data random que cambia rápido + un efecto de glitch (jitter +
-  // chromatic aberration). Al final, se asienta en el QR real. Da la
-  // sensación de que el código se está "generando en vivo".
-  const [generatingQr, setGeneratingQr] = useState(true)
-  const [scrambledQr, setScrambledQr]   = useState('')
-  useEffect(() => {
-    if (!open) return
-    setGeneratingQr(true)
-    setScrambledQr(Math.random().toString(36).slice(2) + Date.now())
-    const FRAME_MS = 90       // tick: cuán rápido cambia el contenido random
-    const TOTAL_MS = 5000     // duración total de la "generación"
-    const startedAt = Date.now()
-    const interval = setInterval(() => {
-      const elapsed = Date.now() - startedAt
-      if (elapsed >= TOTAL_MS) {
-        clearInterval(interval)
-        setGeneratingQr(false)
-        return
-      }
-      // Random data → re-renderea el QR con módulos completamente distintos
-      // cada frame. Combinado con el CSS de jitter da el efecto glitch.
-      setScrambledQr(Math.random().toString(36).slice(2) + Date.now() + elapsed)
-    }, FRAME_MS)
-    return () => clearInterval(interval)
-  }, [open, qrValue])
+  // Antes había animación de "glitch" que generaba el QR durante 5s con data
+  // random + jitter. El dueño la pidió fuera. Ahora el QR aparece directamente
+  // con su valor real desde que abre el modal.
+  const generatingQr = false
+  const scrambledQr  = ''
   // Auto-fit del título al ancho del contenedor: medimos el ancho natural
   // del título sin wrap y calculamos el font-size que lo hace ocupar el
   // 100% del ancho. Re-corre cuando el título cambia, en open, o en resize.
+  // (Antes había también un useEffect que randomizaba título/subtítulo/color
+  // al abrir; eliminado al hacer fijos esos valores.)
   const titleRef = useRef(null)
   const [titleFontSize, setTitleFontSize] = useState(48)
-  useEffect(() => {
-    if (open) {
-      const tPool = audience === 'merchant' ? TITLES_MERCHANT : TITLES_CLIENT
-      const sPool = audience === 'merchant' ? SUBS_MERCHANT : SUBS_CLIENT
-      setTitle(tPool[Math.floor(Math.random() * tPool.length)])
-      setSubtitle(sPool[Math.floor(Math.random() * sPool.length)])
-      // Color de fondo: violeta o fucsia pleno, aleatorio en cada apertura.
-      setBgColor(BG_COLORS[Math.floor(Math.random() * BG_COLORS.length)])
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [open, audience])
   // Cálculo del font-size para que el título "estire" hasta ocupar el ancho
   // de su contenedor. Estrategia: arrancamos con un tamaño base, medimos el
   // ancho natural sin wrap, y escalamos linealmente hasta que matchee el
@@ -2936,7 +2860,16 @@ function Navbar({ setView, cityName, user, profile, onLogin, onLogout, currentVi
   function pickRole(r) {
     try { sessionStorage.setItem('benefix:signupAs', r) } catch {}
     setRoleAskerOpen(false)
-    onLogin && onLogin()
+    // Cliente: directo al OAuth, después va a su panel de cliente.
+    // Negocio: directo al OAuth, post-callback va al wizard register-commerce
+    // para que termine de configurar el local. skipPrompt:true evita el
+    // segundo confirm (el user ya eligió su rol explícitamente).
+    if (!onLogin) return
+    if (r === 'merchant') {
+      onLogin({ nextView: 'register-commerce', skipPrompt: true })
+    } else {
+      onLogin({ skipPrompt: true })
+    }
   }
 
   // ── Shared style helpers ──────────────────────────────────────────────────
@@ -2990,6 +2923,27 @@ function Navbar({ setView, cityName, user, profile, onLogin, onLogout, currentVi
         <div style={{ cursor:'pointer' }} onClick={() => setView('home')}><Logo /></div>
         <div style={{ display:'flex', gap:8, alignItems:'center' }}>
           {cityName && <span style={{ fontSize:11, color:C.mist, padding:'4px 10px', borderRadius:99, background:C.bg3, border:`1px solid ${C.rim}`, display:'inline-flex', alignItems:'center', gap:4 }}><MapPin size={10} color={C.mist} strokeWidth={2} />{cityName}</span>}
+          {/* Link "Registrarse" — texto plano sin botón visual. Dispara el
+              mismo roleAsker que "Entrar" porque el OAuth de Google crea la
+              cuenta automáticamente si el user no existe. La diferencia es
+              de copy/mental model: el user que viene a registrarse busca
+              "Registrarse" antes que "Entrar". */}
+          <button
+            onClick={() => setRoleAskerOpen(true)}
+            style={{
+              background: 'transparent',
+              border: 'none',
+              color: 'rgba(255,255,255,0.78)',
+              fontFamily: FN, fontSize: 13, fontWeight: 600,
+              cursor: 'pointer',
+              padding: '4px 6px',
+              transition: 'color 160ms ease',
+            }}
+            onMouseEnter={e => { e.currentTarget.style.color = '#fff' }}
+            onMouseLeave={e => { e.currentTarget.style.color = 'rgba(255,255,255,0.78)' }}
+          >
+            Registrarse
+          </button>
           <GBtn sm onClick={() => setRoleAskerOpen(true)}>Entrar</GBtn>
         </div>
       </nav>
@@ -3034,7 +2988,7 @@ function Navbar({ setView, cityName, user, profile, onLogin, onLogout, currentVi
               </div>
             </div>
 
-            {/* Soy cliente */}
+            {/* Registrarme como cliente */}
             <button
               onClick={() => pickRole('client')}
               style={{
@@ -3058,7 +3012,7 @@ function Navbar({ setView, cityName, user, profile, onLogin, onLogout, currentVi
               </div>
               <div style={{ flex:1, minWidth:0 }}>
                 <div style={{ fontFamily:FN, fontSize:14, fontWeight:800, marginBottom:2 }}>
-                  Soy cliente
+                  Registrarme como cliente
                 </div>
                 <div style={{ fontSize:12, color:C.mist, lineHeight:1.4 }}>
                   Sumar puntos en mis comercios favoritos.
@@ -3066,7 +3020,7 @@ function Navbar({ setView, cityName, user, profile, onLogin, onLogout, currentVi
               </div>
             </button>
 
-            {/* Soy un negocio */}
+            {/* Registrarme como negocio */}
             <button
               onClick={() => pickRole('merchant')}
               style={{
@@ -3089,7 +3043,7 @@ function Navbar({ setView, cityName, user, profile, onLogin, onLogout, currentVi
               </div>
               <div style={{ flex:1, minWidth:0 }}>
                 <div style={{ fontFamily:FN, fontSize:14, fontWeight:800, marginBottom:2 }}>
-                  Soy un negocio
+                  Registrarme como negocio
                 </div>
                 <div style={{ fontSize:12, color:C.mist, lineHeight:1.4 }}>
                   Crear mi club y fidelizar clientes.
@@ -3100,6 +3054,36 @@ function Navbar({ setView, cityName, user, profile, onLogin, onLogout, currentVi
             <div style={{ fontSize:11, color:'rgba(255,255,255,0.32)', textAlign:'center', marginTop:14, lineHeight:1.5 }}>
               Después podés activar el otro rol desde tu cuenta.
             </div>
+
+            {/* Link "Ya estoy registrado" — para usuarios que ya tienen cuenta
+                y no quieren pasar por el selector de rol. Llama onLogin()
+                directo (Google OAuth); si el user ya tiene rol asignado,
+                el callback lo lleva a su panel sin más preguntas. */}
+            <button
+              onClick={() => {
+                setRoleAskerOpen(false)
+                onLogin && onLogin()
+              }}
+              style={{
+                display: 'block',
+                width: '100%',
+                marginTop: 10,
+                padding: '8px 6px',
+                background: 'transparent',
+                border: 'none',
+                color: 'rgba(255,255,255,0.55)',
+                fontFamily: FI, fontSize: 12, fontWeight: 500,
+                cursor: 'pointer',
+                textAlign: 'center',
+                textDecoration: 'underline',
+                textUnderlineOffset: '3px',
+                transition: 'color 160ms ease',
+              }}
+              onMouseEnter={e => { e.currentTarget.style.color = '#fff' }}
+              onMouseLeave={e => { e.currentTarget.style.color = 'rgba(255,255,255,0.55)' }}
+            >
+              Ya estoy registrado
+            </button>
           </div>
         </div>
       )}
@@ -3131,28 +3115,38 @@ function Navbar({ setView, cityName, user, profile, onLogin, onLogout, currentVi
             style={{ ...BTN, ...bs('scanner','qr'), cursor: currentView==='scanner' ? 'default' : 'pointer' }}>
             <ScanLine size={16} color={ic('scanner')} strokeWidth={2} />
           </button>
-          {/* El ojo siempre invoca onOwnerProfile (redirige a /club/[slug]?edit=1).
-              Importante: aunque currentView fuera 'commerce' (legacy), igual lo
-              dejamos clickeable para que el usuario pueda salir de esa vista
-              vieja si quedó atrapado por un lastView persistido. */}
-          <button title="Vista pública de mi club" onClick={onOwnerProfile}
-            style={{ ...BTN, ...bs('commerce','building'), cursor: 'pointer' }}>
-            <Eye size={16} color={currentView==='commerce' ? '#fff' : 'rgba(255,255,255,0.70)'} strokeWidth={2} />
-          </button>
-          {/* "Mi Negocio" — solo se enciende con gradient cuando es la vista activa,
-              igual que el resto de los botones del navbar. Consistencia visual.
-              Cada click (esté o no en commerce-settings) re-dispara el intent
-              picker: el dueño re-tappea el icono cuando arranca un nuevo flow
-              en el local (un nuevo cliente entró, una nueva compra recién
-              arrancó), así que el picker tiene que aparecer cada vez. */}
-          <button title="Mi Negocio"
-            onClick={() => {
-              if (currentView !== 'commerce-settings') setView('commerce-settings')
-              window.dispatchEvent(new CustomEvent('benefix:merchant-intent'))
-            }}
-            style={{ ...BTN, ...bs('commerce-settings'), cursor: 'pointer' }}>
-            <Store size={16} color={ic('commerce-settings')} strokeWidth={2} />
-          </button>
+          {/* Eye + Store: íconos "hermanados" del dueño. Comparten paleta violeta
+              tanto en estado inactivo (icono violeta sin relleno, fondo neutro)
+              como en activo (fondo violeta sólido, icono blanco). Eso los
+              distingue visualmente de los demás íconos del navbar (Scanner /
+              User / Logout) que usan el gradiente naranja-violeta de marca,
+              y le indica al user que son funciones específicas del modo dueño. */}
+          {(() => {
+            const eyeActive   = currentView === 'commerce'
+            const storeActive = currentView === 'commerce-settings'
+            // Style del activo del kit dueño: violeta sólido con glow, ícono blanco.
+            const VIOLET_ACTIVE = {
+              background: 'linear-gradient(135deg, #7C3AED 0%, #BD4BF8 100%)',
+              border: 'none',
+              boxShadow: '0 2px 10px rgba(189,75,248,0.55)',
+            }
+            return (
+              <>
+                <button title="Vista pública de mi club" onClick={onOwnerProfile}
+                  style={{ ...BTN, ...(eyeActive ? VIOLET_ACTIVE : NEUTRAL), cursor: 'pointer' }}>
+                  <Eye size={16} color={eyeActive ? '#fff' : 'rgba(189,75,248,0.85)'} strokeWidth={2} />
+                </button>
+                <button title="Mi Negocio"
+                  onClick={() => {
+                    if (currentView !== 'commerce-settings') setView('commerce-settings')
+                    window.dispatchEvent(new CustomEvent('benefix:merchant-intent'))
+                  }}
+                  style={{ ...BTN, ...(storeActive ? VIOLET_ACTIVE : NEUTRAL), cursor: 'pointer' }}>
+                  <Store size={16} color={storeActive ? '#fff' : 'rgba(189,75,248,0.85)'} strokeWidth={2} />
+                </button>
+              </>
+            )
+          })()}
           <button title="Mi cuenta" onClick={goToAccount}
             style={{ ...BTN, ...bsAccount, cursor: 'pointer' }}>
             <User size={16} color={icAccount} strokeWidth={2} />
@@ -4952,6 +4946,24 @@ function Footer({ setView }) {
           {/* Contacto */}
           <div>
             <div style={col}>Contacto</div>
+            {/* WhatsApp directo — primer item con su ícono oficial verde
+                porque queremos destacarlo como canal de soporte humano. */}
+            <a
+              href="https://wa.me/5492302351158"
+              target="_blank"
+              rel="noopener noreferrer"
+              style={{ ...link, display:'inline-flex', alignItems:'center', gap:8 }}
+              onMouseEnter={e => e.currentTarget.style.color = C.white}
+              onMouseLeave={e => e.currentTarget.style.color = 'rgba(255,255,255,0.50)'}
+            >
+              <svg width={14} height={14} viewBox="0 0 24 24" aria-hidden="true" style={{ flexShrink:0 }}>
+                <path
+                  fill="#25D366"
+                  d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51l-.57-.01c-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.876 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.626.712.226 1.36.195 1.872.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.075-.124-.272-.198-.57-.347zM12.05 21.785h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884zm8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413z"
+                />
+              </svg>
+              WhatsApp · 230 235-1158
+            </a>
             {[
               { label:'hola@benefix.app',  href:'mailto:hola@benefix.app' },
               { label:'Centro de ayuda',   href:'#' },
@@ -7399,6 +7411,39 @@ function WalletCardFront({ club, colors, onFlip, visible }) {
           </div>
         </div>
       </div>
+
+      {/* Botón "Ir al club" en el frente — absoluta en bottom-right.
+          Mismo estilo que el botón del dorso. stopPropagation evita que
+          el click dispare el flip; el resto de la card sigue clickeable. */}
+      {commerce?.slug && (
+        <a
+          href={`/club/${commerce.slug}`}
+          onClick={e => {
+            e.stopPropagation()
+            if (typeof window !== 'undefined') {
+              window.dispatchEvent(new CustomEvent('benefix:club-nav', { detail: { name: commerce.name } }))
+            }
+          }}
+          style={{
+            position:'absolute',
+            right:14, bottom:12,
+            zIndex:6,
+            display:'inline-flex', alignItems:'center', gap:5,
+            background:'linear-gradient(135deg, #7C3AED, #BD4BF8)',
+            border:'1px solid rgba(255,255,255,0.22)',
+            borderRadius:9999,
+            padding:'6px 11px',
+            color:'#fff',
+            fontFamily:FN, fontSize:11, fontWeight:800,
+            letterSpacing:'.02em',
+            textDecoration:'none',
+            boxShadow:'0 6px 16px rgba(189,75,248,0.50)',
+          }}
+        >
+          <span>Ir al club</span>
+          <ArrowRight size={11} strokeWidth={2.6} color="#fff" />
+        </a>
+      )}
     </div>
   )
 }
@@ -7606,12 +7651,10 @@ function WalletCard({ club, variant, isActive, onScrollTo, isMock, userId }) {
       userTouchedRef.current = false
       return
     }
-    // Si el user ya vio el coachmark en sesiones anteriores, NO disparamos
-    // el auto-flip de descubrimiento ni el overlay oscuro. Solo la primera
-    // vez. Esto convierte la pantalla en "silenciosa" para usuarios
-    // recurrentes.
-    if (flipHintAlreadySeen()) return
-    // Primera vez: animación de descubrimiento + hint.
+    // Animación de descubrimiento — corre CADA vez que se abre la pantalla
+    // (antes estaba gateada por localStorage para mostrarla solo la primera
+    // vez, pero el dueño la quiere siempre como guía visual). A los 2s flip
+    // al dorso, vuelve al frente a los 4s, hint oscuro a los 4.8s.
     const flipTimer = setTimeout(() => {
       if (!userTouchedRef.current) setFlipped(true)
     }, 2000)
@@ -7633,11 +7676,9 @@ function WalletCard({ club, variant, isActive, onScrollTo, isMock, userId }) {
   const flipCard = isActive
     ? () => {
         userTouchedRef.current = true
-        // Si era la primera vez (showFlipHint visible o auto-flip todavía
-        // corriendo), marcamos la flag de "ya visto" en localStorage para
-        // que la próxima vez NO se vuelvan a disparar la animación de
-        // descubrimiento ni el overlay oscuro.
-        markFlipHintSeen()
+        // Marcamos que el user ya tocó la card — los timers del useEffect
+        // chequean userTouchedRef antes de seguir, así no interrumpen al
+        // usuario si tappea durante la animación de descubrimiento.
         setShowFlipHint(false)
         setFlipped(f => !f)
       }
@@ -13166,6 +13207,13 @@ function CommerceSettingsView({ user, profile, setView, onLogout, onOwnerProfile
   // (180° hacia arriba) con un stagger animado. Tap en un ícono navega a
   // ese tab + cierra el radial. Tap en el backdrop también cierra.
   const renderRadialMenu = () => {
+    // DESHABILITADO: el menú radial mobile fue reemplazado por un nav
+    // horizontal scrolleable arriba (MerchantTopTabs, abajo del navbar
+    // global). Lo dejamos como función vacía para no romper los call sites
+    // que ya están en el JSX. Se puede borrar definitivamente si nadie lo
+    // necesita más (junto con el botón cog que lo abría).
+    return null
+    // eslint-disable-next-line no-unreachable
     if (!isMobile) return null
     const items = MENU
     const N      = items.length
@@ -14209,7 +14257,7 @@ function CommerceSettingsView({ user, profile, setView, onLogout, onOwnerProfile
             })}
           </div>
         )}
-      <div style={{ flex:1, maxWidth: isDesktop ? 1120 : 520, width:'100%', margin:'0 auto', padding: isMobile ? '24px 0 80px' : '32px 0 80px', overflowX:'hidden', minWidth:0 }}>
+      <div style={{ flex:1, maxWidth: isDesktop ? 1120 : 520, width:'100%', margin:'0 auto', padding: isMobile ? '70px 0 80px' : '32px 0 80px', overflowX:'hidden', minWidth:0 }}>
         {/* Padding lateral para el contenido principal — el slider rompe
             con margin negativo para llegar a los bordes. */}
         <div style={{ padding: isMobile ? '0 18px' : '0 28px', maxWidth:'100%', minWidth:0, overflowX:'hidden' }}>
@@ -14775,15 +14823,31 @@ function CommerceSettingsView({ user, profile, setView, onLogout, onOwnerProfile
                     )}
                   </div>
 
-                  {/* Título grande tipo "$19" — z-index 2 para vivir por encima
-                      del glow y del borde gradient (que están z-index 0 y 1). */}
+                  {/* Título + ícono guía inline. Ícono minimalista (solo línea,
+                      blanco semi-transparente, sin relleno) que da contexto
+                      visual al user sobre qué configura cada card. */}
                   <div style={{
-                    fontFamily: FN, fontSize: 26, fontWeight: 900,
-                    color: '#fff', marginBottom: 2, lineHeight: 1.15,
-                    letterSpacing: '-0.025em',
+                    display: 'flex', alignItems: 'center', gap: 10,
+                    marginBottom: 2,
                     position: 'relative', zIndex: 2,
                   }}>
-                    {item.title}
+                    <Icon
+                      size={22}
+                      strokeWidth={1.6}
+                      color="rgba(255,255,255,0.85)"
+                      style={{ flexShrink: 0 }}
+                    />
+                    <div style={{
+                      fontFamily: FN, fontSize: 21, fontWeight: 900,
+                      color: '#fff', lineHeight: 1.15,
+                      letterSpacing: '-0.02em',
+                      // El título puede ser de 1 o 2 líneas según el espacio.
+                      // Para que no rompa el layout horizontal con el ícono,
+                      // dejamos que wrappee dentro de su flex item.
+                      minWidth: 0,
+                    }}>
+                      {item.title}
+                    </div>
                   </div>
 
                   {/* Subtítulo descriptivo */}
@@ -14970,10 +15034,89 @@ function CommerceSettingsView({ user, profile, setView, onLogout, onOwnerProfile
 
         </div>{/* fin del container "carpeta" pestañas + contenido */}
 
-        {/* Radial menu — botón cog en el bottom-center que abre arco de
-            íconos. También está disponible en el intent picker para que
-            el dueño pueda saltar a cualquier pestaña sin pasar por una
-            tarjeta. */}
+        {/* MerchantTopTabs — nav horizontal scrolleable abajo del navbar
+            global, reemplaza el radial menu mobile. Estilo similar al
+            ClientBottomNav (Mi billetera / Mis beneficios / etc): pills
+            con icono + label, underline gradient en el activo, scroll
+            horizontal nativo. Se monta solo en mobile. */}
+        {isMobile && !intentPickerActive && (
+          <nav style={{
+            position: 'fixed',
+            top: 62,
+            left: 0, right: 0,
+            zIndex: 199,
+            background: 'rgba(8, 4, 18, 0.82)',
+            backdropFilter: 'blur(16px) saturate(180%)',
+            WebkitBackdropFilter: 'blur(16px) saturate(180%)',
+            borderBottom: '1px solid rgba(255,255,255,0.08)',
+          }}>
+            <div style={{
+              display: 'flex',
+              overflowX: 'auto',
+              gap: 4,
+              padding: '8px 12px',
+              scrollbarWidth: 'none',
+              msOverflowStyle: 'none',
+              WebkitOverflowScrolling: 'touch',
+            }}>
+              {MENU.map(m => {
+                const I = MENU_ICONS[m.id]
+                const active = tab === m.id
+                const isLocked = m.locked
+                const isProLocked = m.pro && planKey !== 'pro'
+                const dimmed = isLocked || isProLocked
+                const colorBase = dimmed ? 'rgba(255,255,255,0.35)' : 'rgba(255,255,255,0.55)'
+                const color = active ? '#fff' : colorBase
+                const iconColor = active ? C.v : colorBase
+                return (
+                  <button
+                    key={m.id}
+                    onClick={() => {
+                      if (isLocked) { setUpgradeModal('promotions'); _setTabRaw(m.id) } else _setTabRaw(m.id)
+                      setIntentPickerActive(false)
+                      setCameFromConfigCards(false)
+                    }}
+                    style={{
+                      flexShrink: 0,
+                      padding: '8px 10px 10px',
+                      background: 'transparent',
+                      border: 'none',
+                      cursor: 'pointer',
+                      color,
+                      fontFamily: FN, fontSize: 12,
+                      fontWeight: active ? 800 : 600,
+                      position: 'relative',
+                      display: 'inline-flex', alignItems: 'center', gap: 6,
+                      whiteSpace: 'nowrap',
+                      transition: 'color 200ms ease',
+                    }}
+                  >
+                    {I && <I size={13} strokeWidth={active ? 2.4 : 2} color={iconColor} />}
+                    <span>{m.label}</span>
+                    {isProLocked && (
+                      <span style={{
+                        fontSize: 8, fontWeight: 800, color: PLANS.pro.color,
+                        background: `${PLANS.pro.color}1F`,
+                        border: `1px solid ${PLANS.pro.color}55`,
+                        borderRadius: 99, padding: '1px 4px',
+                        fontFamily: FN, letterSpacing: '.04em',
+                      }}>PRO</span>
+                    )}
+                    {active && (
+                      <span style={{
+                        position: 'absolute', bottom: 0, left: '15%', right: '15%',
+                        height: 2, borderRadius: 2,
+                        background: 'linear-gradient(135deg, #FE5000, #BD4BF8)',
+                      }} />
+                    )}
+                  </button>
+                )
+              })}
+            </div>
+          </nav>
+        )}
+        {/* Radial menu deshabilitado en este sprint — se mantenía como cog
+            flotante. Ahora la navegación mobile vive arriba en MerchantTopTabs. */}
         {renderRadialMenu()}
 
         {/* Wizard amigable de configuración — se abre cuando el dueño toca
@@ -19179,6 +19322,7 @@ function ScannerView({ user, profile, setView }) {
   // Canje
   const [redeemStep,    setRedeemStep]    = useState(null)  // null | 'selecting' | 'confirming' | 'done'
   const [redeemPrizes,  setRedeemPrizes]  = useState([])
+  const [redeemTab,     setRedeemTab]     = useState('available')  // 'available' | 'unavailable'
   const [selectedPrize, setSelectedPrize] = useState(null)
   const [redeeming,     setRedeeming]     = useState(false)
   const [redeemResult,  setRedeemResult]  = useState(null)
@@ -19294,6 +19438,8 @@ function ScannerView({ user, profile, setView }) {
         promoId:      data.discount_redeemed.promo_id,
         expiresAt:    data.discount_redeemed.expires_at,
         membershipId: data.membership_id,
+        // value (el % del descuento) para mostrar en el modal de renovar.
+        value:        data.discount_redeemed.value,
       })
     }
   }
@@ -19305,8 +19451,12 @@ function ScannerView({ user, profile, setView }) {
       .eq('commerce_id', commerceId)
       .eq('active', true)
       .order('cost', { ascending: true })
-    const eligible = (data || []).filter(p => p.cost <= (result?.points_now || 0))
-    setRedeemPrizes(eligible)
+    // Traemos TODOS los premios activos del comercio (no filtramos por
+    // saldo). El UI los separa en dos pestañas: "Disponibles" (cost ≤ saldo)
+    // y "No disponibles" (cost > saldo). El dueño puede ver cuánto le falta
+    // al cliente para los premios más caros.
+    setRedeemPrizes(data || [])
+    setRedeemTab('available')
     setRedeemStep('selecting')
   }
 
@@ -19931,7 +20081,7 @@ function ScannerView({ user, profile, setView }) {
             </div>
             <div style={{ fontFamily:FN, fontSize:11, fontWeight:800, color:C.v, letterSpacing:'.08em', textTransform:'uppercase', marginBottom:6 }}>Descuento canjeado</div>
             <div style={{ fontFamily:FN, fontSize:18, fontWeight:900, color:C.white, lineHeight:1.3, marginBottom:10 }}>
-              ¿Renovar descuento para próxima compra?
+              ¿Renovar {renewDiscountPromo.value ? `${renewDiscountPromo.value}% OFF` : 'descuento'} para próxima compra?
             </div>
             <div style={{ fontSize:12, color:C.mist, marginBottom:18, lineHeight:1.55 }}>El cliente acaba de usar su descuento. Si renovás, le queda otro cupón activo con la misma fecha de vencimiento.</div>
             <div style={{ display:'flex', gap:10 }}>
@@ -20174,38 +20324,116 @@ function ScannerView({ user, profile, setView }) {
       )}
 
       {/* ── SELECCIÓN DE PREMIO ── */}
-      {result?.ok && redeemStep === 'selecting' && (
+      {result?.ok && redeemStep === 'selecting' && (() => {
+        const balance = result.points_now || 0
+        const availablePrizes   = redeemPrizes.filter(p => p.cost <= balance)
+        const unavailablePrizes = redeemPrizes.filter(p => p.cost > balance)
+        const visiblePrizes     = redeemTab === 'available' ? availablePrizes : unavailablePrizes
+        return (
         <PCard style={{ padding:20 }}>
           <button onClick={() => setRedeemStep(null)}
             style={{ background:'none', border:'none', color:C.mist, fontSize:12, cursor:'pointer', padding:'0 0 12px', display:'block' }}>
             ← Volver
           </button>
           <div style={{ fontFamily:FN, fontSize:17, fontWeight:900, color:C.white, marginBottom:4 }}>¿Qué premio canjeás?</div>
-          <div style={{ fontSize:12, color:C.mist, marginBottom:18 }}>
+          <div style={{ fontSize:12, color:C.mist, marginBottom:14 }}>
             {result.member_name} · {result.points_now} {unitIcon} disponibles
           </div>
-          {redeemPrizes.length === 0 ? (
-            <div style={{ textAlign:'center', padding:'20px 0', color:C.dust, fontSize:13 }}>
-              No hay premios disponibles para este saldo.
+
+          {/* Tabs Disponibles / No disponibles */}
+          <div style={{ display:'flex', gap:0, borderBottom:`1px solid ${C.rim}`, marginBottom:16 }}>
+            {[
+              { id:'available',   label:'Disponibles',    count: availablePrizes.length,   color: C.ok },
+              { id:'unavailable', label:'No disponibles', count: unavailablePrizes.length, color: C.mist },
+            ].map(t => {
+              const active = redeemTab === t.id
+              return (
+                <button key={t.id} onClick={() => setRedeemTab(t.id)}
+                  style={{
+                    flex:1, padding:'10px 8px',
+                    background:'transparent', border:'none',
+                    cursor:'pointer', position:'relative',
+                    color: active ? C.white : C.mist,
+                    fontFamily:FN, fontSize:13,
+                    fontWeight: active ? 800 : 600,
+                    display:'inline-flex', alignItems:'center', justifyContent:'center', gap:6,
+                  }}>
+                  {t.label}
+                  <span style={{
+                    fontSize:10, fontWeight:800,
+                    padding:'2px 7px', borderRadius:99,
+                    background: active ? `${t.color}26` : 'rgba(255,255,255,0.05)',
+                    color: active ? t.color : C.dust,
+                    border:`1px solid ${active ? t.color + '55' : C.rim}`,
+                    fontFamily:FN, lineHeight:1,
+                  }}>{t.count}</span>
+                  {active && (
+                    <span style={{
+                      position:'absolute', bottom:-1, left:'15%', right:'15%',
+                      height:2, borderRadius:2,
+                      background: t.color,
+                    }} />
+                  )}
+                </button>
+              )
+            })}
+          </div>
+
+          {visiblePrizes.length === 0 ? (
+            <div style={{ textAlign:'center', padding:'24px 8px', color:C.dust, fontSize:13, lineHeight:1.55 }}>
+              {redeemTab === 'available'
+                ? 'Con el saldo actual no llega a ningún premio. Mirá la pestaña "No disponibles" para ver cuánto le falta.'
+                : '¡Llega a todos los premios! Mirá la pestaña "Disponibles" para canjear.'}
             </div>
           ) : (
             <div style={{ display:'flex', flexDirection:'column', gap:10, marginBottom:16 }}>
-              {redeemPrizes.map(p => (
-                <button key={p.id} onClick={() => { setSelectedPrize(p); setRedeemStep('confirming') }}
-                  style={{ display:'flex', alignItems:'center', justifyContent:'space-between', padding:'14px 16px', background: selectedPrize?.id===p.id ? `${C.v}22` : C.bg3, border:`1.5px solid ${selectedPrize?.id===p.id ? C.v : C.rim}`, borderRadius:12, cursor:'pointer', textAlign:'left', transition:'background 130ms ease, border-color 130ms ease, color 130ms ease, transform 130ms cubic-bezier(0.23,1,0.32,1)' }}>
-                  <div>
-                    <div style={{ fontFamily:FN, fontSize:13, fontWeight:700, color:C.white, marginBottom:2, display:'flex', alignItems:'center', gap:5 }}><Gift size={12} color={C.mist} strokeWidth={2} />{p.name}</div>
-                    <div style={{ fontSize:11, color:unitColor }}>{p.cost} {unitLabel}</div>
-                  </div>
-                  <div style={{ fontSize:11, color:C.ok, fontWeight:700 }}>
-                    Quedarán: {result.points_now - p.cost} {unitIcon}
-                  </div>
-                </button>
-              ))}
+              {visiblePrizes.map(p => {
+                const isAvailable = p.cost <= balance
+                const missing     = isAvailable ? 0 : (p.cost - balance)
+                return (
+                  <button key={p.id}
+                    onClick={isAvailable ? () => { setSelectedPrize(p); setRedeemStep('confirming') } : undefined}
+                    disabled={!isAvailable}
+                    style={{
+                      display:'flex', alignItems:'center', justifyContent:'space-between',
+                      padding:'14px 16px',
+                      background: !isAvailable
+                        ? 'rgba(255,255,255,0.02)'
+                        : selectedPrize?.id === p.id
+                          ? `${C.v}22`
+                          : C.bg3,
+                      border: `1.5px solid ${!isAvailable ? 'rgba(255,255,255,0.06)' : (selectedPrize?.id===p.id ? C.v : C.rim)}`,
+                      borderRadius:12,
+                      cursor: isAvailable ? 'pointer' : 'default',
+                      textAlign:'left',
+                      opacity: isAvailable ? 1 : 0.65,
+                      transition:'background 130ms ease, border-color 130ms ease, transform 130ms cubic-bezier(0.23,1,0.32,1)',
+                    }}>
+                    <div>
+                      <div style={{ fontFamily:FN, fontSize:13, fontWeight:700, color: isAvailable ? C.white : C.pearl, marginBottom:2, display:'flex', alignItems:'center', gap:5 }}>
+                        <Gift size={12} color={isAvailable ? C.mist : C.dust} strokeWidth={2} />
+                        {p.name}
+                      </div>
+                      <div style={{ fontSize:11, color: isAvailable ? unitColor : C.dust }}>{p.cost} {unitLabel}</div>
+                    </div>
+                    {isAvailable ? (
+                      <div style={{ fontSize:11, color:C.ok, fontWeight:700 }}>
+                        Quedarán: {balance - p.cost} {unitIcon}
+                      </div>
+                    ) : (
+                      <div style={{ fontSize:11, color:C.dust, fontWeight:700, textAlign:'right' }}>
+                        Le faltan<br />
+                        <span style={{ color:'rgba(255,255,255,0.55)', fontSize:13, fontFamily:FN }}>{missing} {unitIcon}</span>
+                      </div>
+                    )}
+                  </button>
+                )
+              })}
             </div>
           )}
         </PCard>
-      )}
+        )
+      })()}
 
       {/* ── CONFIRMACIÓN ── */}
       {result?.ok && redeemStep === 'confirming' && selectedPrize && (
@@ -20986,9 +21214,21 @@ export default function App() {
     const { data } = await supabase.from('profiles').select('*').eq('id', userId).single()
     setProfile(data)
 
+    // Si el user YA está registrado (onboarding_completed=true), ignoramos
+    // cualquier loginNext / signupAs huérfano. Esto cubre el caso "el user
+    // ya tiene cuenta y por error tocó 'Registrarme como cliente/negocio'":
+    // asumimos que se equivocó y lo mandamos directo a su panel sin
+    // mostrarle ningún wizard ni MinimalSignupModal.
+    const alreadyOnboarded = data?.onboarding_completed === true
+    if (alreadyOnboarded) {
+      try { sessionStorage.removeItem('benefix:loginNext') } catch {}
+      try { sessionStorage.removeItem('benefix:signupAs') } catch {}
+    }
+
     // Login intent — si el usuario llegó al login desde "Soy comercio" u otro CTA
     // que setea benefix:loginNext, lo respetamos y va a esa vista. Tiene
     // prioridad sobre el restoreView porque expresa la intención más reciente.
+    // NO aplicamos loginNext si ya está onboarded (se borró arriba).
     let consumedLoginNext = false
     try {
       const next = sessionStorage.getItem('benefix:loginNext')
@@ -21104,8 +21344,13 @@ export default function App() {
   async function handleLogin(opts = {}) {
     // Interstitial antes de redirigir a Google. Si el usuario tocó "Entrar"
     // sin querer puede volver acá sin pasar por el picker de Google.
-    const ok = await showLoginPrompt()
-    if (!ok) return
+    // skipPrompt: cuando el caller ya capturó intención explícita (ej: el
+    // user eligió "Registrarme como cliente/negocio" en el modal de roles),
+    // evitamos un segundo confirm redundante y vamos directo a Google.
+    if (!opts.skipPrompt) {
+      const ok = await showLoginPrompt()
+      if (!ok) return
+    }
     // Si el caller indicó intención de ir a una vista específica post-login
     // (ej: "Soy comercio" → register-commerce), la persistimos para que
     // loadProfile la consuma después del OAuth callback.
