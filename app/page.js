@@ -6572,7 +6572,7 @@ function BenefixWatermark({ color = 'rgba(255,255,255,0.09)', size = 120 }) {
 
 // ─── WALLET CARD FRONT ───────────────────────────────────────────────────────
 function WalletCardFront({ club, colors, onFlip, visible }) {
-  const { commerce, points, stars } = club
+  const { commerce, points, stars, client_promotions } = club
   const isStars  = commerce?.prog_type === 'stars'
   const bal      = isStars ? (stars || 0) : (points || 0)
   const unit     = isStars ? 'ESTRELLAS' : 'PUNTOS'
@@ -6584,15 +6584,28 @@ function WalletCardFront({ club, colors, onFlip, visible }) {
   const activePromo = (commerce?.promotions || []).find(p =>
     p.active && (!p.expires_at || new Date(p.expires_at) > now)
   )
-  const promoBadge  = activePromo?.type === 'discount_next' ? `${activePromo.value}% OFF` : null
-  const promoSub    = activePromo?.type === 'discount_next' ? 'PRÓX. VISITA' : null
+  // Cupón del cliente — solo cuenta si está activo y no venció. Si quedó
+  // como 'used' o 'declined' (porque el dueño no le renovó tras canjearlo
+  // en el último scan), o si pasó la fecha, no le mostramos el badge en
+  // la tarjeta. Así el flujo es: nuevo cliente → cupón visible → escanea
+  // y dueño no renueva → cupón se va de la tarjeta.
+  const clientPromo = activePromo?.type === 'discount_next'
+    ? (client_promotions || []).find(cp =>
+        cp.promotion_id === activePromo?.id
+        && cp.status === 'active'
+        && (!cp.expires_at || new Date(cp.expires_at) > now)
+      )
+    : null
+  const showDiscountBadge = activePromo?.type === 'discount_next' && !!clientPromo
+  const promoBadge  = showDiscountBadge ? `${activePromo.value}% OFF` : null
+  const promoSub    = showDiscountBadge ? 'PRÓX. VISITA' : null
   const doublePromo = (commerce?.promotions || []).find(p =>
     p.active && p.type === 'double_points' && (!p.expires_at || new Date(p.expires_at) > now))
 
   // Counting animation — runs each time front becomes visible
   const [displayBal,      setDisplayBal]      = useState(0)
   const [displayPromoVal, setDisplayPromoVal] = useState(0)
-  const promoVal = activePromo?.type === 'discount_next' ? (activePromo.value || 0) : 0
+  const promoVal = showDiscountBadge ? (activePromo.value || 0) : 0
 
   useEffect(() => {
     if (!visible) { setDisplayBal(0); setDisplayPromoVal(0); return }
@@ -6791,14 +6804,26 @@ function WalletCardBack({ club, colors, onFlip, userId }) {
         && (!cp.expires_at || new Date(cp.expires_at) > now)
       )
     : null
-  const promoExpiry = (clientPromo?.expires_at || activePromo?.expires_at)
+
+  // Para mostrar el BADGE en la tarjeta:
+  //   • discount_next: solo si el cliente tiene un cupón activo en
+  //     client_promotions. Si la última visita usó el cupón y el dueño
+  //     NO lo renovó, queda 'used' y este check da null → el badge
+  //     desaparece como pidió el flujo de UX.
+  //   • double_points: aplica a todos los clientes del club mientras
+  //     la promo del comercio esté activa (no se otorga per-cliente),
+  //     así que se muestra sin chequear client_promotions.
+  const showPromoBadge = activePromo && (
+    activePromo.type === 'discount_next' ? !!clientPromo : true
+  )
+  const promoExpiry = showPromoBadge && (clientPromo?.expires_at || activePromo?.expires_at)
     ? new Date(clientPromo?.expires_at || activePromo.expires_at).toLocaleDateString('es-AR', { day:'2-digit', month:'2-digit', year:'2-digit' })
     : null
 
-  const promoBadge = activePromo
+  const promoBadge = showPromoBadge
     ? (activePromo.type === 'discount_next' ? `${activePromo.value}% OFF` : '×2 PTS')
     : null
-  const promoSub = activePromo
+  const promoSub = showPromoBadge
     ? (activePromo.type === 'discount_next' ? 'PRÓX. VISITA' : 'SUMA DOBLE')
     : null
 
@@ -10724,7 +10749,7 @@ function HoursEditor({ value, onChange }) {
 }
 
 // ─── PANEL DEL COMERCIO ───────────────────────────────────────────────────────
-function CommerceSettingsView({ user, profile, setView, onLogout, onOwnerProfile, initialTab }) {
+function CommerceSettingsView({ user, profile, setView, onLogout, onOwnerProfile, initialTab, initialMember }) {
   const [commerce, setCommerce]           = useState(null)
   const [loading, setLoading]             = useState(true)
   const [saving, setSaving]               = useState(false)
@@ -11161,6 +11186,15 @@ function CommerceSettingsView({ user, profile, setView, onLogout, onOwnerProfile
     // (fidelizacion, etc.) por si quedó un valor en localStorage. Los viejos
     // se redirigen al nuevo via fallback al cargar.
     const VALID_TABS = ['dashboard','clientes','recompensas','premios','canjes','mensajes','analisis','historial','configuracion','planes','fidelizacion','promociones','reportes','segmentacion','automatizaciones']
+    // Si llegamos con un `member` deep-link (notif del dueño "Visita de
+    // [Cliente]") forzamos siempre la tab "clientes" — sin importar qué
+    // initialTab vino. El detail se abre en useEffect de abajo cuando
+    // los members terminen de cargar.
+    if (initialMember) {
+      setTab('clientes')
+      setIntentPickerActive(false)
+      return
+    }
     // initialTab del deep-link tiene prioridad sobre lastTab guardado en
     // localStorage. Cuando el dueño tap a la notif "Canjes pendientes" llega
     // con `?tab=canjes` y queremos que aterrice ahí, no en su último tab.
@@ -11174,6 +11208,28 @@ function CommerceSettingsView({ user, profile, setView, onLogout, onOwnerProfile
     const saved = localStorage.getItem('benefix:commerceTab')
     if (saved && VALID_TABS.includes(saved)) setTab(saved)
   }, [])
+
+  // Abrir el detail de un cliente puntual cuando llegamos con
+  // ?member=<membership_id>. Esperamos a que `members` esté cargado
+  // (viene async desde /api/commerce-clients) y entonces buscamos al
+  // miembro y disparamos viewMember(). Usamos una ref para que solo
+  // corra UNA vez (sino al cerrar el detail se reabriría loopeando).
+  const initialMemberConsumedRef = useRef(false)
+  useEffect(() => {
+    if (!initialMember || initialMemberConsumedRef.current) return
+    if (!members || members.length === 0) return
+    const target = members.find(m => m.id === initialMember || m.user_id === initialMember)
+    if (!target) {
+      // Si no aparece (ej: el ID no matchea con la lista cargada), igual
+      // marcamos como consumido para no quedar reintentando.
+      initialMemberConsumedRef.current = true
+      return
+    }
+    initialMemberConsumedRef.current = true
+    // viewMember se define más abajo en el componente; lo invocamos aquí
+    // de forma diferida para que React lo tenga disponible.
+    setTimeout(() => { viewMember(target) }, 60)
+  }, [initialMember, members])
 
   // Persist tab on change (skip the initial mount render)
   useEffect(() => {
@@ -19771,7 +19827,7 @@ function DevToolbar({ user, profile, onRoleChange }) {
 // deep-link en vez del default. Limpiamos la URL inmediatamente para
 // que no quede pegada al refrescar.
 const _DEEP_LINK = (() => {
-  if (typeof window === 'undefined') return { view: null, tab: null, upgrade: null }
+  if (typeof window === 'undefined') return { view: null, tab: null, upgrade: null, member: null }
   try {
     const params = new URLSearchParams(window.location.search)
     const v = params.get('view')
@@ -19780,11 +19836,15 @@ const _DEEP_LINK = (() => {
     // después del checkout de la suscripción. El App lo lee y muestra un
     // modal de confirmación en lugar de aterrizar en la home pelada.
     const u = params.get('upgrade')
-    if (v || t || u) {
+    // member=<membership_id> → usado por la notif "Visita de [Cliente]"
+    // que mandamos al dueño desde /api/scan. Cuando tap, lo lleva al
+    // panel → tab clientes → con el cliente puntual seleccionado.
+    const mb = params.get('member')
+    if (v || t || u || mb) {
       window.history.replaceState(null, '', window.location.pathname)
     }
-    return { view: v || null, tab: t || null, upgrade: u || null }
-  } catch { return { view: null, tab: null, upgrade: null } }
+    return { view: v || null, tab: t || null, upgrade: u || null, member: mb || null }
+  } catch { return { view: null, tab: null, upgrade: null, member: null } }
 })()
 
 // Helper: lee y consume los query params de deep-link. Combina dos
@@ -19806,16 +19866,18 @@ function readFreshDeepLink() {
     const urlV = params.get('view')
     const urlT = params.get('tab')
     const urlU = params.get('upgrade')
-    if (urlV || urlT || urlU) {
+    const urlMb = params.get('member')
+    if (urlV || urlT || urlU || urlMb) {
       // Por si quedó algo en la URL (caso raro: el IIFE no corrió),
       // limpiamos.
       window.history.replaceState(null, '', window.location.pathname)
     }
     // Merge: URL gana si tiene valor, sino caemos al _DEEP_LINK del IIFE.
     return {
-      view:    urlV || _DEEP_LINK.view    || null,
-      tab:     urlT || _DEEP_LINK.tab     || null,
-      upgrade: urlU || _DEEP_LINK.upgrade || null,
+      view:    urlV  || _DEEP_LINK.view    || null,
+      tab:     urlT  || _DEEP_LINK.tab     || null,
+      upgrade: urlU  || _DEEP_LINK.upgrade || null,
+      member:  urlMb || _DEEP_LINK.member  || null,
     }
   } catch { return _DEEP_LINK }
 }
@@ -19829,7 +19891,7 @@ export default function App() {
   // capturado del lado cliente se pierde y CUALQUIER navegación con
   // `?view=X` aterriza en home. La solución es arrancar siempre en
   // 'home' y bumpearlo recién cuando React ya está vivo en el cliente.
-  const [deepLink, setDeepLink] = useState({ view: null, tab: null, upgrade: null })
+  const [deepLink, setDeepLink] = useState({ view: null, tab: null, upgrade: null, member: null })
   const [view,     setView]     = useState('home')
   // upgradeResult: 'success' | 'pending' | 'failure' | null — vino del query
   // ?upgrade=... que MP setea al redirigir post-checkout. Mostramos un modal
@@ -20255,7 +20317,7 @@ export default function App() {
       {view === 'scanner'            && <ScannerView user={user} profile={profile} setView={navigate} />}
       {view === 'admin'              && <AdminView cities={cities} profile={profile} />}
       {view === 'register-commerce'  && <RegisterCommerceView setView={navigate} cities={cities} user={user} onLoginRequired={() => handleLogin({ nextView: 'register-commerce' })} onProfileRefresh={() => loadProfile(user.id)} />}
-      {view === 'commerce-settings'  && <CommerceSettingsView user={user} profile={profile} setView={navigate} onLogout={handleLogout} onOwnerProfile={handleOwnerProfile} initialTab={deepLink.tab} />}
+      {view === 'commerce-settings'  && <CommerceSettingsView user={user} profile={profile} setView={navigate} onLogout={handleLogout} onOwnerProfile={handleOwnerProfile} initialTab={deepLink.tab} initialMember={deepLink.member} />}
       {/* Chat de soporte con IA — visible cuando hay sesión. Pasa role según
           la vista activa: comerciante en commerce-settings, cliente en el resto.
           El buzón de sugerencias va apilado encima del botón del chat. */}

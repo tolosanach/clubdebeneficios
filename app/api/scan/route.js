@@ -295,21 +295,50 @@ export async function POST(request) {
 
     // ─── NOTIFICACIONES ─────────────────────────────────────────────────────
     // Mandamos siempre 2 notifs cruzadas: una al cliente y una al dueño.
-    // Cliente: "sumaste X en Y", Dueño: "registraste visita de Z".
-    // Si además se canjeó un descuento, notificamos eso también.
+    // Cliente: "sumaste X en Y", Dueño: notif rica con nombre completo,
+    // saldo actual, info de descuento + link directo a la ficha del
+    // cliente en el panel (commerce-settings → clientes → ese miembro).
     try {
       const commerceName = commerce.name || 'el negocio'
-      const clientFirstName = (profile.full_name || profile.name || 'Cliente').split(' ')[0]
+      const clientFullName = profile.full_name || profile.name || 'Cliente'
+      const clientFirstName = clientFullName.split(' ')[0]
       const clubLink = commerce.slug ? `/club/${commerce.slug}` : '/'
       const isStars = commerce.prog_type === 'stars'
       const unitLabel = isStars ? 'estrella' : 'punto'
+      const unitLabelPlural = isStars ? 'estrellas' : 'puntos'
       const earned = isStars ? (skip_star ? 0 : 1) : ptsPerVisit
+
+      // Calcular info de descuento del cliente (si tiene cupón activo
+      // discount_next listo para usar en su PRÓXIMA visita, después de
+      // la actual). Esto es lo que el dueño quiere saber al escanear.
+      // Si el cliente acaba de canjear su único cupón en esta visita,
+      // ya quedó como 'used' arriba y por lo tanto activeCoupons está
+      // vacío — la notif dirá "sin descuento pendiente" hasta que el
+      // dueño le renueve.
+      const nextCoupon = activeCoupons[0] || null
+      const discountTxt = nextCoupon
+        ? `Tiene ${nextCoupon.value}% OFF para su próxima visita.`
+        : 'No tiene descuento pendiente.'
+
+      // Link a la ficha del cliente en el panel comerciante. El ID que
+      // pasamos es el membership_id (no el user_id) — coincide con la
+      // forma en que el panel identifica clientes en su lista.
+      const memberLink = `/?view=commerce-settings&tab=clientes&member=${membership.id}`
 
       // Visita registrada (no notificamos si skip_star y no hay descuento — el evento es invisible)
       if (earned > 0 || discountRedeemed) {
         const earnedTxt = earned > 0
           ? `Sumaste ${earned} ${unitLabel}${earned !== 1 ? (isStars ? 's' : 's') : ''}`
           : 'Tu visita quedó registrada'
+        const ownerBody = (() => {
+          // Línea 1: cuánto sumó + saldo actual.
+          const earnedDetail = isStars
+            ? `Le sumaste ${earned > 0 ? '1 estrella' : '0 estrellas'}.`
+            : `Le sumaste ${ptsPerVisit} puntos.`
+          const balanceDetail = `Saldo: ${newTotal} ${unitLabelPlural}.`
+          // Línea 2: estado del descuento.
+          return `${earnedDetail} ${balanceDetail} ${discountTxt}`
+        })()
         await notifyBoth({
           clientUserId: user_id,
           ownerUserId:  commerce.owner_id,
@@ -324,12 +353,22 @@ export async function POST(request) {
           },
           owner: {
             type:  'visit',
-            title: `Registraste una visita de ${clientFirstName}`,
-            body:  isStars
-              ? `Le sumaste ${earned > 0 ? '1 estrella' : '0 estrellas'} (lleva ${newTotal} en total).`
-              : `Le sumaste ${ptsPerVisit} puntos (saldo: ${newTotal}).`,
-            link:  '/',
-            metadata: { commerce_id, user_id, kind: 'visit' },
+            // Title con el nombre COMPLETO del cliente (no solo el primer
+            // nombre) para que el dueño identifique al instante.
+            title: `Visita de ${clientFullName}`,
+            body:  ownerBody,
+            // Link a la ficha del cliente en el panel — un tap y abre el
+            // detail con visitas + canjes + opción de otorgar promos.
+            link:  memberLink,
+            metadata: {
+              commerce_id,
+              user_id,
+              membership_id: membership.id,
+              kind: 'visit',
+              balance: newTotal,
+              has_discount: !!nextCoupon,
+              discount_value: nextCoupon?.value || null,
+            },
           },
         })
       }
