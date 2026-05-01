@@ -7,12 +7,28 @@
 html {
   scroll-behavior: smooth;
   overscroll-behavior-y: none;
+  /* overflow-x: hidden a nivel HTML + BODY para que NUNCA se scrollee la
+     página entera horizontalmente. Si algún componente interno tiene su
+     propio scroll-x (slider de cards, marquees), igual funciona porque
+     ese scroll vive dentro del contenedor del componente. Esto arregla
+     el bug donde el panel de "Configurá tu negocio" en mobile se podía
+     mover de costado y mostraba las tarjetas cortadas. */
+  overflow-x: hidden;
   /* Bump global del 6% — escala todo proporcionalmente (texto, padding,
      iconos) para que se sienta más grande sin tener que tocar cada estilo
      en px hardcodeado. Si algún layout rompe puntualmente, ajustar inline. */
   zoom: 1.06;
 }
-body { background: var(--bg-primary); color: #F0EAFF; -webkit-font-smoothing: antialiased; font-family: 'Inter', system-ui, sans-serif; overscroll-behavior-y: none; }
+body {
+  background: var(--bg-primary);
+  color: #F0EAFF;
+  -webkit-font-smoothing: antialiased;
+  font-family: 'Inter', system-ui, sans-serif;
+  overscroll-behavior-y: none;
+  overflow-x: hidden;
+  width: 100%;
+  max-width: 100vw;
+}
 
 /* Utility: tipografía display italic-serif para acentos del marketing.
    Inspirada en el lenguaje de las landings cinematográficas (FIND

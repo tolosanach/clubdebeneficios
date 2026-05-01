@@ -13696,33 +13696,53 @@ function CommerceSettingsView({ user, profile, setView, onLogout, onOwnerProfile
             laterales por encima del scroll horizontal de las cards. */}
         {sortedItems.length > 0 && (
         <div style={{ position: 'relative' }}>
+        {/* En MOBILE no usamos scroll horizontal nativo — pasamos a un
+            slider state-driven: solo la card en `configSlideIdx` se
+            renderea (las demás no están en el DOM), y un touch-handler
+            detecta swipe izquierda/derecha para incrementar/decrementar
+            el índice. Esto elimina cualquier estado intermedio donde
+            dos cards se vean cortadas a la vez (que era el "ventana
+            cortada" reportado).
+            En DESKTOP seguimos con grid normal (todas visibles). */}
         <div
           ref={configSliderRef}
-          onScroll={isDesktop ? undefined : (e) => {
-            const el = e.currentTarget
-            const cards = el.querySelectorAll('[data-config-card]')
-            // Detecta cuál card está más cerca del centro del viewport del slider.
-            const center = el.scrollLeft + el.clientWidth / 2
-            let closestIdx = 0, closestDist = Infinity
-            cards.forEach((c, i) => {
-              const cardCenter = c.offsetLeft + c.offsetWidth / 2
-              const dist = Math.abs(cardCenter - center)
-              if (dist < closestDist) { closestDist = dist; closestIdx = i }
-            })
-            if (closestIdx !== configSlideIdx) setConfigSlideIdx(closestIdx)
+          onTouchStart={isDesktop ? undefined : (e) => {
+            const t = e.touches[0]
+            const el = configSliderRef.current
+            if (!el) return
+            el.__tStartX = t.clientX
+            el.__tStartY = t.clientY
+            el.__tActive = true
+          }}
+          onTouchEnd={isDesktop ? undefined : (e) => {
+            const el = configSliderRef.current
+            if (!el?.__tActive) return
+            el.__tActive = false
+            const t = e.changedTouches[0]
+            const dx = t.clientX - (el.__tStartX || 0)
+            const dy = t.clientY - (el.__tStartY || 0)
+            // Considerar swipe horizontal solo si dx supera dy (no
+            // confundir con scroll vertical de la página).
+            if (Math.abs(dx) > 50 && Math.abs(dx) > Math.abs(dy) * 1.5) {
+              if (dx < 0 && configSlideIdx < sortedItems.length - 1) {
+                setConfigSlideIdx(configSlideIdx + 1)
+              } else if (dx > 0 && configSlideIdx > 0) {
+                setConfigSlideIdx(configSlideIdx - 1)
+              }
+            }
           }}
           style={isDesktop ? {
             // Desktop: bloque normal sin scroll horizontal — usa el grid
             // interno de abajo. Sin scrollSnap ni overflow auto.
             paddingBottom: 8,
           } : {
-            overflowX: 'auto',
+            // Mobile: contenedor fijo, sin scroll horizontal. La card
+            // activa toma todo el ancho. El touchEnd handler de arriba
+            // se encarga de cambiar el índice por swipe.
+            overflowX: 'hidden',
             overflowY: 'visible',
-            scrollSnapType: 'x mandatory',
-            WebkitOverflowScrolling: 'touch',
-            scrollbarWidth: 'none',
-            msOverflowStyle: 'none',
             paddingBottom: 8,
+            touchAction: 'pan-y',
           }}
           className="config-slider"
         >
@@ -13751,13 +13771,19 @@ function CommerceSettingsView({ user, profile, setView, onLogout, onOwnerProfile
             paddingLeft: 28,
             paddingRight: 28,
           } : {
-            display: 'flex',
-            gap: 12,
-            paddingLeft: 18,
-            paddingRight: 18,
-            width: 'max-content',
+            // Mobile: contenedor de la card activa, full-width sin
+            // padding lateral (la card ya respeta los bordes del carpeta).
+            display: 'block',
+            paddingLeft: 0,
+            paddingRight: 0,
           }}>
-            {sortedItems.map((item, idx) => {
+            {/* En mobile filtramos a la card activa solamente — sin scroll
+                horizontal, sin peek, una card a la vez. En desktop renderea
+                todas en grid. */}
+            {(isDesktop ? sortedItems : sortedItems.slice(configSlideIdx, configSlideIdx + 1)).map((item, mapIdx) => {
+              // En mobile siempre estamos en idx 0 de la slice; usamos el
+              // configSlideIdx real para data-config-card y stagger anim.
+              const idx = isDesktop ? mapIdx : configSlideIdx
               const Icon = item.Icon
               const done = item.done
               const isJustCompleted = !!recentlyCompletedItems[item.id]
@@ -13773,9 +13799,13 @@ function CommerceSettingsView({ user, profile, setView, onLogout, onOwnerProfile
                   data-config-card={idx}
                   onClick={() => navigateConfigItem(item)}
                   style={{
-                    width: isDesktop ? '100%' : `min(calc(100vw - 56px), 380px)`,
+                    // Mobile: card 100% del slider container (que ya tiene
+                    // el ancho correcto del carpeta inner). Como solo se
+                    // renderea UNA card a la vez (state-driven), no hay
+                    // overflow ni peek posibles. Desktop: 100% de su slot
+                    // del grid.
+                    width: '100%',
                     flexShrink: 0,
-                    scrollSnapAlign: isDesktop ? 'none' : 'center',
                     // Base oscura + gradient violeta sutil al fondo. Sin
                     // tinte fuerte como antes; el "lujo" lo dan el inner
                     // border-radius grande, el divider con glow y el CTA
@@ -13957,15 +13987,14 @@ function CommerceSettingsView({ user, profile, setView, onLogout, onOwnerProfile
         {/* ── Flechas laterales del slider ──
             Sobrepuestas en los bordes izquierdo y derecho del wrapper
             position:relative. Se desactivan en los extremos.
-            En desktop no las mostramos: usamos grid, no slider. */}
+            En desktop no las mostramos: usamos grid, no slider.
+            En mobile (state-driven slider) cambian configSlideIdx — sin
+            scrollIntoView porque ya no hay scroll horizontal. */}
         {!isDesktop && sortedItems.length > 1 && (
           <>
             <button
               onClick={() => {
-                const el = configSliderRef.current
-                if (!el) return
-                const target = el.querySelector(`[data-config-card="${Math.max(0, configSlideIdx - 1)}"]`)
-                if (target) target.scrollIntoView({ behavior: 'smooth', inline: 'center', block: 'nearest' })
+                if (configSlideIdx > 0) setConfigSlideIdx(configSlideIdx - 1)
               }}
               aria-label="Anterior"
               disabled={configSlideIdx === 0}
@@ -13989,10 +14018,7 @@ function CommerceSettingsView({ user, profile, setView, onLogout, onOwnerProfile
             </button>
             <button
               onClick={() => {
-                const el = configSliderRef.current
-                if (!el) return
-                const target = el.querySelector(`[data-config-card="${Math.min(sortedItems.length - 1, configSlideIdx + 1)}"]`)
-                if (target) target.scrollIntoView({ behavior: 'smooth', inline: 'center', block: 'nearest' })
+                if (configSlideIdx < sortedItems.length - 1) setConfigSlideIdx(configSlideIdx + 1)
               }}
               aria-label="Siguiente"
               disabled={configSlideIdx === sortedItems.length - 1}
@@ -14030,12 +14056,7 @@ function CommerceSettingsView({ user, profile, setView, onLogout, onOwnerProfile
             return (
               <button
                 key={i}
-                onClick={() => {
-                  const el = configSliderRef.current
-                  if (!el) return
-                  const card = el.querySelector(`[data-config-card="${i}"]`)
-                  if (card) card.scrollIntoView({ behavior: 'smooth', inline: 'center', block: 'nearest' })
-                }}
+                onClick={() => setConfigSlideIdx(i)}
                 aria-label={`Ir a la tarjeta ${i + 1}`}
                 style={{
                   width: active ? 28 : 7, height: 7, borderRadius: 99,
