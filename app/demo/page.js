@@ -12,9 +12,9 @@
 
 import { useState } from 'react'
 import {
-  ArrowRight, Bell, Check, ChevronRight, Coffee, CreditCard, Gift, Percent,
-  Pizza, RefreshCw, Scissors, Settings, Sparkles, Star, Store, TrendingUp,
-  User, UserPlus, Users, Wallet, X, Zap, Plus, Phone, MapPin, Instagram, Clock,
+  ArrowRight, Bell, Camera, Check, ChevronRight, Clock, Coffee, CreditCard,
+  Gift, MapPin, Percent, Phone, Pizza, Plus, RefreshCw, Scissors, Settings,
+  Sparkles, Star, Store, TrendingUp, User, UserPlus, Users, Wallet, X, Zap,
 } from 'lucide-react'
 
 // ─── PALETTE (idéntica a app/page.js) ────────────────────────────────────────
@@ -1191,10 +1191,10 @@ function CommerceDemo() {
                 </span>
               </div>
               {[
-                { Icon: Phone,     label: 'Teléfono / WhatsApp', val: DEMO_COMMERCE.phone },
-                { Icon: Instagram, label: 'Instagram',           val: DEMO_COMMERCE.instagram },
-                { Icon: MapPin,    label: 'Dirección',           val: DEMO_COMMERCE.address },
-                { Icon: Clock,     label: 'Horarios',            val: DEMO_COMMERCE.hours },
+                { Icon: Phone,  label: 'Teléfono / WhatsApp', val: DEMO_COMMERCE.phone },
+                { Icon: Camera, label: 'Instagram',           val: DEMO_COMMERCE.instagram },
+                { Icon: MapPin, label: 'Dirección',           val: DEMO_COMMERCE.address },
+                { Icon: Clock,  label: 'Horarios',            val: DEMO_COMMERCE.hours },
               ].map((f, i) => (
                 <div key={i} style={{
                   display: 'flex', alignItems: 'flex-start', gap: 11,
