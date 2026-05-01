@@ -19348,11 +19348,15 @@ function ScannerView({ user, profile, setView }) {
   }
 
   // Owner aceptó: la compra alcanza el mínimo → escanear normalmente.
+  // OJO: NO podemos llamar startCamera() acá porque captura el `scanGate`
+  // viejo en su closure y volvería a abrir el gate. Abrimos la cámara
+  // directamente, replicando el final de startCamera() sin la validación.
   function handleGateYes() {
     setSkipStar(false)
-    setScanGate('confirmed')
-    // Reabrir camera flow con la confirmación lista.
-    setTimeout(() => startCamera(), 50)
+    setScanGate(null)
+    setCameraError('')
+    setResult(null)
+    setCameraActive(true)
   }
   // Owner aceptó: la compra NO alcanza el mínimo. Dos caminos:
   // - Si hay descuento activo: ofrecer aplicarlo igual (modal next).
@@ -19369,9 +19373,13 @@ function ScannerView({ user, profile, setView }) {
     }
   }
   // Owner aceptó aplicar descuento aunque no se sume estrella → escanear.
+  // Misma observación que handleGateYes: abrimos cámara directamente para
+  // evitar el closure-capture de scanGate en startCamera().
   function handleApplyDiscountOnly() {
-    setScanGate('confirmed')
-    setTimeout(() => startCamera(), 50)
+    setScanGate(null)
+    setCameraError('')
+    setResult(null)
+    setCameraActive(true)
   }
 
   // Decisión del dueño sobre el cupón canjeado: renovar o no.
