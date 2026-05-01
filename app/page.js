@@ -8202,6 +8202,95 @@ function ClientView({ setView, user, profile, onLogout, initialTab }) {
     }
   }, [user])
 
+  // ── Realtime: nos suscribimos a cambios en promotions y client_promotions
+  // de los clubes donde el cliente está joineado. Cualquier UPDATE/INSERT/DELETE
+  // dispara un refresh para que la card refleje al toque los cambios del dueño
+  // (modificó el %, eliminó la promo, otorgó un cupón nuevo, etc.).
+  //
+  // Requiere Realtime habilitado para esas tablas en el dashboard de Supabase.
+  // Si no está habilitado, los `subscribe()` igual no fallan — solo no llegan
+  // eventos. Para cubrir ese caso agregamos un polling cada 60s como red de
+  // seguridad: así aunque Realtime esté apagado, el cliente eventualmente ve
+  // los cambios sin tener que cerrar y abrir la app.
+  //
+  // memberships?.length se incluye en deps (no el array entero) para evitar
+  // recrear los channels en cada render que no agregue/saque clubes.
+  const commerceIdsKey = useMemo(
+    () => (memberships || []).map(m => m.commerce?.id || m.commerce_id).filter(Boolean).sort().join(','),
+    [memberships]
+  )
+  useEffect(() => {
+    if (!user?.id) return
+    const ids = commerceIdsKey ? commerceIdsKey.split(',') : []
+    // Aunque no haya memberships, mantenemos el polling fallback corto por si
+    // se otorga un cupón nuevo desde el panel del comercio.
+
+    let cancelled = false
+    const channels = []
+
+    if (ids.length > 0) {
+      try {
+        // Cambios en promotions de los comercios donde estoy joineado:
+        // alta, modificación de %, descripción, días, vencimiento, active.
+        const promoChannel = supabase
+          .channel(`rt-promos-${user.id}`)
+          .on('postgres_changes', {
+            event: '*',
+            schema: 'public',
+            table: 'promotions',
+            filter: `commerce_id=in.(${ids.join(',')})`,
+          }, () => {
+            if (!cancelled) setRefreshTick(t => t + 1)
+          })
+          .subscribe()
+        channels.push(promoChannel)
+      } catch (err) {
+        // Si Realtime falla por config, seguimos con polling abajo.
+        console.warn('[ClientView] Realtime promos no disponible:', err?.message || err)
+      }
+    }
+
+    try {
+      // Cambios en client_promotions de este usuario: cuando le otorgan un
+      // cupón, cuando se marca como used, cuando se renueva, etc.
+      const cpChannel = supabase
+        .channel(`rt-cp-${user.id}`)
+        .on('postgres_changes', {
+          event: '*',
+          schema: 'public',
+          table: 'client_promotions',
+          filter: `user_id=eq.${user.id}`,
+        }, () => {
+          if (!cancelled) setRefreshTick(t => t + 1)
+        })
+        .subscribe()
+      channels.push(cpChannel)
+    } catch (err) {
+      console.warn('[ClientView] Realtime client_promotions no disponible:', err?.message || err)
+    }
+
+    // Polling fallback: cada 60s, refrescar suave. Si Realtime trae el evento
+    // antes, no pasa nada (solo refrescamos un poquito más seguido). Si no
+    // está habilitado, este es el único refresh automático que tenemos.
+    const pollId = setInterval(() => {
+      if (cancelled) return
+      // Solo polling cuando la pestaña está visible — sin sentido refrescar
+      // si la app está minimizada (cuando vuelva, el visibilitychange ya
+      // dispara un refresh).
+      if (typeof document !== 'undefined' && document.visibilityState === 'visible') {
+        setRefreshTick(t => t + 1)
+      }
+    }, 60000)
+
+    return () => {
+      cancelled = true
+      clearInterval(pollId)
+      channels.forEach(ch => {
+        try { supabase.removeChannel(ch) } catch {}
+      })
+    }
+  }, [user?.id, commerceIdsKey, supabase])
+
   // Sync form when profile prop updates
   useEffect(() => {
     setAcctForm({ name: profile?.name || '', phone: profile?.phone || '' })
@@ -16472,6 +16561,33 @@ function CommerceSettingsView({ user, profile, setView, onLogout, onOwnerProfile
                         </div>
                       )}
                     </div>
+
+                    {/* CTA grande "Ver catálogo de premios" — debajo del wrapper
+                        unificado del sistema activo. Lleva a la pestaña Premios
+                        con cameFromTab para que aparezca el "Volver a recompensas". */}
+                    <button onClick={() => setTab('premios', 'recompensas')}
+                      style={{
+                        width:'100%',
+                        marginTop:14,
+                        padding:'14px 18px',
+                        background:`linear-gradient(135deg, ${activeSys.color}1f 0%, ${activeSys.color}33 100%)`,
+                        border:`1px solid ${activeSys.color}66`,
+                        borderRadius:14,
+                        color:'#fff',
+                        fontFamily:FN, fontSize:13.5, fontWeight:700,
+                        letterSpacing:'.01em',
+                        cursor:'pointer',
+                        display:'inline-flex', alignItems:'center', justifyContent:'center', gap:8,
+                        boxShadow:`0 6px 20px ${activeSys.color}33`,
+                        transition:'transform 180ms ease, box-shadow 220ms ease',
+                      }}
+                      onMouseEnter={e => { e.currentTarget.style.transform = 'translateY(-1px)'; e.currentTarget.style.boxShadow = `0 8px 24px ${activeSys.color}55` }}
+                      onMouseLeave={e => { e.currentTarget.style.transform = 'translateY(0)'; e.currentTarget.style.boxShadow = `0 6px 20px ${activeSys.color}33` }}
+                    >
+                      <Gift size={15} color={activeSys.color} strokeWidth={2.4} />
+                      Ver catálogo de premios
+                      <ArrowRight size={14} strokeWidth={2.4} />
+                    </button>
                   </div>
                 )
               })()}
@@ -16945,6 +17061,22 @@ function CommerceSettingsView({ user, profile, setView, onLogout, onOwnerProfile
             const expired = new Date(p.expires_at) < new Date()
             return expired ? 'Vencida' : `Activa hasta el ${fmtDate(p.expires_at)}`
           }
+          // Formatea el array `days` de una promo `double_points` a texto
+          // legible: [1] → "Lunes", [1,5] → "Lunes y Viernes", [1,2,3] →
+          // "Lunes, Martes y Miércoles". Vacío o los 7 días → "Todos los días".
+          function formatDays(days) {
+            if (!Array.isArray(days) || days.length === 0 || days.length === 7) {
+              return 'Todos los días'
+            }
+            const NAMES = ['Domingo', 'Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado']
+            // Orden semanal Lu Ma Mi Ju Vi Sa Do (no orden numérico crudo).
+            const ORDER = [1, 2, 3, 4, 5, 6, 0]
+            const sorted = [...days].sort((a, b) => ORDER.indexOf(a) - ORDER.indexOf(b))
+            const names = sorted.map(d => NAMES[d])
+            if (names.length === 1) return names[0]
+            if (names.length === 2) return `${names[0]} y ${names[1]}`
+            return names.slice(0, -1).join(', ') + ' y ' + names[names.length - 1]
+          }
           // Preview dinámico
           const previewExpires = newPromo.type === 'double_points'
             ? (newPromo.custom_date ? new Date(newPromo.custom_date + 'T23:59:59').toISOString() : null)
@@ -17024,6 +17156,26 @@ function CommerceSettingsView({ user, profile, setView, onLogout, onOwnerProfile
                       onChange={e => setEditingPromo(prev => ({ ...prev, _newDesc: e.target.value }))}
                       style={{ width:'100%', background:C.bg3, border:`1px solid ${C.rim}`, borderRadius:8, padding:'9px 11px', fontSize:13, color:C.pearl, fontFamily:'inherit', boxSizing:'border-box', marginBottom:14 }}
                     />
+                    {/* Porcentaje (solo discount_next): permite cambiar el valor del
+                        descuento sin tener que eliminar y recrear la promo. Min 1,
+                        max 100 — la validación final se hace al guardar. */}
+                    {ep.type === 'discount_next' && (
+                      <>
+                        <label style={{ display:'block', fontSize:11, fontWeight:700, color:C.mist, textTransform:'uppercase', letterSpacing:'.05em', marginBottom:6 }}>% de descuento</label>
+                        <div style={{ position:'relative', marginBottom:14 }}>
+                          <input
+                            type="number"
+                            min={1}
+                            max={100}
+                            inputMode="numeric"
+                            defaultValue={ep.value ?? ''}
+                            onChange={e => setEditingPromo(prev => ({ ...prev, _newValue: e.target.value }))}
+                            style={{ width:'100%', background:C.bg3, border:`1px solid ${C.rim}`, borderRadius:8, padding:'9px 32px 9px 11px', fontSize:13, color:C.pearl, fontFamily:'inherit', boxSizing:'border-box' }}
+                          />
+                          <span style={{ position:'absolute', right:12, top:'50%', transform:'translateY(-50%)', fontSize:13, color:C.mist, fontFamily:FN, fontWeight:600, pointerEvents:'none' }}>%</span>
+                        </div>
+                      </>
+                    )}
                     {/* Fecha de vencimiento (solo si ya tiene expires_at — promos relativas no se editan acá) */}
                     {ep.expiration_type !== 'relative' && (
                       <>
@@ -17046,6 +17198,14 @@ function CommerceSettingsView({ user, profile, setView, onLogout, onOwnerProfile
                         if (ep._newDesc !== undefined && ep._newDesc !== ep.description) patch.description = ep._newDesc
                         if (ep._newDate !== undefined && ep._newDate !== initialDate) {
                           patch.expires_at = ep._newDate ? new Date(ep._newDate + 'T23:59:59').toISOString() : null
+                        }
+                        // Porcentaje: solo aplica a discount_next. Validamos que sea
+                        // un entero entre 1 y 100 para no guardar cualquier cosa.
+                        if (ep.type === 'discount_next' && ep._newValue !== undefined) {
+                          const n = parseInt(ep._newValue, 10)
+                          if (Number.isFinite(n) && n >= 1 && n <= 100 && n !== ep.value) {
+                            patch.value = n
+                          }
                         }
                         if (Object.keys(patch).length > 0) updatePromo(ep.id, patch)
                         else setEditingPromo(null)
@@ -17119,6 +17279,12 @@ function CommerceSettingsView({ user, profile, setView, onLogout, onOwnerProfile
                               <StatusLED active={true} />
                             </div>
                             <div style={{ fontSize:11, color:C.mist }}>{expiresLabel(p)}</div>
+                            {p.type === 'double_points' && (
+                              <div style={{ fontSize:11, color:typeCol, marginTop:3, fontWeight:600, display:'inline-flex', alignItems:'center', gap:4 }}>
+                                <Zap size={10} strokeWidth={2.4} />
+                                {formatDays(p.days)}
+                              </div>
+                            )}
                           </div>
                         </div>
                         <div style={{ display:'flex', gap:8, alignItems:'stretch' }}>
