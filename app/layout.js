@@ -53,7 +53,11 @@ export default function RootLayout({ children }) {
         <link rel="apple-touch-icon" href="/icons/apple-touch-icon.png" />
         <link rel="icon" type="image/png" sizes="32x32" href="/favicon.png" />
       </head>
-      <body style={{ margin: 0, padding: 0, background: '#000' }}>
+      {/* suppressHydrationWarning silencia los mismatches que vienen de
+          extensiones del browser (ColorZilla agrega `cz-shortcut-listen`,
+          Grammarly agrega `data-gr-c-s-loaded`, etc.). NO afecta a
+          mismatches reales del código nuestro — esos siguen apareciendo. */}
+      <body suppressHydrationWarning style={{ margin: 0, padding: 0, background: '#000' }}>
         {/* Blob púrpura – arriba izquierda */}
         <div style={{ position:'fixed', top:'-20%', left:'-10%', width:'60vw', height:'60vw', borderRadius:'50%', background:'radial-gradient(circle, rgba(139,92,246,0.40) 0%, rgba(139,92,246,0) 70%)', filter:'blur(80px)', zIndex:-1, pointerEvents:'none' }} />
         {/* Blob rosa – abajo derecha */}

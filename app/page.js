@@ -3642,8 +3642,49 @@ function FeaturesSection() {
       color: '#F5A623',
     },
   ]
+
+  // ── Parallax scroll-driven sobre los íconos animados de cada card.
+  // Reemplaza los keyframes infinitos `feature-icon-float-X` por un offset
+  // que depende del progreso del scroll a través de la sección. Cada capa
+  // toma un factor distinto (algunas se mueven más, otras menos, otras al
+  // revés) para crear sensación de profundidad cuando el usuario scrollea.
+  const sectionRef = useRef(null)
+  const [scrollProgress, setScrollProgress] = useState(0)
+  useEffect(() => {
+    const onScroll = () => {
+      const el = sectionRef.current
+      if (!el) return
+      const rect = el.getBoundingClientRect()
+      const center = (rect.top + rect.bottom) / 2
+      const vh = window.innerHeight || 800
+      // Progreso en unidades de "pantallas": 0 = sección centrada en viewport,
+      // negativo = sección por encima, positivo = sección por debajo.
+      // Cap a ±1.5 para que el movimiento no se vaya de la card.
+      const p = (center - vh / 2) / vh
+      setScrollProgress(Math.max(-1.5, Math.min(1.5, p)))
+    }
+    onScroll()
+    window.addEventListener('scroll', onScroll, { passive: true })
+    return () => window.removeEventListener('scroll', onScroll)
+  }, [])
+
+  // Factores de parallax (px de drift máximo por unidad de scrollProgress).
+  // Mismas direcciones que los keyframes viejos para mantener la coherencia.
+  const PARALLAX = {
+    bg:       { x: -22, y: -28 },
+    topLeft:  { x:  26, y:  20 },
+    topRight: { x:  24, y: -26 },
+    btmLeft:  { x: -28, y:  22 },
+    btmRight: { x:  20, y:  18 },
+    front:    { x:   0, y:  14 },
+  }
+  const fx = (key) => {
+    const { x, y } = PARALLAX[key]
+    return `translate(-50%, -50%) translate(${(scrollProgress * x).toFixed(1)}px, ${(scrollProgress * y).toFixed(1)}px)`
+  }
+
   return (
-    <section className="section-secondary" style={{
+    <section ref={sectionRef} className="section-secondary" style={{
       // Fondo negro puro — el dueño lo quiere así (no violeta oscuro,
       // no overlay de marca, solo negro plano).
       background: '#000',
@@ -3651,9 +3692,10 @@ function FeaturesSection() {
       position:'relative',
       overflow:'hidden',
     }}>
-      {/* Los keyframes feature-icon-float-{a,b,c,d,front} viven en
-          app/globals.css (movidos desde acá porque inline JSX <style>
-          tenía problemas de timing con SSR). */}
+      {/* Los íconos de cada card ya no usan keyframes infinitos: ahora se
+          mueven con scroll-driven parallax (ver scrollProgress + fx() arriba).
+          Los keyframes feature-icon-float-{a,b,c,d,front} siguen definidos en
+          app/globals.css por si querés volver, pero ya no se referencian. */}
       <div style={{ maxWidth:1080, margin:'0 auto', position:'relative', zIndex:2 }}>
         <div style={{ textAlign:'center', marginBottom:18 }}>
           <span className="liquid-glass" style={{ display:'inline-block', borderRadius:99, padding:'7px 18px', fontSize:11, color:'rgba(255,255,255,0.65)', fontFamily:FN, fontWeight:600, letterSpacing:'.10em', textTransform:'uppercase' }}>Qué tiene Benefix</span>
@@ -3721,9 +3763,9 @@ function FeaturesSection() {
                     strokeWidth={0.9}
                     style={{
                       position:'absolute', left:'50%', top:'50%',
-                      transform:'translate(-50%, -50%)',
+                      transform: fx('bg'),
                       opacity: 0.08,
-                      animation: 'feature-icon-float-a 11s ease-in-out infinite',
+                      transition: 'transform 80ms linear',
                       willChange: 'transform',
                     }}
                   />
@@ -3734,9 +3776,9 @@ function FeaturesSection() {
                     strokeWidth={1.2}
                     style={{
                       position:'absolute', left:'16%', top:'28%',
-                      transform:'translate(-50%, -50%)',
+                      transform: fx('topLeft'),
                       opacity: 0.18,
-                      animation: 'feature-icon-float-b 9s ease-in-out infinite',
+                      transition: 'transform 80ms linear',
                       willChange: 'transform',
                     }}
                   />
@@ -3747,9 +3789,9 @@ function FeaturesSection() {
                     strokeWidth={1.2}
                     style={{
                       position:'absolute', left:'84%', top:'32%',
-                      transform:'translate(-50%, -50%)',
+                      transform: fx('topRight'),
                       opacity: 0.16,
-                      animation: 'feature-icon-float-c 10s ease-in-out infinite 1s',
+                      transition: 'transform 80ms linear',
                       willChange: 'transform',
                     }}
                   />
@@ -3760,9 +3802,9 @@ function FeaturesSection() {
                     strokeWidth={1.5}
                     style={{
                       position:'absolute', left:'26%', top:'74%',
-                      transform:'translate(-50%, -50%)',
+                      transform: fx('btmLeft'),
                       opacity: 0.28,
-                      animation: 'feature-icon-float-d 8s ease-in-out infinite 1.6s',
+                      transition: 'transform 80ms linear',
                       willChange: 'transform',
                     }}
                   />
@@ -3773,9 +3815,9 @@ function FeaturesSection() {
                     strokeWidth={1.5}
                     style={{
                       position:'absolute', left:'74%', top:'72%',
-                      transform:'translate(-50%, -50%)',
+                      transform: fx('btmRight'),
                       opacity: 0.26,
-                      animation: 'feature-icon-float-a 8.5s ease-in-out infinite 0.8s',
+                      transition: 'transform 80ms linear',
                       willChange: 'transform',
                     }}
                   />
@@ -3788,10 +3830,10 @@ function FeaturesSection() {
                     strokeWidth={2.2}
                     style={{
                       position:'absolute', left:'50%', top:'50%',
-                      transform:'translate(-50%, -50%)',
+                      transform: fx('front'),
                       zIndex: 2,
                       filter:`drop-shadow(0 0 14px ${f.color}cc)`,
-                      animation: 'feature-icon-float-front 7s ease-in-out infinite',
+                      transition: 'transform 80ms linear',
                       willChange: 'transform',
                     }}
                   />
@@ -11495,6 +11537,63 @@ function CommerceSettingsView({ user, profile, setView, onLogout, onOwnerProfile
   // navegar programáticamente con las flechas).
   const [configSlideIdx, setConfigSlideIdx] = useState(0)
   const configSliderRef = useRef(null)
+  // ── Parallax horizontal del slider de configuración (desktop) ──
+  // Cuando la sección entra al viewport, el inner del slider se desplaza
+  // lateralmente según la posición de scroll. Da el efecto "las cards se
+  // mueven al scrollear" sin bloquear el flujo (scroll vertical normal).
+  const [configParallaxX, setConfigParallaxX] = useState(0)
+  useEffect(() => {
+    const onScroll = () => {
+      const el = configSliderRef.current
+      if (!el) return
+      const rect = el.getBoundingClientRect()
+      const center = (rect.top + rect.bottom) / 2
+      const vh = window.innerHeight || 800
+      const p = (center - vh / 2) / vh
+      const clamped = Math.max(-1.5, Math.min(1.5, p))
+      setConfigParallaxX(clamped * 60)  // hasta 60px de drift
+    }
+    onScroll()
+    window.addEventListener('scroll', onScroll, { passive: true })
+    return () => window.removeEventListener('scroll', onScroll)
+  }, [])
+
+  // ── Estado del scroll horizontal del slider (atStart / atEnd) ──
+  // Solo se usa en desktop para las flechas: cuando el user llega a un
+  // extremo, la flecha de ese lado queda disabled.
+  const [configEdges, setConfigEdges] = useState({ atStart: true, atEnd: false })
+  // Ancho real del slider, medido en runtime. Necesario para que cada card
+  // ocupe EXACTAMENTE el ancho visible (sin peek de la siguiente). Valores
+  // estimados con calc(100vw - X) no funcionan porque la "carpeta" padre
+  // tiene su propio padding que varía con el viewport.
+  const [configSliderW, setConfigSliderW] = useState(0)
+  useEffect(() => {
+    const el = configSliderRef.current
+    if (!el) return
+    const update = () => {
+      const max = el.scrollWidth - el.clientWidth
+      setConfigEdges({
+        atStart: el.scrollLeft <= 1,
+        atEnd: el.scrollLeft >= max - 1,
+      })
+      setConfigSliderW(el.clientWidth)
+    }
+    update()
+    el.addEventListener('scroll', update, { passive: true })
+    window.addEventListener('resize', update)
+    // ResizeObserver detecta cambios del slider mismo (ej: cuando el padre
+    // se redimensiona por cambios de layout interno, no solo el viewport).
+    let ro = null
+    if (typeof ResizeObserver !== 'undefined') {
+      ro = new ResizeObserver(update)
+      ro.observe(el)
+    }
+    return () => {
+      el.removeEventListener('scroll', update)
+      window.removeEventListener('resize', update)
+      if (ro) ro.disconnect()
+    }
+  }, [])
   // Flag: el dueño llegó al tab actual desde el slider de tarjetas de
   // configuración. Lo usamos para mostrar un botón "← Volver a tarjetas"
   // al tope del panel para que no pierda el contexto de qué estaba
@@ -11721,7 +11820,7 @@ function CommerceSettingsView({ user, profile, setView, onLogout, onOwnerProfile
   // wizardItemId: cuando es != null, se renderiza el ProfileItemWizard con el
   // flujo correspondiente a ese itemId (description, phone, address, social,
   // logo, cover, category, system, hours, firstPrize). Se setea desde
-  // navigateConfigItem cuando el dueño toca "Cargar ahora" en una tarjeta.
+  // navigateConfigItem cuando el dueño toca "Completar ahora" en una tarjeta.
   const [wizardItemId, setWizardItemId] = useState(null)
   // intentFilter: filtro del slider de tarjetas del intent picker. Permite
   // que el dueño elija entre ver solo "pendientes" (default) o "listas"
@@ -13787,7 +13886,7 @@ function CommerceSettingsView({ user, profile, setView, onLogout, onOwnerProfile
         done: !!commerce.prog_type && (commerce.prog_type === 'points' || (commerce.prog_min_purchase && commerce.prog_min_purchase > 0)),
         // partial: el dueño ya eligió el tipo de sistema en el alta pero le
         // falta configurar la compra mínima. La tarjeta sigue pendiente, pero
-        // el botón cambia a "Completar" en vez de "Cargar ahora".
+        // el botón cambia a "Completar" en vez de "Completar ahora".
         partial: !!commerce.prog_type && commerce.prog_type === 'stars' && !(commerce.prog_min_purchase && commerce.prog_min_purchase > 0),
         goTo: 'recompensas',
       },
@@ -14340,43 +14439,26 @@ function CommerceSettingsView({ user, profile, setView, onLogout, onOwnerProfile
             En DESKTOP seguimos con grid normal (todas visibles). */}
         <div
           ref={configSliderRef}
-          onTouchStart={isDesktop ? undefined : (e) => {
-            const t = e.touches[0]
-            const el = configSliderRef.current
-            if (!el) return
-            el.__tStartX = t.clientX
-            el.__tStartY = t.clientY
-            el.__tActive = true
-          }}
-          onTouchEnd={isDesktop ? undefined : (e) => {
-            const el = configSliderRef.current
-            if (!el?.__tActive) return
-            el.__tActive = false
-            const t = e.changedTouches[0]
-            const dx = t.clientX - (el.__tStartX || 0)
-            const dy = t.clientY - (el.__tStartY || 0)
-            // Considerar swipe horizontal solo si dx supera dy (no
-            // confundir con scroll vertical de la página).
-            if (Math.abs(dx) > 50 && Math.abs(dx) > Math.abs(dy) * 1.5) {
-              if (dx < 0 && configSlideIdx < sortedItems.length - 1) {
-                setConfigSlideIdx(configSlideIdx + 1)
-              } else if (dx > 0 && configSlideIdx > 0) {
-                setConfigSlideIdx(configSlideIdx - 1)
-              }
-            }
-          }}
-          style={isDesktop ? {
-            // Desktop: bloque normal sin scroll horizontal — usa el grid
-            // interno de abajo. Sin scrollSnap ni overflow auto.
-            paddingBottom: 8,
-          } : {
-            // Mobile: contenedor fijo, sin scroll horizontal. La card
-            // activa toma todo el ancho. El touchEnd handler de arriba
-            // se encarga de cambiar el índice por swipe.
-            overflowX: 'hidden',
+          style={{
+            // Scroll-snap horizontal nativo en TODOS los viewports.
+            // Mobile: swipe libre con snap. Desktop: scroll horizontal
+            // con trackpad/rueda + parallax extra según scroll vertical.
+            overflowX: 'auto',
             overflowY: 'visible',
+            scrollSnapType: 'x mandatory',
+            WebkitOverflowScrolling: 'touch',
+            scrollbarWidth: 'none',
+            msOverflowStyle: 'none',
             paddingBottom: 8,
-            touchAction: 'pan-y',
+            // scroll-padding hace que el snap respete el padding inicial/final
+            // del inner (16/28px). Sin esto, cuando la primera card hace snap,
+            // queda pegada al borde izquierdo del slider en lugar de respetar
+            // el padding visual y se ve cortada.
+            scrollPaddingInlineStart: '16px',
+            scrollPaddingInlineEnd: '16px',
+            // En mobile no metemos parallax (ya hay swipe nativo y meterse
+            // con su scroll generaría conflicto). En desktop arrastra el
+            // contenido un poco a medida que el user scrollea vertical.
           }}
           className="config-slider"
         >
@@ -14395,29 +14477,29 @@ function CommerceSettingsView({ user, profile, setView, onLogout, onOwnerProfile
               100% { transform: scale(1) rotate(0); opacity: 1; }
             }
           `}</style>
-          <div style={isDesktop ? {
-            // Desktop: grid responsive — 3 columnas en pantallas anchas, baja a
-            // 2 en medianas y a 1 si quedara muy chico (no debería pasar con
-            // maxWidth 1120). minmax(0, 1fr) evita overflow en titulares largos.
-            display: 'grid',
-            gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))',
+          <div style={{
+            // Flex horizontal — todas las cards en una fila scrolleable.
+            // width:max-content para que las cards definan su tamaño y no
+            // se aplasten por el flex container.
+            display: 'flex',
+            flexDirection: 'row',
             gap: 16,
-            paddingLeft: 28,
-            paddingRight: 28,
-          } : {
-            // Mobile: contenedor de la card activa, full-width sin
-            // padding lateral (la card ya respeta los bordes del carpeta).
-            display: 'block',
-            paddingLeft: 0,
-            paddingRight: 0,
+            paddingLeft: isDesktop ? 28 : 16,
+            paddingRight: isDesktop ? 28 : 16,
+            width: 'max-content',
+            // Parallax horizontal solo en desktop. Movimiento sutil tipo
+            // "las cards se deslizan a medida que scrolleás".
+            transform: isDesktop ? `translateX(${(-configParallaxX).toFixed(1)}px)` : 'none',
+            transition: 'transform 80ms linear',
+            willChange: isDesktop ? 'transform' : 'auto',
           }}>
             {/* En mobile filtramos a la card activa solamente — sin scroll
                 horizontal, sin peek, una card a la vez. En desktop renderea
                 todas en grid. */}
-            {(isDesktop ? sortedItems : sortedItems.slice(configSlideIdx, configSlideIdx + 1)).map((item, mapIdx) => {
+            {sortedItems.map((item, mapIdx) => {
               // En mobile siempre estamos en idx 0 de la slice; usamos el
-              // configSlideIdx real para data-config-card y stagger anim.
-              const idx = isDesktop ? mapIdx : configSlideIdx
+              // mapIdx ya alcanza para data-config-card y stagger en ambos viewports.
+              const idx = mapIdx
               const Icon = item.Icon
               const done = item.done
               const isJustCompleted = !!recentlyCompletedItems[item.id]
@@ -14433,32 +14515,40 @@ function CommerceSettingsView({ user, profile, setView, onLogout, onOwnerProfile
                   data-config-card={idx}
                   onClick={() => navigateConfigItem(item)}
                   style={{
-                    // Mobile: card 100% del slider container (que ya tiene
-                    // el ancho correcto del carpeta inner). Como solo se
-                    // renderea UNA card a la vez (state-driven), no hay
-                    // overflow ni peek posibles. Desktop: 100% de su slot
-                    // del grid.
-                    width: '100%',
+                    // Slider scroll-snap horizontal: en mobile el width se
+                    // mide en runtime para que UNA card ocupe exactamente el
+                    // ancho visible del slider, sin peek de la siguiente.
+                    // El fallback de 280 es para el primer render (SSR/antes
+                    // de que el ResizeObserver dispare). 32px = 16+16 padding
+                    // del inner.
+                    // scroll-snap-stop: always fuerza al browser a parar en
+                    // CADA card al hacer swipe — sin esto un fling rápido
+                    // podía saltearse cards y caer entre dos.
+                    width: isDesktop ? 320 : (configSliderW > 64 ? configSliderW - 32 : 280),
                     flexShrink: 0,
+                    scrollSnapAlign: 'start',
+                    scrollSnapStop: 'always',
                     // Base oscura + gradient violeta sutil al fondo. Sin
                     // tinte fuerte como antes; el "lujo" lo dan el inner
                     // border-radius grande, el divider con glow y el CTA
                     // grande al pie.
                     background: 'linear-gradient(180deg, #0a0612 0%, #150823 100%)',
-                    border: `1px solid ${isJustCompleted ? 'rgba(34,230,152,0.55)' : 'rgba(189,75,248,0.32)'}`,
+                    border: 'none',
                     borderRadius: 24,
                     padding: '22px 22px 0',
                     textAlign: 'left',
                     cursor: 'pointer',
                     fontFamily: 'inherit',
-                    transition: 'transform 180ms ease, border-color 280ms ease, box-shadow 280ms ease',
+                    transition: 'transform 180ms ease, box-shadow 280ms ease',
                     display: 'flex', flexDirection: 'column',
                     minHeight: 320,
                     position: 'relative',
                     overflow: 'hidden',
+                    // Box-shadow ahora suma profundidad sin borde plano. El borde
+                    // visual lo da el div interno con gradient (ver más abajo).
                     boxShadow: isJustCompleted
                       ? '0 18px 40px rgba(0,0,0,0.45), 0 0 0 2px rgba(34,230,152,0.30), 0 8px 28px rgba(34,230,152,0.45)'
-                      : '0 18px 40px rgba(0,0,0,0.45), 0 6px 18px rgba(189,75,248,0.18)',
+                      : '0 18px 40px rgba(0,0,0,0.55), 0 8px 28px rgba(189,75,248,0.22)',
                     animation: isJustCompleted
                       ? 'celebrate-card 1.4s cubic-bezier(0.16,1,0.3,1)'
                       : `fadeUp .35s ease ${idx * 0.05}s both`,
@@ -14466,19 +14556,59 @@ function CommerceSettingsView({ user, profile, setView, onLogout, onOwnerProfile
                   onMouseEnter={(e) => { e.currentTarget.style.transform = 'translateY(-2px)' }}
                   onMouseLeave={(e) => { e.currentTarget.style.transform = 'translateY(0)' }}
                 >
-                  {/* Glow ambiente al fondo de la card — halo violeta suave
-                      similar a la "luz desde abajo" del reference image. */}
-                  <div style={{
-                    position: 'absolute', bottom: -60, left: '50%',
+                  {/* Borde gradient con mask-composite — más brillante abajo
+                      (violeta → azul) y se desvanece arriba. Recrea el "rim
+                      light" del reference image. Solo cuando NO está locked
+                      ni recién completada (esos casos tienen su propio chrome). */}
+                  {!isLocked && !isJustCompleted && (
+                    <div aria-hidden style={{
+                      position: 'absolute', inset: 0,
+                      borderRadius: 'inherit',
+                      padding: 1.4,
+                      background: 'linear-gradient(180deg, rgba(255,255,255,0.06) 0%, rgba(189,75,248,0.18) 35%, rgba(189,75,248,0.55) 70%, rgba(91,141,239,0.75) 100%)',
+                      WebkitMask: 'linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0)',
+                      WebkitMaskComposite: 'xor',
+                      maskComposite: 'exclude',
+                      pointerEvents: 'none',
+                      zIndex: 1,
+                    }} />
+                  )}
+                  {/* Borde verde sutil cuando está recién completada (celebración). */}
+                  {isJustCompleted && (
+                    <div aria-hidden style={{
+                      position: 'absolute', inset: 0,
+                      borderRadius: 'inherit',
+                      border: '1.5px solid rgba(34,230,152,0.55)',
+                      pointerEvents: 'none',
+                      zIndex: 1,
+                    }} />
+                  )}
+                  {/* Borde plano para items locked (mantiene ese chrome existente). */}
+                  {isLocked && (
+                    <div aria-hidden style={{
+                      position: 'absolute', inset: 0,
+                      borderRadius: 'inherit',
+                      border: `1px solid ${lockColor}55`,
+                      pointerEvents: 'none',
+                      zIndex: 1,
+                    }} />
+                  )}
+
+                  {/* Glow inferior MULTICOLOR — la "luz que sale por debajo" del
+                      reference image. Mezcla violeta + azul + fucsia. Más amplio
+                      y brillante que el de antes para que sea protagonista. */}
+                  <div aria-hidden style={{
+                    position: 'absolute', bottom: -80, left: '50%',
                     transform: 'translateX(-50%)',
-                    width: '120%', height: 120,
-                    background: 'radial-gradient(ellipse at center, rgba(189,75,248,0.40) 0%, transparent 70%)',
-                    filter: 'blur(20px)',
+                    width: '140%', height: 200,
+                    background: 'radial-gradient(ellipse at center bottom, rgba(189,75,248,0.55) 0%, rgba(91,141,239,0.40) 32%, rgba(236,72,153,0.28) 58%, transparent 100%)',
+                    filter: 'blur(26px)',
                     pointerEvents: 'none',
+                    zIndex: 0,
                   }} />
 
                   {/* Header: pill de estado top-right (estilo "MOST POPULAR") */}
-                  <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', marginBottom: 6, position: 'relative' }}>
+                  <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', marginBottom: 6, position: 'relative', zIndex: 2 }}>
                     {/* Categoría / etiqueta superior */}
                     <div style={{
                       fontFamily: FN, fontSize: 11, fontWeight: 700,
@@ -14526,12 +14656,13 @@ function CommerceSettingsView({ user, profile, setView, onLogout, onOwnerProfile
                     )}
                   </div>
 
-                  {/* Título grande tipo "$19" */}
+                  {/* Título grande tipo "$19" — z-index 2 para vivir por encima
+                      del glow y del borde gradient (que están z-index 0 y 1). */}
                   <div style={{
                     fontFamily: FN, fontSize: 26, fontWeight: 900,
                     color: '#fff', marginBottom: 2, lineHeight: 1.15,
                     letterSpacing: '-0.025em',
-                    position: 'relative',
+                    position: 'relative', zIndex: 2,
                   }}>
                     {item.title}
                   </div>
@@ -14542,7 +14673,7 @@ function CommerceSettingsView({ user, profile, setView, onLogout, onOwnerProfile
                     color: 'rgba(229,221,255,0.70)',
                     lineHeight: 1.45,
                     marginBottom: 18,
-                    position: 'relative',
+                    position: 'relative', zIndex: 2,
                   }}>
                     {item.description}
                   </div>
@@ -14553,27 +14684,39 @@ function CommerceSettingsView({ user, profile, setView, onLogout, onOwnerProfile
                     background: 'linear-gradient(90deg, transparent 0%, rgba(189,75,248,0.85) 50%, transparent 100%)',
                     boxShadow: '0 0 16px rgba(189,75,248,0.55), 0 0 4px rgba(189,75,248,0.35)',
                     marginBottom: 16,
-                    position: 'relative',
+                    position: 'relative', zIndex: 2,
                   }} />
 
                   {/* Bloque del ícono + microcopy con check (estilo lista) */}
-                  <div style={{ flex: 1, display: 'flex', alignItems: 'center', gap: 12, marginBottom: 18, position: 'relative' }}>
+                  <div style={{ flex: 1, display: 'flex', alignItems: 'center', gap: 12, marginBottom: 18, position: 'relative', zIndex: 2 }}>
                     {item.thumb && done ? (
-                      <div style={{ width: 44, height: 44, borderRadius: 12, overflow: 'hidden', flexShrink: 0, border: '1px solid rgba(255,255,255,0.14)' }}>
+                      <div style={{
+                        width: 48, height: 48, borderRadius: '50%',
+                        overflow: 'hidden', flexShrink: 0,
+                        border: '1px solid rgba(255,255,255,0.14)',
+                        boxShadow: '0 4px 14px rgba(0,0,0,0.35)',
+                      }}>
                         <img src={item.thumb} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
                       </div>
                     ) : (
                       <div style={{
-                        width: 44, height: 44, borderRadius: 12, flexShrink: 0,
+                        // Círculo glass más prominente, alineado con la referencia
+                        // visual: fondo casi transparente con backdrop-filter, borde
+                        // sutil, ícono claro adentro. La intensidad del color del
+                        // ícono varía con el estado (verde si done, violeta si pending).
+                        width: 48, height: 48, borderRadius: '50%', flexShrink: 0,
                         background: done
-                          ? 'rgba(34,230,152,0.12)'
-                          : 'rgba(189,75,248,0.16)',
+                          ? 'rgba(34,230,152,0.08)'
+                          : 'rgba(255,255,255,0.05)',
                         border: done
-                          ? '1px solid rgba(34,230,152,0.35)'
-                          : '1px solid rgba(189,75,248,0.40)',
+                          ? '1px solid rgba(34,230,152,0.32)'
+                          : '1px solid rgba(255,255,255,0.12)',
+                        backdropFilter: 'blur(8px)',
+                        WebkitBackdropFilter: 'blur(8px)',
+                        boxShadow: 'inset 0 1px 0 rgba(255,255,255,0.08), 0 4px 14px rgba(0,0,0,0.35)',
                         display: 'flex', alignItems: 'center', justifyContent: 'center',
                       }}>
-                        <Icon size={20} color={done ? '#22E698' : '#D8B4FE'} strokeWidth={2.2} />
+                        <Icon size={22} color={done ? '#22E698' : '#E5DDFF'} strokeWidth={2.2} />
                       </div>
                     )}
                     <div style={{ fontSize: 13, color: 'rgba(255,255,255,0.78)', fontWeight: 500, lineHeight: 1.4 }}>
@@ -14610,7 +14753,7 @@ function CommerceSettingsView({ user, profile, setView, onLogout, onOwnerProfile
                   }}>
                     {isLocked
                       ? <><Zap size={14} strokeWidth={2.6} /> Actualizar plan</>
-                      : <>{done ? 'Editar' : (item.partial ? 'Completar' : 'Cargar ahora')} <ChevronRight size={15} strokeWidth={2.6} /></>}
+                      : <>{done ? 'Editar' : (item.partial ? 'Completar' : 'Completar ahora')} <ChevronRight size={15} strokeWidth={2.6} /></>}
                   </div>
                 </button>
               )
@@ -14624,14 +14767,15 @@ function CommerceSettingsView({ user, profile, setView, onLogout, onOwnerProfile
             En desktop no las mostramos: usamos grid, no slider.
             En mobile (state-driven slider) cambian configSlideIdx — sin
             scrollIntoView porque ya no hay scroll horizontal. */}
-        {!isDesktop && sortedItems.length > 1 && (
+        {isDesktop && sortedItems.length > 1 && (
           <>
             <button
               onClick={() => {
-                if (configSlideIdx > 0) setConfigSlideIdx(configSlideIdx - 1)
+                const el = configSliderRef.current
+                if (el) el.scrollBy({ left: -336, behavior: 'smooth' })  // 320px card + 16px gap
               }}
               aria-label="Anterior"
-              disabled={configSlideIdx === 0}
+              disabled={configEdges.atStart}
               style={{
                 position: 'absolute',
                 left: 4, top: '50%', transform: 'translateY(-50%)',
@@ -14640,8 +14784,8 @@ function CommerceSettingsView({ user, profile, setView, onLogout, onOwnerProfile
                 background: 'rgba(15,8,28,0.85)',
                 border: '1px solid rgba(189,75,248,0.40)',
                 color: '#fff',
-                cursor: configSlideIdx === 0 ? 'not-allowed' : 'pointer',
-                opacity: configSlideIdx === 0 ? 0.30 : 1,
+                cursor: configEdges.atStart ? 'not-allowed' : 'pointer',
+                opacity: configEdges.atStart ? 0.30 : 1,
                 display: 'flex', alignItems: 'center', justifyContent: 'center',
                 backdropFilter: 'blur(8px)', WebkitBackdropFilter: 'blur(8px)',
                 boxShadow: '0 4px 12px rgba(0,0,0,0.40)',
@@ -14652,10 +14796,11 @@ function CommerceSettingsView({ user, profile, setView, onLogout, onOwnerProfile
             </button>
             <button
               onClick={() => {
-                if (configSlideIdx < sortedItems.length - 1) setConfigSlideIdx(configSlideIdx + 1)
+                const el = configSliderRef.current
+                if (el) el.scrollBy({ left: 336, behavior: 'smooth' })  // 320px card + 16px gap
               }}
               aria-label="Siguiente"
-              disabled={configSlideIdx === sortedItems.length - 1}
+              disabled={configEdges.atEnd}
               style={{
                 position: 'absolute',
                 right: 4, top: '50%', transform: 'translateY(-50%)',
@@ -14664,8 +14809,8 @@ function CommerceSettingsView({ user, profile, setView, onLogout, onOwnerProfile
                 background: 'rgba(15,8,28,0.85)',
                 border: '1px solid rgba(189,75,248,0.40)',
                 color: '#fff',
-                cursor: configSlideIdx === sortedItems.length - 1 ? 'not-allowed' : 'pointer',
-                opacity: configSlideIdx === sortedItems.length - 1 ? 0.30 : 1,
+                cursor: configEdges.atEnd ? 'not-allowed' : 'pointer',
+                opacity: configEdges.atEnd ? 0.30 : 1,
                 display: 'flex', alignItems: 'center', justifyContent: 'center',
                 backdropFilter: 'blur(8px)', WebkitBackdropFilter: 'blur(8px)',
                 boxShadow: '0 4px 12px rgba(0,0,0,0.40)',
@@ -14683,7 +14828,7 @@ function CommerceSettingsView({ user, profile, setView, onLogout, onOwnerProfile
             Una bolita por cada card. Solo se muestran si hay más de 1 card
             (no tiene sentido un solo dot) Y si el slider está activo.
             En desktop no se muestran: la lista es un grid, no un slider. */}
-        {!isDesktop && sortedItems.length > 1 && (
+        {false && sortedItems.length > 1 && (
         <div style={{ display: 'flex', justifyContent: 'center', gap: 6, marginTop: 14, padding: '0 18px' }}>
           {sortedItems.map((_, i) => {
             const active = i === configSlideIdx
@@ -14713,7 +14858,7 @@ function CommerceSettingsView({ user, profile, setView, onLogout, onOwnerProfile
         {renderRadialMenu()}
 
         {/* Wizard amigable de configuración — se abre cuando el dueño toca
-            "Cargar ahora" en una tarjeta del slider de arriba. Cada itemId
+            "Completar ahora" en una tarjeta del slider de arriba. Cada itemId
             dispara su propio mini-flujo (inline para campos simples,
             deep-link para complejos como horarios o sistema). */}
         <ProfileItemWizard
