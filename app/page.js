@@ -46,7 +46,7 @@ import {
   WashingMachine, Wrench,
   GraduationCap, Languages, Music, MoreHorizontal, Wallet,
   MessageCircle, ArrowUpDown, Percent, Share2,
-  Tag, AlignLeft, AtSign,
+  Tag, AlignLeft, AtSign, Lightbulb,
 } from 'lucide-react'
 
 const MENU_ICONS = {
@@ -11129,19 +11129,30 @@ function OnboardingView({ commerce, onComplete }) {
 }
 
 // ─── PROMO WIZARD ─────────────────────────────────────────────────────────────
-function PromoWizard({ progType = 'points', onClose, onComplete, activePromos = [] }) {
+function PromoWizard({ progType = 'points', onClose, onComplete, activePromos = [], lockType = null }) {
   const unitLabel = progType === 'stars' ? 'estrellas' : 'puntos'
   const today     = new Date().toISOString().split('T')[0]
 
-  const [step,      setStep]      = useState(1)
-  const [promoType, setPromoType] = useState(null)  // 'discount_next' | 'double_points'
+  // Si lockType viene seteado (ej: 'discount_next' cuando se invoca desde
+  // la tab "%OFF próx. compra"), saltamos el step 1 (selector de tipo) y
+  // arrancamos directo en step 2 con el tipo ya elegido. Eso evita que
+  // el usuario pueda crear un double_points desde una tab dedicada al
+  // descuento solamente.
+  const [step,      setStep]      = useState(lockType ? 2 : 1)
+  const [promoType, setPromoType] = useState(lockType)  // 'discount_next' | 'double_points' | null
   const [form,      setForm]      = useState({ discountPct: 10, expType: 'fixed', expDate: '', expDays: 7, eventDate: '', days: [] })
   const [saving,    setSaving]    = useState(false)
   const [animKey,   setAnimKey]   = useState(0)
 
   function go(n) { setAnimKey(k => k + 1); setStep(n) }
   const next = () => go(step + 1)
-  const prev = () => go(step - 1)
+  // Si lockType está seteado y estamos en step 2 (el primer step real),
+  // el "Atrás" cierra el wizard en lugar de volver al step 1 (que está
+  // saltado). Sin esto el botón llevaría a un step que no muestra nada.
+  const prev = () => {
+    if (lockType && step === 2) { onClose(); return }
+    go(step - 1)
+  }
 
   const totalSteps   = promoType === 'discount_next' ? 4 : 3
   const progressPct  = promoType ? Math.round((step / totalSteps) * 100) : 0
@@ -11633,6 +11644,12 @@ function CommerceSettingsView({ user, profile, setView, onLogout, onOwnerProfile
   // Modal sencillo para tocar la descripción y/o el vencimiento.
   const [editingPromo, setEditingPromo]   = useState(null)
   const [showPromoWizard, setShowPromoWizard] = useState(false)
+  // recompensasSubTab — sub-pestañas dentro de la pantalla "Recompensas".
+  // 'how' = ¿Cómo suman? (sistema base estrellas/puntos + suma doble + premios)
+  // 'discount' = %OFF próx. compra (cupón discount_next)
+  // El deep-link desde el intent picker (card "%OFF próx. compra") setea
+  // este state a 'discount' para aterrizar directo en esa tab.
+  const [recompensasSubTab, setRecompensasSubTab] = useState('how')
   // Clientes y stats
   const [members, setMembers]             = useState([])
   const [newMember, setNewMember]         = useState({ email:'', full_name:'', phone:'', province:'', locality:'' })
@@ -12221,10 +12238,14 @@ function CommerceSettingsView({ user, profile, setView, onLogout, onOwnerProfile
       const saved = localStorage.getItem(`cb_auto_${commerce.id}`)
       if (saved) {
         setAutoConfigs(JSON.parse(saved))
-        // Si hay datos guardados, el dueño ya tocó la config de mensajes:
-        // marca el item del intent picker como "configurado".
-        setMessagesConfigured(true)
       }
+      // messagesConfigured ahora se rige por una clave SEPARADA
+      // (`cb_msg_active_*`) que el dueño activa explícitamente con el
+      // toggle "Activá los mensajes automáticos" en el tab Mensajes.
+      // Antes se seteaba a true apenas había datos en cb_auto_*, lo que
+      // no comunicaba "el dueño aceptó esto" — solo "tocó algo".
+      const savedActive = localStorage.getItem(`cb_msg_active_${commerce.id}`)
+      if (savedActive === '1') setMessagesConfigured(true)
       const savedLog = localStorage.getItem(`cb_sent_${commerce.id}`)
       if (savedLog) setSentLog(JSON.parse(savedLog))
     } catch {}
@@ -12846,6 +12867,10 @@ function CommerceSettingsView({ user, profile, setView, onLogout, onOwnerProfile
       type:        d.type,
       value:       parseInt(d.value) || 0,
       description,
+      // days: solo aplica a double_points. Array vacío = todos los días
+      // (default). Para discount_next, days queda como NULL en la DB
+      // (la columna acepta null).
+      days:        d.type === 'double_points' ? (Array.isArray(d.days) ? d.days : []) : null,
       expires_at,
       expiration_type,
       expiration_date,
@@ -13601,7 +13626,101 @@ function CommerceSettingsView({ user, profile, setView, onLogout, onOwnerProfile
   // sume un nuevo cliente) o escanear el QR de un cliente (después de una
   // compra para sumarle puntos/estrellas). Cualquier otra cosa (ver clientes,
   // configurar premios, etc.) sigue accesible una vez que descarta el picker.
-  if (intentPickerActive) {
+
+  // ── MerchantTopTabs — nav horizontal scrolleable de pestañas ──
+  // Extraído como variable reutilizable porque va en DOS lugares: dentro
+  // del render del intentPickerActive (cuando arranca el panel) y dentro
+  // del render principal (cuando ya está navegando entre tabs).
+  // Antes solo estaba en el primer caso, así que al moverse a Clientes/
+  // Premios/etc. se perdía la barra. Ahora se renderiza siempre.
+  // Como `position: fixed`, da igual dónde caiga en el árbol JSX —
+  // siempre flota arriba del contenido.
+  const merchantTopTabsNav = (
+    <nav style={{
+      position: 'fixed',
+      top: 62,
+      left: 0, right: 0,
+      zIndex: 199,
+      background: 'rgba(8, 4, 18, 0.82)',
+      backdropFilter: 'blur(16px) saturate(180%)',
+      WebkitBackdropFilter: 'blur(16px) saturate(180%)',
+      borderBottom: '1px solid rgba(255,255,255,0.08)',
+    }}>
+      <div style={{
+        display: 'flex',
+        overflowX: 'auto',
+        gap: 4,
+        padding: '8px 12px',
+        scrollbarWidth: 'none',
+        msOverflowStyle: 'none',
+        WebkitOverflowScrolling: 'touch',
+      }}>
+        {MENU.map(m => {
+          const I = MENU_ICONS[m.id]
+          const active = tab === m.id
+          const isLocked = m.locked
+          const isProLocked = m.pro && planKey !== 'pro'
+          const dimmed = isLocked || isProLocked
+          const colorBase = dimmed ? 'rgba(255,255,255,0.35)' : 'rgba(255,255,255,0.55)'
+          const color = active ? '#fff' : colorBase
+          const iconColor = active ? C.v : colorBase
+          return (
+            <button
+              key={m.id}
+              onClick={() => {
+                if (isLocked) { setUpgradeModal('promotions'); _setTabRaw(m.id) } else _setTabRaw(m.id)
+                setIntentPickerActive(false)
+                setCameFromConfigCards(false)
+              }}
+              style={{
+                flexShrink: 0,
+                padding: '8px 10px 10px',
+                background: 'transparent',
+                border: 'none',
+                cursor: 'pointer',
+                color,
+                fontFamily: FN, fontSize: 12,
+                fontWeight: active ? 800 : 600,
+                position: 'relative',
+                display: 'inline-flex', alignItems: 'center', gap: 6,
+                whiteSpace: 'nowrap',
+                transition: 'color 200ms ease',
+              }}
+            >
+              {I && <I size={13} strokeWidth={active ? 2.4 : 2} color={iconColor} />}
+              <span>{m.label}</span>
+              {isProLocked && (
+                <span style={{
+                  fontSize: 8, fontWeight: 800, color: PLANS.pro.color,
+                  background: `${PLANS.pro.color}1F`,
+                  border: `1px solid ${PLANS.pro.color}55`,
+                  borderRadius: 99, padding: '1px 4px',
+                  fontFamily: FN, letterSpacing: '.04em',
+                }}>PRO</span>
+              )}
+              {active && (
+                <span style={{
+                  position: 'absolute', bottom: 0, left: '15%', right: '15%',
+                  height: 2, borderRadius: 2,
+                  background: 'linear-gradient(135deg, #FE5000, #BD4BF8)',
+                }} />
+              )}
+            </button>
+          )
+        })}
+      </div>
+    </nav>
+  )
+
+  // El intent picker ahora es ALSO la vista del tab 'dashboard'. Antes
+  // eran dos modos separados (intentPickerActive como state, tab para
+  // las otras pestañas). El dueño pidió que el dashboard tab sea esta
+  // misma pantalla — entonces lo gateamos con OR: se renderiza si está
+  // intentPickerActive (compat con el código viejo que llama a
+  // setIntentPickerActive) O si está en tab dashboard (entrada vía
+  // MerchantTopTabs o navbar Mi Negocio). El render del tab=='dashboard'
+  // viejo (stats + QR + canjes recientes) quedó eliminado.
+  if (intentPickerActive || tab === 'dashboard') {
     // 4 accesos directos a las secciones más importantes del panel comerciante.
     // Las funciones de QR / cámara están todas en la pestaña "Escanear" del
     // navbar superior — no se duplican acá.
@@ -14060,16 +14179,23 @@ function CommerceSettingsView({ user, profile, setView, onLogout, onOwnerProfile
         lockedByPlan: canPromote ? null : 'starter',
         upgradeFeature: 'promotions',
         goTo: 'recompensas',
+        // subTab dirige al usuario a la pestaña "%OFF próx. compra" dentro
+        // de la pantalla de Recompensas (en lugar de aterrizar en la default).
+        subTab: 'discount',
       },
       {
         id: 'doubleDays',
-        title: 'Días con bonus ×2',
-        description: 'Llená tus días flojos: ×2 estrellas/puntos.',
+        title: 'Suma doble',
+        description: 'Tus clientes acumulan al doble los días que elegís.',
         Icon: Zap,
-        done: canPromote && Array.isArray(promos) && promos.some(p => p.active && p.type === 'double_points'),
-        lockedByPlan: canPromote ? null : 'starter',
-        upgradeFeature: 'promotions',
+        // Disponible en TODOS los planes (FREE incluido) — antes estaba
+        // lockedByPlan='starter' pero el dueño lo movió a la pestaña
+        // "¿Cómo suman?" como feature base. Sin `lockedByPlan` ni
+        // dependencia de canPromote en el `done`.
+        done: Array.isArray(promos) && promos.some(p => p.active && p.type === 'double_points'),
         goTo: 'recompensas',
+        // subTab 'how' — el toggle vive en "¿Cómo suman?" como switch.
+        subTab: 'how',
       },
       {
         id: 'messages',
@@ -14083,7 +14209,11 @@ function CommerceSettingsView({ user, profile, setView, onLogout, onOwnerProfile
           && messagesConfigured,
         lockedByPlan: canUseFeature(planKey, 'automatizaciones') ? null : 'pro',
         upgradeFeature: 'automatizaciones',
-        goTo: 'automatizaciones',
+        // Tab id correcto: 'mensajes' (no 'automatizaciones'). El bug de
+        // pantalla en negro venía de que 'automatizaciones' no matchea
+        // ningún render. El menú lo usa como id pero el tab handler es
+        // 'mensajes'.
+        goTo: 'mensajes',
       },
       {
         id: 'hours',
@@ -14185,8 +14315,11 @@ function CommerceSettingsView({ user, profile, setView, onLogout, onOwnerProfile
       // Los lleva directo a su tab destino donde existe la UI completa
       // (modal de edición de promos / configurador de mensajes). Sin esto
       // el botón "Editar" del cupón próxima visita abría un wizard vacío.
+      // Pasamos también `subTab` (definido en el item) para que el deep-link
+      // setee la sub-pestaña dentro de Recompensas (ej: 'discount' para
+      // discountNext → aterriza en "%OFF próx. compra").
       if (item.id === 'discountNext' || item.id === 'doubleDays' || item.id === 'messages') {
-        handleWizardDeepLink({ tab: item.goTo })
+        handleWizardDeepLink({ tab: item.goTo, subTab: item.subTab })
         return
       }
       setWizardItemId(item.id)
@@ -14200,6 +14333,12 @@ function CommerceSettingsView({ user, profile, setView, onLogout, onOwnerProfile
       if (target.tab) _setTabRaw(target.tab)
       setRailExpanded(false)
       setCameFromConfigCards(true)
+      // subTab: si el target especifica una sub-pestaña (Recompensas
+      // tiene 'how' / 'discount'), seteamos el state ANTES de que el tab
+      // re-renderee para que aterrice ya en la pestaña correcta.
+      if (target.subTab && target.tab === 'recompensas') {
+        setRecompensasSubTab(target.subTab)
+      }
       if (target.section) {
         setExpandedConfigSection(target.section)
         setTimeout(() => {
@@ -14282,9 +14421,46 @@ function CommerceSettingsView({ user, profile, setView, onLogout, onOwnerProfile
             </>}
           />
 
-          <h1 style={{ fontFamily:FN, fontSize:'clamp(22px,4vw,28px)', fontWeight:900, color:C.white, marginBottom:14, marginTop:14, letterSpacing:'-.01em' }}>
+          <h1 style={{ fontFamily:FN, fontSize:'clamp(22px,4vw,28px)', fontWeight:900, color:C.white, marginBottom:6, marginTop:14, letterSpacing:'-.01em' }}>
             Configurá tu negocio
           </h1>
+
+          {/* ── Container EXTERNO unificado ──
+              Agrupa los dos sub-bloques ("Estado actual" + chips, y
+              "Casi listo!" + barra de progreso) bajo una sola card de
+              marco violeta tenue, así se leen como una unidad temática:
+              "el estado actual de tu negocio". Adentro tiene dos
+              contenedores hermanos diferenciados visualmente (cada uno
+              con su sub-bg) para que cada bloque mantenga su identidad
+              propia. Mismo lenguaje que la carpeta Pendientes/Completos
+              de abajo, pero con border-opacity más bajo para una
+              jerarquía de "este es el resumen, abajo está el detalle". */}
+          <div style={{
+            background: 'rgba(189,75,248,0.06)',
+            border: '1px solid rgba(189,75,248,0.22)',
+            borderRadius: 18,
+            padding: 10,
+            marginBottom: 14,
+            boxShadow: '0 8px 28px -10px rgba(0,0,0,0.45)',
+            display: 'flex', flexDirection: 'column', gap: 10,
+          }}>
+
+          {/* ── Sub-container 1: ESTADO ACTUAL ──
+              Subtítulo + slider horizontal de chips (Cupón / Bonus /
+              Premios). Bg ligeramente más claro que el outer para
+              diferenciarse visualmente como sub-pieza propia. */}
+          <div style={{
+            background: 'rgba(255,255,255,0.025)',
+            border: '1px solid rgba(255,255,255,0.06)',
+            borderRadius: 14,
+            padding: '12px 12px 10px',
+          }}>
+          {/* Subtítulo "Estado actual" — mismo tamaño/peso que el motivMsg
+              ("¡Casi listo! Te falta poco") del sub-container 2. Funciona
+              como header de la zona de chips de beneficios. */}
+          <div style={{ fontSize: 13, color: '#fff', fontWeight: 700, fontFamily: FN, lineHeight: 1.3, marginBottom: 12 }}>
+            Estado actual
+          </div>
 
           {/* Resumen de beneficios activos — chips con %OFF / Suma doble / N
               premios. Cada chip tiene un lápiz que lleva a la pestaña
@@ -14304,86 +14480,232 @@ function CommerceSettingsView({ user, profile, setView, onLogout, onOwnerProfile
             const showAny = !!activeDiscount || !!activeDouble || activePrizeCount > 0 || canPromote
             if (!showAny) return null
 
-            const Chip = ({ Icon, label, value, color, onEdit, dimmed }) => (
-              <div style={{
-                flex: '0 0 auto',
-                display: 'flex', alignItems: 'center', gap: 9,
-                padding: '8px 10px 8px 12px',
-                borderRadius: 12,
-                background: dimmed ? 'rgba(255,255,255,0.04)' : `${color}1a`,
-                border: `1px solid ${dimmed ? 'rgba(255,255,255,0.10)' : `${color}55`}`,
-                opacity: dimmed ? 0.65 : 1,
-                whiteSpace: 'nowrap',
-              }}>
-                <Icon size={13} color={dimmed ? C.dust : color} strokeWidth={2.2} />
-                <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-start' }}>
-                  <span style={{ fontFamily: FN, fontSize: 9, fontWeight: 700, color: dimmed ? C.dust : `${color}cc`, letterSpacing: '.06em', textTransform: 'uppercase', lineHeight: 1 }}>{label}</span>
-                  <span style={{ fontFamily: FN, fontSize: 13, fontWeight: 800, color: dimmed ? 'rgba(255,255,255,0.50)' : '#fff', lineHeight: 1.2, marginTop: 2 }}>{value}</span>
+            // Helper local: formatea el array `days` de un double_points
+            // a texto compacto para mostrar como aclaratoria. Misma lógica
+            // que el formatDays() del tab de Promociones, simplificada
+            // para chip (días en formato corto: "Lu, Mi, Vi").
+            const fmtDoubleDaysShort = (days) => {
+              if (!Array.isArray(days) || days.length === 0 || days.length === 7) return 'todos los días'
+              const SHORT = ['Do', 'Lu', 'Ma', 'Mi', 'Ju', 'Vi', 'Sa']
+              const ORDER = [1, 2, 3, 4, 5, 6, 0]
+              const sorted = [...days].sort((a, b) => ORDER.indexOf(a) - ORDER.indexOf(b))
+              return sorted.map(d => SHORT[d]).join(', ')
+            }
+            // Chip con FRANJA DE LUZ lateral izquierda como indicador
+            // de estado (en lugar de un LED puntiagudo, que se confundía
+            // con el lenguaje visual de la barra de progreso del header).
+            // - Activo: franja vertical verde con glow lateral (chip
+            //   encendido), todo el contenido en verde.
+            // - Inactivo: franja amarilla apagada (sin glow), todo el
+            //   contenido en amarillo apagado.
+            // El parámetro `color` se conserva en la firma por compat
+            // pero ya no se usa — la paleta sale del flag `dimmed`.
+            const Chip = ({ Icon, label, value, hint, color, onEdit, dimmed }) => {
+              const ON_COLOR  = '#22E698'  // verde activo
+              const ON_DARK   = '#15803D'  // verde profundo (base del gradient)
+              const OFF_COLOR = '#F5A623'  // amarillo apagado
+              const c = dimmed ? OFF_COLOR : ON_COLOR
+              return (
+                <div style={{
+                  flex: '0 0 auto',
+                  position: 'relative',
+                  display: 'flex', alignItems: 'center', gap: 9,
+                  // Padding-left más amplio que antes para dejar lugar
+                  // a la franja de luz vertical (4px de ancho).
+                  padding: '8px 10px 8px 16px',
+                  borderRadius: 12,
+                  background: dimmed ? `${OFF_COLOR}10` : `${ON_COLOR}1A`,
+                  border: `1px solid ${dimmed ? `${OFF_COLOR}40` : `${ON_COLOR}55`}`,
+                  whiteSpace: 'nowrap',
+                  // Hide overflow para que la franja de luz se recorte
+                  // contra el borderRadius de la izquierda (sin esto se
+                  // veía como un cuadrado pegado al borde).
+                  overflow: 'hidden',
+                  boxShadow: dimmed
+                    ? 'none'
+                    : `0 4px 14px -4px ${ON_COLOR}66`,
+                  transition: 'background 200ms ease, border-color 200ms ease, box-shadow 200ms ease',
+                }}>
+                  {/* Franja de luz lateral izquierda — barra vertical de
+                      4px que cubre toda la altura del chip. En activo
+                      es un gradient verde con glow hacia la derecha
+                      (sensación "tira de luz LED encendida"). En inactivo
+                      es amarillo plano sin glow (apagado).
+                      box-shadow horizontal se irradia hacia la derecha
+                      sumando luz al borde interno del chip. */}
+                  <span style={{
+                    position: 'absolute',
+                    top: 0, bottom: 0, left: 0,
+                    width: 4,
+                    background: dimmed
+                      ? `linear-gradient(180deg, ${OFF_COLOR}88, ${OFF_COLOR}55)`
+                      : `linear-gradient(180deg, #4ade80, ${ON_COLOR}, ${ON_DARK})`,
+                    boxShadow: dimmed
+                      ? 'none'
+                      : `0 0 8px ${ON_COLOR}AA, 4px 0 12px ${ON_COLOR}55`,
+                    pointerEvents: 'none',
+                  }} />
+                  <Icon size={13} color={c} strokeWidth={2.2} />
+                  <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-start' }}>
+                    <span style={{ fontFamily: FN, fontSize: 9, fontWeight: 700, color: `${c}DD`, letterSpacing: '.06em', textTransform: 'uppercase', lineHeight: 1 }}>{label}</span>
+                    <span style={{ fontFamily: FN, fontSize: 13, fontWeight: 800, color: '#fff', lineHeight: 1.2, marginTop: 2 }}>{value}</span>
+                    {hint && (
+                      <span style={{ fontFamily: FN, fontSize: 9.5, fontWeight: 500, color: `${c}AA`, lineHeight: 1.15, marginTop: 2, letterSpacing: '.01em' }}>{hint}</span>
+                    )}
+                  </div>
+                  <button onClick={onEdit}
+                    style={{
+                      width: 26, height: 26, borderRadius: 7,
+                      background: 'rgba(255,255,255,0.06)',
+                      border: `1px solid ${c}44`,
+                      color: c,
+                      cursor: 'pointer',
+                      display: 'flex', alignItems: 'center', justifyContent: 'center',
+                      padding: 0, marginLeft: 2,
+                      transition: 'background 180ms ease, border-color 180ms ease',
+                    }}
+                    aria-label={`Editar ${label}`}
+                    title={`Editar ${label}`}
+                  >
+                    <Pen size={11} strokeWidth={2.2} />
+                  </button>
                 </div>
-                <button onClick={onEdit}
-                  style={{
-                    width: 26, height: 26, borderRadius: 7,
-                    background: 'rgba(255,255,255,0.06)',
-                    border: `1px solid ${dimmed ? 'rgba(255,255,255,0.10)' : `${color}44`}`,
-                    color: dimmed ? C.dust : color,
-                    cursor: 'pointer',
-                    display: 'flex', alignItems: 'center', justifyContent: 'center',
-                    padding: 0, marginLeft: 2,
-                    transition: 'background 180ms ease',
-                  }}
-                  aria-label={`Editar ${label}`}
-                  title={`Editar ${label}`}
-                >
-                  <Pen size={11} strokeWidth={2.2} />
-                </button>
-              </div>
-            )
+              )
+            }
 
             return (
-              <div style={{
-                display: 'flex',
-                gap: 8,
-                marginBottom: 16,
-                overflowX: 'auto',
-                paddingBottom: 4,
-                scrollbarWidth: 'none',
-                msOverflowStyle: 'none',
-              }}>
-                <Chip
-                  Icon={Percent}
-                  label="Cupón"
-                  value={activeDiscount ? `${activeDiscount.value}% OFF` : 'No activo'}
-                  color={C.o}
-                  dimmed={!activeDiscount}
-                  onEdit={() => handleWizardDeepLink({ tab: 'recompensas' })}
-                />
-                <Chip
-                  Icon={Zap}
-                  label="Bonus"
-                  value={activeDouble ? 'Suma ×2' : 'No activo'}
-                  color={C.v}
-                  dimmed={!activeDouble}
-                  onEdit={() => handleWizardDeepLink({ tab: 'recompensas' })}
-                />
-                <Chip
-                  Icon={Gift}
-                  label="Premios"
-                  value={`${activePrizeCount} ${activePrizeCount === 1 ? 'activo' : 'activos'}`}
-                  color="#22E698"
-                  dimmed={activePrizeCount === 0}
-                  onEdit={() => handleWizardDeepLink({ tab: 'premios' })}
-                />
+              // Wrapper relative para poder anclar las flechitas de
+              // hint de scroll en los bordes del slider de chips.
+              <div style={{ position: 'relative', marginBottom: 16 }}>
+                <div style={{
+                  display: 'flex',
+                  gap: 8,
+                  overflowX: 'auto',
+                  paddingBottom: 4,
+                  // Padding lateral 18px para que las flechitas
+                  // (que ocupan los primeros/últimos 22px del wrapper)
+                  // no tapen el contenido del primer/último chip.
+                  paddingLeft: 18,
+                  paddingRight: 18,
+                  marginLeft: -18,
+                  marginRight: -18,
+                  scrollbarWidth: 'none',
+                  msOverflowStyle: 'none',
+                }}>
+                  <Chip
+                    Icon={Percent}
+                    label="Cupón"
+                    value={activeDiscount ? `${activeDiscount.value}% OFF` : 'No activo'}
+                    hint={activeDiscount ? 'en próxima compra' : 'sin configurar'}
+                    color={C.o}
+                    dimmed={!activeDiscount}
+                    onEdit={() => handleWizardDeepLink({ tab: 'recompensas', subTab: 'discount' })}
+                  />
+                  <Chip
+                    Icon={Zap}
+                    label="Bonus"
+                    value={activeDouble ? 'Suma ×2' : 'No activo'}
+                    hint={activeDouble ? fmtDoubleDaysShort(activeDouble.days) : 'sin configurar'}
+                    color={C.v}
+                    dimmed={!activeDouble}
+                    onEdit={() => handleWizardDeepLink({ tab: 'recompensas', subTab: 'how' })}
+                  />
+                  <Chip
+                    Icon={Gift}
+                    label="Premios"
+                    value={`${activePrizeCount} ${activePrizeCount === 1 ? 'activo' : 'activos'}`}
+                    hint={activePrizeCount > 0 ? 'para canjear' : 'sin cargar'}
+                    color="#22E698"
+                    dimmed={activePrizeCount === 0}
+                    onEdit={() => handleWizardDeepLink({ tab: 'premios' })}
+                  />
+                </div>
+
+                {/* ── Flechitas hint de scroll ──
+                    Chevrons más prominentes que antes — mismo concepto
+                    pero ahora con bg circular (glass) para que se vean
+                    sobre el contenido del scroll, ícono más grande (16),
+                    color blanco al 80%, y bounce de ±5px. Mantienen
+                    pointerEvents:none para no bloquear scroll/clicks.
+                    Si el contenido cabe sin overflow, igual se muestran
+                    como decoración — no rompen UX. */}
+                <div aria-hidden style={{
+                  position: 'absolute',
+                  left: -2, top: 0, bottom: 4,
+                  width: 26,
+                  display: 'flex', alignItems: 'center', justifyContent: 'flex-start',
+                  pointerEvents: 'none',
+                  zIndex: 2,
+                }}>
+                  <div style={{
+                    width: 22, height: 22,
+                    borderRadius: '50%',
+                    background: 'rgba(255,255,255,0.10)',
+                    border: '1px solid rgba(255,255,255,0.22)',
+                    backdropFilter: 'blur(4px)',
+                    WebkitBackdropFilter: 'blur(4px)',
+                    display: 'flex', alignItems: 'center', justifyContent: 'center',
+                    boxShadow: '0 2px 8px rgba(0,0,0,0.45)',
+                    animation: 'chip-scroll-hint-l 1.4s ease-in-out infinite',
+                  }}>
+                    <ChevronLeft size={16} color="rgba(255,255,255,0.95)" strokeWidth={2.6} />
+                  </div>
+                </div>
+                <div aria-hidden style={{
+                  position: 'absolute',
+                  right: -2, top: 0, bottom: 4,
+                  width: 26,
+                  display: 'flex', alignItems: 'center', justifyContent: 'flex-end',
+                  pointerEvents: 'none',
+                  zIndex: 2,
+                }}>
+                  <div style={{
+                    width: 22, height: 22,
+                    borderRadius: '50%',
+                    background: 'rgba(255,255,255,0.10)',
+                    border: '1px solid rgba(255,255,255,0.22)',
+                    backdropFilter: 'blur(4px)',
+                    WebkitBackdropFilter: 'blur(4px)',
+                    display: 'flex', alignItems: 'center', justifyContent: 'center',
+                    boxShadow: '0 2px 8px rgba(0,0,0,0.45)',
+                    animation: 'chip-scroll-hint-r 1.4s ease-in-out infinite',
+                  }}>
+                    <ChevronRight size={16} color="rgba(255,255,255,0.95)" strokeWidth={2.6} />
+                  </div>
+                </div>
+                <style>{`
+                  @keyframes chip-scroll-hint-l {
+                    0%, 100% { transform: translateX(0);    opacity: 0.75; }
+                    50%      { transform: translateX(-5px); opacity: 1;    }
+                  }
+                  @keyframes chip-scroll-hint-r {
+                    0%, 100% { transform: translateX(0);    opacity: 0.75; }
+                    50%      { transform: translateX(5px);  opacity: 1;    }
+                  }
+                `}</style>
               </div>
             )
           })()}
+          </div>{/* fin del sub-container 1: Estado actual */}
+
+          {/* ── Sub-container 2: CASI LISTO + BARRA DE PROGRESO ──
+              motivMsg ("Casi listo! Te falta poco") + cfgPct % + LEDs.
+              Mismo bg/border que el sub-container 1 para que ambos sean
+              "hermanos" dentro del outer container. */}
+          <div style={{
+            background: 'rgba(255,255,255,0.025)',
+            border: '1px solid rgba(255,255,255,0.06)',
+            borderRadius: 14,
+            padding: '12px 12px 14px',
+          }}>
 
           {/* ── Stepped progress (1 nodo por tarjeta) ──
               Reemplaza la barra lineal por una secuencia de círculos
-              numerados con líneas conectoras. Los completados van violeta
+              numerados con líneas conectoras. Los completados van verde
               sólido con check; los pendientes en outline gris con el
               número. La transición de la línea entre nodos se hace en
               gradient que aparece "lleno" hasta el último nodo done. */}
-          <div style={{ marginBottom: 22 }}>
+          <div style={{ marginBottom: 0 }}>
             <div style={{ display:'flex', alignItems:'flex-end', justifyContent:'space-between', gap:12, marginBottom:14 }}>
               <div style={{ flex:1, minWidth:0 }}>
                 <div style={{ fontSize: 13, color: '#fff', fontWeight: 700, fontFamily: FN, lineHeight: 1.3 }}>
@@ -14397,27 +14719,28 @@ function CommerceSettingsView({ user, profile, setView, onLogout, onOwnerProfile
                 fontFamily: FN, fontSize: 28, fontWeight: 900,
                 letterSpacing: '-0.025em', lineHeight: 1,
                 position: 'relative',
-                // Gradient violeta/verde de marca con un highlight más claro
-                // en el medio. backgroundSize 300% + animación de
-                // background-position hace que el highlight recorra el texto
-                // de derecha a izquierda en loop, simulando un shimmer.
+                // Gradient verde de marca con highlight claro en el medio.
+                // El % SIEMPRE va en verde (#22E698 base + #B5F4DC reflejo)
+                // — antes el caso < 100% era violeta, pero el dueño pidió
+                // que el número de progreso esté siempre en verde para
+                // que se lea como "esto va creciendo" sin importar el
+                // estadio. backgroundSize 300% + animación de
+                // background-position hace que el highlight recorra el
+                // texto de derecha a izquierda en loop, simulando un
+                // reflejo. Cuando llega a 100% no hace falta cambiar
+                // de color porque ya estaba verde.
+                //
                 // OJO: usamos `backgroundImage` (no la shorthand `background`)
-                // para evitar el warning de React "mixing shorthand and
+                // para evitar el warning de React "mixing shorthand y
                 // non-shorthand" y para que `backgroundClip: text` no se
-                // resetee al cambiar `cfgPct`. El shorthand pisaba el clip
-                // y el 100% terminaba renderizándose como un rectángulo verde
-                // sólido en vez del número con gradiente.
-                backgroundImage: cfgPct === 100
-                  ? 'linear-gradient(110deg, #22E698 0%, #4ade80 50%, #22E698 100%)'
-                  : 'linear-gradient(110deg, #7C3AED 0%, #7C3AED 30%, #F0C2FF 50%, #7C3AED 70%, #7C3AED 100%)',
+                // resetee al cambiar `cfgPct`.
+                backgroundImage: 'linear-gradient(110deg, #22E698 0%, #22E698 35%, #B5F4DC 50%, #22E698 65%, #22E698 100%)',
                 backgroundSize: '300% 100%',
                 backgroundRepeat: 'no-repeat',
                 WebkitBackgroundClip: 'text',
                 backgroundClip: 'text',
                 WebkitTextFillColor: 'transparent',
-                filter: cfgPct === 100
-                  ? 'drop-shadow(0 0 10px rgba(34,230,152,0.55))'
-                  : 'drop-shadow(0 0 10px rgba(189,75,248,0.55))',
+                filter: 'drop-shadow(0 0 10px rgba(34,230,152,0.55))',
                 animation: 'cfg-pct-shimmer 3.2s linear infinite',
               }}>
                 {cfgPct}%
@@ -14446,7 +14769,12 @@ function CommerceSettingsView({ user, profile, setView, onLogout, onOwnerProfile
                 zIndex: 0,
               }} />
               {/* LEDs encima de la línea — solo items completables del plan
-                  actual. Items locked se rendean aparte con su chip de plan. */}
+                  actual. Items locked se rendean aparte con su chip de plan.
+                  Encendidos (done) = verde brillante con glow, mismo verde
+                  que la solapa "Completos" (#22E698) para coherencia.
+                  Apagados = amarillo apagado (#F5A623 al 28% opacidad),
+                  mismo amarillo que la solapa "Pendientes" para que se
+                  lea de un vistazo "esto está pendiente, esto está hecho". */}
               <div style={{ position:'relative', zIndex:1, display:'flex', alignItems:'center', justifyContent:'space-between', width:'100%' }}>
                 {completableItems.map((it) => {
                   const done = it.done
@@ -14455,11 +14783,11 @@ function CommerceSettingsView({ user, profile, setView, onLogout, onOwnerProfile
                       width: 10, height: 10, borderRadius: '50%',
                       flexShrink: 0,
                       background: done
-                        ? 'radial-gradient(circle at 35% 30%, #F0C2FF 0%, #BD4BF8 45%, #7C3AED 100%)'
-                        : 'rgba(255,255,255,0.10)',
+                        ? 'radial-gradient(circle at 35% 30%, #B5F4DC 0%, #22E698 45%, #15803D 100%)'
+                        : 'radial-gradient(circle at 35% 30%, rgba(245,166,35,0.55) 0%, rgba(245,166,35,0.28) 100%)',
                       boxShadow: done
-                        ? '0 0 6px rgba(189,75,248,0.85), 0 0 14px rgba(189,75,248,0.45)'
-                        : 'inset 0 0 0 1px rgba(255,255,255,0.06)',
+                        ? '0 0 6px rgba(34,230,152,0.85), 0 0 14px rgba(34,230,152,0.45)'
+                        : 'inset 0 0 0 1px rgba(245,166,35,0.40)',
                       transition: 'background 400ms ease, box-shadow 400ms ease',
                     }} />
                   )
@@ -14467,38 +14795,62 @@ function CommerceSettingsView({ user, profile, setView, onLogout, onOwnerProfile
               </div>
             </div>
 
-          </div>
+          </div>{/* fin del stepped progress (header + LEDs) */}
+          </div>{/* fin del sub-container 2: Casi listo + barra de progreso */}
+          </div>{/* fin del container EXTERNO Estado + Progreso */}
         </div>
 
         {/* ── Container "carpeta" que engloba pestañas + contenido ──
             Tipo file folder UI: las pestañas se sienten como las orejitas de
-            la carpeta y todo el contenido (banners + slider + dots) vive
-            adentro del mismo card. Visualmente delimita "esta área es la
-            navegación entre Pendientes/Listas y sus tarjetas". */}
+            la carpeta y todo el contenido vive adentro del mismo card.
+            Contraste subido (mismo lenguaje que el tab switcher de
+            Recompensas): bg violeta 0.07, border 0.32, sombra hacia abajo
+            para "elevar" la carpeta del fondo de la página. */}
         <div style={{
           margin: isMobile ? '8px 14px 0' : '8px 22px 0',
-          background: 'linear-gradient(180deg, rgba(189,75,248,0.06) 0%, rgba(189,75,248,0.02) 100%)',
-          border: '1px solid rgba(189,75,248,0.22)',
+          background: 'rgba(189,75,248,0.07)',
+          border: '1px solid rgba(189,75,248,0.32)',
           borderRadius: 22,
           paddingTop: 0,
           paddingBottom: 14,
           position: 'relative',
           overflow: 'hidden',
+          boxShadow: '0 8px 28px -10px rgba(0,0,0,0.55)',
         }}>
 
         {/* ── Pestañas Pendientes / Completos (al tope del container) ──
-            Pendientes: amarillo con signo ! para llamar la atención sobre
-            tareas por hacer. Completos: verde con tilde para reforzar el
-            mensaje "ya está listo". El color de cada tab pinta también el
-            badge de count y el underline cuando es la activa. */}
+            Misma lógica de contraste que las solapas de Recompensas:
+            la activa se diferencia claramente de la inactiva. La activa
+            mantiene su color identidad (amarillo para pendientes, verde
+            para completos) con bg tinteado más fuerte; la inactiva queda
+            visualmente "atrás" con bg oscuro y texto dim.
+            La línea inferior del strip es violeta (color del container)
+            para que se lea como "borde de la carpeta debajo de las
+            solapas". */}
         <div style={{
-          display: 'flex', gap: 0,
-          borderBottom: '1px solid rgba(189,75,248,0.18)',
-          padding: '4px 4px 0',
+          display: 'flex', gap: 4,
+          borderBottom: '1px solid rgba(189,75,248,0.32)',
+          padding: '6px 6px 0',
         }}>
           {[
-            { id: 'pendientes', label: 'Pendientes', count: pendingCount, color: '#F5A623', accentBg: 'rgba(245,166,35,0.14)', symbol: '!' },
-            { id: 'listas',     label: 'Completos',  count: doneCount,    color: '#22E698', accentBg: 'rgba(34,230,152,0.12)',  symbol: '✓' },
+            // Cada tab define DOS paletas: activa (saturada, con glow) y
+            // inactiva (tenue del MISMO color, no neutra). Así la solapa
+            // Completos siempre se nota verde y Pendientes siempre amarilla
+            // — el active/inactive diferencia INTENSIDAD, no color.
+            {
+              id: 'pendientes', label: 'Pendientes', count: pendingCount, color: '#F5A623', symbol: '!',
+              activeBg:     'rgba(245,166,35,0.20)',
+              activeBorder: 'rgba(245,166,35,0.55)',
+              dimBg:        'rgba(245,166,35,0.05)',
+              dimBorder:    'rgba(245,166,35,0.22)',
+            },
+            {
+              id: 'listas', label: 'Completos', count: doneCount, color: '#22E698', symbol: '✓',
+              activeBg:     'rgba(34,230,152,0.20)',
+              activeBorder: 'rgba(34,230,152,0.55)',
+              dimBg:        'rgba(34,230,152,0.05)',
+              dimBorder:    'rgba(34,230,152,0.22)',
+            },
           ].map(t => {
             const active = intentFilter === t.id
             return (
@@ -14515,26 +14867,46 @@ function CommerceSettingsView({ user, profile, setView, onLogout, onOwnerProfile
                 }}
                 style={{
                   flex: 1,
-                  padding: '13px 14px 12px',
-                  background: active ? t.accentBg : 'transparent',
-                  border: 'none',
-                  borderTopLeftRadius: 14,
-                  borderTopRightRadius: 14,
-                  color: active ? '#fff' : 'rgba(255,255,255,0.50)',
+                  padding: '13px 14px 13px',
+                  // Active: bg fuerte del color + border tinteado.
+                  // Inactive: MISMO color pero tenue (5% bg + 22% border)
+                  // — sigue verde/amarillo aunque atenuado.
+                  background: active ? t.activeBg : t.dimBg,
+                  borderTop:    `1px solid ${active ? t.activeBorder : t.dimBorder}`,
+                  borderLeft:   `1px solid ${active ? t.activeBorder : t.dimBorder}`,
+                  borderRight:  `1px solid ${active ? t.activeBorder : t.dimBorder}`,
+                  borderBottom: 'none',
+                  borderTopLeftRadius: 12,
+                  borderTopRightRadius: 12,
+                  // Texto: en la activa va blanco. En la inactiva usa el
+                  // color de la tab (amarillo/verde) atenuado al 60%, así
+                  // mantiene su identidad cromática.
+                  color: active ? '#fff' : `${t.color}99`,
                   fontFamily: FN, fontSize: 13,
                   fontWeight: active ? 800 : 600,
                   letterSpacing: '.04em',
                   cursor: 'pointer',
                   position: 'relative',
+                  // marginBottom -1: empuja el border-bottom del strip
+                  // hacia arriba para que la solapa activa lo tape (fusión
+                  // con el panel/contenido).
+                  marginBottom: -1,
+                  zIndex: active ? 3 : 1,
                   display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 7,
-                  transition: 'background 200ms ease, color 200ms ease',
+                  // Highlight superior fuerte solo en la activa — luz neón
+                  // que dice "esta es la que estás mirando".
+                  boxShadow: active ? `inset 0 3px 0 0 ${t.color}` : 'none',
+                  transition: 'background 200ms ease, color 200ms ease, border-color 200ms ease',
                 }}>
-                {/* Símbolo (! o ✓) en círculo del color de la tab */}
+                {/* Símbolo (! o ✓) en círculo del color de la tab.
+                    Activa: bg sólido + texto negro. Inactiva: bg tenue +
+                    texto del color a 70% (sigue siendo del color, solo
+                    atenuado). */}
                 <span style={{
                   width: 18, height: 18, borderRadius: '50%',
-                  background: active ? t.color : `${t.color}33`,
-                  border: active ? 'none' : `1px solid ${t.color}66`,
-                  color: active ? '#0a0a0a' : t.color,
+                  background: active ? t.color : `${t.color}1F`,
+                  border: active ? 'none' : `1px solid ${t.color}44`,
+                  color: active ? '#0a0a0a' : `${t.color}B3`,
                   fontFamily: FN, fontSize: 11, fontWeight: 900,
                   display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
                   flexShrink: 0,
@@ -14542,25 +14914,19 @@ function CommerceSettingsView({ user, profile, setView, onLogout, onOwnerProfile
                   {t.symbol}
                 </span>
                 {t.label}
+                {/* Badge contador — también con el color de la tab,
+                    incluso cuando la tab está inactiva. */}
                 <span style={{
                   fontSize: 10.5, fontWeight: 800,
                   padding: '2px 7px',
                   borderRadius: 99,
-                  background: active ? `${t.color}33` : 'rgba(255,255,255,0.08)',
-                  color: active ? t.color : 'rgba(255,255,255,0.50)',
-                  border: `1px solid ${active ? `${t.color}66` : 'rgba(255,255,255,0.10)'}`,
+                  background: active ? `${t.color}33` : `${t.color}14`,
+                  color: active ? t.color : `${t.color}AA`,
+                  border: `1px solid ${active ? `${t.color}66` : `${t.color}33`}`,
                   fontFamily: FN, letterSpacing: '.02em',
                 }}>
                   {t.count}
                 </span>
-                {active && (
-                  <span style={{
-                    position: 'absolute', bottom: -1, left: '15%', right: '15%',
-                    height: 2, borderRadius: 2,
-                    background: t.color,
-                    boxShadow: `0 0 12px ${t.color}80`,
-                  }} />
-                )}
               </button>
             )
           })}
@@ -14778,6 +15144,113 @@ function CommerceSettingsView({ user, profile, setView, onLogout, onOwnerProfile
             transition: 'transform 80ms linear',
             willChange: isDesktop ? 'transform' : 'auto',
           }}>
+            {/* ── Card de celebración "¡Felicitaciones, todo listo!" ──
+                Aparece como PRIMER ítem del slider de Completos cuando
+                el dueño llegó al 100% (pendingCount === 0). Las cards
+                de configuraciones completadas siguen a la derecha,
+                ocupando el resto del slider. Antes esta celebración
+                vivía solo en el empty state de Pendientes; ahora se
+                muestra dentro de Completos para que el dueño la vea
+                acompañada de TODO lo que configuró. */}
+            {intentFilter === 'listas' && pendingCount === 0 && (
+              <div
+                key="celebration-100pct"
+                style={{
+                  // Mismas dimensiones que las cards regulares del slider
+                  // — comparten scroll-snap y stagger.
+                  width: isDesktop ? 320 : (configSliderW > 64 ? configSliderW - 32 : 280),
+                  flexShrink: 0,
+                  scrollSnapAlign: 'start',
+                  scrollSnapStop: 'always',
+                  // Background gradient verde brillante para celebrar.
+                  background: 'linear-gradient(180deg, #091F14 0%, #0F2A1C 50%, #0E3A24 100%)',
+                  border: 'none',
+                  borderRadius: 24,
+                  padding: '28px 24px 24px',
+                  display: 'flex', flexDirection: 'column',
+                  minHeight: 320,
+                  position: 'relative',
+                  overflow: 'hidden',
+                  boxShadow: '0 18px 40px rgba(0,0,0,0.55), 0 8px 28px rgba(34,230,152,0.45)',
+                  animation: 'fadeUp .35s ease both',
+                }}
+              >
+                {/* Borde verde gradient con mask-composite — mismo
+                    rim-light que las cards completas pero más fuerte
+                    porque acá el "todo listo" es la celebración. */}
+                <div aria-hidden style={{
+                  position: 'absolute', inset: 0,
+                  borderRadius: 'inherit',
+                  padding: 1.4,
+                  background: 'linear-gradient(180deg, rgba(255,255,255,0.10) 0%, rgba(34,230,152,0.40) 35%, rgba(34,230,152,0.85) 70%, rgba(34,230,152,0.85) 100%)',
+                  WebkitMask: 'linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0)',
+                  WebkitMaskComposite: 'xor',
+                  maskComposite: 'exclude',
+                  pointerEvents: 'none',
+                  zIndex: 1,
+                }} />
+                {/* Glow inferior verde */}
+                <div aria-hidden style={{
+                  position: 'absolute', bottom: -80, left: '50%',
+                  transform: 'translateX(-50%)',
+                  width: '140%', height: 200,
+                  background: 'radial-gradient(ellipse at center bottom, #4ade8088 0%, #22E69866 32%, #15803D33 58%, transparent 100%)',
+                  filter: 'blur(26px)',
+                  pointerEvents: 'none',
+                  zIndex: 0,
+                }} />
+
+                {/* Ícono central con check brillante */}
+                <div style={{
+                  width: 72, height: 72, borderRadius: 22,
+                  background: 'linear-gradient(135deg, #22E698, #4ade80)',
+                  display: 'flex', alignItems: 'center', justifyContent: 'center',
+                  margin: '0 auto 22px',
+                  boxShadow: '0 12px 32px rgba(34,230,152,0.55)',
+                  position: 'relative', zIndex: 2,
+                  animation: 'celebrate-card 1.4s cubic-bezier(0.16,1,0.3,1)',
+                }}>
+                  <Check size={38} color="#fff" strokeWidth={2.8} />
+                </div>
+
+                {/* Título */}
+                <div style={{
+                  fontFamily: FN, fontSize: 20, fontWeight: 900,
+                  color: '#22E698',
+                  textAlign: 'center',
+                  marginBottom: 10,
+                  letterSpacing: '-.015em',
+                  lineHeight: 1.2,
+                  position: 'relative', zIndex: 2,
+                }}>
+                  ¡Felicitaciones, todo listo!
+                </div>
+
+                {/* Subtítulo descriptivo */}
+                <div style={{
+                  fontSize: 13, color: 'rgba(255,255,255,0.78)',
+                  textAlign: 'center', lineHeight: 1.55,
+                  position: 'relative', zIndex: 2,
+                  marginBottom: 16,
+                }}>
+                  Configuraste los <strong style={{ color: '#fff', fontWeight: 800 }}>{totalCount}</strong> datos clave de tu negocio. Tus clientes te van a encontrar prolijo y listo para sumarlos al club.
+                </div>
+
+                {/* Hint para mostrar que hay más a la derecha */}
+                <div style={{
+                  marginTop: 'auto',
+                  display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6,
+                  fontSize: 11, color: 'rgba(34,230,152,0.85)',
+                  fontFamily: FN, fontWeight: 700,
+                  letterSpacing: '.06em', textTransform: 'uppercase',
+                  position: 'relative', zIndex: 2,
+                }}>
+                  Mirá lo que cargaste
+                  <ChevronRight size={13} strokeWidth={2.6} />
+                </div>
+              </div>
+            )}
+
             {/* En mobile filtramos a la card activa solamente — sin scroll
                 horizontal, sin peek, una card a la vez. En desktop renderea
                 todas en grid. */}
@@ -14794,6 +15267,34 @@ function CommerceSettingsView({ user, profile, setView, onLogout, onOwnerProfile
               const isLocked = !!item.lockedByPlan
               const lockPlan = item.lockedByPlan && PLANS[item.lockedByPlan]
               const lockColor = lockPlan?.color || '#BD4BF8'
+              // ── Tema de la tab actual ──
+              // Pendientes (intentFilter='pendientes') → amarillo (#F5A623,
+              // mismo color que la solapa Pendientes).
+              // Completos (intentFilter='listas') → verde (#22E698, mismo
+              // color que la solapa Completos).
+              // Esto pinta el background, el rim-light del border y la
+              // shadow de cada card del slider con el color identidad de
+              // la tab donde viven, así se siente coherente con el strip
+              // de pestañas. Casos especiales (isJustCompleted, isLocked)
+              // mantienen sus colores propios.
+              const isPending      = intentFilter === 'pendientes'
+              // Color identidad de la tab activa — se aplica a TODA la
+              // card: background degradé, glow del border, icon circle,
+              // CTA button. El user pidió que el color "pinte la card
+              // entera" en lugar de solo aparecer en detalles sutiles.
+              const themeColor     = isPending ? '#F5A623' : '#22E698'
+              const themeColorD    = isPending ? '#D97706' : '#15803D'  // Tono más oscuro para gradientes/sombras
+              const themeColorL    = isPending ? '#FBBF24' : '#4ade80'  // Tono más claro/vibrante
+              const themeRgba22    = isPending ? 'rgba(245,166,35,0.22)' : 'rgba(34,230,152,0.22)'
+              const themeRgba35    = isPending ? 'rgba(245,166,35,0.35)' : 'rgba(34,230,152,0.35)'
+              // Background mucho más tinted que antes (subimos de #1F1408
+              // hacia algo con saturación visible) — la card se siente
+              // del color identidad, no solo "tinted negra".
+              const themeBgStart   = isPending ? '#1A1206' : '#091F14'
+              const themeBgMid     = isPending ? '#2A1808' : '#0F2A1C'
+              const themeBgEnd     = isPending ? '#3D1F08' : '#0E3A24'
+              const themeBorderMid = isPending ? 'rgba(245,166,35,0.32)' : 'rgba(34,230,152,0.32)'
+              const themeBorderHi  = isPending ? 'rgba(245,166,35,0.70)' : 'rgba(34,230,152,0.70)'
               return (
                 <button
                   key={item.id}
@@ -14803,21 +15304,16 @@ function CommerceSettingsView({ user, profile, setView, onLogout, onOwnerProfile
                     // Slider scroll-snap horizontal: en mobile el width se
                     // mide en runtime para que UNA card ocupe exactamente el
                     // ancho visible del slider, sin peek de la siguiente.
-                    // El fallback de 280 es para el primer render (SSR/antes
-                    // de que el ResizeObserver dispare). 32px = 16+16 padding
-                    // del inner.
-                    // scroll-snap-stop: always fuerza al browser a parar en
-                    // CADA card al hacer swipe — sin esto un fling rápido
-                    // podía saltearse cards y caer entre dos.
                     width: isDesktop ? 320 : (configSliderW > 64 ? configSliderW - 32 : 280),
                     flexShrink: 0,
                     scrollSnapAlign: 'start',
                     scrollSnapStop: 'always',
-                    // Base oscura + gradient violeta sutil al fondo. Sin
-                    // tinte fuerte como antes; el "lujo" lo dan el inner
-                    // border-radius grande, el divider con glow y el CTA
-                    // grande al pie.
-                    background: 'linear-gradient(180deg, #0a0612 0%, #150823 100%)',
+                    // Background con presencia clara del color de la tab
+                    // — 3 stops (start dark → mid medium → end strong)
+                    // así la card se siente del color identidad, no solo
+                    // "tinted negra". Pendientes en gama amber/dark,
+                    // Completos en gama green/dark.
+                    background: `linear-gradient(180deg, ${themeBgStart} 0%, ${themeBgMid} 50%, ${themeBgEnd} 100%)`,
                     border: 'none',
                     borderRadius: 24,
                     padding: '22px 22px 0',
@@ -14829,11 +15325,11 @@ function CommerceSettingsView({ user, profile, setView, onLogout, onOwnerProfile
                     minHeight: 320,
                     position: 'relative',
                     overflow: 'hidden',
-                    // Box-shadow ahora suma profundidad sin borde plano. El borde
-                    // visual lo da el div interno con gradient (ver más abajo).
+                    // Shadow del color de la tab — antes era violeta uniforme,
+                    // ahora amarillo o verde según contexto.
                     boxShadow: isJustCompleted
                       ? '0 18px 40px rgba(0,0,0,0.45), 0 0 0 2px rgba(34,230,152,0.30), 0 8px 28px rgba(34,230,152,0.45)'
-                      : '0 18px 40px rgba(0,0,0,0.55), 0 8px 28px rgba(189,75,248,0.22)',
+                      : `0 18px 40px rgba(0,0,0,0.55), 0 8px 28px ${themeRgba22}`,
                     animation: isJustCompleted
                       ? 'celebrate-card 1.4s cubic-bezier(0.16,1,0.3,1)'
                       : `fadeUp .35s ease ${idx * 0.05}s both`,
@@ -14841,16 +15337,17 @@ function CommerceSettingsView({ user, profile, setView, onLogout, onOwnerProfile
                   onMouseEnter={(e) => { e.currentTarget.style.transform = 'translateY(-2px)' }}
                   onMouseLeave={(e) => { e.currentTarget.style.transform = 'translateY(0)' }}
                 >
-                  {/* Borde gradient con mask-composite — más brillante abajo
-                      (violeta → azul) y se desvanece arriba. Recrea el "rim
-                      light" del reference image. Solo cuando NO está locked
-                      ni recién completada (esos casos tienen su propio chrome). */}
+                  {/* Borde gradient con mask-composite — usa el color de
+                      la tab (amarillo/verde) en lugar del violeta fijo
+                      anterior, así el rim-light también se alinea con
+                      la identidad de la solapa. Solo cuando NO está
+                      locked ni recién completada. */}
                   {!isLocked && !isJustCompleted && (
                     <div aria-hidden style={{
                       position: 'absolute', inset: 0,
                       borderRadius: 'inherit',
                       padding: 1.4,
-                      background: 'linear-gradient(180deg, rgba(255,255,255,0.06) 0%, rgba(189,75,248,0.18) 35%, rgba(189,75,248,0.55) 70%, rgba(91,141,239,0.75) 100%)',
+                      background: `linear-gradient(180deg, rgba(255,255,255,0.06) 0%, ${themeBorderMid} 35%, ${themeBorderHi} 70%, ${themeBorderHi} 100%)`,
                       WebkitMask: 'linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0)',
                       WebkitMaskComposite: 'xor',
                       maskComposite: 'exclude',
@@ -14879,25 +15376,34 @@ function CommerceSettingsView({ user, profile, setView, onLogout, onOwnerProfile
                     }} />
                   )}
 
-                  {/* Glow inferior MULTICOLOR — la "luz que sale por debajo" del
-                      reference image. Mezcla violeta + azul + fucsia. Más amplio
-                      y brillante que el de antes para que sea protagonista. */}
+                  {/* Glow inferior — "luz que sale por debajo" del card,
+                      teñida con el color de la tab activa (amarillo en
+                      Pendientes, verde en Completos). Antes era multicolor
+                      violeta+azul+fucsia, lo que dejaba un tinte violeta
+                      que no encajaba con la nueva paleta de las tabs.
+                      Ahora es monocromático del themeColor con halo más
+                      claro al centro y una transición suave hacia
+                      transparente. */}
                   <div aria-hidden style={{
                     position: 'absolute', bottom: -80, left: '50%',
                     transform: 'translateX(-50%)',
                     width: '140%', height: 200,
-                    background: 'radial-gradient(ellipse at center bottom, rgba(189,75,248,0.55) 0%, rgba(91,141,239,0.40) 32%, rgba(236,72,153,0.28) 58%, transparent 100%)',
+                    background: `radial-gradient(ellipse at center bottom, ${themeColorL}88 0%, ${themeColor}66 32%, ${themeColorD}33 58%, transparent 100%)`,
                     filter: 'blur(26px)',
                     pointerEvents: 'none',
                     zIndex: 0,
                   }} />
 
-                  {/* Header: pill de estado top-right (estilo "MOST POPULAR") */}
+                  {/* Header: pill de estado top-right (estilo "MOST POPULAR")
+                      Antes el kicker "A completar" iba en violeta y el chip
+                      "Pendiente" en violeta. Ahora ambos toman el color de
+                      la tab activa: amarillo para items en Pendientes,
+                      verde para items en Completos (que tienen "Listo"). */}
                   <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', marginBottom: 6, position: 'relative', zIndex: 2 }}>
-                    {/* Categoría / etiqueta superior */}
+                    {/* Kicker — usa themeColor cuando no es locked. */}
                     <div style={{
                       fontFamily: FN, fontSize: 11, fontWeight: 700,
-                      color: isLocked ? `${lockColor}DD` : 'rgba(216,180,254,0.85)',
+                      color: isLocked ? `${lockColor}DD` : themeColor,
                       letterSpacing: '.10em', textTransform: 'uppercase',
                     }}>
                       {isLocked ? `Disponible en` : (done ? 'Configurado' : 'A completar')}
@@ -14918,23 +15424,28 @@ function CommerceSettingsView({ user, profile, setView, onLogout, onOwnerProfile
                     ) : done ? (
                       <span style={{
                         display: 'inline-flex', alignItems: 'center', gap: 4,
-                        fontSize: 9.5, fontWeight: 800, color: '#22E698',
+                        fontSize: 9.5, fontWeight: 800, color: themeColor,
                         letterSpacing: '.10em', textTransform: 'uppercase',
-                        background: 'rgba(34,230,152,0.10)',
-                        border: '1px solid rgba(34,230,152,0.35)',
+                        background: `${themeColor}1A`,
+                        border: `1px solid ${themeRgba35}`,
                         padding: '4px 9px', borderRadius: 99,
                         animation: isJustCompleted ? 'celebrate-badge 0.9s cubic-bezier(0.34,1.56,0.64,1) both' : undefined,
                       }}>
                         <Check size={10} strokeWidth={2.8} /> Listo
                       </span>
                     ) : (
+                      // "Pendiente" chip — antes degradé violeta. Ahora
+                      // degradé amarillo (themeColorD → themeColor → themeColorL).
+                      // Texto en negro porque el amarillo brillante con
+                      // texto blanco no contrasta bien (acessibilidad).
                       <span style={{
-                        fontSize: 9.5, fontWeight: 800, color: '#fff',
+                        fontSize: 9.5, fontWeight: 800,
+                        color: '#1A1206', // texto oscuro sobre amarillo brillante
                         letterSpacing: '.10em', textTransform: 'uppercase',
-                        background: 'linear-gradient(135deg, #7C3AED, #BD4BF8)',
-                        border: '1px solid rgba(255,255,255,0.20)',
+                        background: `linear-gradient(135deg, ${themeColorD}, ${themeColor}, ${themeColorL})`,
+                        border: `1px solid ${themeColor}66`,
                         padding: '4px 10px', borderRadius: 99,
-                        boxShadow: '0 4px 12px rgba(189,75,248,0.50)',
+                        boxShadow: `0 4px 12px ${themeRgba35}`,
                       }}>
                         Pendiente
                       </span>
@@ -14968,10 +15479,12 @@ function CommerceSettingsView({ user, profile, setView, onLogout, onOwnerProfile
                     </div>
                   </div>
 
-                  {/* Subtítulo descriptivo */}
+                  {/* Subtítulo descriptivo — antes con tinte violeta
+                      claro (rgba(229,221,255,0.70)). Ahora un blanco
+                      neutro al 70% para no aportar más violeta. */}
                   <div style={{
                     fontSize: 13, fontWeight: 500,
-                    color: 'rgba(229,221,255,0.70)',
+                    color: 'rgba(255,255,255,0.70)',
                     lineHeight: 1.45,
                     marginBottom: 18,
                     position: 'relative', zIndex: 2,
@@ -14979,11 +15492,14 @@ function CommerceSettingsView({ user, profile, setView, onLogout, onOwnerProfile
                     {item.description}
                   </div>
 
-                  {/* Divider con glow violeta — característica visual del reference */}
+                  {/* Divider con glow del color de la tab — antes era
+                      una línea violeta (rgba(189,75,248,0.85)) con glow
+                      violeta. Ahora se alinea con themeColor (amarillo
+                      en Pendientes, verde en Completos). */}
                   <div style={{
                     height: 1, width: '100%',
-                    background: 'linear-gradient(90deg, transparent 0%, rgba(189,75,248,0.85) 50%, transparent 100%)',
-                    boxShadow: '0 0 16px rgba(189,75,248,0.55), 0 0 4px rgba(189,75,248,0.35)',
+                    background: `linear-gradient(90deg, transparent 0%, ${themeColor}D9 50%, transparent 100%)`,
+                    boxShadow: `0 0 16px ${themeRgba35}, 0 0 4px ${themeColor}55`,
                     marginBottom: 16,
                     position: 'relative', zIndex: 2,
                   }} />
@@ -15001,23 +15517,20 @@ function CommerceSettingsView({ user, profile, setView, onLogout, onOwnerProfile
                       </div>
                     ) : (
                       <div style={{
-                        // Círculo glass más prominente, alineado con la referencia
-                        // visual: fondo casi transparente con backdrop-filter, borde
-                        // sutil, ícono claro adentro. La intensidad del color del
-                        // ícono varía con el estado (verde si done, violeta si pending).
+                        // Círculo glass tinted con el color de la tab
+                        // — antes era violeta uniforme para pending y
+                        // verde solo cuando done. Ahora el bg+border+
+                        // color del ícono se alinean con themeColor
+                        // (amarillo/verde) cuando NO está locked.
                         width: 48, height: 48, borderRadius: '50%', flexShrink: 0,
-                        background: done
-                          ? 'rgba(34,230,152,0.08)'
-                          : 'rgba(255,255,255,0.05)',
-                        border: done
-                          ? '1px solid rgba(34,230,152,0.32)'
-                          : '1px solid rgba(255,255,255,0.12)',
+                        background: `${themeColor}1A`,
+                        border: `1px solid ${themeRgba35}`,
                         backdropFilter: 'blur(8px)',
                         WebkitBackdropFilter: 'blur(8px)',
                         boxShadow: 'inset 0 1px 0 rgba(255,255,255,0.08), 0 4px 14px rgba(0,0,0,0.35)',
                         display: 'flex', alignItems: 'center', justifyContent: 'center',
                       }}>
-                        <Icon size={22} color={done ? '#22E698' : '#E5DDFF'} strokeWidth={2.2} />
+                        <Icon size={22} color={themeColor} strokeWidth={2.2} />
                       </div>
                     )}
                     <div style={{ fontSize: 13, color: 'rgba(255,255,255,0.78)', fontWeight: 500, lineHeight: 1.4 }}>
@@ -15027,18 +15540,20 @@ function CommerceSettingsView({ user, profile, setView, onLogout, onOwnerProfile
                     </div>
                   </div>
 
-                  {/* CTA grande estilo "Get it now" — pill full-width con gradient.
-                      Cuando el item está lockeado por plan, el CTA cambia a
-                      "Actualizar plan" con el color del plan que desbloquea
-                      (azul STARTER o ámbar PRO) y abre el upgrade modal. */}
+                  {/* CTA grande estilo "Get it now" — pill full-width con
+                      gradient del color de la tab. Antes era violeta fijo;
+                      ahora amarillo si la tab es Pendientes, verde si es
+                      Completos. Locked mantiene el color del plan que
+                      desbloquea (azul STARTER o ámbar PRO). */}
                   <div style={{
                     display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6,
                     background: isLocked
                       ? `linear-gradient(135deg, ${lockColor} 0%, ${lockColor}D9 100%)`
-                      : done
-                        ? 'rgba(255,255,255,0.06)'
-                        : 'linear-gradient(135deg, #7C3AED 0%, #BD4BF8 100%)',
-                    border: (done && !isLocked) ? '1px solid rgba(255,255,255,0.14)' : 'none',
+                      : `linear-gradient(135deg, ${themeColorD} 0%, ${themeColor} 50%, ${themeColorL} 100%)`,
+                    border: 'none',
+                    // Texto blanco siempre — funciona bien sobre el degradé
+                    // del color de la tab (amber/green) y sobre lockColor
+                    // por igual.
                     color: '#fff',
                     fontFamily: FN, fontSize: 14, fontWeight: 800,
                     letterSpacing: '.02em',
@@ -15049,8 +15564,10 @@ function CommerceSettingsView({ user, profile, setView, onLogout, onOwnerProfile
                     borderTopLeftRadius: 0, borderTopRightRadius: 0,
                     boxShadow: isLocked
                       ? `0 6px 20px ${lockColor}80`
-                      : (done ? 'none' : '0 6px 20px rgba(189,75,248,0.50)'),
+                      : `0 6px 20px ${themeRgba35}`,
                     position: 'relative',
+                    // Text-shadow leve para legibilidad sobre el gradient.
+                    textShadow: '0 1px 2px rgba(0,0,0,0.25)',
                   }}>
                     {isLocked
                       ? <><Zap size={14} strokeWidth={2.6} /> Actualizar plan</>
@@ -15152,87 +15669,10 @@ function CommerceSettingsView({ user, profile, setView, onLogout, onOwnerProfile
 
         </div>{/* fin del container "carpeta" pestañas + contenido */}
 
-        {/* MerchantTopTabs — nav horizontal scrolleable abajo del navbar
-            global, reemplaza el radial menu mobile. Estilo similar al
-            ClientBottomNav (Mi billetera / Mis beneficios / etc): pills
-            con icono + label, underline gradient en el activo, scroll
-            horizontal nativo. Se monta solo en mobile. */}
-        {!intentPickerActive && (
-          <nav style={{
-            position: 'fixed',
-            top: 62,
-            left: 0, right: 0,
-            zIndex: 199,
-            background: 'rgba(8, 4, 18, 0.82)',
-            backdropFilter: 'blur(16px) saturate(180%)',
-            WebkitBackdropFilter: 'blur(16px) saturate(180%)',
-            borderBottom: '1px solid rgba(255,255,255,0.08)',
-          }}>
-            <div style={{
-              display: 'flex',
-              overflowX: 'auto',
-              gap: 4,
-              padding: '8px 12px',
-              scrollbarWidth: 'none',
-              msOverflowStyle: 'none',
-              WebkitOverflowScrolling: 'touch',
-            }}>
-              {MENU.map(m => {
-                const I = MENU_ICONS[m.id]
-                const active = tab === m.id
-                const isLocked = m.locked
-                const isProLocked = m.pro && planKey !== 'pro'
-                const dimmed = isLocked || isProLocked
-                const colorBase = dimmed ? 'rgba(255,255,255,0.35)' : 'rgba(255,255,255,0.55)'
-                const color = active ? '#fff' : colorBase
-                const iconColor = active ? C.v : colorBase
-                return (
-                  <button
-                    key={m.id}
-                    onClick={() => {
-                      if (isLocked) { setUpgradeModal('promotions'); _setTabRaw(m.id) } else _setTabRaw(m.id)
-                      setIntentPickerActive(false)
-                      setCameFromConfigCards(false)
-                    }}
-                    style={{
-                      flexShrink: 0,
-                      padding: '8px 10px 10px',
-                      background: 'transparent',
-                      border: 'none',
-                      cursor: 'pointer',
-                      color,
-                      fontFamily: FN, fontSize: 12,
-                      fontWeight: active ? 800 : 600,
-                      position: 'relative',
-                      display: 'inline-flex', alignItems: 'center', gap: 6,
-                      whiteSpace: 'nowrap',
-                      transition: 'color 200ms ease',
-                    }}
-                  >
-                    {I && <I size={13} strokeWidth={active ? 2.4 : 2} color={iconColor} />}
-                    <span>{m.label}</span>
-                    {isProLocked && (
-                      <span style={{
-                        fontSize: 8, fontWeight: 800, color: PLANS.pro.color,
-                        background: `${PLANS.pro.color}1F`,
-                        border: `1px solid ${PLANS.pro.color}55`,
-                        borderRadius: 99, padding: '1px 4px',
-                        fontFamily: FN, letterSpacing: '.04em',
-                      }}>PRO</span>
-                    )}
-                    {active && (
-                      <span style={{
-                        position: 'absolute', bottom: 0, left: '15%', right: '15%',
-                        height: 2, borderRadius: 2,
-                        background: 'linear-gradient(135deg, #FE5000, #BD4BF8)',
-                      }} />
-                    )}
-                  </button>
-                )
-              })}
-            </div>
-          </nav>
-        )}
+        {/* MerchantTopTabs — render via variable reutilizable definida
+            arriba del if(intentPickerActive). Misma instancia se usa
+            tanto acá como en el render principal de abajo. */}
+        {merchantTopTabsNav}
         {/* Radial menu deshabilitado en este sprint — se mantenía como cog
             flotante. Ahora la navegación mobile vive arriba en MerchantTopTabs. */}
         {renderRadialMenu()}
@@ -15269,7 +15709,12 @@ function CommerceSettingsView({ user, profile, setView, onLogout, onOwnerProfile
 
   function saveAutoConfigs(next) {
     setAutoConfigs(next)
-    setMessagesConfigured(true)
+    // Antes acá hacíamos setMessagesConfigured(true) automáticamente
+    // (cualquier cambio en autoConfigs marcaba como "configurado").
+    // Ahora messagesConfigured se rige SOLO por el toggle explícito
+    // "Activá los mensajes automáticos" del header del tab Mensajes —
+    // así la card del intent picker pasa a "Listo" cuando el dueño
+    // aceptó conscientemente, no como side-effect.
     if (commerce) { try { localStorage.setItem(`cb_auto_${commerce.id}`, JSON.stringify(next)) } catch {} }
   }
   function markSent(type, userId) {
@@ -15555,6 +16000,13 @@ function CommerceSettingsView({ user, profile, setView, onLogout, onOwnerProfile
   // ── LAYOUT PRINCIPAL ──
   return (
     <div style={{ display:'flex', minHeight:'calc(100vh - 80px)' }}>
+      {/* MerchantTopTabs — la misma nav horizontal de pestañas que se
+          renderiza en el dashboard. Acá se rinde en TODAS las demás
+          pantallas del panel comerciante (Clientes, Premios, Mensajes,
+          Análisis, Configuración, etc.) para que la navegación esté
+          siempre presente. Como es position:fixed flota arriba del
+          contenido sin desplazarlo. */}
+      {merchantTopTabsNav}
       {upgradeModal && (
         <UpgradeModal
           feature={upgradeModal}
@@ -16004,222 +16456,18 @@ function CommerceSettingsView({ user, profile, setView, onLogout, onOwnerProfile
           Volver a tarjetas
         </button>
 
-        {/* ── DASHBOARD ── */}
-        {tab === 'dashboard' && (
-          <div>
-            <DynamicGreeting name={commerce.name} type="commerce" style={{ marginBottom:4 }} />
-            <div style={{ fontSize:12, color:C.mist, marginBottom:18 }}>Así va tu negocio hoy.</div>
-
-            <HelpBanner
-              id="merchant-dashboard"
-              title="Tu panel de control"
-              body="Resumen del día + accesos rápidos. Las secciones del panel viven en el menú lateral."
-              details={<>
-                Tocá la <strong style={{ color:'#fff' }}>solapa angosta del lado izquierdo</strong> para abrir el menú con todas las secciones: clientes, recompensas, premios, mensajes, análisis, historial, configuración y planes.<br/><br/>
-                Si querés volver a la pantalla inicial con los dos botones grandes ("Sumar nuevo cliente" / "Registrar compra"), tocá el ícono <strong style={{ color:'#fff' }}>Mi Negocio</strong> del navbar de arriba.
-              </>}
-            />
-
-            {/* Banner de completitud del perfil — solo si está incompleto.
-                Lleva al tab Configuración. Le mete presión al dueño desde dashboard. */}
-            {(() => {
-              const checks = [
-                !!commerce.img_url,
-                !!commerce.cover_image,
-                !!form?.description,
-                !!form?.phone,
-                !!form?.address,
-                !!(form?.instagram || form?.facebook),
-                !!(hoursForm && Object.values(hoursForm).some(d => d.open)),
-              ]
-              const done  = checks.filter(Boolean).length
-              const total = checks.length
-              const pct   = Math.round(done / total * 100)
-              if (pct === 100) return null
-              return (
-                <button onClick={() => setTab('configuracion')}
-                  style={{
-                    display:'flex', alignItems:'center', gap:14,
-                    padding:'13px 16px', marginBottom:16,
-                    width:'100%', textAlign:'left', cursor:'pointer',
-                    // Tono violeta de marca (de los morados oscuros del logo
-                    // a los lilas claros). Antes era orange→violet pero
-                    // chocaba con el resto de la pantalla; ahora unificado
-                    // con la paleta violeta del navbar y la solapa.
-                    background:'linear-gradient(135deg, rgba(63,11,120,0.30) 0%, rgba(124,58,237,0.22) 50%, rgba(189,75,248,0.24) 100%)',
-                    border:'1px solid rgba(189,75,248,0.40)', borderRadius:14,
-                  }}>
-                  <div style={{ flex:1 }}>
-                    <div style={{ fontSize:13, fontWeight:700, color:C.white, fontFamily:FN, marginBottom:3 }}>
-                      Tu perfil está al {pct}%
-                    </div>
-                    <div style={{ fontSize:11, color:'rgba(255,255,255,0.65)', marginBottom:7 }}>
-                      Completalo para que tus clientes te vean mejor.
-                    </div>
-                    <div style={{ height:4, background:'rgba(255,255,255,0.10)', borderRadius:99, overflow:'hidden' }}>
-                      {/* Barra de progreso en violeta (antes naranja→violeta) */}
-                      <div style={{ height:'100%', width:`${pct}%`, background:'linear-gradient(135deg, #A855F7, #BD4BF8)', borderRadius:99, transition:'width 0.4s ease' }} />
-                    </div>
-                  </div>
-                  <ChevronRight size={20} color="rgba(216,180,254,0.85)" strokeWidth={2.4} style={{ flexShrink:0 }} />
-                </button>
-              )
-            })()}
-
-            {/* Stats: fila compacta de 4 */}
-            <div style={{ display:'grid', gridTemplateColumns:'repeat(4,1fr)', gap:8, marginBottom:16 }}>
-              {[
-                { label:'Clientes',  val: members.length                    },
-                { label:'Visitas',   val: dashStats?.monthVisits ?? '–'     },
-                { label:'Activos',   val: dashStats?.activeThisWeek ?? '–'  },
-                { label:'Premios',   val: prizes.filter(p=>p.active).length },
-              ].map(s => (
-                <div key={s.label} style={{ background:C.card, border:`1px solid ${C.rim}`, borderRadius:14, padding:'12px 8px', textAlign:'center' }}>
-                  <div style={{ fontFamily:FN, fontSize:22, fontWeight:900, color:C.white, lineHeight:1.1 }}>{s.val}</div>
-                  <div style={{ fontSize:10, color:C.mist, marginTop:4 }}>{s.label}</div>
-                </div>
-              ))}
-            </div>
-
-            {/* Alerta clientes cerca de premio — paleta violeta de marca
-                para mantener coherencia visual con el resto del dashboard. */}
-            {nearPrize.length > 0 && (
-              <div style={{ padding:'12px 14px', marginBottom:14, border:`1px solid ${C.v}55`, background:`${C.v}14`, borderRadius:14, display:'flex', alignItems:'center', justifyContent:'space-between', gap:10 }}>
-                <div style={{ display:'flex', alignItems:'center', gap:8, minWidth:0 }}>
-                  <Bell size={14} color={C.v} strokeWidth={2} style={{ flexShrink:0 }} />
-                  <span style={{ fontSize:12, color:C.v, fontWeight:600 }}>
-                    {nearPrize.length} cliente{nearPrize.length>1?'s':''} a punto de canjear
-                  </span>
-                </div>
-                <button onClick={() => setTab('clientes')} style={{ background:'transparent', border:'none', color:C.v, fontSize:11, cursor:'pointer', fontWeight:700, flexShrink:0 }}>Ver →</button>
-              </div>
-            )}
-
-            {/* QR del negocio — protagonista */}
-            <CommerceQRCard commerce={commerce} />
-
-            {/* Tira de info: plan · sistema · promos */}
-            <PCard style={{ padding:'14px 16px', marginTop:14 }}>
-              <div style={{ display:'flex', alignItems:'center', gap:0, flexWrap:'wrap' }}>
-
-                {/* Plan + barra */}
-                <div style={{ flex:'1 1 0', minWidth:0, paddingRight:14, borderRight:`1px solid ${C.rim}` }}>
-                  <div style={{ display:'flex', alignItems:'center', gap:6, marginBottom: planDef.limit !== null ? 6 : 0 }}>
-                    <span style={{ fontFamily:FN, fontSize:10, fontWeight:700, color:planDef.color, background:planDef.badge, padding:'2px 7px', borderRadius:6, letterSpacing:'.07em', flexShrink:0 }}>{planDef.label}</span>
-                    {planKey !== 'pro' && (
-                      <button onClick={() => setTab('configuracion')} style={{ background:'transparent', border:'none', color:C.dust, fontSize:10, cursor:'pointer', fontWeight:600, padding:0 }}>cambiar →</button>
-                    )}
-                  </div>
-                  {planDef.limit !== null ? (
-                    <>
-                      <div style={{ height:3, borderRadius:3, background:C.rim, overflow:'hidden', marginBottom:3 }}>
-                        <div style={{ height:'100%', width:`${Math.min(100,(clientCount/planDef.limit)*100)}%`, background: atLimit ? '#f87444' : nearLimit ? C.o : planDef.color, borderRadius:3, transition:'width .4s' }} />
-                      </div>
-                      <div style={{ fontSize:10, color: atLimit ? '#f87444' : nearLimit ? C.o : C.dust }}>
-                        {clientCount}/{planDef.limit} clientes
-                      </div>
-                    </>
-                  ) : (
-                    <div style={{ fontSize:10, color:C.dust }}>{clientCount} · ilimitados</div>
-                  )}
-                </div>
-
-                {/* Sistema */}
-                <div style={{ flex:'1 1 0', minWidth:0, padding:'0 14px', borderRight:`1px solid ${C.rim}` }}>
-                  <div style={{ display:'flex', alignItems:'center', gap:6, marginBottom:4 }}>
-                    {form?.prog_type === 'stars'
-                      ? <Star size={13} color={unitColor} strokeWidth={0} fill={unitColor} />
-                      : <Gem  size={13} color={unitColor} strokeWidth={2} />
-                    }
-                    <span style={{ fontFamily:FN, fontSize:12, fontWeight:700, color:C.white }}>{unitLabel.charAt(0).toUpperCase()+unitLabel.slice(1)}</span>
-                  </div>
-                  <div style={{ fontSize:10, color:C.dust }}>
-                    {activePrizes.length} premio{activePrizes.length!==1?'s':''} activos
-                  </div>
-                </div>
-
-                {/* Promos */}
-                <div style={{ flex:'1 1 0', minWidth:0, paddingLeft:14 }}>
-                  <button onClick={() => setTab('recompensas')} style={{ background:'transparent', border:'none', padding:0, cursor:'pointer', textAlign:'left', width:'100%' }}>
-                    <div style={{ display:'flex', alignItems:'center', gap:6, marginBottom:4 }}>
-                      <Flame size={13} color={promos.filter(p=>p.active).length > 0 ? C.o : C.dust} strokeWidth={2} />
-                      <span style={{ fontFamily:FN, fontSize:12, fontWeight:700, color: promos.filter(p=>p.active).length > 0 ? C.white : C.mist }}>
-                        {promos.filter(p=>p.active).length} promos
-                      </span>
-                    </div>
-                    <div style={{ fontSize:10, color:C.v }}>gestionar →</div>
-                  </button>
-                </div>
-
-              </div>
-
-              {/* Warning de límite */}
-              {atLimit && (
-                <div style={{ marginTop:12, paddingTop:12, borderTop:`1px solid ${C.rim}`, display:'flex', alignItems:'center', gap:10 }}>
-                  <span style={{ fontSize:11, color:'#f87444', flex:1 }}>Límite alcanzado. No podés sumar más clientes.</span>
-                  <button onClick={() => setUpgradeModal('clients')} style={{ background:GV, border:'none', borderRadius:8, padding:'6px 12px', color:'#fff', fontFamily:FN, fontSize:11, fontWeight:700, cursor:'pointer', flexShrink:0, display:'flex', alignItems:'center', gap:4 }}>
-                    <Zap size={11} strokeWidth={2} /> Mejorar
-                  </button>
-                </div>
-              )}
-              {nearLimit && !atLimit && (
-                <div style={{ marginTop:12, paddingTop:12, borderTop:`1px solid ${C.rim}`, display:'flex', alignItems:'center', justifyContent:'space-between', gap:10 }}>
-                  <span style={{ fontSize:11, color:C.o }}>Cerca del límite ({clientCount}/{planDef.limit})</span>
-                  <button onClick={() => setUpgradeModal('clients')} style={{ background:'transparent', border:`1px solid ${C.o}`, borderRadius:8, padding:'4px 10px', color:C.o, fontFamily:FN, fontSize:10, fontWeight:700, cursor:'pointer', flexShrink:0 }}>Actualizar</button>
-                </div>
-              )}
-            </PCard>
-
-            {/* Canjes recientes */}
-            {recentCanjes.length > 0 && (
-              <PCard style={{ padding:16, marginTop:14 }}>
-                <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:12 }}>
-                  <div style={{ display:'flex', alignItems:'center', gap:8 }}>
-                    <Gift size={15} color={C.ok} strokeWidth={2} />
-                    <span style={{ fontFamily:FN, fontSize:13, fontWeight:700, color:C.white }}>Canjes recientes</span>
-                  </div>
-                  <button onClick={() => setTab('historial')} style={{ background:'transparent', border:'none', color:C.v, fontSize:11, cursor:'pointer', fontWeight:600 }}>Ver todos →</button>
-                </div>
-                {recentCanjes.map(r => {
-                  // kind='discount' → cliente usó un cupón discount_next.
-                  // kind='prize' (default) → canje del catálogo de premios.
-                  const isDiscount = r.kind === 'discount'
-                  const discountVal = r.discount_value ?? r.promotion?.value
-                  const itemLabel = isDiscount
-                    ? `Descuento ${discountVal ? discountVal + '% OFF' : 'aplicado'}`
-                    : (r.prize?.name || '–')
-                  const Icon = isDiscount ? Percent : Gift
-                  const tagColor = isDiscount ? C.o : C.ok
-                  return (
-                    <div key={r.id} style={{ display:'flex', alignItems:'center', justifyContent:'space-between', padding:'7px 0', borderBottom:`1px solid ${C.rim}` }}>
-                      <div style={{ display:'flex', alignItems:'center', gap:8, minWidth:0 }}>
-                        <div style={{ width:28, height:28, borderRadius:8, background:`${tagColor}18`, border:`1px solid ${tagColor}33`, display:'flex', alignItems:'center', justifyContent:'center', flexShrink:0 }}>
-                          <Icon size={13} color={tagColor} strokeWidth={2} />
-                        </div>
-                        <div style={{ minWidth:0 }}>
-                          <div style={{ fontSize:12, color:C.pearl, fontWeight:600, overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>
-                            {r.user?.name || r.user?.full_name || 'Cliente'}
-                          </div>
-                          <div style={{ fontSize:10, color:C.dust }}>{itemLabel}</div>
-                        </div>
-                      </div>
-                      <div style={{ textAlign:'right', flexShrink:0, marginLeft:8 }}>
-                        {isDiscount ? (
-                          <div style={{ fontSize:11, color:C.o, fontWeight:700 }}>{discountVal ? `${discountVal}%` : 'OFF'}</div>
-                        ) : (
-                          <div style={{ fontSize:11, color:'#f87444', fontWeight:700 }}>−{r.points_spent}</div>
-                        )}
-                        <div style={{ fontSize:9, color:C.dust }}>
-                          {new Date(r.created_at).toLocaleDateString('es-AR', { day:'2-digit', month:'short' })}
-                        </div>
-                      </div>
-                    </div>
-                  )
-                })}
-              </PCard>
-            )}
-          </div>
-        )}
+        {/* ── DASHBOARD ──
+            El dashboard viejo (greeting + stats + completitud + QR card +
+            canjes recientes + plan widget) fue REEMPLAZADO por el intent
+            picker (con tarjetas de pendientes/completos, chips de
+            beneficios y stepped progress). El gating ahora vive arriba en
+            `if (intentPickerActive || tab === 'dashboard')` — cuando el
+            dueño aterriza acá entra directo al picker. Si querés volver
+            al dashboard viejo, mirá el git blame de este bloque. */}
+        {/* (bloque eliminado intencionalmente — todo el dashboard viejo
+            con plan widget, canjes recientes, stats, QR card. Ahora vive
+            en el intent picker que se gateó arriba con
+            `if (intentPickerActive || tab === 'dashboard')`). */}
 
         {/* ── CLIENTES ── */}
         {tab === 'clientes' && (() => {
@@ -16583,23 +16831,127 @@ function CommerceSettingsView({ user, profile, setView, onLogout, onOwnerProfile
           </button>
         )}
 
+        {/* ─── Tab switcher estilo "carpeta" de Recompensas ───
+            Las pestañas se ven como solapas que sobresalen del panel
+            de contenido — el activo comparte el background y el borde
+            con el panel, así se siente como UNA pieza visual continua
+            (igual a las orejitas de una carpeta de archivos). El
+            inactivo queda atrás, levemente más oscuro y con ambos bordes
+            visibles, para que se lea como "está atrás" del activo.
+            marginBottom -1 superpone el borde inferior del tab con el
+            superior del panel para que no se vea una línea doble. */}
+        {tab === 'recompensas' && (
+          <div style={{
+            display: 'flex',
+            gap: 4,
+            marginTop: 4,
+            marginBottom: 0,
+            paddingLeft: 0,
+            position: 'relative',
+            zIndex: 2,
+          }}>
+            {(() => {
+              const TABS = [
+                { id: 'how',      label: 'Sistema de acumulación' },
+                { id: 'discount', label: '%OFF próx. compra'      },
+              ]
+              // ── Paleta de la "carpeta" — contraste subido ──
+              // El panel ahora usa un bg notoriamente más claro que el
+              // fondo de la página (#0a0612 o similar) para que se lea
+              // claramente como "ventana" sobre el fondo. El border es
+              // tinted violeta para alinear con la marca y se nota más
+              // que un blanco translúcido neutro. La solapa activa
+              // hereda exactamente el bg+border del panel (queda como
+              // una sola pieza); la inactiva queda visiblemente más
+              // oscura para que la jerarquía se lea de un vistazo.
+              const PANEL_BG       = 'rgba(189,75,248,0.07)'
+              const PANEL_BORDER   = 'rgba(189,75,248,0.32)'
+              const INACTIVE_BG    = 'rgba(255,255,255,0.02)'
+              const INACTIVE_BORDER= 'rgba(255,255,255,0.07)'
+              return TABS.map(t => {
+                const active = recompensasSubTab === t.id
+                return (
+                  <button key={t.id}
+                    onClick={() => setRecompensasSubTab(t.id)}
+                    style={{
+                      // borderRadius solo en las top corners — la solapa
+                      // baja recta para fundirse con el panel.
+                      borderRadius: '12px 12px 0 0',
+                      // Borde superior + laterales visibles. Bottom: en
+                      // el activo es DEL color del panel (se confunde con
+                      // el bg del panel); en el inactivo va con el borde
+                      // tenue para que se lea "está atrás".
+                      borderTop:    `1px solid ${active ? PANEL_BORDER : INACTIVE_BORDER}`,
+                      borderLeft:   `1px solid ${active ? PANEL_BORDER : INACTIVE_BORDER}`,
+                      borderRight:  `1px solid ${active ? PANEL_BORDER : INACTIVE_BORDER}`,
+                      borderBottom: active
+                        ? `1px solid ${PANEL_BG}`
+                        : `1px solid ${INACTIVE_BORDER}`,
+                      background: active ? PANEL_BG : INACTIVE_BG,
+                      position: 'relative',
+                      zIndex: active ? 3 : 1,
+                      // Empuja el panel 1px hacia arriba para que el borde
+                      // superior del panel quede oculto debajo del activo
+                      // (no haya línea doble).
+                      marginBottom: -1,
+                      padding: '12px 16px 13px',
+                      cursor: 'pointer',
+                      fontFamily: FN,
+                      fontSize: 12,
+                      fontWeight: active ? 800 : 600,
+                      letterSpacing: '.02em',
+                      // Texto: blanco brillante para activa, gris medio
+                      // para inactiva (se nota la diferencia clara entre
+                      // "estoy mirando esto" y "esta está disponible").
+                      color: active ? '#fff' : 'rgba(255,255,255,0.42)',
+                      transition: 'color 180ms ease, background 180ms ease, border-color 180ms ease',
+                      // Highlight violeta más fuerte arriba de la solapa
+                      // activa — rema con la marca y refuerza la
+                      // jerarquía visual sin romper la fusión con el panel.
+                      boxShadow: active
+                        ? 'inset 0 3px 0 0 rgba(189,75,248,0.85)'
+                        : 'none',
+                    }}
+                  >
+                    {t.label}
+                  </button>
+                )
+              })
+            })()}
+          </div>
+        )}
+
         {/* Header global — mini diagrama "QR → 🎁" en lugar de subtítulo
             largo. Cuenta toda la historia (escanea y recibe) con dos íconos.
             La sección "TU SISTEMA BASE" también queda absorbida: las cards
             de abajo se autoexplican.
             El color del regalo sigue al sistema seleccionado (preview o
             guardado), así si previsualizás Puntos ves el regalo en fucsia. */}
-        {tab === 'recompensas' && (
+        {tab === 'recompensas' && recompensasSubTab === 'how' && (
           <div style={{
-            background:'rgba(255,255,255,0.025)',
-            border:'1px solid rgba(255,255,255,0.08)',
-            borderRadius:16,
+            // Panel del tab "Sistema de acumulación" — mismo bg+border
+            // tinteado violeta que la solapa activa, así se lee como una
+            // pieza continua. Contraste subido con respecto al fondo de
+            // la página para que se note "ventana" claramente.
+            background:'rgba(189,75,248,0.07)',
+            border:'1px solid rgba(189,75,248,0.32)',
+            // top-left: 0 si la tab "how" está activa (la solapa se conecta).
+            // top-right: 12 (la otra solapa NO está activa, así que hay borde).
+            // bottom: 16 ambos.
+            borderRadius:'0 12px 16px 16px',
             padding:'18px 16px 16px',
             marginBottom:14,
+            position:'relative',
+            zIndex:1,
+            // Sombra suave hacia abajo para "levantar" el panel del fondo.
+            boxShadow: '0 8px 28px -10px rgba(0,0,0,0.55)',
           }}>
         {(() => {
           const headerType = pendingSystemType ?? commerce?.prog_type ?? 'stars'
           const headerCol  = headerType === 'points' ? '#EC4899' : '#8B5CF6'
+          // headerUnit ya no se usa: el título dejó de ser
+          // "¿Cómo suman {unit}?" y pasó a ser fijo "Sistema de
+          // acumulación". headerCol sigue tinteando el ícono Gift.
           return (
             <div style={{ marginBottom:14 }}>
               <div style={{ display:'flex', alignItems:'center', gap:8, marginBottom:10 }}>
@@ -16612,7 +16964,7 @@ function CommerceSettingsView({ user, profile, setView, onLogout, onOwnerProfile
                 </div>
               </div>
               <div style={{ display:'flex', alignItems:'center', gap:8 }}>
-                <div style={{ fontFamily:FN, fontSize:18, fontWeight:900, color:C.white, letterSpacing:'.08em', textTransform:'uppercase' }}>Recompensas por compra</div>
+                <div style={{ fontFamily:FN, fontSize:18, fontWeight:900, color:C.white, letterSpacing:'.08em', textTransform:'uppercase' }}>Sistema de acumulación</div>
                 <InfoHint align="left" text={
                   'Es el sistema base con el que tus clientes acumulan recompensas al escanear su QR.\n\n' +
                   '• Estrellas: 1 estrella por compra. Simple, ideal para tickets parecidos.\n\n' +
@@ -16634,7 +16986,10 @@ function CommerceSettingsView({ user, profile, setView, onLogout, onOwnerProfile
             { id:'stars',  Icon:Star, label:'Estrellas', color:'#8B5CF6', colorDark:'#7C3AED',
               desc:'1 estrella por compra. Simple y visual.' },
             { id:'points', Icon:Gem,  label:'Puntos',    color:'#EC4899', colorDark:'#DB2777',
-              desc:'1 punto por cada peso gastado. Flexible para ticket variable.' },
+              // "Flexible para ticket variable." quitado a pedido del
+              // dueño — la idea queda explicada con el ejemplo concreto
+              // que se renderiza debajo del card activo.
+              desc:'1 punto por cada peso gastado.' },
           ]
           const savedType        = commerce?.prog_type || 'stars'
           // displayType: lo que se ve activo en el UI (preview o saved).
@@ -16757,59 +17112,77 @@ function CommerceSettingsView({ user, profile, setView, onLogout, onOwnerProfile
                       {/* Card activa */}
                       {renderCard(activeSys, true)}
 
-                      {/* Callout 1pto=1$ (solo points) */}
+                      {/* Ejemplo concreto debajo del card activo de Puntos.
+                          Reemplaza al callout viejo "1 punto = 1 peso" (que
+                          repetía la desc del card). Ahora el helper text
+                          explica el sistema con un caso de uso real ($10.000
+                          gastados → 10.000 puntos → premio que cuesta 10.000)
+                          para que el dueño entienda la mecánica de un vistazo. */}
                       {currentType === 'points' && (
-                        <div style={{ padding:'10px 12px', background:'rgba(236,72,153,0.10)', border:'1px solid rgba(236,72,153,0.22)', borderRadius:10, fontSize:12, color:C.mist, lineHeight:1.5, display:'flex', alignItems:'flex-start', gap:9 }}>
-                          <Gem size={14} color="#EC4899" strokeWidth={2} style={{ flexShrink:0, marginTop:2 }} />
+                        <div style={{ padding:'10px 12px', background:'rgba(236,72,153,0.08)', border:'1px solid rgba(236,72,153,0.18)', borderRadius:10, fontSize:11.5, color:'rgba(255,255,255,0.70)', lineHeight:1.5, display:'flex', alignItems:'flex-start', gap:9 }}>
+                          <Lightbulb size={13} color="#EC4899" strokeWidth={2.2} style={{ flexShrink:0, marginTop:2 }} />
                           <div>
-                            <strong style={{ color:C.white }}>1 punto = 1 peso.</strong> Al escanear el QR ingresás el monto y eso se suma directo a los puntos del cliente.
+                            Por ejemplo: si tenés un premio que vale <strong style={{ color:'#fff' }}>10.000 puntos</strong>, significa que tu cliente tiene que haber gastado <strong style={{ color:'#fff' }}>$10.000</strong> en tu negocio.
                           </div>
                         </div>
                       )}
 
-                      {/* Stats inline: compra mínima (stars) + cargar premios */}
-                      <div style={{ display:'flex', flexWrap:'wrap', alignItems:'center', gap:14, padding:'10px 12px', background:`${activeSys.color}10`, border:`1px solid ${activeSys.color}26`, borderRadius:10, fontSize:12, color:C.mist }}>
-                        {currentType === 'stars' && (() => {
-                          const cur = form?.prog_min_purchase
-                          const has = parseInt(cur) > 0
-                          const dirty = String(cur ?? '') !== String(commerce?.prog_min_purchase ?? '')
-                          return (
-                            <div style={{ display:'flex', alignItems:'center', gap:6 }}>
+                      {/* Stats: compra mínima (stars). Antes acá había
+                          también un link "X premios cargados →" pero
+                          quedaba duplicado con el card "Ver catálogo de
+                          premios" más abajo, así que lo saqué.
+                          Reestructurado para que Compra mínima sea un
+                          bloque vertical con chip "OPCIONAL" arriba,
+                          título, y helper text "dejalo en 0 para aceptar
+                          cualquier monto" debajo del input. El botón
+                          "Guardar" inline NO aparece más — ahora vive
+                          como botón global abajo del Suma doble card,
+                          así centraliza el "save changes" del sistema. */}
+                      {/* Wrapper completo solo aplica para STARS — para
+                          puntos no hay compra mínima (cada peso es un
+                          punto, sin umbral). Antes el wrapper igual se
+                          renderizaba para points porque tenía adentro
+                          el link "X premios cargados", que ahora ya no
+                          está. Sin esto, points mostraría una caja
+                          vacía con padding. */}
+                      {currentType === 'stars' && (() => {
+                        const cur = form?.prog_min_purchase
+                        return (
+                          <div style={{ padding:'12px', background:`${activeSys.color}10`, border:`1px solid ${activeSys.color}26`, borderRadius:10, fontSize:12, color:C.mist }}>
+                            {/* Chip "OPCIONAL" arriba del título */}
+                            <span style={{
+                              display: 'inline-block',
+                              fontFamily: FN, fontSize: 9, fontWeight: 700,
+                              color: 'rgba(255,255,255,0.55)',
+                              background: 'rgba(255,255,255,0.06)',
+                              border: '1px solid rgba(255,255,255,0.12)',
+                              borderRadius: 99,
+                              padding: '2px 7px',
+                              letterSpacing: '.08em',
+                              textTransform: 'uppercase',
+                              lineHeight: 1,
+                              marginBottom: 8,
+                            }}>
+                              Opcional
+                            </span>
+                            <div style={{ display:'flex', alignItems:'center', gap:8, flexWrap:'wrap' }}>
                               <span style={{ fontSize:13, fontWeight:900, color: activeSys.color, fontFamily:FN, lineHeight:1, width:12, textAlign:'center' }}>$</span>
-                              <span>Monto compra mínima:</span>
-                              <InfoHint align="left" size={12} text={
-                                'Solo cuentan las compras de este monto en adelante para sumar una estrella.\n\n' +
-                                'Útil si vendés productos baratos: así un cliente que compra solo $100 no acumula estrellas tan rápido.\n\n' +
-                                'Si lo dejás vacío, cualquier compra suma una estrella.'
-                              } />
+                              <span style={{ flex: 1, minWidth: 0, fontFamily:FN, fontSize:13, fontWeight:700, color:'#fff' }}>Monto compra mínima</span>
                               <div style={{ position:'relative', display:'inline-block' }}>
                                 <span style={{ position:'absolute', left:8, top:'50%', transform:'translateY(-50%)', fontSize:12, fontWeight:700, color: activeSys.color, fontFamily:FN, pointerEvents:'none' }}>$</span>
                                 <input type="number" min={0} value={cur ?? ''} onChange={e => set('prog_min_purchase', e.target.value)}
-                                  placeholder="—" inputMode="numeric"
+                                  placeholder="0" inputMode="numeric"
                                   disabled={hasPendingChange}
-                                  style={{ background:C.bg3, border:`1px solid ${C.rim}`, borderRadius:6, padding:'3px 8px 3px 18px', fontSize:12, color:C.white, width:90, fontFamily:'inherit', opacity: hasPendingChange ? 0.5 : 1 }} />
+                                  style={{ background:C.bg3, border:`1px solid ${C.rim}`, borderRadius:6, padding:'5px 8px 5px 18px', fontSize:12, color:C.white, width:90, fontFamily:'inherit', opacity: hasPendingChange ? 0.5 : 1 }} />
                               </div>
-                              {dirty && !hasPendingChange && (
-                                <button onClick={saveFidelizacion} disabled={saving}
-                                  style={{ background:GV, border:'none', borderRadius:6, padding:'3px 9px', color:'#fff', fontSize:10, fontWeight:700, fontFamily:FN, cursor:'pointer' }}>
-                                  {saving ? '⟳' : 'Guardar'}
-                                </button>
-                              )}
-                              {!dirty && saved && <span style={{ fontSize:11, color:C.ok }}>✓</span>}
                             </div>
-                          )
-                        })()}
-                        {currentType === 'stars' && <div style={{ width:1, height:14, background:'rgba(255,255,255,0.10)' }} />}
-                        <button onClick={() => setTab('premios', 'recompensas')}
-                          style={{ background:'transparent', border:'none', cursor:'pointer', padding:0, color: systemPrizeCount > 0 ? activeSys.color : C.dust, fontFamily:FN, fontSize:12, fontWeight:700, display:'flex', alignItems:'center', gap:5 }}>
-                          <Gift size={12} strokeWidth={2.5} />
-                          {systemPrizeCount > 0
-                            ? `${systemPrizeCount} ${systemPrizeCount === 1 ? 'premio cargado' : 'premios cargados'}`
-                            : `Sin premios para ${currentType === 'stars' ? 'estrellas' : 'puntos'}`
-                          }
-                          <ArrowRight size={11} strokeWidth={2.5} />
-                        </button>
-                      </div>
+                            {/* Helper text */}
+                            <div style={{ fontSize: 11, color: 'rgba(255,255,255,0.50)', marginTop: 6, lineHeight: 1.4 }}>
+                              Dejalo en 0 para aceptar cualquier monto.
+                            </div>
+                          </div>
+                        )
+                      })()}
 
                       {/* ── Banner "Tenés un cambio sin guardar" + botones ──
                           Aparece cuando el usuario está previewing un sistema
@@ -16836,32 +17209,11 @@ function CommerceSettingsView({ user, profile, setView, onLogout, onOwnerProfile
                       )}
                     </div>
 
-                    {/* CTA grande "Ver catálogo de premios" — debajo del wrapper
-                        unificado del sistema activo. Lleva a la pestaña Premios
-                        con cameFromTab para que aparezca el "Volver a recompensas". */}
-                    <button onClick={() => setTab('premios', 'recompensas')}
-                      style={{
-                        width:'100%',
-                        marginTop:14,
-                        padding:'14px 18px',
-                        background:`linear-gradient(135deg, ${activeSys.color}1f 0%, ${activeSys.color}33 100%)`,
-                        border:`1px solid ${activeSys.color}66`,
-                        borderRadius:14,
-                        color:'#fff',
-                        fontFamily:FN, fontSize:13.5, fontWeight:700,
-                        letterSpacing:'.01em',
-                        cursor:'pointer',
-                        display:'inline-flex', alignItems:'center', justifyContent:'center', gap:8,
-                        boxShadow:`0 6px 20px ${activeSys.color}33`,
-                        transition:'transform 180ms ease, box-shadow 220ms ease',
-                      }}
-                      onMouseEnter={e => { e.currentTarget.style.transform = 'translateY(-1px)'; e.currentTarget.style.boxShadow = `0 8px 24px ${activeSys.color}55` }}
-                      onMouseLeave={e => { e.currentTarget.style.transform = 'translateY(0)'; e.currentTarget.style.boxShadow = `0 6px 20px ${activeSys.color}33` }}
-                    >
-                      <Gift size={15} color={activeSys.color} strokeWidth={2.4} />
-                      Ver catálogo de premios
-                      <ArrowRight size={14} strokeWidth={2.4} />
-                    </button>
+                    {/* El CTA grande "Ver catálogo de premios" que vivía
+                        acá fue eliminado — quedaba duplicado con el card
+                        equivalente que aparece debajo del toggle Suma
+                        doble (más abajo en la tab). El user pidió
+                        quedarnos con uno solo, el de abajo. */}
                   </div>
                 )
               })()}
@@ -16913,6 +17265,329 @@ function CommerceSettingsView({ user, profile, setView, onLogout, onOwnerProfile
             </div>
           )
         })()}
+
+            {/* ─── Suma doble [estrellas/puntos] toggle + day picker ───
+                Card con switch on/off para la promo double_points.
+                Disponible en TODOS los planes (FREE incluido) — la única
+                promo con gate de plan es %OFF próx. compra.
+                Default state: OFF. Al prenderlo se crea la promo SIN
+                fecha de vencimiento y todos los días seleccionados, y
+                se expande inline un day picker con los 7 días para
+                que el dueño elija en qué días aplica el bonus.
+                Color del switch + day picker = sistema activo (violeta
+                para estrellas, fucsia para puntos). */}
+            {(() => {
+              const sysType = pendingSystemType ?? commerce?.prog_type ?? 'stars'
+              const sysCol  = sysType === 'points' ? '#EC4899' : '#8B5CF6'
+              const sysColD = sysType === 'points' ? '#DB2777' : '#7C3AED'
+              const sysUnit = sysType === 'points' ? 'puntos' : 'estrellas'
+              const activeDouble = (Array.isArray(promos) ? promos : []).find(p =>
+                p.type === 'double_points' && p.active && (!p.expires_at || new Date(p.expires_at) > new Date())
+              )
+              const isOn = !!activeDouble
+              // Días seleccionados — vacío o length 7 = "todos los días".
+              // Almacenados como [0..6] donde 0=Domingo, 1=Lunes, etc.
+              const selectedDays = isOn && Array.isArray(activeDouble?.days) ? activeDouble.days : []
+              const allDays = !isOn || selectedDays.length === 0 || selectedDays.length === 7
+              const handleToggle = async () => {
+                if (isOn) {
+                  await togglePromo(activeDouble)
+                } else {
+                  const existing = (Array.isArray(promos) ? promos : []).find(p => p.type === 'double_points')
+                  if (existing) {
+                    await togglePromo(existing)
+                  } else {
+                    await addPromo({
+                      type: 'double_points',
+                      value: 2,
+                      duration: 'today',
+                      custom_date: '',
+                      // days vacío = todos los días por default. El user
+                      // puede tildar/destildar después en el picker.
+                      days: [],
+                      // SIN fecha de vencimiento — la promo dura mientras
+                      // esté activa. expires_at queda NULL en la DB.
+                      expiration_type: 'fixed',
+                      expiration_date: '',
+                      expiration_days: 0,
+                    })
+                  }
+                }
+              }
+              // Toggle de un día específico — actualiza `days` en la promo
+              // existente. Mutual exclusivity entre "todos los días" y
+              // "día específico": si destildás un día estando en "todos",
+              // el array pasa de [] a [los 6 días sin ese].
+              const toggleDay = async (v) => {
+                if (!activeDouble) return
+                const cur = Array.isArray(activeDouble.days) ? activeDouble.days : []
+                let next
+                if (cur.length === 0) {
+                  // Estaba "todos los días" — empezamos con los 7 menos el tappeado
+                  next = [0,1,2,3,4,5,6].filter(d => d !== v)
+                } else if (cur.includes(v)) {
+                  next = cur.filter(d => d !== v)
+                } else {
+                  next = [...cur, v]
+                }
+                // Si quedó con 0 ó 7, normalizamos a [] (= todos los días)
+                if (next.length === 0 || next.length === 7) next = []
+                await updatePromo(activeDouble.id, { days: next })
+              }
+              const DAYS = [
+                { l:'Lu', v:1 }, { l:'Ma', v:2 }, { l:'Mi', v:3 },
+                { l:'Ju', v:4 }, { l:'Vi', v:5 }, { l:'Sá', v:6 }, { l:'Do', v:0 },
+              ]
+              return (
+                <div style={{
+                  marginTop: 14,
+                  padding: '14px 14px',
+                  borderRadius: 12,
+                  background: isOn
+                    ? `linear-gradient(135deg, ${sysCol}1F, ${sysColD}10)`
+                    : 'rgba(255,255,255,0.025)',
+                  border: `1px solid ${isOn ? sysCol + '66' : 'rgba(255,255,255,0.08)'}`,
+                  transition: 'background 200ms ease, border-color 200ms ease',
+                }}>
+                  {/* Chip "OPCIONAL" al tope del card — misma posición
+                      jerárquica que el chip "OPCIONAL" del card de
+                      "Monto compra mínima" (al inicio del card, antes
+                      del título y del ícono). Etiqueta que aclara que
+                      es una feature opcional encima del sistema base. */}
+                  <span style={{
+                    display: 'inline-block',
+                    fontFamily: FN, fontSize: 9, fontWeight: 700,
+                    color: 'rgba(255,255,255,0.55)',
+                    background: 'rgba(255,255,255,0.06)',
+                    border: '1px solid rgba(255,255,255,0.12)',
+                    borderRadius: 99,
+                    padding: '2px 7px',
+                    letterSpacing: '.08em',
+                    textTransform: 'uppercase',
+                    lineHeight: 1,
+                    marginBottom: 10,
+                  }}>
+                    Opcional
+                  </span>
+                  {/* Fila superior: ícono + título + descripción + switch */}
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+                    <div style={{
+                      width: 36, height: 36, borderRadius: 9,
+                      background: `${sysCol}1F`, border: `1px solid ${sysCol}40`,
+                      display: 'flex', alignItems: 'center', justifyContent: 'center',
+                      flexShrink: 0,
+                    }}>
+                      <Zap size={17} color={sysCol} strokeWidth={2.2} />
+                    </div>
+                    <div style={{ flex: 1, minWidth: 0 }}>
+                      <div style={{ fontFamily: FN, fontSize: 13.5, fontWeight: 700, color: '#fff', lineHeight: 1.25 }}>
+                        Suma doble {sysUnit}
+                      </div>
+                      <div style={{ fontSize: 11, color: 'rgba(255,255,255,0.55)', marginTop: 3, lineHeight: 1.4 }}>
+                        {isOn
+                          ? `Tus clientes acumulan ${sysUnit} al doble.`
+                          : `Activá para que tus clientes acumulen ${sysUnit} al doble.`}
+                      </div>
+                    </div>
+                    <button
+                      onClick={handleToggle}
+                      aria-pressed={isOn}
+                      aria-label={`${isOn ? 'Desactivar' : 'Activar'} suma doble`}
+                      style={{
+                        position: 'relative',
+                        width: 42, height: 24,
+                        borderRadius: 99,
+                        background: isOn
+                          ? `linear-gradient(135deg, ${sysCol}, ${sysColD})`
+                          : 'rgba(255,255,255,0.12)',
+                        border: `1px solid ${isOn ? sysCol : 'rgba(255,255,255,0.18)'}`,
+                        cursor: 'pointer',
+                        flexShrink: 0,
+                        padding: 0,
+                        transition: 'background 200ms ease, border-color 200ms ease',
+                      }}
+                    >
+                      <span style={{
+                        position: 'absolute',
+                        top: 2, left: isOn ? 20 : 2,
+                        width: 18, height: 18, borderRadius: '50%',
+                        background: '#fff',
+                        boxShadow: '0 1px 3px rgba(0,0,0,0.35)',
+                        transition: 'left 220ms cubic-bezier(0.22,1,0.36,1)',
+                      }} />
+                    </button>
+                  </div>
+
+                  {/* ── Day picker — solo aparece cuando isOn === true ──
+                      Pills de días tappeables. Tap = toggle ese día. La
+                      etiqueta de arriba indica si está en "todos los
+                      días" o en days específicos. */}
+                  {isOn && (
+                    <div style={{
+                      marginTop: 14,
+                      paddingTop: 14,
+                      borderTop: `1px solid ${sysCol}33`,
+                    }}>
+                      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8, marginBottom: 10 }}>
+                        <span style={{ fontFamily: FN, fontSize: 11, fontWeight: 700, color: 'rgba(255,255,255,0.55)', letterSpacing: '.06em', textTransform: 'uppercase' }}>
+                          Días con suma doble
+                        </span>
+                        <span style={{ fontFamily: FN, fontSize: 10, fontWeight: 600, color: sysCol, background: `${sysCol}18`, border: `1px solid ${sysCol}40`, borderRadius: 99, padding: '2px 8px' }}>
+                          {allDays ? 'Todos los días' : `${selectedDays.length} ${selectedDays.length === 1 ? 'día' : 'días'}`}
+                        </span>
+                      </div>
+                      <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
+                        {DAYS.map(({ l, v }) => {
+                          // Un día está "seleccionado" si está en days,
+                          // O si days está vacío (= todos los días).
+                          const sel = selectedDays.length === 0 || selectedDays.includes(v)
+                          return (
+                            <button key={v}
+                              onClick={() => toggleDay(v)}
+                              aria-pressed={sel}
+                              style={{
+                                flex: '1 1 0', minWidth: 38,
+                                padding: '8px 6px',
+                                borderRadius: 8,
+                                border: `1px solid ${sel ? sysCol : 'rgba(255,255,255,0.14)'}`,
+                                background: sel
+                                  ? `linear-gradient(135deg, ${sysCol}33, ${sysColD}22)`
+                                  : 'rgba(255,255,255,0.04)',
+                                color: sel ? '#fff' : 'rgba(255,255,255,0.50)',
+                                fontFamily: FN, fontSize: 11.5, fontWeight: 700,
+                                cursor: 'pointer',
+                                transition: 'background 160ms ease, border-color 160ms ease, color 160ms ease',
+                              }}
+                            >
+                              {l}
+                            </button>
+                          )
+                        })}
+                      </div>
+                    </div>
+                  )}
+                </div>
+              )
+            })()}
+
+            {/* ─── Guardar cambios — botón global ───
+                Antes vivía inline al lado del input de "Monto compra
+                mínima". El user pidió moverlo abajo del Suma doble para
+                tener un único punto de guardado para los cambios del
+                sistema base (compra mínima, etc.). Comportamiento:
+                - Disabled cuando no hay cambios (cmpMinDirty=false) Y
+                  no hay cambio de sistema pendiente.
+                - Background gradient de marca cuando está activo;
+                  gris atenuado cuando inactivo.
+                - Después de guardar muestra ✓ y vuelve a inactivo. */}
+            {(() => {
+              const cmpMinCur   = form?.prog_min_purchase
+              const cmpMinDirty = String(cmpMinCur ?? '') !== String(commerce?.prog_min_purchase ?? '')
+              // hasPendingChange viene del scope de SYSTEMS y maneja el
+              // preview de cambio de sistema. No la duplicamos acá; el
+              // banner de "guardar cambio de sistema" tiene su propio CTA.
+              const canSave = cmpMinDirty
+              const showCheck = !cmpMinDirty && saved
+              return (
+                <button
+                  onClick={canSave && !saving ? saveFidelizacion : undefined}
+                  disabled={!canSave || saving}
+                  style={{
+                    width: '100%',
+                    marginTop: 10,
+                    padding: '12px 14px',
+                    borderRadius: 12,
+                    background: canSave
+                      ? GV
+                      : 'rgba(255,255,255,0.04)',
+                    border: canSave
+                      ? '1px solid rgba(189,75,248,0.55)'
+                      : '1px solid rgba(255,255,255,0.08)',
+                    color: canSave ? '#fff' : 'rgba(255,255,255,0.40)',
+                    fontFamily: FN, fontSize: 13.5, fontWeight: 700,
+                    cursor: canSave && !saving ? 'pointer' : 'not-allowed',
+                    display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8,
+                    boxShadow: canSave ? '0 6px 20px rgba(189,75,248,0.25)' : 'none',
+                    transition: 'background 200ms ease, border-color 200ms ease, color 200ms ease',
+                  }}
+                >
+                  {saving ? (
+                    <>
+                      <span style={{ display: 'inline-block', animation: 'spin 0.8s linear infinite' }}>⟳</span>
+                      Guardando…
+                    </>
+                  ) : showCheck ? (
+                    <>
+                      <Check size={15} strokeWidth={2.6} color={C.ok} />
+                      <span style={{ color: C.ok }}>Cambios guardados</span>
+                    </>
+                  ) : (
+                    <>
+                      Guardar cambios
+                    </>
+                  )}
+                </button>
+              )
+            })()}
+
+            {/* ─── Ver catálogo de premios ───
+                Link a la pestaña Premios con setCameFromTab('recompensas')
+                para que el botón "Volver a recompensas" aparezca arriba
+                en Premios. Visualmente queda debajo del toggle Suma doble:
+                si el toggle está OFF, debajo del card; si está ON, debajo
+                del day picker (que vive dentro del mismo card del toggle). */}
+            {(() => {
+              const activePrizesCount = prizes.filter(p => p.active).length
+              return (
+                <button
+                  onClick={() => setTab('premios', 'recompensas')}
+                  style={{
+                    width: '100%',
+                    marginTop: 10,
+                    padding: '12px 14px',
+                    borderRadius: 12,
+                    background: 'rgba(255,255,255,0.025)',
+                    border: '1px solid rgba(255,255,255,0.08)',
+                    cursor: 'pointer',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: 12,
+                    textAlign: 'left',
+                    fontFamily: 'inherit',
+                    transition: 'background 160ms ease, border-color 160ms ease',
+                  }}
+                  onMouseEnter={e => {
+                    e.currentTarget.style.background = 'rgba(255,255,255,0.04)'
+                    e.currentTarget.style.borderColor = 'rgba(255,255,255,0.14)'
+                  }}
+                  onMouseLeave={e => {
+                    e.currentTarget.style.background = 'rgba(255,255,255,0.025)'
+                    e.currentTarget.style.borderColor = 'rgba(255,255,255,0.08)'
+                  }}
+                >
+                  <div style={{
+                    width: 36, height: 36, borderRadius: 9,
+                    background: 'rgba(34,230,152,0.12)',
+                    border: '1px solid rgba(34,230,152,0.30)',
+                    display: 'flex', alignItems: 'center', justifyContent: 'center',
+                    flexShrink: 0,
+                  }}>
+                    <Gift size={17} color="#22E698" strokeWidth={2.2} />
+                  </div>
+                  <div style={{ flex: 1, minWidth: 0 }}>
+                    <div style={{ fontFamily: FN, fontSize: 13.5, fontWeight: 700, color: '#fff', lineHeight: 1.25 }}>
+                      Ver catálogo de premios
+                    </div>
+                    <div style={{ fontSize: 11, color: 'rgba(255,255,255,0.55)', marginTop: 2, lineHeight: 1.4 }}>
+                      {activePrizesCount > 0
+                        ? `${activePrizesCount} ${activePrizesCount === 1 ? 'premio activo' : 'premios activos'} para canjear`
+                        : 'Cargá premios para que tus clientes canjeen.'}
+                    </div>
+                  </div>
+                  <ArrowRight size={16} color="rgba(255,255,255,0.45)" strokeWidth={2.4} style={{ flexShrink: 0 }} />
+                </button>
+              )
+            })()}
           </div>
         )}
 
@@ -17188,23 +17863,31 @@ function CommerceSettingsView({ user, profile, setView, onLogout, onOwnerProfile
           />
         )}
 
-        {/* ─── SECCIÓN 2: RECOMPENSAS EXTRA (STARTER + PRO) ─── */}
-        {tab === 'recompensas' && (
+        {/* ─── TAB 2: %OFF PRÓX. COMPRA (cupón discount_next) ─── */}
+        {tab === 'recompensas' && recompensasSubTab === 'discount' && (
           <div style={{
-            background:'rgba(255,255,255,0.025)',
-            border:'1px solid rgba(255,255,255,0.08)',
-            borderRadius:16,
+            // Mismos colores que la tab "how" — panel violeta tinteado,
+            // border violeta más visible, sombra suave para elevarlo
+            // sobre el fondo.
+            background:'rgba(189,75,248,0.07)',
+            border:'1px solid rgba(189,75,248,0.32)',
+            // Cuando la tab "discount" está activa, la conexión visual va
+            // por el TOP-RIGHT (no top-left). Border-radius asimétrico.
+            borderRadius:'12px 0 16px 16px',
             padding:'18px 16px 16px',
             marginBottom:14,
+            position:'relative',
+            zIndex:1,
+            boxShadow: '0 8px 28px -10px rgba(0,0,0,0.55)',
           }}>
             {/* Título + línea divisoria */}
             <div style={{ display:'flex', alignItems:'center', gap:10 }}>
-              <span style={{ fontSize:18, fontWeight:900, color:C.white, letterSpacing:'.08em', textTransform:'uppercase' }}>Recompensas extra</span>
+              <span style={{ fontSize:18, fontWeight:900, color:C.white, letterSpacing:'.08em', textTransform:'uppercase' }}>%OFF próx. compra</span>
               <InfoHint align="left" text={
-                'Beneficios adicionales que vienen ENCIMA de tu sistema de estrellas o puntos.\n\n' +
-                '• Cupón próxima visita: un % OFF que el cliente recibe automáticamente y usa la próxima vez que va.\n\n' +
-                '• Días con bonus ×2: los días que vos elegís, los clientes acumulan al doble. Útil para llenar días flojos.\n\n' +
-                'Disponibles desde el plan STARTER.'
+                'Cupón de descuento que el cliente recibe automáticamente al sumarse a tu club o cuando se lo otorgás manualmente.\n\n' +
+                '• Lo usa la próxima vez que va — un empujón concreto para que vuelva.\n\n' +
+                '• Configurás el % y el plazo de validez.\n\n' +
+                'Disponible desde el plan STARTER.'
               } />
               <div style={{ flex:1, height:1, background:'rgba(255,255,255,0.06)' }} />
             </div>
@@ -17225,9 +17908,9 @@ function CommerceSettingsView({ user, profile, setView, onLogout, onOwnerProfile
             </div>
 
         {/* ── PROMOCIONES — locked ──
-            Layout: rectángulos full-width apilados, con descripción colapsable
-            inline (no más modal teaser). Click en la card → expande beneficios
-            + ejemplo + CTA "Activar STARTER" abajo de la misma card. */}
+            Solo el cupón de descuento (discount_next). El "double_points"
+            (suma doble) ahora vive como toggle en la tab "¿Cómo suman?",
+            así que NO lo mostramos acá para evitar redundancia. */}
         {!canPromote && (() => {
           const PROMOS = [
             {
@@ -17240,17 +17923,6 @@ function CommerceSettingsView({ user, profile, setView, onLogout, onOwnerProfile
                 'Reactiva clientes que dejaron de venir',
               ],
               example:'15% OFF en tu próxima visita, válido 30 días',
-            },
-            {
-              id:'double', glyph:'×2', color:'#6366F1', rgb:'99,102,241',
-              label:`Días con bonus ×2`,
-              tagline:`Llená tus días flojos: ×2 ${unitLabel}`,
-              benefits:[
-                'Activala los días que querés traer más gente (martes, miércoles)',
-                `El cliente acumula al doble — vuelve más rápido`,
-                'Ideal para liquidar stock o lanzar productos nuevos',
-              ],
-              example:`Lunes y miércoles, ×2 ${unitLabel} todo el día`,
             },
           ]
           return (
@@ -17362,11 +18034,17 @@ function CommerceSettingsView({ user, profile, setView, onLogout, onOwnerProfile
               : `El cliente recibirá un ${newPromo.value || '?'}% de descuento en su próxima visita al escanear su QR (válido hasta el ${previewDate})`)
             : `El cliente recibirá el doble de ${unitLabel} al escanear su QR hasta el ${previewDate}`
 
-          const activePromos      = promos.filter(p => p.active && !isExpired(p))
-          const inactivePromos    = promos.filter(p => !p.active || isExpired(p))
-          const hasActiveDiscount = activePromos.some(p => p.type === 'discount_next')
-          const hasActiveDouble   = activePromos.some(p => p.type === 'double_points')
-          const canAddMore        = !hasActiveDiscount || !hasActiveDouble
+          // Filtramos a SOLO discount_next porque esta tab ya no maneja
+          // double_points (vive como toggle en la tab "¿Cómo suman?").
+          // El sufijo "Discount" en los nombres deja claro el filtro.
+          const allActivePromos      = promos.filter(p => p.active && !isExpired(p))
+          const allInactivePromos    = promos.filter(p => !p.active || isExpired(p))
+          const activePromos         = allActivePromos.filter(p => p.type === 'discount_next')
+          const inactivePromos       = allInactivePromos.filter(p => p.type === 'discount_next')
+          const hasActiveDiscount    = activePromos.length > 0
+          // canAddMore: en esta tab solo permitimos UN cupón discount_next
+          // activo a la vez. El user lo desactiva si quiere crear otro.
+          const canAddMore           = !hasActiveDiscount
 
           // Antes acá había arrays mock con promos ficticias ("Descuento
           // 15% próxima visita", "Suma doble viernes a domingo", etc.)
@@ -17516,6 +18194,7 @@ function CommerceSettingsView({ user, profile, setView, onLogout, onOwnerProfile
               <PromoWizard
                 progType={commerce?.prog_type}
                 activePromos={activePromos}
+                lockType="discount_next"
                 onClose={() => setShowPromoWizard(false)}
                 onComplete={async (d) => { await addPromo(d); setShowPromoWizard(false) }}
               />
@@ -19067,6 +19746,107 @@ function CommerceSettingsView({ user, profile, setView, onLogout, onOwnerProfile
                   Identifica clientes que <strong style={{ color:'#fff' }}>no vienen hace tiempo</strong>, los que están <strong style={{ color:'#fff' }}>cerca de un premio</strong> o los <strong style={{ color:'#fff' }}>recién llegados</strong>. Vos revisás el mensaje y lo mandás con un click. Disponible en plan <strong style={{ color:'#fff' }}>PRO</strong>.
                 </>}
               />
+
+              {/* ── Card de activación / confirmación ──
+                  Toggle explícito que el dueño marca para "activar"
+                  los mensajes automáticos en su negocio. Antes la card
+                  del intent picker pasaba a "Listo" automáticamente
+                  apenas se tocaba cualquier toggle adentro — el dueño
+                  no sentía que había hecho una elección consciente.
+                  Ahora pasa a "Listo" SOLO cuando aprieta acá.
+                  Click → setMessagesConfigured(true) y persiste en
+                  localStorage con clave separada. */}
+              {(() => {
+                const onColor  = '#22E698'
+                const offColor = '#F5A623'
+                const c = messagesConfigured ? onColor : offColor
+                const handleToggle = () => {
+                  const next = !messagesConfigured
+                  setMessagesConfigured(next)
+                  if (commerce) {
+                    try {
+                      localStorage.setItem(`cb_msg_active_${commerce.id}`, next ? '1' : '0')
+                    } catch {}
+                  }
+                }
+                return (
+                  <div style={{
+                    marginBottom: 20,
+                    padding: '14px 14px',
+                    borderRadius: 14,
+                    position: 'relative',
+                    overflow: 'hidden',
+                    background: messagesConfigured ? `${onColor}1A` : `${offColor}10`,
+                    border: `1px solid ${messagesConfigured ? `${onColor}55` : `${offColor}40`}`,
+                    boxShadow: messagesConfigured ? `0 4px 14px -4px ${onColor}66` : 'none',
+                    transition: 'background 200ms ease, border-color 200ms ease, box-shadow 200ms ease',
+                    display: 'flex', alignItems: 'center', gap: 12,
+                  }}>
+                    {/* Franja de luz lateral izquierda — mismo lenguaje
+                        que los chips de Estado actual: verde con glow
+                        cuando está activado, amarillo apagado cuando no. */}
+                    <span style={{
+                      position: 'absolute',
+                      top: 0, bottom: 0, left: 0,
+                      width: 4,
+                      background: messagesConfigured
+                        ? `linear-gradient(180deg, #4ade80, ${onColor}, #15803D)`
+                        : `linear-gradient(180deg, ${offColor}88, ${offColor}55)`,
+                      boxShadow: messagesConfigured
+                        ? `0 0 8px ${onColor}AA, 4px 0 12px ${onColor}55`
+                        : 'none',
+                      pointerEvents: 'none',
+                    }} />
+                    <div style={{
+                      width: 38, height: 38, borderRadius: 11,
+                      background: `${c}1F`, border: `1px solid ${c}40`,
+                      display: 'flex', alignItems: 'center', justifyContent: 'center',
+                      flexShrink: 0,
+                      marginLeft: 4,
+                    }}>
+                      <Bot size={18} color={c} strokeWidth={2.2} />
+                    </div>
+                    <div style={{ flex: 1, minWidth: 0 }}>
+                      <div style={{ fontFamily: FN, fontSize: 13.5, fontWeight: 700, color: '#fff', lineHeight: 1.25 }}>
+                        {messagesConfigured ? 'Mensajes automáticos activados' : 'Activá los mensajes automáticos'}
+                      </div>
+                      <div style={{ fontSize: 11.5, color: 'rgba(255,255,255,0.65)', marginTop: 3, lineHeight: 1.45 }}>
+                        {messagesConfigured
+                          ? 'Tu negocio te va a sugerir mensajes para enviar a clientes específicos.'
+                          : 'Confirmá para que la app te ayude a recuperar clientes inactivos y celebrar nuevos.'}
+                      </div>
+                    </div>
+                    <button
+                      onClick={handleToggle}
+                      aria-pressed={messagesConfigured}
+                      aria-label={messagesConfigured ? 'Desactivar mensajes automáticos' : 'Activar mensajes automáticos'}
+                      style={{
+                        position: 'relative',
+                        width: 46, height: 26,
+                        borderRadius: 99,
+                        background: messagesConfigured
+                          ? `linear-gradient(135deg, ${onColor}, #15803D)`
+                          : 'rgba(255,255,255,0.10)',
+                        border: `1px solid ${messagesConfigured ? onColor : 'rgba(255,255,255,0.18)'}`,
+                        cursor: 'pointer',
+                        flexShrink: 0,
+                        padding: 0,
+                        transition: 'background 200ms ease, border-color 200ms ease',
+                      }}
+                    >
+                      <span style={{
+                        position: 'absolute',
+                        top: 2, left: messagesConfigured ? 22 : 2,
+                        width: 20, height: 20, borderRadius: '50%',
+                        background: '#fff',
+                        boxShadow: '0 1px 3px rgba(0,0,0,0.35)',
+                        transition: 'left 220ms cubic-bezier(0.22,1,0.36,1)',
+                      }} />
+                    </button>
+                  </div>
+                )
+              })()}
+
               <div style={{ fontSize:13, color:C.mist, marginBottom:20 }}>Mensajes listos para enviar a tus clientes.</div>
 
               <div style={{ display:'flex', flexDirection:'column', gap:10 }}>
@@ -20975,740 +21755,4 @@ function AdminView({ cities: initialCities, profile }) {
                 <div style={{ display:'flex', justifyContent:'space-between', marginBottom:11 }}>
                   <div>
                     <div style={{ fontFamily:FN, fontSize:15, fontWeight:900, color:C.white }}>{c.name}</div>
-                    <div style={{ fontSize:9, color:C.dust }}>{c.province}</div>
-                  </div>
-                  <Pill color={C.ok}>Activa</Pill>
-                </div>
-                <div style={{ height:1, background:C.rim, marginBottom:10 }} />
-                <div style={{ display:'flex', justifyContent:'space-between' }}>
-                  <div>
-                    <div style={{ fontFamily:FN, fontSize:18, fontWeight:900, background:G, WebkitBackgroundClip:'text', WebkitTextFillColor:'transparent', backgroundClip:'text' }}>{c.commerce_count||0}</div>
-                    <div style={{ fontSize:9, color:C.dust }}>negocios</div>
-                  </div>
-                  <div style={{ textAlign:'right' }}>
-                    <div style={{ fontFamily:FN, fontSize:18, fontWeight:900, color:C.v }}>{fmtK(c.member_count||0)}</div>
-                    <div style={{ fontSize:9, color:C.dust }}>socios</div>
-                  </div>
-                </div>
-              </PCard>
-            ))}
-            {cities.length === 0 && (
-              <div style={{ color:C.mist, fontSize:13 }}>No hay ciudades. Agregá una arriba.</div>
-            )}
-          </div>
-        </div>
-      )}
-
-      {/* ── ACTIVIDAD TAB ── */}
-      {!loading && tab === 'actividad' && (
-        <PCard style={{ padding:40, textAlign:'center' }}>
-          <div style={{ display:'flex', justifyContent:'center', marginBottom:14 }}>
-            <div style={{ width:48, height:48, borderRadius:14, background:'rgba(255,255,255,0.06)', display:'flex', alignItems:'center', justifyContent:'center' }}>
-              <Activity size={22} color={C.mist} strokeWidth={2} />
-            </div>
-          </div>
-          <div style={{ fontFamily:FN, fontSize:15, fontWeight:700, color:C.white, marginBottom:6 }}>Sin registros de actividad</div>
-          <div style={{ color:C.mist, fontSize:13, maxWidth:320, margin:'0 auto' }}>El log de actividad del sistema estará disponible próximamente.</div>
-        </PCard>
-      )}
-
-      {/* ── CONFIG TAB ── */}
-      {!loading && tab === 'config' && (
-        <div style={{ display:'grid', gap:14 }}>
-          <PCard style={{ padding:18 }}>
-            <div style={{ fontFamily:FN, fontSize:10, color:C.mist, fontWeight:700, letterSpacing:'.12em', textTransform:'uppercase', marginBottom:14 }}>Configuración del sistema</div>
-            {[
-              { key:'allowSignup',      label:'Permitir registro de comercios', desc:'Habilita el formulario de alta para nuevos negocios.' },
-              { key:'requireApproval',  label:'Requerir aprobación manual',     desc:'Los nuevos comercios quedan en estado pendiente hasta que un admin los apruebe.' },
-              { key:'maintenance',      label:'Modo mantenimiento',              desc:'Muestra una pantalla de mantenimiento a todos los usuarios.' },
-            ].map(({ key, label, desc }) => (
-              <div key={key} style={{ display:'flex', justifyContent:'space-between', alignItems:'center', padding:'14px 0', borderBottom:`1px solid ${C.rim}` }}>
-                <div>
-                  <div style={{ fontSize:13, color:C.white, fontFamily:FN, fontWeight:600, marginBottom:3 }}>{label}</div>
-                  <div style={{ fontSize:11, color:C.mist }}>{desc}</div>
-                </div>
-                <button onClick={()=>setConfig(p=>({...p, [key]:!p[key]}))}
-                  style={{ width:44, height:24, borderRadius:99, border:'none', cursor:'pointer', position:'relative', flexShrink:0, background:config[key]?C.ok:'rgba(255,255,255,0.15)', transition:'background 200ms ease' }}>
-                  <span style={{ position:'absolute', top:3, left:config[key]?22:3, width:18, height:18, borderRadius:'50%', background:'#fff', transition:'left 200ms cubic-bezier(0.23,1,0.32,1)', display:'block' }} />
-                </button>
-              </div>
-            ))}
-          </PCard>
-
-          <PCard style={{ padding:18 }}>
-            <div style={{ fontFamily:FN, fontSize:10, color:C.mist, fontWeight:700, letterSpacing:'.12em', textTransform:'uppercase', marginBottom:14 }}>Mensaje broadcast</div>
-            <textarea value={broadcast} onChange={e=>setBroadcast(e.target.value)} placeholder="Escribí un mensaje para mostrar a todos los usuarios…"
-              rows={3}
-              style={{ width:'100%', background:'rgba(255,255,255,0.05)', border:`1px solid ${C.rim}`, borderRadius:10, padding:'12px 14px', color:C.white, fontSize:13, fontFamily:FI, outline:'none', resize:'vertical', boxSizing:'border-box', lineHeight:1.5 }} />
-            <div style={{ display:'flex', justifyContent:'flex-end', marginTop:10 }}>
-              <GBtn sm onClick={()=>{ /* TODO: persist */ }}>Guardar mensaje</GBtn>
-            </div>
-          </PCard>
-        </div>
-      )}
-
-      {/* ── COMMERCE DETAIL MODAL ── */}
-      {selectedCommerce && (
-        <div style={{ position:'fixed', inset:0, zIndex:1000, display:'flex', alignItems:'center', justifyContent:'center', padding:16 }}
-          onClick={e=>{ if(e.target===e.currentTarget) setSelectedCommerce(null) }}>
-          <div style={{ position:'absolute', inset:0, background:'rgba(0,0,0,0.75)', backdropFilter:'blur(8px)', WebkitBackdropFilter:'blur(8px)' }} />
-          <div className="modal-in" style={{ position:'relative', width:'100%', maxWidth:520, background:'rgba(18,18,24,0.98)', borderRadius:20, border:`1px solid ${C.rim}`, overflow:'hidden', zIndex:1 }}>
-            {/* Modal header */}
-            <div style={{ position:'absolute', top:0, left:0, right:0, height:3, background:G }} />
-            <div style={{ padding:'20px 20px 16px', borderBottom:`1px solid ${C.rim}`, display:'flex', justifyContent:'space-between', alignItems:'flex-start' }}>
-              <div>
-                <div style={{ fontFamily:FN, fontSize:17, fontWeight:900, color:C.white, marginBottom:4 }}>{selectedCommerce.name}</div>
-                <div style={{ display:'flex', gap:7, flexWrap:'wrap' }}>
-                  <Pill color={planColor(selectedCommerce.plan)}>{selectedCommerce.plan}</Pill>
-                  <Pill color={selectedCommerce.active?C.ok:C.o}>{selectedCommerce.active?'Activo':'Pendiente'}</Pill>
-                  {selectedCommerce.city && <Pill color={C.dust}>{selectedCommerce.city.name}</Pill>}
-                </div>
-              </div>
-              <button onClick={()=>setSelectedCommerce(null)} style={{ background:'rgba(255,255,255,0.07)', border:'none', borderRadius:8, width:30, height:30, display:'flex', alignItems:'center', justifyContent:'center', cursor:'pointer', flexShrink:0 }}>
-                <X size={15} color={C.mist} />
-              </button>
-            </div>
-            {/* Modal body */}
-            <div style={{ padding:'16px 20px', display:'grid', gap:10 }}>
-              <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:10 }}>
-                <div style={{ background:'rgba(255,255,255,0.04)', borderRadius:10, padding:'11px 13px' }}>
-                  <div style={{ fontSize:9, color:C.mist, fontFamily:FN, fontWeight:700, letterSpacing:'.1em', textTransform:'uppercase', marginBottom:5 }}>Categoría</div>
-                  <div style={{ fontSize:13, color:C.white, fontFamily:FN, fontWeight:600 }}>{selectedCommerce.category || '—'}</div>
-                </div>
-                <div style={{ background:'rgba(255,255,255,0.04)', borderRadius:10, padding:'11px 13px' }}>
-                  <div style={{ fontSize:9, color:C.mist, fontFamily:FN, fontWeight:700, letterSpacing:'.1em', textTransform:'uppercase', marginBottom:5 }}>Slug</div>
-                  <div style={{ fontSize:12, color:C.mist, fontFamily:FI, wordBreak:'break-all' }}>{selectedCommerce.slug || '—'}</div>
-                </div>
-              </div>
-              <div style={{ background:'rgba(255,255,255,0.04)', borderRadius:10, padding:'11px 13px' }}>
-                <div style={{ fontSize:9, color:C.mist, fontFamily:FN, fontWeight:700, letterSpacing:'.1em', textTransform:'uppercase', marginBottom:8 }}>Cambiar plan</div>
-                <div style={{ display:'flex', gap:6 }}>
-                  {['free','starter','pro'].map(p => (
-                    <button key={p} onClick={()=>changePlan(selectedCommerce.id, p)}
-                      style={{ flex:1, padding:'7px 0', borderRadius:8, border:`1px solid ${selectedCommerce.plan===p?planColor(p):`${planColor(p)}40`}`, background:selectedCommerce.plan===p?`${planColor(p)}20`:'transparent', color:selectedCommerce.plan===p?planColor(p):C.mist, fontSize:11, fontFamily:FN, fontWeight:700, cursor:'pointer' }}>
-                      {p.toUpperCase()}
-                    </button>
-                  ))}
-                </div>
-              </div>
-              <div style={{ background:'rgba(255,255,255,0.04)', borderRadius:10, padding:'11px 13px' }}>
-                <div style={{ fontSize:9, color:C.mist, fontFamily:FN, fontWeight:700, letterSpacing:'.1em', textTransform:'uppercase', marginBottom:5 }}>Registrado</div>
-                <div style={{ fontSize:12, color:C.pearl }}>{selectedCommerce.created_at?.slice(0,10) || '—'}</div>
-              </div>
-            </div>
-            {/* Modal footer */}
-            <div style={{ padding:'12px 20px 18px', borderTop:`1px solid ${C.rim}`, display:'flex', gap:8, justifyContent:'flex-end' }}>
-              {!selectedCommerce.active ? (
-                <button onClick={()=>approveCommerce(selectedCommerce.id)} disabled={actioning===selectedCommerce.id}
-                  style={{ display:'flex', alignItems:'center', gap:6, background:C.ok, border:'none', borderRadius:9, padding:'9px 18px', color:'#000', fontSize:12, fontFamily:FN, fontWeight:700, cursor:'pointer', opacity:actioning===selectedCommerce.id?.5:1 }}>
-                  <Check size={13} /> Aprobar comercio
-                </button>
-              ) : (
-                <button onClick={()=>suspendCommerce(selectedCommerce.id)} disabled={actioning===selectedCommerce.id}
-                  style={{ display:'flex', alignItems:'center', gap:6, background:`${C.o}18`, border:`1px solid ${C.o}`, borderRadius:9, padding:'9px 18px', color:C.o, fontSize:12, fontFamily:FN, fontWeight:700, cursor:'pointer', opacity:actioning===selectedCommerce.id?.5:1 }}>
-                  <Ban size={13} /> Suspender
-                </button>
-              )}
-              <button onClick={()=>setSelectedCommerce(null)}
-                style={{ background:'rgba(255,255,255,0.06)', border:`1px solid ${C.rim}`, borderRadius:9, padding:'9px 18px', color:C.mist, fontSize:12, fontFamily:FN, cursor:'pointer' }}>
-                Cerrar
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
-    </div>
-  )
-}
-
-// ─── DEV TOOLBAR (solo en development) ───────────────────────────────────────
-function DevToolbar({ user, profile, onRoleChange }) {
-  const [switching, setSwitching] = useState(null)
-  if (!user) return null
-  // Solo arquitectotolosa@gmail.com puede ver el DevToolbar — en cualquier
-  // entorno. Antes dependíamos de NODE_ENV pero Vercel no lo setea como
-  // esperábamos, así que el guard fallaba y el toolbar aparecía en producción.
-  const ADMIN_EMAILS = ['arquitectotolosa@gmail.com']
-  const userEmail = (user.email || '').toLowerCase().trim()
-  if (!ADMIN_EMAILS.includes(userEmail)) return null
-
-  const ROLES = [
-    { id:'client',         label:'Cliente',   color:C.info },
-    { id:'commerce_owner', label:'Comercio',  color:C.o   },
-    { id:'admin',          label:'Admin',     color:C.v   },
-  ]
-
-  async function switchRole(role) {
-    setSwitching(role)
-    const supabase = getSupabase()
-    await supabase.from('profiles').update({ role }).eq('id', user.id)
-    await onRoleChange()
-    setSwitching(null)
-  }
-
-  const current = profile?.role || 'client'
-
-  return (
-    <div style={{ position:'fixed', bottom:16, left:'50%', transform:'translateX(-50%)', zIndex:9999, display:'flex', alignItems:'center', gap:6, background:'#000000DD', border:`1px solid ${C.rim}`, borderRadius:99, padding:'6px 10px', backdropFilter:'blur(12px)', boxShadow:'0 8px 32px rgba(0,0,0,.6)' }}>
-      <span style={{ fontSize:9, color:C.dust, fontFamily:FN, fontWeight:700, letterSpacing:'.1em', textTransform:'uppercase', paddingRight:4 }}>DEV</span>
-      {ROLES.map(r => (
-        <button key={r.id} onClick={() => switchRole(r.id)} disabled={!!switching}
-          style={{ padding:'5px 12px', borderRadius:99, border:'none', cursor:switching?'wait':'pointer', fontFamily:FN, fontSize:11, fontWeight:700, transition:'background 160ms ease, border-color 160ms ease, color 160ms ease, transform 160ms cubic-bezier(0.23,1,0.32,1), box-shadow 160ms ease',
-            background: current === r.id ? r.color : C.bg3,
-            color:      current === r.id ? '#fff'  : C.mist,
-            opacity:    switching && switching !== r.id ? .5 : 1,
-            boxShadow:  current === r.id ? `0 0 10px ${r.color}66` : 'none',
-          }}>
-          {switching === r.id ? '...' : r.label}
-        </button>
-      ))}
-    </div>
-  )
-}
-// ─── ROOT ─────────────────────────────────────────────────────────────────────
-//
-// Deep-link parser (síncrono, ANTES de cualquier render):
-// Cuando alguien navega a `/?view=X&tab=Y` (típicamente desde el navbar
-// de la página del club: Mi Negocio, Escanear, Mi cuenta), queremos que
-// la app aterrice directo en esa vista — sin pasar por el flujo de
-// "lastView de localStorage" que normalmente la mandaba al ojo viejo o
-// a Mi billetera. Lo hacemos a nivel de módulo (top-level, no dentro
-// del componente) para que el primer render de App ya use el view del
-// deep-link en vez del default. Limpiamos la URL inmediatamente para
-// que no quede pegada al refrescar.
-const _DEEP_LINK = (() => {
-  if (typeof window === 'undefined') return { view: null, tab: null, upgrade: null, member: null }
-  try {
-    const params = new URLSearchParams(window.location.search)
-    const v = params.get('view')
-    const t = params.get('tab')
-    // upgrade=success|pending|failure → llega cuando MP redirige al merchant
-    // después del checkout de la suscripción. El App lo lee y muestra un
-    // modal de confirmación en lugar de aterrizar en la home pelada.
-    const u = params.get('upgrade')
-    // member=<membership_id> → usado por la notif "Visita de [Cliente]"
-    // que mandamos al dueño desde /api/scan. Cuando tap, lo lleva al
-    // panel → tab clientes → con el cliente puntual seleccionado.
-    const mb = params.get('member')
-    if (v || t || u || mb) {
-      window.history.replaceState(null, '', window.location.pathname)
-    }
-    return { view: v || null, tab: t || null, upgrade: u || null, member: mb || null }
-  } catch { return { view: null, tab: null, upgrade: null, member: null } }
-})()
-
-// Helper: lee y consume los query params de deep-link. Combina dos
-// fuentes de verdad para no perder el deep-link:
-//   1. URL viva (window.location.search) — hot path cuando App se monta
-//      sin que el IIFE módulo haya pasado todavía.
-//   2. _DEEP_LINK (IIFE módulo arriba) — fallback si la URL ya fue
-//      limpiada por el propio IIFE durante module load (que es el caso
-//      normal en producción: el módulo se evalúa antes que React monte).
-//
-// Sin este merge teníamos un bug nasty: el IIFE strippea la URL apenas
-// carga el módulo, y cuando App se monta, readFreshDeepLink leía una
-// URL ya vacía y devolvía null/null/null — perdiendo el ?view= y ?tab=
-// que el usuario venía a buscar (ej: tap en notif de canje pendiente).
-function readFreshDeepLink() {
-  if (typeof window === 'undefined') return _DEEP_LINK
-  try {
-    const params = new URLSearchParams(window.location.search)
-    const urlV = params.get('view')
-    const urlT = params.get('tab')
-    const urlU = params.get('upgrade')
-    const urlMb = params.get('member')
-    if (urlV || urlT || urlU || urlMb) {
-      // Por si quedó algo en la URL (caso raro: el IIFE no corrió),
-      // limpiamos.
-      window.history.replaceState(null, '', window.location.pathname)
-    }
-    // Merge: URL gana si tiene valor, sino caemos al _DEEP_LINK del IIFE.
-    return {
-      view:    urlV  || _DEEP_LINK.view    || null,
-      tab:     urlT  || _DEEP_LINK.tab     || null,
-      upgrade: urlU  || _DEEP_LINK.upgrade || null,
-      member:  urlMb || _DEEP_LINK.member  || null,
-    }
-  } catch { return _DEEP_LINK }
-}
-
-export default function App() {
-  // El deep-link se aplica DESPUÉS del primer render via useEffect (ver
-  // más abajo). Si lo aplicáramos en el lazy initializer de useState,
-  // el SSR de Next renderiza el componente con `view='home'` (el server
-  // no tiene window y _DEEP_LINK queda en null), después el cliente
-  // hidrata el HTML y React conserva el valor del server — el deep-link
-  // capturado del lado cliente se pierde y CUALQUIER navegación con
-  // `?view=X` aterriza en home. La solución es arrancar siempre en
-  // 'home' y bumpearlo recién cuando React ya está vivo en el cliente.
-  const [deepLink, setDeepLink] = useState({ view: null, tab: null, upgrade: null, member: null })
-  const [view,     setView]     = useState('home')
-  // upgradeResult: 'success' | 'pending' | 'failure' | null — vino del query
-  // ?upgrade=... que MP setea al redirigir post-checkout. Mostramos un modal
-  // de confirmación encima de cualquier vista.
-  const [upgradeResult, setUpgradeResult] = useState(null)
-
-  // Aplicar deep-link post-hidratación. Corre en el primer mount del App
-  // del lado cliente, lee window.location + el _DEEP_LINK módulo (que ya
-  // capturó al cargar el bundle), y setea view/upgrade si vino algún
-  // hint en la URL. Esto bypassa la limitación de useState/SSR donde el
-  // valor del server pisa al del cliente durante hydration.
-  useEffect(() => {
-    const fresh = readFreshDeepLink()
-    if (fresh.view || fresh.tab || fresh.upgrade) {
-      setDeepLink(fresh)
-    }
-    if (fresh.view) {
-      setView(fresh.view)
-    }
-    if (fresh.upgrade) {
-      setUpgradeResult(fresh.upgrade)
-    }
-  }, [])
-  const [citySlug, setCitySlug] = useState(null)
-  const [commerce, setCommerce] = useState(null)
-  const [user,     setUser]     = useState(null)
-  const [profile,  setProfile]  = useState(null)
-  // Tab activa del ClientView (Mis Clubs / Historial / Mi QR / Cuenta).
-  // El ClientView dispatcha 'benefix:client-tab-changed' cada vez que cambia,
-  // y acá lo guardamos para que el Navbar pueda saber cuál tab está activa
-  // y coordinar el highlight del botón persona vs los tabs del nav inferior.
-  const [clientTab, setClientTab] = useState('mis clubs')
-  const [cities,        setCities]        = useState([])
-  const [citiesLoading, setCitiesLoading] = useState(true)
-  const [showOnboarding, setShowOnboarding] = useState(false)
-  const [showTerms,     setShowTerms]     = useState(false)
-  // signupModal: { mode: 'client' | 'merchant' } | null. Cuando está seteado,
-  // se renderiza MinimalSignupModal por encima de todo. Lo seteamos:
-  //   • Después de TermsAcceptance, si profile.onboarding_completed===false
-  //     (lee sessionStorage 'benefix:signupAs' para decidir el modo).
-  //   • Al recibir el evento 'benefix:open-signup' (cross-rol, ej: cliente
-  //     existente que quiere registrar negocio).
-  const [signupModal,    setSignupModal]    = useState(null)
-  const [authReady,     setAuthReady]     = useState(false)
-  const [isAppLoading,  setIsAppLoading]  = useState(false)
-  const prevUserRef    = useRef(null)   // tracks user present before each auth event
-  const bootComplete   = useRef(false)  // true after first loadProfile(restoreView) resolves
-  const supabase = getSupabase()
-
-  // Primera visita de sesión → mostrar loading screen
-  useEffect(() => {
-    if (!sessionStorage.getItem('benefix:loaded')) setIsAppLoading(true)
-  }, [])
-
-  // Auth init — getSession reads from cookies immediately, no network needed
-  useEffect(() => {
-    supabase.auth.getSession().then(({ data: { session } }) => {
-      prevUserRef.current = session?.user ?? null
-      setUser(session?.user ?? null)
-      setAuthReady(true)
-      if (session?.user) loadProfile(session.user.id, true, true)
-      else { setProfile(null); setShowOnboarding(false) }
-    }).catch(() => setAuthReady(true))
-
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
-      const wasLoggedIn = !!prevUserRef.current
-      prevUserRef.current = session?.user ?? null
-      setUser(session?.user ?? null)
-      if (session?.user) {
-        loadProfile(session.user.id, event === 'SIGNED_IN')
-        // Navigation is fully delegated to loadProfile (reads localStorage or applies role default).
-        // Do NOT call navigate('client') here — it would race against loadProfile and overwrite
-        // a valid persisted view with 'client' before loadProfile finishes reading localStorage.
-      } else {
-        // SIGNED_OUT (o sesión nula): limpiar todo el estado de usuario
-        setProfile(null)
-        setShowOnboarding(false)
-        bootComplete.current = false
-        localStorage.removeItem('benefix:lastView')
-        localStorage.removeItem('benefix:commerceTab')
-        navigate('home')
-      }
-    })
-    return () => subscription.unsubscribe()
-  }, [])
-
-  async function loadProfile(userId, triggerOnboarding = false, restoreView = false) {
-    const { data } = await supabase.from('profiles').select('*').eq('id', userId).single()
-    setProfile(data)
-
-    // Si el user YA está registrado (onboarding_completed=true), ignoramos
-    // cualquier loginNext / signupAs huérfano. Esto cubre el caso "el user
-    // ya tiene cuenta y por error tocó 'Registrarme como cliente/negocio'":
-    // asumimos que se equivocó y lo mandamos directo a su panel sin
-    // mostrarle ningún wizard ni MinimalSignupModal.
-    const alreadyOnboarded = data?.onboarding_completed === true
-    if (alreadyOnboarded) {
-      try { sessionStorage.removeItem('benefix:loginNext') } catch {}
-      try { sessionStorage.removeItem('benefix:signupAs') } catch {}
-    }
-
-    // Login intent — si el usuario llegó al login desde "Soy comercio" u otro CTA
-    // que setea benefix:loginNext, lo respetamos y va a esa vista. Tiene
-    // prioridad sobre el restoreView porque expresa la intención más reciente.
-    // NO aplicamos loginNext si ya está onboarded (se borró arriba).
-    let consumedLoginNext = false
-    try {
-      const next = sessionStorage.getItem('benefix:loginNext')
-      if (next) {
-        sessionStorage.removeItem('benefix:loginNext')
-        setView(next)
-        bootComplete.current = true
-        consumedLoginNext = true
-      }
-    } catch {}
-
-    // Si vino un deep-link en la URL (?view=X) — NO sobreescribir con la
-    // lastView del localStorage. El usuario quiere ir a la vista pedida
-    // en la URL, no a la vista anterior.
-    // OJO: leemos `_DEEP_LINK` (módulo, capturado al cargar el bundle),
-    // NO el state `deepLink` de React, porque loadProfile se ejecuta
-    // ANTES del useEffect que setea el state — durante esa ventana, el
-    // state está en {view:null} y caeríamos al lastView equivocado.
-    if (!consumedLoginNext && restoreView && data?.role && !_DEEP_LINK.view) {
-      const saved = localStorage.getItem('benefix:lastView')
-      const VALID = {
-        client:         ['client', 'directory'],
-        commerce_owner: ['commerce-settings', 'commerce', 'client', 'directory'],
-        admin:          ['admin', 'commerce', 'client', 'directory'],
-      }
-      const defaults = { client: 'client', commerce_owner: 'commerce-settings', admin: 'admin' }
-      if (saved && VALID[data.role]?.includes(saved)) {
-        // Caso especial: 'commerce' (preview del ojo) requiere cargar el comercio
-        // del owner antes de renderizar; sino CommerceView se queda en blanco.
-        if (saved === 'commerce') {
-          // Eye preview ahora vive en /club/[slug]?edit=1 — redirigimos.
-          const { data: ownCommerce } = await supabase.from('commerces').select('*').eq('owner_id', userId).single()
-          if (ownCommerce?.slug && typeof window !== 'undefined') {
-            window.location.href = `/club/${ownCommerce.slug}?edit=1`
-            return
-          }
-          if (ownCommerce) {
-            setCommerce(ownCommerce)
-            setView('commerce')
-          } else {
-            setView(defaults[data.role] || 'home')
-          }
-        } else {
-          setView(saved)
-        }
-      } else {
-        if (saved) localStorage.removeItem('benefix:lastView')
-        setView(defaults[data.role] || 'home')
-      }
-      bootComplete.current = true
-    }
-    if (triggerOnboarding) {
-      if (!data?.terms_accepted_at) { setShowTerms(true); return }
-      // Login redesign (abr 2026): si el usuario ya aceptó términos pero
-      // todavía no completó onboarding, mostramos el MinimalSignupModal
-      // en el modo que pidió en el landing (sessionStorage 'benefix:signupAs').
-      // Si no hay flag, asumimos cliente — caso típico de quien entró por
-      // el botón "Entrar" del navbar sin tocar los CTAs grandes.
-      if (data?.onboarding_completed === false) {
-        let signupMode = 'client'
-        try {
-          const wanted = sessionStorage.getItem('benefix:signupAs')
-          if (wanted === 'merchant' || wanted === 'client') signupMode = wanted
-        } catch {}
-        setSignupModal({ mode: signupMode })
-      }
-    }
-  }
-
-  function handleTermsAccepted() {
-    setShowTerms(false)
-    if (profile?.onboarding_completed === false) {
-      let signupMode = 'client'
-      try {
-        const wanted = sessionStorage.getItem('benefix:signupAs')
-        if (wanted === 'merchant' || wanted === 'client') signupMode = wanted
-      } catch {}
-      setSignupModal({ mode: signupMode })
-    }
-  }
-
-  // Listener cross-rol: cualquier parte de la app puede dispatchar este evento
-  // para abrir el modal de signup en un modo específico (típicamente desde el
-  // CTA "Soy comercio" cuando el user ya está logueado como cliente, o desde
-  // "Convertirme en cliente" desde el panel del comerciante).
-  useEffect(() => {
-    function onOpenSignup(e) {
-      const mode = e?.detail?.mode === 'merchant' ? 'merchant' : 'client'
-      setSignupModal({ mode })
-    }
-    window.addEventListener('benefix:open-signup', onOpenSignup)
-    return () => window.removeEventListener('benefix:open-signup', onOpenSignup)
-  }, [])
-
-  // Cities con conteos
-  useEffect(() => {
-    supabase.from('cities').select('*').eq('active', true)
-      .then(async ({ data: citiesData }) => {
-        if (!citiesData) { setCitiesLoading(false); return }
-        // Añadir conteos
-        const enriched = await Promise.all(citiesData.map(async (city) => {
-          const [{ count: cCount }, { count: mCount }] = await Promise.all([
-            supabase.from('commerces').select('*', { count:'exact', head:true }).eq('city_id', city.id).eq('active', true),
-            supabase.from('memberships').select('*', { count:'exact', head:true }),
-          ])
-          return { ...city, commerce_count: cCount||0, member_count: mCount||0 }
-        }))
-        setCities(enriched)
-        setCitiesLoading(false)
-      })
-  }, [])
-
-  async function handleLogin(opts = {}) {
-    // Interstitial antes de redirigir a Google. Si el usuario tocó "Entrar"
-    // sin querer puede volver acá sin pasar por el picker de Google.
-    // skipPrompt: cuando el caller ya capturó intención explícita (ej: el
-    // user eligió "Registrarme como cliente/negocio" en el modal de roles),
-    // evitamos un segundo confirm redundante y vamos directo a Google.
-    if (!opts.skipPrompt) {
-      const ok = await showLoginPrompt()
-      if (!ok) return
-    }
-    // Si el caller indicó intención de ir a una vista específica post-login
-    // (ej: "Soy comercio" → register-commerce), la persistimos para que
-    // loadProfile la consuma después del OAuth callback.
-    if (opts && opts.nextView) {
-      try { sessionStorage.setItem('benefix:loginNext', opts.nextView) } catch {}
-    }
-    await supabase.auth.signInWithOAuth({
-      provider: 'google',
-      options: {
-        redirectTo: `${window.location.origin}/auth/callback`,
-        // queryParams.prompt='select_account' fuerza a Google a mostrar
-        // SIEMPRE el picker de cuentas, en lugar de auto-loguear con la
-        // última usada. Sin esto, después de un logout el user que quería
-        // entrar con otro mail volvía a caer automáticamente con el viejo.
-        queryParams: { prompt: 'select_account' },
-      },
-    })
-  }
-
-  async function handleLogout() {
-    const ok = await showConfirm({
-      title: '¿Cerrar sesión?',
-      message: 'Vas a salir de tu cuenta. Podés volver a entrar cuando quieras.',
-      confirmText: 'Sí, salir',
-      cancelText: 'Cancelar',
-    })
-    if (!ok) return
-    // signOut con scope global para limpiar la sesión en TODOS los devices
-    // y borrar el refresh-token del lado server. Si falla por cualquier
-    // razón, igual seguimos limpiando el state local y forzando reload.
-    try { await supabase.auth.signOut({ scope: 'global' }) } catch (_) {}
-    try {
-      localStorage.removeItem('benefix:lastView')
-      localStorage.removeItem('benefix:commerceTab')
-    } catch (_) {}
-    // Forzar un reload completo. Sin esto, las cookies de Supabase pueden
-    // quedar en estado inconsistente con el state de React y la sesión
-    // "vuelve" al refrescar manualmente. window.location.replace navega a
-    // home Y resetea todo el árbol de React desde cero.
-    if (typeof window !== 'undefined') {
-      window.location.replace('/')
-    }
-  }
-
-  function navigate(v) { setView(v); window.scrollTo({ top:0, behavior:'smooth' }) }
-
-  // Escucha 'benefix:navigate' (lo dispara el buzón de sugerencias cuando tocás un CTA).
-  // Si viene { view, tab }, navega a esa view y propaga el tab al CommerceSettingsView
-  // (que lo escucha como 'benefix:set-tab') una vez montado.
-  useEffect(() => {
-    function onNavigate(e) {
-      const targetView = e.detail?.view
-      const tab = e.detail?.tab
-      if (!targetView) return
-      if (targetView !== view) navigate(targetView)
-      if (tab) {
-        // Pequeño delay para asegurar que el componente destino esté montado
-        setTimeout(() => {
-          window.dispatchEvent(new CustomEvent('benefix:set-tab', { detail: { tab } }))
-        }, 80)
-      }
-    }
-    window.addEventListener('benefix:navigate', onNavigate)
-    return () => window.removeEventListener('benefix:navigate', onNavigate)
-  }, [view])
-
-  // ClientView nos avisa cada vez que cambia su tab, para que el Navbar
-  // pueda decidir si el botón persona se enciende (tab=cuenta) o no.
-  useEffect(() => {
-    function onClientTabChanged(e) {
-      const next = e.detail?.tab
-      if (next) setClientTab(next)
-    }
-    window.addEventListener('benefix:client-tab-changed', onClientTabChanged)
-    return () => window.removeEventListener('benefix:client-tab-changed', onClientTabChanged)
-  }, [])
-
-  // Consume el deep-link una sola vez. Después del primer render (donde ya
-  // se aplicó view + initialTab a los componentes destino), nullificamos
-  // las propiedades de _DEEP_LINK para que futuros mounts de ClientView /
-  // CommerceSettingsView dentro de la misma sesión SPA no reusen el tab
-  // viejo y arranquen con su default. Si el user llega de nuevo via URL,
-  // readFreshDeepLink lee de nuevo en el siguiente mount.
-  useEffect(() => {
-    // Limpiamos también el deepLink local para que useEffects que dependan
-    // de él no arrastren valores stale entre cambios de view.
-    if (deepLink.view || deepLink.tab) {
-      // No mutamos directamente — los flags ya cumplieron su rol y los
-      // siguientes mounts leen URL fresh.
-    }
-  }, [])
-
-  async function handleOwnerProfile() {
-    if (!user) return
-    const { data } = await supabase.from('commerces').select('*').eq('owner_id', user.id).single()
-    if (!data) return
-    // El ojo del dueño ahora navega a la página pública del club
-    // (/club/[slug]?edit=1) — esa página detecta el flag y muestra Pen
-    // icons al lado de cada campo editable. Antes el ojo renderizaba
-    // un componente CommerceView aparte que se desactualizaba del look
-    // real del club (no tenía los accordions ni el slider de promos).
-    if (data.slug && typeof window !== 'undefined') {
-      window.location.href = `/club/${data.slug}?edit=1`
-      return
-    }
-    // Fallback (sin slug) — comportamiento viejo.
-    setCommerce(data)
-    navigate('commerce')
-  }
-
-  // 'commerce' SÍ se persiste — el owner espera que al refrescar el preview
-  // siga viendo el preview, no que lo mande a configuración. La restauración
-  // recupera el commerce del owner y lo inyecta en estado (ver loadProfile).
-  const TRANSIENT_VIEWS = new Set(['home', 'scanner', 'register-commerce'])
-  useEffect(() => {
-    if (TRANSIENT_VIEWS.has(view)) return
-    if (!bootComplete.current) return
-    localStorage.setItem('benefix:lastView', view)
-  }, [view])
-
-  const currentCity = cities.find(c => c.slug === citySlug)
-
-  if (isAppLoading) return (
-    <LoadingScreen onComplete={() => {
-      sessionStorage.setItem('benefix:loaded', '1')
-      setIsAppLoading(false)
-    }} />
-  )
-
-  if (!authReady) return <FullscreenLoader message="Iniciando..." />
-
-  return (
-    <>
-      <style>{`input:focus { outline: none; border-color: #BD4BF8 !important; box-shadow: 0 0 0 3px #BD4BF818; }`}</style>
-      <ToastContainer />
-      <ConfirmModal />
-      <LoginPromptModal />
-      <SwRegister />
-      <InstallPrompt />
-      {/* Modal de resultado del checkout de Mercado Pago — se muestra cuando
-          la URL trae ?upgrade=success|pending|failure. MP redirige acá tras
-          el flujo de suscripción. La activación real del plan la hace el
-          webhook (POST /api/webhooks/mercadopago) cuando MP confirma el
-          preapproval — por eso "success" se muestra como "estamos activando"
-          y no como "ya estás activado": puede tardar segundos/minutos. */}
-      {upgradeResult && (
-        <UpgradeResultModal
-          result={upgradeResult}
-          onClose={() => setUpgradeResult(null)}
-        />
-      )}
-      {showTerms && user && (
-        <TermsAcceptance user={user} onAccept={handleTermsAccepted} />
-      )}
-      {showOnboarding && user && (
-        <OnboardingFlow
-          user={user}
-          onComplete={async (opts) => {
-            setShowOnboarding(false)
-            await loadProfile(user.id)
-            // Si el usuario eligió "Sí, tengo un negocio" en el último paso del
-            // onboarding, lo mandamos al wizard de registrar comercio.
-            if (opts?.goTo === 'register-commerce') {
-              navigate('register-commerce')
-            }
-          }}
-        />
-      )}
-      {signupModal && user && (
-        <MinimalSignupModal
-          user={user}
-          mode={signupModal.mode}
-          // Permitimos cerrar SIN guardar solo cuando el modal vino de un
-          // open-signup cross-rol manual (el user ya tiene cuenta funcionando).
-          // Si está completando el primer onboarding (profile.onboarding_completed=false),
-          // no exponemos X — necesitamos los datos para no dejarlo a medias.
-          onClose={profile?.onboarding_completed === false ? null : () => setSignupModal(null)}
-          onComplete={async ({ mode, slug }) => {
-            setSignupModal(null)
-            // Refresh del profile y de la sesión local. loadProfile no setea view
-            // porque restoreView=false por default — lo hacemos nosotros según
-            // el modo.
-            await loadProfile(user.id)
-            if (mode === 'merchant') {
-              navigate('commerce-settings')
-            } else {
-              navigate('client')
-            }
-          }}
-        />
-      )}
-      <Navbar setView={navigate} cityName={currentCity?.name} user={user} profile={profile} onLogin={handleLogin} onLogout={handleLogout} currentView={view} clientTab={clientTab} onOwnerProfile={handleOwnerProfile} />
-      {/* Spacer del navbar — solo cuando NO es home. En home el splash
-          arranca pegado al navbar para que se sienta full-bleed (la
-          sección tiene su propio padding-top interno para que el
-          contenido no quede debajo del navbar fijo). */}
-      {view !== 'home' && <div style={{ height:80 }} />}
-      {/* Banner top "¿Tenés un negocio?" — aparece debajo del navbar en las
-          vistas que NO tienen sub-nav fijo propio. ClientView tiene su
-          ClientBottomNav fijo en top:62, así que el banner se renderiza
-          INTERNAMENTE dentro de ClientView (después de su paddingTop:58 que
-          ya esquiva el sub-nav). Para todas las otras vistas se renderiza
-          acá en el flow general. */}
-      {user && profile && view !== 'client' && (
-        <div style={{ maxWidth: 1120, margin: '0 auto', padding: '0 15px' }}>
-          <BizPromptBanner profile={profile} />
-        </div>
-      )}
-      {view === 'home'      && <HomeView setView={navigate} user={user} profile={profile} onLogin={handleLogin} />}
-      {view === 'directory'          && <DirectoryView citySlug={citySlug} cities={cities} setView={navigate} setCommerce={setCommerce} />}
-      {view === 'commerce'           && <CommerceView commerce={commerce} setView={navigate} user={user} onLoginRequired={handleLogin} onCommerceUpdate={updates => setCommerce(prev => ({ ...prev, ...updates }))} />}
-      {view === 'client'             && <ClientView setView={navigate} user={user} profile={profile} onLogout={handleLogout} initialTab={deepLink.tab} />}
-      {view === 'scanner'            && <ScannerView user={user} profile={profile} setView={navigate} />}
-      {view === 'admin'              && <AdminView cities={cities} profile={profile} />}
-      {view === 'register-commerce'  && <RegisterCommerceView setView={navigate} cities={cities} user={user} onLoginRequired={() => handleLogin({ nextView: 'register-commerce' })} onProfileRefresh={() => loadProfile(user.id)} />}
-      {view === 'commerce-settings'  && <CommerceSettingsView user={user} profile={profile} setView={navigate} onLogout={handleLogout} onOwnerProfile={handleOwnerProfile} initialTab={deepLink.tab} initialMember={deepLink.member} />}
-      {/* Chat de soporte con IA — visible cuando hay sesión. Pasa role según
-          la vista activa: comerciante en commerce-settings, cliente en el resto.
-          El buzón de sugerencias va apilado encima del botón del chat. */}
-      {user && view !== 'home' && view !== 'directory' && (
-        <>
-          {/* FloatingActionsTab — solapa flotante violeta sobre el borde
-              derecho que agrupa los dos atajos del usuario en una sola
-              pill (campana de notifs + chat de soporte). Los componentes
-              NotificationsBell y SupportChat se siguen montando para que
-              sus drawers existan, pero con `hideButton` para que no
-              dupliquen botones flotantes. La interacción se delega vía
-              eventos `benefix:open-notifications` y `benefix:open-support`. */}
-          <FloatingActionsTab />
-          <NotificationsBell hideButton role={view === 'commerce-settings' ? 'merchant' : 'client'} />
-          <SupportChat hideButton role={view === 'commerce-settings' ? 'merchant' : 'client'} />
-          {/* Banner para activar push del navegador. */}
-          <EnablePushPrompt />
-          {/* Nudges cross-rol temporizados:
-              • 10s — si es cliente sin respuesta, sugerir registrar negocio.
-              • 15s — si es dueño, recordar que tiene QR personal de cliente. */}
-          <CrossRoleNudges profile={profile} setView={navigate} />
-        </>
-      )}
-      <DevToolbar user={user} profile={profile} onRoleChange={() => loadProfile(user.id)} />
-    </>
-  )
-}
+           
