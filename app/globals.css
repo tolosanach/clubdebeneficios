@@ -725,3 +725,8 @@ input[type="week"]::-webkit-calendar-picker-indicator:hover {
   0%, 100% { transform: translate(-50%, -50%) scale(1); }
   50%      { transform: translate(-50%, -50%) scale(1.12); }
 }
+
+@keyframes bell-cartel-in {
+  0%   { opacity: 0; transform: translateX(8px) scale(0.96); }
+  100% { opacity: 1; transform: translateX(0)    scale(1);    }
+}
