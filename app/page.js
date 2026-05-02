@@ -21755,4 +21755,772 @@ function AdminView({ cities: initialCities, profile }) {
                 <div style={{ display:'flex', justifyContent:'space-between', marginBottom:11 }}>
                   <div>
                     <div style={{ fontFamily:FN, fontSize:15, fontWeight:900, color:C.white }}>{c.name}</div>
-           
+                    <div style={{ fontSize:9, color:C.dust }}>{c.province}</div>
+                  </div>
+                  <Pill color={C.ok}>Activa</Pill>
+                </div>
+                <div style={{ height:1, background:C.rim, marginBottom:10 }} />
+                <div style={{ display:'flex', justifyContent:'space-between' }}>
+                  <div>
+                    <div style={{ fontFamily:FN, fontSize:18, fontWeight:900, background:G, WebkitBackgroundClip:'text', WebkitTextFillColor:'transparent', backgroundClip:'text' }}>{c.commerce_count||0}</div>
+                    <div style={{ fontSize:9, color:C.dust }}>negocios</div>
+                  </div>
+                  <div style={{ textAlign:'right' }}>
+                    <div style={{ fontFamily:FN, fontSize:18, fontWeight:900, color:C.v }}>{fmtK(c.member_count||0)}</div>
+                    <div style={{ fontSize:9, color:C.dust }}>socios</div>
+                  </div>
+                </div>
+              </PCard>
+            ))}
+            {cities.length === 0 && (
+              <div style={{ color:C.mist, fontSize:13 }}>No hay ciudades. Agregá una arriba.</div>
+            )}
+          </div>
+        </div>
+      )}
+
+      {/* ── ACTIVIDAD TAB ── */}
+      {!loading && tab === 'actividad' && (
+        <PCard style={{ padding:40, textAlign:'center' }}>
+          <div style={{ display:'flex', justifyContent:'center', marginBottom:14 }}>
+            <div style={{ width:48, height:48, borderRadius:14, background:'rgba(255,255,255,0.06)', display:'flex', alignItems:'center', justifyContent:'center' }}>
+              <Activity size={22} color={C.mist} strokeWidth={2} />
+            </div>
+          </div>
+          <div style={{ fontFamily:FN, fontSize:15, fontWeight:700, color:C.white, marginBottom:6 }}>Sin registros de actividad</div>
+          <div style={{ color:C.mist, fontSize:13, maxWidth:320, margin:'0 auto' }}>El log de actividad del sistema estará disponible próximamente.</div>
+        </PCard>
+      )}
+
+      {/* ── CONFIG TAB ── */}
+      {!loading && tab === 'config' && (
+        <div style={{ display:'grid', gap:14 }}>
+          <PCard style={{ padding:18 }}>
+            <div style={{ fontFamily:FN, fontSize:10, color:C.mist, fontWeight:700, letterSpacing:'.12em', textTransform:'uppercase', marginBottom:14 }}>Configuración del sistema</div>
+            {[
+              { key:'allowSignup',      label:'Permitir registro de comercios', desc:'Habilita el formulario de alta para nuevos negocios.' },
+              { key:'requireApproval',  label:'Requerir aprobación manual',     desc:'Los nuevos comercios quedan en estado pendiente hasta que un admin los apruebe.' },
+              { key:'maintenance',      label:'Modo mantenimiento',              desc:'Muestra una pantalla de mantenimiento a todos los usuarios.' },
+            ].map(({ key, label, desc }) => (
+              <div key={key} style={{ display:'flex', justifyContent:'space-between', alignItems:'center', padding:'14px 0', borderBottom:`1px solid ${C.rim}` }}>
+                <div>
+                  <div style={{ fontSize:13, color:C.white, fontFamily:FN, fontWeight:600, marginBottom:3 }}>{label}</div>
+                  <div style={{ fontSize:11, color:C.mist }}>{desc}</div>
+                </div>
+                <button onClick={()=>setConfig(p=>({...p, [key]:!p[key]}))}
+                  style={{ width:44, height:24, borderRadius:99, border:'none', cursor:'pointer', position:'relative', flexShrink:0, background:config[key]?C.ok:'rgba(255,255,255,0.15)', transition:'background 200ms ease' }}>
+                  <span style={{ position:'absolute', top:3, left:config[key]?22:3, width:18, height:18, borderRadius:'50%', background:'#fff', transition:'left 200ms cubic-bezier(0.23,1,0.32,1)', display:'block' }} />
+                </button>
+              </div>
+            ))}
+          </PCard>
+
+          <PCard style={{ padding:18 }}>
+            <div style={{ fontFamily:FN, fontSize:10, color:C.mist, fontWeight:700, letterSpacing:'.12em', textTransform:'uppercase', marginBottom:14 }}>Mensaje broadcast</div>
+            <textarea value={broadcast} onChange={e=>setBroadcast(e.target.value)} placeholder="Escribí un mensaje para mostrar a todos los usuarios…"
+              rows={3}
+              style={{ width:'100%', background:'rgba(255,255,255,0.05)', border:`1px solid ${C.rim}`, borderRadius:10, padding:'12px 14px', color:C.white, fontSize:13, fontFamily:FI, outline:'none', resize:'vertical', boxSizing:'border-box', lineHeight:1.5 }} />
+            <div style={{ display:'flex', justifyContent:'flex-end', marginTop:10 }}>
+              <GBtn sm onClick={()=>{ /* TODO: persist */ }}>Guardar mensaje</GBtn>
+            </div>
+          </PCard>
+        </div>
+      )}
+
+      {/* ── COMMERCE DETAIL MODAL ── */}
+      {selectedCommerce && (
+        <div style={{ position:'fixed', inset:0, zIndex:1000, display:'flex', alignItems:'center', justifyContent:'center', padding:16 }}
+          onClick={e=>{ if(e.target===e.currentTarget) setSelectedCommerce(null) }}>
+          <div style={{ position:'absolute', inset:0, background:'rgba(0,0,0,0.75)', backdropFilter:'blur(8px)', WebkitBackdropFilter:'blur(8px)' }} />
+          <div className="modal-in" style={{ position:'relative', width:'100%', maxWidth:520, background:'rgba(18,18,24,0.98)', borderRadius:20, border:`1px solid ${C.rim}`, overflow:'hidden', zIndex:1 }}>
+            {/* Modal header */}
+            <div style={{ position:'absolute', top:0, left:0, right:0, height:3, background:G }} />
+            <div style={{ padding:'20px 20px 16px', borderBottom:`1px solid ${C.rim}`, display:'flex', justifyContent:'space-between', alignItems:'flex-start' }}>
+              <div>
+                <div style={{ fontFamily:FN, fontSize:17, fontWeight:900, color:C.white, marginBottom:4 }}>{selectedCommerce.name}</div>
+                <div style={{ display:'flex', gap:7, flexWrap:'wrap' }}>
+                  <Pill color={planColor(selectedCommerce.plan)}>{selectedCommerce.plan}</Pill>
+                  <Pill color={selectedCommerce.active?C.ok:C.o}>{selectedCommerce.active?'Activo':'Pendiente'}</Pill>
+                  {selectedCommerce.city && <Pill color={C.dust}>{selectedCommerce.city.name}</Pill>}
+                </div>
+              </div>
+              <button onClick={()=>setSelectedCommerce(null)} style={{ background:'rgba(255,255,255,0.07)', border:'none', borderRadius:8, width:30, height:30, display:'flex', alignItems:'center', justifyContent:'center', cursor:'pointer', flexShrink:0 }}>
+                <X size={15} color={C.mist} />
+              </button>
+            </div>
+            {/* Modal body */}
+            <div style={{ padding:'16px 20px', display:'grid', gap:10 }}>
+              <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:10 }}>
+                <div style={{ background:'rgba(255,255,255,0.04)', borderRadius:10, padding:'11px 13px' }}>
+                  <div style={{ fontSize:9, color:C.mist, fontFamily:FN, fontWeight:700, letterSpacing:'.1em', textTransform:'uppercase', marginBottom:5 }}>Categoría</div>
+                  <div style={{ fontSize:13, color:C.white, fontFamily:FN, fontWeight:600 }}>{selectedCommerce.category || '—'}</div>
+                </div>
+                <div style={{ background:'rgba(255,255,255,0.04)', borderRadius:10, padding:'11px 13px' }}>
+                  <div style={{ fontSize:9, color:C.mist, fontFamily:FN, fontWeight:700, letterSpacing:'.1em', textTransform:'uppercase', marginBottom:5 }}>Slug</div>
+                  <div style={{ fontSize:12, color:C.mist, fontFamily:FI, wordBreak:'break-all' }}>{selectedCommerce.slug || '—'}</div>
+                </div>
+              </div>
+              <div style={{ background:'rgba(255,255,255,0.04)', borderRadius:10, padding:'11px 13px' }}>
+                <div style={{ fontSize:9, color:C.mist, fontFamily:FN, fontWeight:700, letterSpacing:'.1em', textTransform:'uppercase', marginBottom:8 }}>Cambiar plan</div>
+                <div style={{ display:'flex', gap:6 }}>
+                  {['free','starter','pro'].map(p => (
+                    <button key={p} onClick={()=>changePlan(selectedCommerce.id, p)}
+                      style={{ flex:1, padding:'7px 0', borderRadius:8, border:`1px solid ${selectedCommerce.plan===p?planColor(p):`${planColor(p)}40`}`, background:selectedCommerce.plan===p?`${planColor(p)}20`:'transparent', color:selectedCommerce.plan===p?planColor(p):C.mist, fontSize:11, fontFamily:FN, fontWeight:700, cursor:'pointer' }}>
+                      {p.toUpperCase()}
+                    </button>
+                  ))}
+                </div>
+              </div>
+              <div style={{ background:'rgba(255,255,255,0.04)', borderRadius:10, padding:'11px 13px' }}>
+                <div style={{ fontSize:9, color:C.mist, fontFamily:FN, fontWeight:700, letterSpacing:'.1em', textTransform:'uppercase', marginBottom:5 }}>Registrado</div>
+                <div style={{ fontSize:12, color:C.pearl }}>{selectedCommerce.created_at?.slice(0,10) || '—'}</div>
+              </div>
+            </div>
+            {/* Modal footer */}
+            <div style={{ padding:'12px 20px 18px', borderTop:`1px solid ${C.rim}`, display:'flex', gap:8, justifyContent:'flex-end' }}>
+              {!selectedCommerce.active ? (
+                <button onClick={()=>approveCommerce(selectedCommerce.id)} disabled={actioning===selectedCommerce.id}
+                  style={{ display:'flex', alignItems:'center', gap:6, background:C.ok, border:'none', borderRadius:9, padding:'9px 18px', color:'#000', fontSize:12, fontFamily:FN, fontWeight:700, cursor:'pointer', opacity:actioning===selectedCommerce.id?.5:1 }}>
+                  <Check size={13} /> Aprobar comercio
+                </button>
+              ) : (
+                <button onClick={()=>suspendCommerce(selectedCommerce.id)} disabled={actioning===selectedCommerce.id}
+                  style={{ display:'flex', alignItems:'center', gap:6, background:`${C.o}18`, border:`1px solid ${C.o}`, borderRadius:9, padding:'9px 18px', color:C.o, fontSize:12, fontFamily:FN, fontWeight:700, cursor:'pointer', opacity:actioning===selectedCommerce.id?.5:1 }}>
+                  <Ban size={13} /> Suspender
+                </button>
+              )}
+              <button onClick={()=>setSelectedCommerce(null)}
+                style={{ background:'rgba(255,255,255,0.06)', border:`1px solid ${C.rim}`, borderRadius:9, padding:'9px 18px', color:C.mist, fontSize:12, fontFamily:FN, cursor:'pointer' }}>
+                Cerrar
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
+  )
+}
+
+// ─── DEV TOOLBAR (solo en development) ───────────────────────────────────────
+function DevToolbar({ user, profile, onRoleChange }) {
+  const [switching, setSwitching] = useState(null)
+  if (!user) return null
+  // Solo arquitectotolosa@gmail.com puede ver el DevToolbar — en cualquier
+  // entorno. Antes dependíamos de NODE_ENV pero Vercel no lo setea como
+  // esperábamos, así que el guard fallaba y el toolbar aparecía en producción.
+  const ADMIN_EMAILS = ['arquitectotolosa@gmail.com']
+  const userEmail = (user.email || '').toLowerCase().trim()
+  if (!ADMIN_EMAILS.includes(userEmail)) return null
+
+  const ROLES = [
+    { id:'client',         label:'Cliente',   color:C.info },
+    { id:'commerce_owner', label:'Comercio',  color:C.o   },
+    { id:'admin',          label:'Admin',     color:C.v   },
+  ]
+
+  async function switchRole(role) {
+    setSwitching(role)
+    const supabase = getSupabase()
+    await supabase.from('profiles').update({ role }).eq('id', user.id)
+    await onRoleChange()
+    setSwitching(null)
+  }
+
+  const current = profile?.role || 'client'
+
+  return (
+    <div style={{ position:'fixed', bottom:16, left:'50%', transform:'translateX(-50%)', zIndex:9999, display:'flex', alignItems:'center', gap:6, background:'#000000DD', border:`1px solid ${C.rim}`, borderRadius:99, padding:'6px 10px', backdropFilter:'blur(12px)', boxShadow:'0 8px 32px rgba(0,0,0,.6)' }}>
+      <span style={{ fontSize:9, color:C.dust, fontFamily:FN, fontWeight:700, letterSpacing:'.1em', textTransform:'uppercase', paddingRight:4 }}>DEV</span>
+      {ROLES.map(r => (
+        <button key={r.id} onClick={() => switchRole(r.id)} disabled={!!switching}
+          style={{ padding:'5px 12px', borderRadius:99, border:'none', cursor:switching?'wait':'pointer', fontFamily:FN, fontSize:11, fontWeight:700, transition:'background 160ms ease, border-color 160ms ease, color 160ms ease, transform 160ms cubic-bezier(0.23,1,0.32,1), box-shadow 160ms ease',
+            background: current === r.id ? r.color : C.bg3,
+            color:      current === r.id ? '#fff'  : C.mist,
+            opacity:    switching && switching !== r.id ? .5 : 1,
+            boxShadow:  current === r.id ? `0 0 10px ${r.color}66` : 'none',
+          }}>
+          {switching === r.id ? '...' : r.label}
+        </button>
+      ))}
+    </div>
+  )
+}
+// ─── ROOT ─────────────────────────────────────────────────────────────────────
+//
+// Deep-link parser (síncrono, ANTES de cualquier render):
+// Cuando alguien navega a `/?view=X&tab=Y` (típicamente desde el navbar
+// de la página del club: Mi Negocio, Escanear, Mi cuenta), queremos que
+// la app aterrice directo en esa vista — sin pasar por el flujo de
+// "lastView de localStorage" que normalmente la mandaba al ojo viejo o
+// a Mi billetera. Lo hacemos a nivel de módulo (top-level, no dentro
+// del componente) para que el primer render de App ya use el view del
+// deep-link en vez del default. Limpiamos la URL inmediatamente para
+// que no quede pegada al refrescar.
+const _DEEP_LINK = (() => {
+  if (typeof window === 'undefined') return { view: null, tab: null, upgrade: null, member: null }
+  try {
+    const params = new URLSearchParams(window.location.search)
+    const v = params.get('view')
+    const t = params.get('tab')
+    // upgrade=success|pending|failure → llega cuando MP redirige al merchant
+    // después del checkout de la suscripción. El App lo lee y muestra un
+    // modal de confirmación en lugar de aterrizar en la home pelada.
+    const u = params.get('upgrade')
+    // member=<membership_id> → usado por la notif "Visita de [Cliente]"
+    // que mandamos al dueño desde /api/scan. Cuando tap, lo lleva al
+    // panel → tab clientes → con el cliente puntual seleccionado.
+    const mb = params.get('member')
+    if (v || t || u || mb) {
+      window.history.replaceState(null, '', window.location.pathname)
+    }
+    return { view: v || null, tab: t || null, upgrade: u || null, member: mb || null }
+  } catch { return { view: null, tab: null, upgrade: null, member: null } }
+})()
+
+// Helper: lee y consume los query params de deep-link. Combina dos
+// fuentes de verdad para no perder el deep-link:
+//   1. URL viva (window.location.search) — hot path cuando App se monta
+//      sin que el IIFE módulo haya pasado todavía.
+//   2. _DEEP_LINK (IIFE módulo arriba) — fallback si la URL ya fue
+//      limpiada por el propio IIFE durante module load (que es el caso
+//      normal en producción: el módulo se evalúa antes que React monte).
+//
+// Sin este merge teníamos un bug nasty: el IIFE strippea la URL apenas
+// carga el módulo, y cuando App se monta, readFreshDeepLink leía una
+// URL ya vacía y devolvía null/null/null — perdiendo el ?view= y ?tab=
+// que el usuario venía a buscar (ej: tap en notif de canje pendiente).
+function readFreshDeepLink() {
+  if (typeof window === 'undefined') return _DEEP_LINK
+  try {
+    const params = new URLSearchParams(window.location.search)
+    const urlV = params.get('view')
+    const urlT = params.get('tab')
+    const urlU = params.get('upgrade')
+    const urlMb = params.get('member')
+    if (urlV || urlT || urlU || urlMb) {
+      // Por si quedó algo en la URL (caso raro: el IIFE no corrió),
+      // limpiamos.
+      window.history.replaceState(null, '', window.location.pathname)
+    }
+    // Merge: URL gana si tiene valor, sino caemos al _DEEP_LINK del IIFE.
+    return {
+      view:    urlV  || _DEEP_LINK.view    || null,
+      tab:     urlT  || _DEEP_LINK.tab     || null,
+      upgrade: urlU  || _DEEP_LINK.upgrade || null,
+      member:  urlMb || _DEEP_LINK.member  || null,
+    }
+  } catch { return _DEEP_LINK }
+}
+
+export default function App() {
+  // El deep-link se aplica DESPUÉS del primer render via useEffect (ver
+  // más abajo). Si lo aplicáramos en el lazy initializer de useState,
+  // el SSR de Next renderiza el componente con `view='home'` (el server
+  // no tiene window y _DEEP_LINK queda en null), después el cliente
+  // hidrata el HTML y React conserva el valor del server — el deep-link
+  // capturado del lado cliente se pierde y CUALQUIER navegación con
+  // `?view=X` aterriza en home. La solución es arrancar siempre en
+  // 'home' y bumpearlo recién cuando React ya está vivo en el cliente.
+  const [deepLink, setDeepLink] = useState({ view: null, tab: null, upgrade: null, member: null })
+  const [view,     setView]     = useState('home')
+  // upgradeResult: 'success' | 'pending' | 'failure' | null — vino del query
+  // ?upgrade=... que MP setea al redirigir post-checkout. Mostramos un modal
+  // de confirmación encima de cualquier vista.
+  const [upgradeResult, setUpgradeResult] = useState(null)
+
+  // Aplicar deep-link post-hidratación. Corre en el primer mount del App
+  // del lado cliente, lee window.location + el _DEEP_LINK módulo (que ya
+  // capturó al cargar el bundle), y setea view/upgrade si vino algún
+  // hint en la URL. Esto bypassa la limitación de useState/SSR donde el
+  // valor del server pisa al del cliente durante hydration.
+  useEffect(() => {
+    const fresh = readFreshDeepLink()
+    if (fresh.view || fresh.tab || fresh.upgrade) {
+      setDeepLink(fresh)
+    }
+    if (fresh.view) {
+      setView(fresh.view)
+    }
+    if (fresh.upgrade) {
+      setUpgradeResult(fresh.upgrade)
+    }
+  }, [])
+  const [citySlug, setCitySlug] = useState(null)
+  const [commerce, setCommerce] = useState(null)
+  const [user,     setUser]     = useState(null)
+  const [profile,  setProfile]  = useState(null)
+  // Tab activa del ClientView (Mis Clubs / Historial / Mi QR / Cuenta).
+  // El ClientView dispatcha 'benefix:client-tab-changed' cada vez que cambia,
+  // y acá lo guardamos para que el Navbar pueda saber cuál tab está activa
+  // y coordinar el highlight del botón persona vs los tabs del nav inferior.
+  const [clientTab, setClientTab] = useState('mis clubs')
+  const [cities,        setCities]        = useState([])
+  const [citiesLoading, setCitiesLoading] = useState(true)
+  const [showOnboarding, setShowOnboarding] = useState(false)
+  const [showTerms,     setShowTerms]     = useState(false)
+  // signupModal: { mode: 'client' | 'merchant' } | null. Cuando está seteado,
+  // se renderiza MinimalSignupModal por encima de todo. Lo seteamos:
+  //   • Después de TermsAcceptance, si profile.onboarding_completed===false
+  //     (lee sessionStorage 'benefix:signupAs' para decidir el modo).
+  //   • Al recibir el evento 'benefix:open-signup' (cross-rol, ej: cliente
+  //     existente que quiere registrar negocio).
+  const [signupModal,    setSignupModal]    = useState(null)
+  const [authReady,     setAuthReady]     = useState(false)
+  const [isAppLoading,  setIsAppLoading]  = useState(false)
+  // Loading state que se enciende APENAS el dueño tappea el ícono
+  // del ojo (preview público de su club). Antes el click hacía un
+  // await a Supabase + window.location.href, lo que dejaba la pantalla
+  // "muerta" 200-500ms — el user pensaba que no había apretado bien.
+  // Ahora seteamos esto a true en el primer instante del handler y
+  // mostramos un FullscreenLoader como feedback inmediato.
+  const [isLoadingOwnerPreview, setIsLoadingOwnerPreview] = useState(false)
+  const prevUserRef    = useRef(null)   // tracks user present before each auth event
+  const bootComplete   = useRef(false)  // true after first loadProfile(restoreView) resolves
+  const supabase = getSupabase()
+
+  // Primera visita de sesión → mostrar loading screen
+  useEffect(() => {
+    if (!sessionStorage.getItem('benefix:loaded')) setIsAppLoading(true)
+  }, [])
+
+  // Auth init — getSession reads from cookies immediately, no network needed
+  useEffect(() => {
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      prevUserRef.current = session?.user ?? null
+      setUser(session?.user ?? null)
+      setAuthReady(true)
+      if (session?.user) loadProfile(session.user.id, true, true)
+      else { setProfile(null); setShowOnboarding(false) }
+    }).catch(() => setAuthReady(true))
+
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
+      const wasLoggedIn = !!prevUserRef.current
+      prevUserRef.current = session?.user ?? null
+      setUser(session?.user ?? null)
+      if (session?.user) {
+        loadProfile(session.user.id, event === 'SIGNED_IN')
+        // Navigation is fully delegated to loadProfile (reads localStorage or applies role default).
+        // Do NOT call navigate('client') here — it would race against loadProfile and overwrite
+        // a valid persisted view with 'client' before loadProfile finishes reading localStorage.
+      } else {
+        // SIGNED_OUT (o sesión nula): limpiar todo el estado de usuario
+        setProfile(null)
+        setShowOnboarding(false)
+        bootComplete.current = false
+        localStorage.removeItem('benefix:lastView')
+        localStorage.removeItem('benefix:commerceTab')
+        navigate('home')
+      }
+    })
+    return () => subscription.unsubscribe()
+  }, [])
+
+  async function loadProfile(userId, triggerOnboarding = false, restoreView = false) {
+    const { data } = await supabase.from('profiles').select('*').eq('id', userId).single()
+    setProfile(data)
+
+    // Si el user YA está registrado (onboarding_completed=true), ignoramos
+    // cualquier loginNext / signupAs huérfano. Esto cubre el caso "el user
+    // ya tiene cuenta y por error tocó 'Registrarme como cliente/negocio'":
+    // asumimos que se equivocó y lo mandamos directo a su panel sin
+    // mostrarle ningún wizard ni MinimalSignupModal.
+    const alreadyOnboarded = data?.onboarding_completed === true
+    if (alreadyOnboarded) {
+      try { sessionStorage.removeItem('benefix:loginNext') } catch {}
+      try { sessionStorage.removeItem('benefix:signupAs') } catch {}
+    }
+
+    // Login intent — si el usuario llegó al login desde "Soy comercio" u otro CTA
+    // que setea benefix:loginNext, lo respetamos y va a esa vista. Tiene
+    // prioridad sobre el restoreView porque expresa la intención más reciente.
+    // NO aplicamos loginNext si ya está onboarded (se borró arriba).
+    let consumedLoginNext = false
+    try {
+      const next = sessionStorage.getItem('benefix:loginNext')
+      if (next) {
+        sessionStorage.removeItem('benefix:loginNext')
+        setView(next)
+        bootComplete.current = true
+        consumedLoginNext = true
+      }
+    } catch {}
+
+    // Si vino un deep-link en la URL (?view=X) — NO sobreescribir con la
+    // lastView del localStorage. El usuario quiere ir a la vista pedida
+    // en la URL, no a la vista anterior.
+    // OJO: leemos `_DEEP_LINK` (módulo, capturado al cargar el bundle),
+    // NO el state `deepLink` de React, porque loadProfile se ejecuta
+    // ANTES del useEffect que setea el state — durante esa ventana, el
+    // state está en {view:null} y caeríamos al lastView equivocado.
+    if (!consumedLoginNext && restoreView && data?.role && !_DEEP_LINK.view) {
+      const saved = localStorage.getItem('benefix:lastView')
+      const VALID = {
+        client:         ['client', 'directory'],
+        commerce_owner: ['commerce-settings', 'commerce', 'client', 'directory'],
+        admin:          ['admin', 'commerce', 'client', 'directory'],
+      }
+      const defaults = { client: 'client', commerce_owner: 'commerce-settings', admin: 'admin' }
+      if (saved && VALID[data.role]?.includes(saved)) {
+        // Caso especial: 'commerce' (preview del ojo) requiere cargar el comercio
+        // del owner antes de renderizar; sino CommerceView se queda en blanco.
+        if (saved === 'commerce') {
+          // Eye preview ahora vive en /club/[slug]?edit=1 — redirigimos.
+          const { data: ownCommerce } = await supabase.from('commerces').select('*').eq('owner_id', userId).single()
+          if (ownCommerce?.slug && typeof window !== 'undefined') {
+            window.location.href = `/club/${ownCommerce.slug}?edit=1`
+            return
+          }
+          if (ownCommerce) {
+            setCommerce(ownCommerce)
+            setView('commerce')
+          } else {
+            setView(defaults[data.role] || 'home')
+          }
+        } else {
+          setView(saved)
+        }
+      } else {
+        if (saved) localStorage.removeItem('benefix:lastView')
+        setView(defaults[data.role] || 'home')
+      }
+      bootComplete.current = true
+    }
+    if (triggerOnboarding) {
+      if (!data?.terms_accepted_at) { setShowTerms(true); return }
+      // Login redesign (abr 2026): si el usuario ya aceptó términos pero
+      // todavía no completó onboarding, mostramos el MinimalSignupModal
+      // en el modo que pidió en el landing (sessionStorage 'benefix:signupAs').
+      // Si no hay flag, asumimos cliente — caso típico de quien entró por
+      // el botón "Entrar" del navbar sin tocar los CTAs grandes.
+      if (data?.onboarding_completed === false) {
+        let signupMode = 'client'
+        try {
+          const wanted = sessionStorage.getItem('benefix:signupAs')
+          if (wanted === 'merchant' || wanted === 'client') signupMode = wanted
+        } catch {}
+        setSignupModal({ mode: signupMode })
+      }
+    }
+  }
+
+  function handleTermsAccepted() {
+    setShowTerms(false)
+    if (profile?.onboarding_completed === false) {
+      let signupMode = 'client'
+      try {
+        const wanted = sessionStorage.getItem('benefix:signupAs')
+        if (wanted === 'merchant' || wanted === 'client') signupMode = wanted
+      } catch {}
+      setSignupModal({ mode: signupMode })
+    }
+  }
+
+  // Listener cross-rol: cualquier parte de la app puede dispatchar este evento
+  // para abrir el modal de signup en un modo específico (típicamente desde el
+  // CTA "Soy comercio" cuando el user ya está logueado como cliente, o desde
+  // "Convertirme en cliente" desde el panel del comerciante).
+  useEffect(() => {
+    function onOpenSignup(e) {
+      const mode = e?.detail?.mode === 'merchant' ? 'merchant' : 'client'
+      setSignupModal({ mode })
+    }
+    window.addEventListener('benefix:open-signup', onOpenSignup)
+    return () => window.removeEventListener('benefix:open-signup', onOpenSignup)
+  }, [])
+
+  // Cities con conteos
+  useEffect(() => {
+    supabase.from('cities').select('*').eq('active', true)
+      .then(async ({ data: citiesData }) => {
+        if (!citiesData) { setCitiesLoading(false); return }
+        // Añadir conteos
+        const enriched = await Promise.all(citiesData.map(async (city) => {
+          const [{ count: cCount }, { count: mCount }] = await Promise.all([
+            supabase.from('commerces').select('*', { count:'exact', head:true }).eq('city_id', city.id).eq('active', true),
+            supabase.from('memberships').select('*', { count:'exact', head:true }),
+          ])
+          return { ...city, commerce_count: cCount||0, member_count: mCount||0 }
+        }))
+        setCities(enriched)
+        setCitiesLoading(false)
+      })
+  }, [])
+
+  async function handleLogin(opts = {}) {
+    // Interstitial antes de redirigir a Google. Si el usuario tocó "Entrar"
+    // sin querer puede volver acá sin pasar por el picker de Google.
+    // skipPrompt: cuando el caller ya capturó intención explícita (ej: el
+    // user eligió "Registrarme como cliente/negocio" en el modal de roles),
+    // evitamos un segundo confirm redundante y vamos directo a Google.
+    if (!opts.skipPrompt) {
+      const ok = await showLoginPrompt()
+      if (!ok) return
+    }
+    // Si el caller indicó intención de ir a una vista específica post-login
+    // (ej: "Soy comercio" → register-commerce), la persistimos para que
+    // loadProfile la consuma después del OAuth callback.
+    if (opts && opts.nextView) {
+      try { sessionStorage.setItem('benefix:loginNext', opts.nextView) } catch {}
+    }
+    await supabase.auth.signInWithOAuth({
+      provider: 'google',
+      options: {
+        redirectTo: `${window.location.origin}/auth/callback`,
+        // queryParams.prompt='select_account' fuerza a Google a mostrar
+        // SIEMPRE el picker de cuentas, en lugar de auto-loguear con la
+        // última usada. Sin esto, después de un logout el user que quería
+        // entrar con otro mail volvía a caer automáticamente con el viejo.
+        queryParams: { prompt: 'select_account' },
+      },
+    })
+  }
+
+  async function handleLogout() {
+    const ok = await showConfirm({
+      title: '¿Cerrar sesión?',
+      message: 'Vas a salir de tu cuenta. Podés volver a entrar cuando quieras.',
+      confirmText: 'Sí, salir',
+      cancelText: 'Cancelar',
+    })
+    if (!ok) return
+    // signOut con scope global para limpiar la sesión en TODOS los devices
+    // y borrar el refresh-token del lado server. Si falla por cualquier
+    // razón, igual seguimos limpiando el state local y forzando reload.
+    try { await supabase.auth.signOut({ scope: 'global' }) } catch (_) {}
+    try {
+      localStorage.removeItem('benefix:lastView')
+      localStorage.removeItem('benefix:commerceTab')
+    } catch (_) {}
+    // Forzar un reload completo. Sin esto, las cookies de Supabase pueden
+    // quedar en estado inconsistente con el state de React y la sesión
+    // "vuelve" al refrescar manualmente. window.location.replace navega a
+    // home Y resetea todo el árbol de React desde cero.
+    if (typeof window !== 'undefined') {
+      window.location.replace('/')
+    }
+  }
+
+  function navigate(v) { setView(v); window.scrollTo({ top:0, behavior:'smooth' }) }
+
+  // Escucha 'benefix:navigate' (lo dispara el buzón de sugerencias cuando tocás un CTA).
+  // Si viene { view, tab }, navega a esa view y propaga el tab al CommerceSettingsView
+  // (que lo escucha como 'benefix:set-tab') una vez montado.
+  useEffect(() => {
+    function onNavigate(e) {
+      const targetView = e.detail?.view
+      const tab = e.detail?.tab
+      if (!targetView) return
+      if (targetView !== view) navigate(targetView)
+      if (tab) {
+        // Pequeño delay para asegurar que el componente destino esté montado
+        setTimeout(() => {
+          window.dispatchEvent(new CustomEvent('benefix:set-tab', { detail: { tab } }))
+        }, 80)
+      }
+    }
+    window.addEventListener('benefix:navigate', onNavigate)
+    return () => window.removeEventListener('benefix:navigate', onNavigate)
+  }, [view])
+
+  // ClientView nos avisa cada vez que cambia su tab, para que el Navbar
+  // pueda decidir si el botón persona se enciende (tab=cuenta) o no.
+  useEffect(() => {
+    function onClientTabChanged(e) {
+      const next = e.detail?.tab
+      if (next) setClientTab(next)
+    }
+    window.addEventListener('benefix:client-tab-changed', onClientTabChanged)
+    return () => window.removeEventListener('benefix:client-tab-changed', onClientTabChanged)
+  }, [])
+
+  // Consume el deep-link una sola vez. Después del primer render (donde ya
+  // se aplicó view + initialTab a los componentes destino), nullificamos
+  // las propiedades de _DEEP_LINK para que futuros mounts de ClientView /
+  // CommerceSettingsView dentro de la misma sesión SPA no reusen el tab
+  // viejo y arranquen con su default. Si el user llega de nuevo via URL,
+  // readFreshDeepLink lee de nuevo en el siguiente mount.
+  useEffect(() => {
+    // Limpiamos también el deepLink local para que useEffects que dependan
+    // de él no arrastren valores stale entre cambios de view.
+    if (deepLink.view || deepLink.tab) {
+      // No mutamos directamente — los flags ya cumplieron su rol y los
+      // siguientes mounts leen URL fresh.
+    }
+  }, [])
+
+  async function handleOwnerProfile() {
+    if (!user) return
+    // Encender el loading INMEDIATAMENTE — sin esto el botón ojo se sentía
+    // "muerto" hasta que terminaba la query a Supabase + el reload de la
+    // página de destino (~300-700ms). El FullscreenLoader que renderea
+    // este flag aparece en el mismo frame del click, así el user tiene
+    // feedback instantáneo de que sí se registró el tap.
+    setIsLoadingOwnerPreview(true)
+    try {
+      const { data } = await supabase.from('commerces').select('*').eq('owner_id', user.id).single()
+      if (!data) {
+        setIsLoadingOwnerPreview(false)
+        return
+      }
+      // El ojo del dueño navega a la página pública del club
+      // (/club/[slug]?edit=1) — esa página detecta el flag y muestra Pen
+      // icons al lado de cada campo editable.
+      if (data.slug && typeof window !== 'undefined') {
+        // No apagamos el loader: la navegación de window.location.href
+        // mantiene la pantalla en negro hasta que la nueva página
+        // termina de pintarse, lo cual es deseable (no parpadea de
+        // vuelta al panel antes de irse).
+        window.location.href = `/club/${data.slug}?edit=1`
+        return
+      }
+      // Fallback (sin slug) — comportamiento viejo.
+      setCommerce(data)
+      navigate('commerce')
+      setIsLoadingOwnerPreview(false)
+    } catch (err) {
+      console.error('handleOwnerProfile error:', err)
+      setIsLoadingOwnerPreview(false)
+    }
+  }
+
+  // 'commerce' SÍ se persiste — el owner espera que al refrescar el preview
+  // siga viendo el preview, no que lo mande a configuración. La restauración
+  // recupera el commerce del owner y lo inyecta en estado (ver loadProfile).
+  const TRANSIENT_VIEWS = new Set(['home', 'scanner', 'register-commerce'])
+  useEffect(() => {
+    if (TRANSIENT_VIEWS.has(view)) return
+    if (!bootComplete.current) return
+    localStorage.setItem('benefix:lastView', view)
+  }, [view])
+
+  const currentCity = cities.find(c => c.slug === citySlug)
+
+  if (isAppLoading) return (
+    <LoadingScreen onComplete={() => {
+      sessionStorage.setItem('benefix:loaded', '1')
+      setIsAppLoading(false)
+    }} />
+  )
+
+  if (!authReady) return <FullscreenLoader message="Iniciando..." />
+
+  // Loader del preview público del dueño — se enciende apenas el user
+  // tappea el ícono ojo del navbar, así no hay "delay percibido" entre
+  // el click y la navegación. El handler de la promesa termina
+  // ejecutando window.location.href que mantiene la pantalla en este
+  // estado de carga hasta que la página /club/[slug] se pinta.
+  if (isLoadingOwnerPreview) return <FullscreenLoader message="Abriendo vista pública..." />
+
+  return (
+    <>
+      <style>{`input:focus { outline: none; border-color: #BD4BF8 !important; box-shadow: 0 0 0 3px #BD4BF818; }`}</style>
+      <ToastContainer />
+      <ConfirmModal />
+      <LoginPromptModal />
+      <SwRegister />
+      <InstallPrompt />
+      {/* Modal de resultado del checkout de Mercado Pago — se muestra cuando
+          la URL trae ?upgrade=success|pending|failure. MP redirige acá tras
+          el flujo de suscripción. La activación real del plan la hace el
+          webhook (POST /api/webhooks/mercadopago) cuando MP confirma el
+          preapproval — por eso "success" se muestra como "estamos activando"
+          y no como "ya estás activado": puede tardar segundos/minutos. */}
+      {upgradeResult && (
+        <UpgradeResultModal
+          result={upgradeResult}
+          onClose={() => setUpgradeResult(null)}
+        />
+      )}
+      {showTerms && user && (
+        <TermsAcceptance user={user} onAccept={handleTermsAccepted} />
+      )}
+      {showOnboarding && user && (
+        <OnboardingFlow
+          user={user}
+          onComplete={async (opts) => {
+            setShowOnboarding(false)
+            await loadProfile(user.id)
+            // Si el usuario eligió "Sí, tengo un negocio" en el último paso del
+            // onboarding, lo mandamos al wizard de registrar comercio.
+            if (opts?.goTo === 'register-commerce') {
+              navigate('register-commerce')
+            }
+          }}
+        />
+      )}
+      {signupModal && user && (
+        <MinimalSignupModal
+          user={user}
+          mode={signupModal.mode}
+          // Permitimos cerrar SIN guardar solo cuando el modal vino de un
+          // open-signup cross-rol manual (el user ya tiene cuenta funcionando).
+          // Si está completando el primer onboarding (profile.onboarding_completed=false),
+          // no exponemos X — necesitamos los datos para no dejarlo a medias.
+          onClose={profile?.onboarding_completed === false ? null : () => setSignupModal(null)}
+          onComplete={async ({ mode, slug }) => {
+            setSignupModal(null)
+            // Refresh del profile y de la sesión local. loadProfile no setea view
+            // porque restoreView=false por default — lo hacemos nosotros según
+            // el modo.
+            await loadProfile(user.id)
+            if (mode === 'merchant') {
+              navigate('commerce-settings')
+            } else {
+              navigate('client')
+            }
+          }}
+        />
+      )}
+      <Navbar setView={navigate} cityName={currentCity?.name} user={user} profile={profile} onLogin={handleLogin} onLogout={handleLogout} currentView={view} clientTab={clientTab} onOwnerProfile={handleOwnerProfile} />
+      {/* Spacer del navbar — solo cuando NO es home. En home el splash
+          arranca pegado al navbar para que se sienta full-bleed (la
+          sección tiene su propio padding-top interno para que el
+          contenido no quede debajo del navbar fijo). */}
+      {view !== 'home' && <div style={{ height:80 }} />}
+      {/* Banner top "¿Tenés un negocio?" — aparece debajo del navbar en las
+          vistas que NO tienen sub-nav fijo propio. ClientView tiene su
+          ClientBottomNav fijo en top:62, así que el banner se renderiza
+          INTERNAMENTE dentro de ClientView (después de su paddingTop:58 que
+          ya esquiva el sub-nav). Para todas las otras vistas se renderiza
+          acá en el flow general. */}
+      {user && profile && view !== 'client' && (
+        <div style={{ maxWidth: 1120, margin: '0 auto', padding: '0 15px' }}>
+          <BizPromptBanner profile={profile} />
+        </div>
+      )}
+      {view === 'home'      && <HomeView setView={navigate} user={user} profile={profile} onLogin={handleLogin} />}
+      {view === 'directory'          && <DirectoryView citySlug={citySlug} cities={cities} setView={navigate} setCommerce={setCommerce} />}
+      {view === 'commerce'           && <CommerceView commerce={commerce} setView={navigate} user={user} onLoginRequired={handleLogin} onCommerceUpdate={updates => setCommerce(prev => ({ ...prev, ...updates }))} />}
+      {view === 'client'             && <ClientView setView={navigate} user={user} profile={profile} onLogout={handleLogout} initialTab={deepLink.tab} />}
+      {view === 'scanner'            && <ScannerView user={user} profile={profile} setView={navigate} />}
+      {view === 'admin'              && <AdminView cities={cities} profile={profile} />}
+      {view === 'register-commerce'  && <RegisterCommerceView setView={navigate} cities={cities} user={user} onLoginRequired={() => handleLogin({ nextView: 'register-commerce' })} onProfileRefresh={() => loadProfile(user.id)} />}
+      {view === 'commerce-settings'  && <CommerceSettingsView user={user} profile={profile} setView={navigate} onLogout={handleLogout} onOwnerProfile={handleOwnerProfile} initialTab={deepLink.tab} initialMember={deepLink.member} />}
+      {/* Chat de soporte con IA — visible cuando hay sesión. Pasa role según
+          la vista activa: comerciante en commerce-settings, cliente en el resto.
+          El buzón de sugerencias va apilado encima del botón del chat. */}
+      {user && view !== 'home' && view !== 'directory' && (
+        <>
+          {/* FloatingActionsTab — solapa flotante violeta sobre el borde
+              derecho que agrupa los dos atajos del usuario en una sola
+              pill (campana de notifs + chat de soporte). Los componentes
+              NotificationsBell y SupportChat se siguen montando para que
+              sus drawers existan, pero con `hideButton` para que no
+              dupliquen botones flotantes. La interacción se delega vía
+              eventos `benefix:open-notifications` y `benefix:open-support`. */}
+          <FloatingActionsTab />
+          <NotificationsBell hideButton role={view === 'commerce-settings' ? 'merchant' : 'client'} />
+          <SupportChat hideButton role={view === 'commerce-settings' ? 'merchant' : 'client'} />
+          {/* Banner para activar push del navegador. */}
+          <EnablePushPrompt />
+          {/* Nudges cross-rol temporizados:
+              • 10s — si es cliente sin respuesta, sugerir registrar negocio.
+              • 15s — si es dueño, recordar que tiene QR personal de cliente. */}
+          <CrossRoleNudges profile={profile} setView={navigate} />
+        </>
+      )}
+      <DevToolbar user={user} profile={profile} onRoleChange={() => loadProfile(user.id)} />
+    </>
+  )
+}
+
