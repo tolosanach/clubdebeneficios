@@ -25,6 +25,7 @@ import HeroV2Section, { HLSVideoPlayer } from '../lib/HeroV2Section'
 import SwRegister from '../lib/sw-register'
 import InfoHint from '../lib/InfoHint'
 import PlacesAutocomplete from '../lib/PlacesAutocomplete'
+import IntentPickerView from '../lib/IntentPickerView'
 import HelpBanner, { resetAllHelpBanners } from '../lib/HelpBanner'
 import JsQrScanner from '../lib/JsQrScanner'
 import { QRCodeSVG } from 'qrcode.react'
@@ -2820,6 +2821,17 @@ function FullscreenLoader({ message }) {
 // ─── NAVBAR ───────────────────────────────────────────────────────────────────
 function Navbar({ setView, cityName, user, profile, onLogin, onLogout, currentView, clientTab, onOwnerProfile }) {
   const role = profile?.role || 'client'
+  // userIntent — capturado en el step de Intent post-OAuth. Si el user
+  // explícitamente eligió 'client', escondemos los botones del kit dueño
+  // (Eye + Store) aunque tenga rol commerce_owner. Eso permite que un
+  // user que abrió un comercio pero quiere usar la app como cliente NO
+  // vea la chrome de panel comerciante en el navbar global.
+  // - undefined/null → tratar como NO opted-in: mostrar botones si role
+  //   es commerce_owner (legacy compat).
+  // - 'client'        → ocultar botones del kit dueño.
+  // - 'merchant'/'both' → mostrar botones (sin importar role).
+  const userIntent     = profile?.user_intent || null
+  const showOwnerKit   = role === 'commerce_owner' && userIntent !== 'client'
 
   // Modal "¿Cómo querés entrar?" — aparece al tocar Entrar cuando no hay user.
   // Pregunta si entra como cliente o como negocio. La elección se persiste en
@@ -3111,7 +3123,7 @@ function Navbar({ setView, cityName, user, profile, onLogin, onLogout, currentVi
           </button>
         </>)}
 
-        {role === 'commerce_owner' && (<>
+        {showOwnerKit && (<>
           <button title="Escanear QR" onClick={currentView==='scanner' ? undefined : () => setView('scanner')}
             style={{ ...BTN, ...bs('scanner','qr'), cursor: currentView==='scanner' ? 'default' : 'pointer' }}>
             <ScanLine size={16} color={ic('scanner')} strokeWidth={2} />
@@ -3157,7 +3169,13 @@ function Navbar({ setView, cityName, user, profile, onLogin, onLogout, currentVi
           </button>
         </>)}
 
-        {role !== 'admin' && role !== 'commerce_owner' && (<>
+        {/* Branch "cliente" — abarca:
+            - role === 'client' (no tiene comercios)
+            - role === 'commerce_owner' pero user_intent === 'client'
+              (el dueño explícitamente eligió usar la app como cliente
+              y queremos respetarle eso ocultando el kit dueño).
+            En cualquier caso, sin Eye + Store, sin admin. */}
+        {role !== 'admin' && !showOwnerKit && (<>
           <button title="Escanear QR" onClick={currentView==='scanner' ? undefined : () => setView('scanner')}
             style={{ ...BTN, ...bs('scanner','qr'), cursor: currentView==='scanner' ? 'default' : 'pointer' }}>
             <ScanLine size={16} color={ic('scanner')} strokeWidth={2} />
@@ -9267,6 +9285,60 @@ function ClientView({ setView, user, profile, onLogout, initialTab }) {
             </button>
           </div>
 
+          {/* "¿Tenés un comercio? Sumá tu club" — visible siempre que el
+              user NO tenga ningún comercio propio (role !== 'commerce_owner').
+              Click → wizard de creación. Al completar el wizard, el flujo
+              de registrar-comercio actualiza profile.role a 'commerce_owner'
+              y, si el user_intent era 'client', se auto-promueve a 'both'
+              (lógica que vive en /api/register-commerce).
+              Estilo: card violeta con Store icon, mensaje breve, ChevronRight. */}
+          {profile?.role !== 'commerce_owner' && (
+            <button
+              onClick={() => setView('register-commerce')}
+              style={{
+                width: '100%',
+                display: 'flex', alignItems: 'center', gap: 14,
+                padding: '15px 18px',
+                marginBottom: 12,
+                background: 'linear-gradient(135deg, rgba(189,75,248,0.14), rgba(124,58,237,0.10))',
+                border: '1px solid rgba(189,75,248,0.36)',
+                borderRadius: 16,
+                color: '#fff',
+                cursor: 'pointer',
+                fontFamily: FI, fontSize: 13,
+                textAlign: 'left',
+                transition: 'transform 200ms ease, border-color 200ms ease, background 200ms ease',
+              }}
+              onMouseEnter={e => {
+                e.currentTarget.style.transform = 'translateY(-1px)'
+                e.currentTarget.style.borderColor = 'rgba(189,75,248,0.65)'
+              }}
+              onMouseLeave={e => {
+                e.currentTarget.style.transform = 'translateY(0)'
+                e.currentTarget.style.borderColor = 'rgba(189,75,248,0.36)'
+              }}
+            >
+              <div style={{
+                width: 36, height: 36, borderRadius: 10,
+                background: 'linear-gradient(135deg, #7C3AED, #BD4BF8)',
+                display: 'flex', alignItems: 'center', justifyContent: 'center',
+                flexShrink: 0,
+                boxShadow: '0 6px 18px -4px rgba(189,75,248,0.55)',
+              }}>
+                <Store size={18} color="#fff" strokeWidth={2.2} />
+              </div>
+              <div style={{ flex: 1, minWidth: 0 }}>
+                <div style={{ fontFamily: FN, fontSize: 13.5, fontWeight: 700, color: '#fff', marginBottom: 2 }}>
+                  ¿Tenés un comercio?
+                </div>
+                <div style={{ fontSize: 11.5, color: 'rgba(255,255,255,0.65)', lineHeight: 1.4 }}>
+                  Sumá tu club y empezá a fidelizar a tus clientes.
+                </div>
+              </div>
+              <ChevronRight size={16} color="rgba(255,255,255,0.55)" strokeWidth={2.4} style={{ flexShrink: 0 }} />
+            </button>
+          )}
+
           {/* Cerrar sesión / Eliminar cuenta */}
           <div style={{ ...glass, overflow:'hidden', borderRadius:16 }}>
             <button onClick={onLogout}
@@ -9814,11 +9886,19 @@ function RegisterCommerceView({ setView, user, onProfileRefresh, onLoginRequired
   const next = () => { setError(''); go(step + 1) }
   const prev = () => { setError(''); go(Math.max(1, step - 1)) }
 
-  // Pasos 2..9 son los del wizard (8 en total). Step 9 = confirmación final.
-  const TOTAL_STEPS = 9
+  // Wizard reducido a 6 steps. Sacamos los originales que el dueño
+  // pidió eliminar:
+  //   - step 5 viejo "¿Cómo van a ganar premios?" (sistema stars/points)
+  //   - step 7 viejo "Logo del negocio"
+  //   - step 8 viejo "¿Tu primer premio?"
+  // Todo eso queda accesible desde Configuración → Sistema y Premios
+  // después del registro. Renumeramos: detalles (6→5) y done (9→6).
+  // Step 1=Welcome, 2=Nombre+autocomplete, 3=Categoría, 4=Ubicación,
+  // 5=Detalles (phone/address/desc), 6=Confirmación.
+  const TOTAL_STEPS = 6
   const showHeader  = step >= 2 && step <= TOTAL_STEPS
-  // Skip permitido en pasos opcionales: detalles (6), logo (7), primer premio (8)
-  const canSkip     = step === 4 || step === 6 || step === 7 || step === 8
+  // Skip en opcionales: ubicación (4) y detalles (5).
+  const canSkip     = step === 4 || step === 5
   const progressPct = step >= 2 && step <= TOTAL_STEPS ? ((step - 1) / (TOTAL_STEPS - 1)) * 100 : 0
 
   const rcProvinces = form.country ? Object.entries(LOCATIONS[form.country]?.provinces || {}) : []
@@ -9909,13 +9989,14 @@ function RegisterCommerceView({ setView, user, onProfileRefresh, onLoginRequired
           Ya podés escanear QRs de clientes.<br/>Completá tu perfil cuando quieras.
         </div>
         <div style={{ display:'flex', flexDirection:'column', gap:10 }}>
+          {/* CTA único: "Comenzar ahora" lleva al panel comerciante (intent
+              picker / Configurá tu negocio). Antes había además "Ir al
+              escáner" pero el dueño lo sacó — el panel ya tiene la opción
+              de escanear desde su intent picker, así que un solo CTA grande
+              al panel cubre ambos casos sin saturar la pantalla. */}
           <button onClick={() => setView('commerce-settings')}
             style={{ width:'100%', padding:'16px', borderRadius:16, background:G, border:'none', color:'#fff', fontFamily:FN, fontSize:15, fontWeight:700, cursor:'pointer', boxShadow:'0 8px 32px rgba(189,75,248,0.35)' }}>
-            Completar mi perfil →
-          </button>
-          <button onClick={() => setView('scanner')}
-            style={{ width:'100%', padding:'15px', borderRadius:16, background:'rgba(255,255,255,0.07)', border:'1px solid rgba(255,255,255,0.12)', color:C.pearl, fontFamily:FN, fontSize:14, fontWeight:600, cursor:'pointer' }}>
-            Ir al escáner
+            Comenzar ahora →
           </button>
         </div>
       </div>
@@ -10282,162 +10363,8 @@ function RegisterCommerceView({ setView, user, onProfileRefresh, onLoginRequired
             </div>
           )}
 
-          {/* ── Paso 5: Sistema de puntos ── */}
+          {/* ── Paso 5: Detalles del local (todos opcionales) ── */}
           {step === 5 && (
-            <div>
-              <div style={{ display:'flex', alignItems:'flex-start', gap:8, marginBottom:6 }}>
-                <div style={{ fontFamily:FN, fontSize:26, fontWeight:900, color:C.white, letterSpacing:'-.02em', lineHeight:1.15 }}>¿Cómo van a ganar premios?</div>
-                <div style={{ marginTop:6 }}>
-                  <InfoHint align="right" text={
-                    'Elegí cómo tus clientes acumulan recompensas:\n\n' +
-                    '• Estrellas: simple, 1 estrella por compra. Ideal para cafeterías, barberías y rubros con tickets parecidos.\n\n' +
-                    '• Puntos: flexible, 1 punto por cada peso gastado. Ideal si los tickets varían mucho (restaurantes, ropa, ferretería).\n\n' +
-                    'Después podés cambiarlo desde el panel.'
-                  } />
-                </div>
-              </div>
-              <div style={{ fontSize:13, color:C.mist, marginBottom:20, lineHeight:1.5 }}>Después podés cambiarlo.</div>
-
-              {/* Pasos visibles solo en flow Estrellas (el de Puntos es 1 sólo paso) */}
-              {form.prog_type === 'stars' && (
-                <div style={{ fontFamily:FN, fontSize:10, fontWeight:700, color:'#8B5CF6', letterSpacing:'.10em', textTransform:'uppercase', marginBottom:8 }}>
-                  Paso 1 · Sistema
-                </div>
-              )}
-
-              {/* Cards minimales — color por sistema (violeta stars / fucsia points)
-                  para consistencia con el Tab Fidelización del panel y el listado
-                  de premios. */}
-              {(() => {
-                const SYS = {
-                  stars:  { color:'#8B5CF6', rgb:'139,92,246'  },  // violeta
-                  points: { color:'#EC4899', rgb:'236,72,153'  },  // fucsia
-                }
-                return (
-                  <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:10, marginBottom:14 }}>
-                    {[
-                      { id:'stars',  Icon:Star, label:'Estrellas', short:'1 ★ por compra' },
-                      { id:'points', Icon:Gem,  label:'Puntos',    short:'1 pto = $1' },
-                    ].map(opt => {
-                      const sel = form.prog_type === opt.id
-                      const sys = SYS[opt.id]
-                      return (
-                        <button key={opt.id}
-                          onClick={() => setForm(f => {
-                            const next = { ...f, prog_type: opt.id }
-                            if (opt.id === 'points' && (Number(f.prog_goal) || 0) < 100) next.prog_goal = 5000
-                            if (opt.id === 'stars' && (Number(f.prog_goal) || 0) > 30)   next.prog_goal = 10
-                            return next
-                          })}
-                          style={{
-                            padding:'20px 14px', borderRadius:14, cursor:'pointer',
-                            background: sel ? `rgba(${sys.rgb},0.14)` : 'rgba(255,255,255,0.04)',
-                            border: `1.5px solid ${sel ? sys.color : 'rgba(255,255,255,0.10)'}`,
-                            boxShadow: sel ? `0 6px 22px rgba(${sys.rgb},0.20)` : 'none',
-                            display:'flex', flexDirection:'column', alignItems:'center', gap:9,
-                            transition:'background 130ms ease, border-color 130ms ease, box-shadow 220ms ease',
-                          }}>
-                          <opt.Icon size={28} color={sel ? sys.color : 'rgba(255,255,255,0.45)'} strokeWidth={1.6} fill={sel && opt.id==='stars' ? sys.color : 'none'} />
-                          <div style={{ fontFamily:FN, fontSize:14, fontWeight:700, color: sel ? C.white : 'rgba(255,255,255,0.70)' }}>{opt.label}</div>
-                          <div style={{ fontSize:11, color: sel ? 'rgba(255,255,255,0.70)' : 'rgba(255,255,255,0.40)', textAlign:'center' }}>{opt.short}</div>
-                        </button>
-                      )
-                    })}
-                  </div>
-                )
-              })()}
-
-              {/* Preview compacto — usa el color del sistema activo */}
-              {(() => {
-                const sysColor = form.prog_type === 'stars' ? '#8B5CF6' : '#EC4899'
-                const sysRgb   = form.prog_type === 'stars' ? '139,92,246' : '236,72,153'
-                return (
-                  <div style={{ marginBottom:14, padding:'10px 12px', background:`rgba(${sysRgb},0.10)`, border:`1px solid rgba(${sysRgb},0.22)`, borderRadius:10, fontSize:12, color:C.mist, lineHeight:1.5, display:'flex', alignItems:'center', gap:8 }}>
-                    <Eye size={12} color={sysColor} strokeWidth={2} style={{ flexShrink:0 }} />
-                    <span>Tus clientes <strong style={{ color:C.white }}>{form.prog_type === 'stars' ? 'suman 1 estrella ★ por compra' : 'suman 1 punto por cada peso gastado'}</strong>.</span>
-                  </div>
-                )
-              })()}
-
-              {/* Compra mínima — acordeón colapsado por default. Solo stars. */}
-              {form.prog_type === 'stars' && (
-                <div style={{ display:'flex', alignItems:'center', gap:6, marginBottom:8 }}>
-                  <div style={{ fontFamily:FN, fontSize:10, fontWeight:700, color:'#8B5CF6', letterSpacing:'.10em', textTransform:'uppercase' }}>
-                    Paso 2 · Compra mínima
-                  </div>
-                  <InfoHint align="left" text={
-                    'Solo cuentan las compras de este monto en adelante para sumar una estrella.\n\n' +
-                    'Útil si vendés productos baratos: así un cliente que compra solo $100 no acumula estrellas tan rápido.\n\n' +
-                    'Si lo dejás vacío, cualquier compra suma una estrella.'
-                  } />
-                </div>
-              )}
-              {form.prog_type === 'stars' && (
-                <div style={{ marginBottom:14, background:'rgba(255,255,255,0.04)', border:'1px solid rgba(255,255,255,0.10)', borderRadius:12, overflow:'hidden' }}>
-                  <button type="button" onClick={() => setMinPurchaseOpen(o => !o)}
-                    style={{ width:'100%', display:'flex', alignItems:'center', justifyContent:'space-between', padding:'12px 14px', background:'transparent', border:'none', cursor:'pointer', textAlign:'left', color:C.white, fontFamily:'inherit' }}>
-                    <div style={{ display:'flex', alignItems:'center', gap:10 }}>
-                      <Star size={14} color="rgba(251,191,36,0.85)" fill="currentColor" strokeWidth={0} />
-                      <div>
-                        <div style={{ fontSize:13, fontWeight:600, color:C.white }}>Compra mínima <span style={{ color:C.dust, fontWeight:400, fontSize:11 }}>(opcional)</span></div>
-                        <div style={{ fontSize:11, color:'rgba(255,255,255,0.45)', marginTop:2 }}>
-                          {parseInt(form.prog_min_purchase) > 0
-                            ? `$${parseInt(form.prog_min_purchase).toLocaleString('es-AR')} mínimo`
-                            : 'Sin mínimo · cualquier compra suma'}
-                        </div>
-                      </div>
-                    </div>
-                    <ChevronDown size={16} color="rgba(255,255,255,0.40)" style={{ transform: minPurchaseOpen ? 'rotate(180deg)' : 'none', transition:'transform 200ms ease', flexShrink:0 }} />
-                  </button>
-                  {minPurchaseOpen && (() => {
-                    const noMin = !form.prog_min_purchase || Number(form.prog_min_purchase) === 0
-                    return (
-                      <div style={{ padding:'0 14px 14px', borderTop:'1px solid rgba(255,255,255,0.06)' }}>
-                        <input type="number" min={0}
-                          value={form.prog_min_purchase}
-                          disabled={noMin}
-                          onChange={e => setForm(f => ({ ...f, prog_min_purchase: e.target.value }))}
-                          placeholder="Ej: $ 10.000"
-                          style={{ width:'100%', marginTop:12, padding:'11px 14px', background:'rgba(255,255,255,0.06)', border:'1px solid rgba(255,255,255,0.12)', borderRadius:10, color:C.white, fontSize:14, fontFamily:FI, boxSizing:'border-box', opacity: noMin ? 0.45 : 1, cursor: noMin ? 'not-allowed' : 'text' }}
-                        />
-                        {/* Checkbox "sin compra mínima" — al tildarlo deshabilita el input y limpia el monto */}
-                        <label style={{ display:'flex', alignItems:'center', gap:8, marginTop:10, cursor:'pointer' }}>
-                          <input type="checkbox"
-                            checked={noMin}
-                            onChange={e => {
-                              if (e.target.checked) setForm(f => ({ ...f, prog_min_purchase: '' }))
-                              // Al destildar no hacemos nada — el user va a escribir un monto en el input
-                            }}
-                            style={{ width:16, height:16, accentColor:'#BD4BF8', cursor:'pointer', flexShrink:0 }}
-                          />
-                          <span style={{ fontSize:12, color:'rgba(255,255,255,0.78)', userSelect:'none' }}>
-                            Sin compra mínima · cualquier compra suma estrella
-                          </span>
-                        </label>
-                        <div style={{ fontSize:11, color:'rgba(255,255,255,0.45)', marginTop:8, lineHeight:1.5 }}>
-                          Útil si vendés productos baratos. Solo compras de ese monto o más suman estrella.
-                        </div>
-                      </div>
-                    )
-                  })()}
-                </div>
-              )}
-
-              {/* Footnote compacto — info premios */}
-              <div style={{ fontSize:11, color:C.dust, marginBottom:18, padding:'0 4px', display:'flex', alignItems:'center', gap:6 }}>
-                <Gift size={11} strokeWidth={2} color={C.dust} />
-                El costo de cada premio se define después en el catálogo. Podés tener varios.
-              </div>
-
-              <button onClick={next} disabled={!form.prog_type}
-                style={{ width:'100%', padding:'16px', borderRadius:16, background:G, border:'none', color:'#fff', fontFamily:FN, fontSize:15, fontWeight:700, cursor: form.prog_type ? 'pointer' : 'not-allowed', opacity: form.prog_type ? 1 : 0.40, boxShadow: '0 8px 32px rgba(189,75,248,0.40)' }}>
-                Continuar
-              </button>
-            </div>
-          )}
-
-          {/* ── Paso 6: Detalles del local (todos opcionales) ── */}
-          {step === 6 && (
             <div>
               <div style={{ display:'flex', alignItems:'flex-start', gap:8, marginBottom:6 }}>
                 <div style={{ fontFamily:FN, fontSize:26, fontWeight:900, color:C.white, letterSpacing:'-.02em', lineHeight:1.15 }}>Datos de contacto</div>
@@ -10485,88 +10412,8 @@ function RegisterCommerceView({ setView, user, onProfileRefresh, onLoginRequired
             </div>
           )}
 
-          {/* ── Paso 7: Logo (opcional) ── */}
-          {step === 7 && (
-            <div>
-              <div style={{ display:'flex', alignItems:'flex-start', gap:8, marginBottom:6 }}>
-                <div style={{ fontFamily:FN, fontSize:26, fontWeight:900, color:C.white, letterSpacing:'-.02em', lineHeight:1.15 }}>Logo de tu negocio</div>
-                <div style={{ marginTop:6 }}>
-                  <InfoHint align="right" text={
-                    'El logo aparece en la tarjeta digital del cliente, en tu ficha pública y en el header del panel.\n\n' +
-                    'Idealmente subí una imagen cuadrada (1:1) en JPG, PNG o WebP, mínimo 200×200 píxeles.\n\n' +
-                    'Si no tenés logo todavía, saltá el paso y la app va a usar la inicial de tu nombre como avatar provisorio.'
-                  } />
-                </div>
-              </div>
-              <div style={{ fontSize:14, color:C.mist, marginBottom:24, lineHeight:1.5 }}>Te lo van a ver tus clientes en la billetera y en tu perfil. Podés saltar y subirlo después.</div>
-
-              <div style={{ display:'flex', flexDirection:'column', alignItems:'center', marginBottom:18 }}>
-                {form.img_url ? (
-                  <img src={form.img_url} alt="Logo" style={{ width:120, height:120, borderRadius:24, objectFit:'cover', border:'2px solid rgba(255,255,255,0.15)', marginBottom:14 }} />
-                ) : (
-                  <div style={{ width:120, height:120, borderRadius:24, background:'rgba(255,255,255,0.05)', border:'2px dashed rgba(255,255,255,0.15)', display:'flex', alignItems:'center', justifyContent:'center', marginBottom:14 }}>
-                    <Camera size={36} color="rgba(255,255,255,0.30)" strokeWidth={1.5} />
-                  </div>
-                )}
-                <input type="file" accept="image/jpeg,image/jpg,image/png,image/webp" id="wizard-logo-input" style={{ display:'none' }}
-                  onChange={e => { if (e.target.files[0]) handleWizardLogoUpload(e.target.files[0]); e.target.value='' }} />
-                <label htmlFor="wizard-logo-input" style={{ display:'inline-flex', alignItems:'center', gap:8, padding:'10px 18px', borderRadius:10, background:'rgba(255,255,255,0.07)', border:`1px solid ${C.rim}`, fontSize:13, color:C.pearl, cursor: uploadingLogo ? 'wait' : 'pointer', fontFamily:FN, fontWeight:600 }}>
-                  <Upload size={14} strokeWidth={2} />
-                  {uploadingLogo ? 'Subiendo...' : (form.img_url ? 'Cambiar logo' : 'Subir desde tu carrete')}
-                </label>
-              </div>
-
-              <button onClick={next}
-                style={{ width:'100%', padding:'16px', borderRadius:16, background:G, border:'none', color:'#fff', fontFamily:FN, fontSize:15, fontWeight:700, cursor:'pointer', boxShadow:'0 8px 32px rgba(189,75,248,0.40)' }}>
-                Continuar
-              </button>
-            </div>
-          )}
-
-          {/* ── Paso 8: Primer premio (opcional con skip) ── */}
-          {step === 8 && (
-            <div>
-              <div style={{ display:'flex', alignItems:'flex-start', gap:8, marginBottom:6 }}>
-                <div style={{ fontFamily:FN, fontSize:26, fontWeight:900, color:C.white, letterSpacing:'-.02em', lineHeight:1.15 }}>¿Tu primer premio?</div>
-                <div style={{ marginTop:6 }}>
-                  <InfoHint align="right" text={
-                    'Los premios son lo que los clientes pueden canjear con sus estrellas o puntos acumulados.\n\n' +
-                    'Sugerencias de primer premio: un café gratis, 10% de descuento, una bebida de regalo, un servicio extra.\n\n' +
-                    'Después podés cargar más premios y editarlos desde la pestaña Premios del panel.'
-                  } />
-                </div>
-              </div>
-              <div style={{ fontSize:14, color:C.mist, marginBottom:20, lineHeight:1.5 }}>Para que los clientes vean qué pueden canjear. Podés saltar este paso y configurar premios más adelante desde tu panel.</div>
-
-              <div style={{ marginBottom:14 }}>
-                <label style={{ fontSize:12, color:C.mist, fontWeight:600, marginBottom:6, display:'block' }}>Nombre del premio</label>
-                <input type="text" value={form.first_prize_name}
-                  onChange={e => setForm(f => ({ ...f, first_prize_name: e.target.value }))}
-                  placeholder={form.prog_type === 'stars' ? 'Ej: Café gratis' : 'Ej: 20% de descuento'}
-                  maxLength={60}
-                  style={{ width:'100%', padding:'12px 14px', background:'rgba(255,255,255,0.06)', border:'1px solid rgba(255,255,255,0.12)', borderRadius:12, color:C.white, fontSize:14, fontFamily:FI, boxSizing:'border-box' }}
-                />
-              </div>
-              <div style={{ marginBottom:18 }}>
-                <label style={{ fontSize:12, color:C.mist, fontWeight:600, marginBottom:6, display:'block' }}>
-                  {form.prog_type === 'stars' ? 'Estrellas necesarias' : 'Puntos necesarios'}
-                </label>
-                <input type="number" min={1} value={form.first_prize_cost}
-                  onChange={e => setForm(f => ({ ...f, first_prize_cost: e.target.value }))}
-                  placeholder={String(form.prog_goal || (form.prog_type === 'stars' ? 10 : 500))}
-                  style={{ width:'100%', padding:'12px 14px', background:'rgba(255,255,255,0.06)', border:'1px solid rgba(255,255,255,0.12)', borderRadius:12, color:C.white, fontSize:14, fontFamily:FI, boxSizing:'border-box' }}
-                />
-              </div>
-
-              <button onClick={next}
-                style={{ width:'100%', padding:'16px', borderRadius:16, background:G, border:'none', color:'#fff', fontFamily:FN, fontSize:15, fontWeight:700, cursor:'pointer', boxShadow:'0 8px 32px rgba(189,75,248,0.40)' }}>
-                Continuar
-              </button>
-            </div>
-          )}
-
-          {/* ── Paso 9: Confirmación ── */}
-          {step === 9 && (
+          {/* ── Paso 6: Confirmación ── */}
+          {step === 6 && (
             <div>
               <div style={{ textAlign:'center', marginBottom:24 }}>
                 <div style={{ fontFamily:FN, fontSize:26, fontWeight:900, color:C.white, marginBottom:6, letterSpacing:'-.02em' }}>¡Todo listo!</div>
@@ -22582,6 +22429,54 @@ export default function App() {
   // ejecutando window.location.href que mantiene la pantalla en este
   // estado de carga hasta que la página /club/[slug] se pinta.
   if (isLoadingOwnerPreview) return <FullscreenLoader message="Abriendo vista pública..." />
+
+  // ── Intent picker post-OAuth ──
+  // Aparece cuando el user se loggeó pero todavía no eligió "cómo querés
+  // usar Benefix". Cubre dos escenarios:
+  //  1) User nuevo — recién hizo OAuth, no tiene profile.user_intent ni
+  //     intent_prompt_shown=true. Le mostramos las 3 opciones.
+  //  2) User legacy — tenía cuenta antes de la migration, así que
+  //     user_intent=NULL pero intent_prompt_shown todavía es false.
+  //     Le pedimos la intent UNA vez (después se setea shown=true y
+  //     no aparece más, mantenga o no la elección).
+  // Excepciones: si está en el wizard de registro de comercio, en
+  // commerce-settings o ya se determinó un view explícito por OAuth
+  // callback, dejamos que el flujo siga sin interrumpir.
+  const skipIntentForViews = ['register-commerce', 'commerce-settings']
+  if (
+    user && profile &&
+    !profile.user_intent &&
+    !profile.intent_prompt_shown &&
+    !skipIntentForViews.includes(view)
+  ) {
+    const handleIntentChoose = async (intent) => {
+      await supabase.from('profiles')
+        .update({ user_intent: intent, intent_prompt_shown: true })
+        .eq('id', user.id)
+      // Refresh profile para que el resto de la app vea el nuevo intent.
+      await loadProfile(user.id)
+      // Ruteo: merchant/both → wizard de creación de comercio.
+      // client → "Mi billetera" (vista cliente).
+      if (intent === 'merchant' || intent === 'both') {
+        navigate('register-commerce')
+      } else {
+        navigate('client')
+      }
+    }
+    const handleIntentSkip = async () => {
+      await supabase.from('profiles')
+        .update({ intent_prompt_shown: true })
+        .eq('id', user.id)
+      await loadProfile(user.id)
+    }
+    return (
+      <IntentPickerView
+        userName={profile?.full_name || profile?.name}
+        onChoose={handleIntentChoose}
+        onSkip={handleIntentSkip}
+      />
+    )
+  }
 
   return (
     <>

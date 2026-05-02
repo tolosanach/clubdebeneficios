@@ -100,7 +100,29 @@ export async function POST(request) {
 
     if (commerceError) throw commerceError
 
-    await supabaseAdmin.from('profiles').update({ role: 'commerce_owner' }).eq('id', user.id)
+    // Promovemos role a commerce_owner. Además sincronizamos user_intent
+    // según el estado actual:
+    //  - NULL  → 'merchant' (usuario que creó cuenta y vino directo al
+    //                        wizard sin pasar por el step de intent).
+    //  - 'client' → 'both'  (usuario que originalmente eligió ser cliente
+    //                        y ahora abrió un comercio — el menú "¿Tenés
+    //                        un comercio?" lo trae acá).
+    //  - 'merchant' o 'both' → no tocar, ya está bien.
+    // Esto cubre los casos del Cambio 3 del spec del dueño.
+    const { data: profileBefore } = await supabaseAdmin
+      .from('profiles')
+      .select('user_intent')
+      .eq('id', user.id)
+      .single()
+    const currentIntent = profileBefore?.user_intent || null
+    let nextIntent = currentIntent
+    if (currentIntent === null)         nextIntent = 'merchant'
+    else if (currentIntent === 'client') nextIntent = 'both'
+    await supabaseAdmin.from('profiles').update({
+      role:                'commerce_owner',
+      user_intent:         nextIntent,
+      intent_prompt_shown: true,
+    }).eq('id', user.id)
 
     // Si el wizard cargó un primer premio, lo creamos. Si falla, no abortamos
     // el registro del comercio (el comerciante puede crear premios después).
