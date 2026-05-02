@@ -16853,7 +16853,7 @@ function CommerceSettingsView({ user, profile, setView, onLogout, onOwnerProfile
             {(() => {
               const TABS = [
                 { id: 'how',      label: 'Sistema de acumulación' },
-                { id: 'discount', label: '%OFF próx. compra'      },
+                { id: 'discount', label: 'Descuento próxima compra' },
               ]
               // ── Paleta de la "carpeta" — contraste subido ──
               // El panel ahora usa un bg notoriamente más claro que el
@@ -17882,7 +17882,7 @@ function CommerceSettingsView({ user, profile, setView, onLogout, onOwnerProfile
           }}>
             {/* Título + línea divisoria */}
             <div style={{ display:'flex', alignItems:'center', gap:10 }}>
-              <span style={{ fontSize:18, fontWeight:900, color:C.white, letterSpacing:'.08em', textTransform:'uppercase' }}>%OFF próx. compra</span>
+              <span style={{ fontSize:18, fontWeight:900, color:C.white, letterSpacing:'.08em', textTransform:'uppercase' }}>Descuento próxima compra</span>
               <InfoHint align="left" text={
                 'Cupón de descuento que el cliente recibe automáticamente al sumarse a tu club o cuando se lo otorgás manualmente.\n\n' +
                 '• Lo usa la próxima vez que va — un empujón concreto para que vuelva.\n\n' +
@@ -18182,14 +18182,12 @@ function CommerceSettingsView({ user, profile, setView, onLogout, onOwnerProfile
                 </GBtn>
               </div>
             )}
-            {!canAddMore && (
-              <div style={{ marginBottom:20 }}>
-                <InfoBanner subtle icon={AlertCircle}>
-                  <span style={{ color:'#fff', fontWeight:600 }}>2/2 promos activas.</span>{' '}
-                  <span style={{ color:'rgba(255,255,255,0.75)', fontWeight:400 }}>Desactivá o eliminá una para crear otra.</span>
-                </InfoBanner>
-              </div>
-            )}
+            {/* Banner "2/2 promos activas" eliminado a pedido del dueño:
+                con el filtro a solo discount_next, el banner decía algo
+                que no aplicaba más (ahora es 1/1, no 2/2). El bloqueo
+                de "no podés crear otra" se entiende solo porque la
+                card del cupón existente está visible y el botón
+                "Nueva promo" desaparece. */}
             {showPromoWizard && (
               <PromoWizard
                 progType={commerce?.prog_type}
@@ -22523,4 +22521,3 @@ export default function App() {
     </>
   )
 }
-
