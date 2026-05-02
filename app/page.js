@@ -24,6 +24,7 @@ import CanjesPendientesPanel from '../lib/CanjesPendientesPanel'
 import HeroV2Section, { HLSVideoPlayer } from '../lib/HeroV2Section'
 import SwRegister from '../lib/sw-register'
 import InfoHint from '../lib/InfoHint'
+import PlacesAutocomplete from '../lib/PlacesAutocomplete'
 import HelpBanner, { resetAllHelpBanners } from '../lib/HelpBanner'
 import JsQrScanner from '../lib/JsQrScanner'
 import { QRCodeSVG } from 'qrcode.react'
@@ -9671,6 +9672,134 @@ function RegisterCommerceView({ setView, user, onProfileRefresh, onLoginRequired
   const [catSearch, setCatSearch] = useState('')
   const [minPurchaseOpen, setMinPurchaseOpen] = useState(true)  // acordeón compra mínima — abierto por default
   const [uploadingLogo, setUploadingLogo] = useState(false)
+  // Banner "Datos importados de Google Maps" — true cuando el user
+  // eligió una sugerencia del autocomplete y se prelenaron los campos.
+  // Se descarta apretando "Empezar de cero" (limpia los datos importados)
+  // o sigue ahí hasta el envío final.
+  const [googleImported, setGoogleImported] = useState(null)
+  // googleImported: { suggestedCategories: [...], google_place_id, ... }
+
+  // Maneja la selección de un Place de Google: prelena TODOS los campos
+  // del form, matcheando province/city contra el enum LOCATIONS de
+  // Benefix (case + accent insensitive). Si algo no matchea, queda vacío
+  // y el user lo elige manualmente.
+  //
+  // Mapeo:
+  //   - place.name        → form.name
+  //   - place.country='AR'→ form.country='argentina'
+  //   - place.province    → form.province (key del enum, ej. 'laPampa')
+  //   - place.locality    → form.city     (string, ej. 'General Pico')
+  //   - place.streetAddress → form.address ("C. 24 1400-1464")
+  //   - place.phone       → form.phone
+  //   - first suggestedCategory que existe en COMMERCE_FAMILIES → form.category
+  function handleGooglePlaceSelected(place) {
+    // Debug log temporal — diagnosticar qué objeto llega del backend.
+    // Quitar cuando esté resuelto. Mirar en DevTools → Console.
+    console.log('[handleGooglePlaceSelected] received:', place)
+    if (!place) return
+
+    // Helper para comparar strings sin tildes ni mayúsculas.
+    const norm = (s) => (s || '')
+      .toString()
+      .toLowerCase()
+      .normalize('NFD')
+      .replace(/\p{Diacritic}/gu, '')
+      .trim()
+
+    // ── 1) País ──
+    // Si Google devuelve "Argentina" lo mapeamos al key 'argentina'.
+    // Hoy es el único soportado, así que lo seteamos sí o sí cuando el
+    // país de Google sea AR.
+    let mappedCountry = ''
+    const gCountry = norm(place.country)
+    if (gCountry === 'argentina' || gCountry === 'ar') {
+      mappedCountry = 'argentina'
+    }
+
+    // ── 2) Provincia ──
+    // Buscamos en LOCATIONS[country].provinces el key cuyo `name`
+    // matchee con el string de Google. Ej: "La Pampa" → "laPampa".
+    let mappedProvince = ''
+    if (mappedCountry && place.province) {
+      const provinces = LOCATIONS[mappedCountry]?.provinces || {}
+      const target = norm(place.province)
+      for (const [key, data] of Object.entries(provinces)) {
+        if (norm(data.name) === target) {
+          mappedProvince = key
+          break
+        }
+      }
+    }
+
+    // ── 3) Ciudad ──
+    // El array `cities` del provincia matched contiene strings (no keys).
+    // Buscamos por match exacto normalizado. Si no, queda en blanco.
+    let mappedCity = ''
+    if (mappedCountry && mappedProvince && place.locality) {
+      const cities = LOCATIONS[mappedCountry]?.provinces?.[mappedProvince]?.cities || []
+      const target = norm(place.locality)
+      const found = cities.find(c => norm(c) === target)
+      if (found) mappedCity = found
+    }
+
+    // ── 4) Categoría ──
+    // Primer rubro sugerido que aparece en COMMERCE_FAMILIES.
+    let prefilledCategory = ''
+    for (const sugg of (place.suggestedCategories || [])) {
+      const fam = COMMERCE_FAMILIES.find(f => f.subs.some(s => s.name === sugg))
+      if (fam) { prefilledCategory = sugg; break }
+    }
+
+    // ── 5) Dirección (calle + altura) ──
+    // streetAddress viene del backend como "C. 24 1400-1464". Si no llegó
+    // lo intentamos a partir del formattedAddress completo (fallback).
+    const mappedAddress = place.streetAddress || place.address || ''
+
+    // setForm con todo lo importable. Lo que no se pudo matchear queda
+    // vacío para que el wizard lo pida en el step correspondiente.
+    setForm(f => ({
+      ...f,
+      name:     place.name     || f.name,
+      address:  mappedAddress  || f.address,
+      phone:    place.phone    || f.phone,
+      country:  mappedCountry  || f.country,
+      province: mappedProvince || f.province,
+      city:     mappedCity     || f.city,
+      category: prefilledCategory || f.category,
+    }))
+
+    setGoogleImported({
+      placeId:             place.placeId,
+      suggestedCategories: place.suggestedCategories || [],
+      mapsUrl:             place.googleMapsUrl,
+      lat:                 place.latitude,
+      lng:                 place.longitude,
+      // Flags de "matcheo" para mostrar feedback en los pasos siguientes.
+      // Si Google trajo provincia/ciudad pero no encontramos en el enum,
+      // el step de Ubicación puede mostrar un hint "no pudimos matchear".
+      provinceMatched:     !!mappedProvince,
+      cityMatched:         !!mappedCity,
+      googleProvince:      place.province  || '',
+      googleLocality:      place.locality  || '',
+      website:             place.website   || '',
+      postalCode:          place.postalCode || '',
+    })
+  }
+
+  function clearGoogleImport() {
+    setGoogleImported(null)
+    setForm(f => ({
+      ...f,
+      name:     '',
+      address:  '',
+      phone:    '',
+      // Mantenemos country='argentina' como default original.
+      country:  'argentina',
+      province: '',
+      city:     '',
+      category: '',
+    }))
+  }
 
   // Restore drill-down position when returning to step 3
   useEffect(() => {
@@ -9854,17 +9983,62 @@ function RegisterCommerceView({ setView, user, onProfileRefresh, onLoginRequired
                   <InfoHint align="right" text={
                     'El nombre que ven tus clientes en la app y en sus tarjetas.\n\n' +
                     'Por seguridad, una vez creado el club solo podés cambiarlo cada 20 días, así que elegí bien.\n\n' +
-                    'Tip: usá el nombre completo de tu local (ej. "Café Berlín" en vez de solo "Berlín").'
+                    'Tip: empezá a escribir el nombre y elegí tu local del menú — vamos a importar la dirección, teléfono y rubro automáticamente.'
                   } />
                 </div>
               </div>
-              <div style={{ fontSize:14, color:C.mist, marginBottom:24, lineHeight:1.5 }}>Este nombre verán tus clientes</div>
-              <input
-                type="text" autoFocus value={form.name}
-                onChange={e => setForm(f => ({ ...f, name: e.target.value }))}
-                placeholder="Ej: Café Berlín"
-                style={{ width:'100%', padding:'14px 16px', background:'rgba(255,255,255,0.06)', border:'1px solid rgba(255,255,255,0.12)', borderRadius:14, color:C.white, fontSize:16, fontFamily:FI, marginBottom:20, boxSizing:'border-box' }}
-              />
+              <div style={{ fontSize:14, color:C.mist, marginBottom:24, lineHeight:1.5 }}>
+                Empezá a escribir y elegí tu local del menú — los datos vienen de Google Maps.
+              </div>
+              <div style={{ marginBottom:20 }}>
+                <PlacesAutocomplete
+                  value={form.name}
+                  autoFocus
+                  placeholder="Ej: Café Berlín"
+                  onChange={(v) => setForm(f => ({ ...f, name: v }))}
+                  onPlaceSelected={handleGooglePlaceSelected}
+                />
+              </div>
+
+              {/* Banner "Datos importados de Google Maps" — aparece si el
+                  user eligió una sugerencia. Le da feedback explícito de
+                  qué se importó y un escape para empezar a mano. */}
+              {googleImported && (
+                <div style={{
+                  marginBottom: 20,
+                  padding: '12px 14px',
+                  borderRadius: 12,
+                  background: 'rgba(189,75,248,0.10)',
+                  border: '1px solid rgba(189,75,248,0.32)',
+                  display: 'flex', alignItems: 'flex-start', gap: 10,
+                }}>
+                  <CheckCircle size={15} color="#BD4BF8" strokeWidth={2.4} style={{ flexShrink: 0, marginTop: 2 }} />
+                  <div style={{ flex: 1, minWidth: 0 }}>
+                    <div style={{ fontFamily: FN, fontSize: 12.5, fontWeight: 700, color: '#fff', marginBottom: 3 }}>
+                      Datos importados de Google Maps
+                    </div>
+                    <div style={{ fontSize: 11.5, color: 'rgba(255,255,255,0.65)', lineHeight: 1.45 }}>
+                      Vamos a prelenar nombre, dirección y teléfono. Podés editarlos en los próximos pasos.
+                    </div>
+                  </div>
+                  <button onClick={clearGoogleImport}
+                    style={{
+                      flexShrink: 0,
+                      padding: '5px 10px',
+                      borderRadius: 8,
+                      background: 'transparent',
+                      border: '1px solid rgba(255,255,255,0.18)',
+                      color: 'rgba(255,255,255,0.65)',
+                      fontFamily: FN, fontSize: 10.5, fontWeight: 600,
+                      cursor: 'pointer',
+                      whiteSpace: 'nowrap',
+                    }}
+                  >
+                    Empezar de cero
+                  </button>
+                </div>
+              )}
+
               <button onClick={next} disabled={!form.name.trim()}
                 style={{ width:'100%', padding:'16px', borderRadius:16, background:G, border:'none', color:'#fff', fontFamily:FN, fontSize:15, fontWeight:700, cursor: form.name.trim() ? 'pointer' : 'not-allowed', opacity: form.name.trim() ? 1 : 0.40, boxShadow: form.name.trim() ? '0 8px 32px rgba(189,75,248,0.40)' : 'none', transition:'opacity 200ms ease' }}>
                 Continuar
