@@ -13845,7 +13845,14 @@ function CommerceSettingsView({ user, profile, setView, onLogout, onOwnerProfile
       }}>
         {MENU.map(m => {
           const I = MENU_ICONS[m.id]
-          const active = tab === m.id
+          // Cuando el intent picker esta activo (la pantalla "Configurá tu
+          // negocio" con cards de pendientes/completos), el tab activo del
+          // navbar siempre es 'dashboard' aunque el state `tab` siga apuntando
+          // a la pestaña previa (ej: 'recompensas' si el dueño venia de ahi
+          // y toco "Volver a tarjetas"). Sin esto, el subrayado del nav
+          // quedaba marcando la pestaña vieja confundiendo al user.
+          const effectiveTab = intentPickerActive ? 'dashboard' : tab
+          const active = effectiveTab === m.id
           const isLocked = m.locked
           const isProLocked = m.pro && planKey !== 'pro'
           const dimmed = isLocked || isProLocked
