@@ -33,13 +33,28 @@ self.addEventListener('push', (event) => {
   }
 
   const title = data.title || 'Benefix'
+  // Tipos "criticos" — eventos que el dueno no se puede perder porque
+  // requieren accion (un cliente pidiendo canjear). Para estos forzamos:
+  //   - requireInteraction: la notif queda fija en pantalla hasta que la
+  //     toque (no se auto-dismissea como las normales)
+  //   - vibrate: patron pulsante para que se note en mobile
+  //   - silent:false explicito para asegurar que suene
+  // Tipos comunes (visit, join) usan defaults: aparece y se va.
+  const CRITICAL_TYPES = ['redeem_pending', 'discount_pending']
+  const isCritical = data.type && CRITICAL_TYPES.indexOf(data.type) !== -1
+
   const options = {
     body:    data.body || '',
     icon:    '/icon-192.png',
     badge:   '/icon-192.png',
-    data:    { link: data.link || '/', notifId: data.notifId },
+    data:    { link: data.link || '/', notifId: data.notifId, type: data.type },
     tag:     data.notifId ? `notif-${data.notifId}` : 'benefix',
     renotify: true,
+    requireInteraction: !!isCritical,
+    silent: false,
+  }
+  if (isCritical) {
+    options.vibrate = [220, 100, 220, 100, 220, 100, 220]
   }
 
   event.waitUntil(
@@ -47,7 +62,7 @@ self.addEventListener('push', (event) => {
       self.registration.showNotification(title, options),
       // Avisar a las tabs abiertas para que refresquen el drawer de notifs.
       self.clients.matchAll({ type: 'window', includeUncontrolled: true })
-        .then(clients => clients.forEach(c => c.postMessage({ type: 'benefix:notification', notifId: data.notifId }))),
+        .then(clients => clients.forEach(c => c.postMessage({ type: 'benefix:notification', notifId: data.notifId, notifType: data.type }))),
     ])
   )
 })
