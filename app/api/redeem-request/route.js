@@ -1,16 +1,17 @@
 // POST /api/redeem-request
 // Body: { membership_id, prize_id, commerce_id, user_id }
 //
-// Endpoint nuevo (sprint canjes-pending): el cliente lo invoca cuando toca
-// "Canjear" en su wallet. NO debita el saldo ni descuenta stock — solo
-// inserta una fila en `redemptions` con status='pending', genera un código
-// corto decorativo (BNX-XXXX) que el cliente le manda al comercio por
-// WhatsApp, y dispara una notif al dueño.
+// Endpoint del CLIENTE: arranca un canje en estado 'pending'. Decision
+// de producto: el saldo se RESERVA al iniciar (debita aca) para evitar
+// que el cliente arranque dos canjes paralelos contra el mismo balance.
+// Si el dueno rechaza o el cliente cancela, /api/redemption-cancel
+// devuelve los puntos sumandolos de nuevo a su membership.
 //
-// El canje se concreta recién cuando el dueño confirma desde su panel
-// (vía /api/redemption-confirm) — ahí sí se descuentan puntos y stock.
-// Si el dueño rechaza (/api/redemption-cancel), la fila pasa a cancelled
-// y el saldo del cliente queda intacto.
+// Genera un codigo corto (BNX-XXXX) que el cliente le muestra al comercio
+// por WhatsApp, y notifica al dueno.
+//
+// El stock se descuenta recien al confirmar (en /api/redemption-confirm),
+// no aca â durante el pending el stock queda visible para otros clientes.
 
 import { NextResponse } from 'next/server'
 import { createClient } from '@supabase/supabase-js'
@@ -105,26 +106,62 @@ export async function POST(request) {
 
     let redemption
     if (existingPending) {
+      // Ya hay un pending del mismo cliente para este premio â devolvemos
+      // ese mismo (idempotencia). NO debitamos de nuevo: el saldo ya quedo
+      // reservado en la creacion original.
       redemption = existingPending
     } else {
-      // Generamos código único — reintentamos si por una en un millón colisiona
-      // con otro pending del mismo comercio (raro pero defensivo).
+      // RESERVA del saldo: debitar atomicamente. Si el RPC no actualiza
+      // ninguna fila (saldo no alcanza por race-condition con otro canje
+      // simultaneo), abortamos sin crear el pending.
+      const { data: debited, error: debitErr } = await supabaseAdmin.rpc('debit_membership_balance', {
+        p_membership_id: membership_id,
+        p_amount:        prize.cost,
+        p_column:        balanceCol,
+      })
+      if (debitErr) throw debitErr
+      if (!debited || debited.length === 0) {
+        return NextResponse.json({
+          error:  'No alcanza el saldo. Quizas iniciaste otro canje en paralelo.',
+          needed: prize.cost,
+        }, { status: 400 })
+      }
+
+      // Generamos codigo y reintentamos hasta 3 veces si el insert colisiona.
       let code = genCode()
-      const { data: inserted, error: insertError } = await supabaseAdmin
-        .from('redemptions')
-        .insert({
-          membership_id,
-          commerce_id,
-          prize_id,
-          user_id,
-          points_spent: 0, // todavía no se debitó nada
-          status:       'pending',
-          code,
-          kind:         'prize',
-        })
-        .select('id, code, created_at')
-        .single()
-      if (insertError) throw insertError
+      let inserted = null
+      let lastErr  = null
+      for (let attempt = 0; attempt < 3 && !inserted; attempt++) {
+        const r = await supabaseAdmin
+          .from('redemptions')
+          .insert({
+            membership_id,
+            commerce_id,
+            prize_id,
+            user_id,
+            points_spent: prize.cost, // ya debitado, lo dejamos registrado
+            status:       'pending',
+            code,
+            kind:         'prize',
+          })
+          .select('id, code, created_at')
+          .single()
+        if (!r.error) {
+          inserted = r.data
+        } else {
+          lastErr = r.error
+          code    = genCode()
+        }
+      }
+      if (!inserted) {
+        // El insert fallo despues de debitar â devolvemos el saldo para no
+        // dejar al cliente sin sus puntos.
+        await supabaseAdmin
+          .from('memberships')
+          .update({ [balanceCol]: currentBalance })
+          .eq('id', membership_id)
+        throw lastErr || new Error('No se pudo crear la solicitud')
+      }
       redemption = inserted
     }
 

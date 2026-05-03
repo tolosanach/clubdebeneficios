@@ -1,12 +1,16 @@
 // POST /api/redemption-cancel
 // Body: { redemption_id, reason? }
 //
-// Endpoint del DUEÑO: rechaza un canje pendiente. NO toca el saldo del
-// cliente (sigue con sus puntos intactos) ni el stock del premio. Solo
-// marca la redemption como 'cancelled' y dispara una notif al cliente.
+// Cancela un canje pendiente. Pueden cancelarlo TANTO el dueno del
+// comercio (rechazo) COMO el cliente que lo inicio (cancelacion propia).
+// El saldo del cliente fue debitado al crear el pending (reserva en
+// /api/redeem-request), asi que aca DEVOLVEMOS los puntos sumandolos
+// de nuevo a su membership. El stock del premio nunca se toco (se
+// descuenta solo al confirmar), no hay que restituirlo.
 //
-// Auth: misma validación que confirm — caller tiene que ser owner del
-// comercio o admin.
+// Notif:
+//   - Si lo cancelo el dueno  -> notif al cliente ("rechazado")
+//   - Si lo cancelo el cliente -> notif al dueno ("cancelado por el cliente")
 
 import { NextResponse } from 'next/server'
 import { createClient } from '@supabase/supabase-js'
@@ -49,7 +53,7 @@ export async function POST(request) {
 
     const { data: redemption, error: redErr } = await supabaseAdmin
       .from('redemptions')
-      .select('id, status, user_id, commerce_id, prize_id, code')
+      .select('id, status, user_id, commerce_id, prize_id, membership_id, code, points_spent')
       .eq('id', redemption_id)
       .single()
     if (redErr || !redemption) {
@@ -57,65 +61,115 @@ export async function POST(request) {
     }
     if (redemption.status !== 'pending') {
       return NextResponse.json({
-        error: `El canje está en estado "${redemption.status}", no se puede rechazar.`,
+        error: `El canje esta en estado "${redemption.status}", no se puede cancelar.`,
       }, { status: 409 })
     }
 
     const { data: profile } = await supabaseAdmin
       .from('profiles').select('role').eq('id', user.id).single()
     const { data: commerce } = await supabaseAdmin
-      .from('commerces').select('id, name, slug, owner_id').eq('id', redemption.commerce_id).single()
+      .from('commerces').select('id, name, slug, owner_id, prog_type').eq('id', redemption.commerce_id).single()
     if (!commerce) {
       return NextResponse.json({ error: 'Comercio no encontrado' }, { status: 404 })
     }
-    const isAdmin = profile?.role === 'admin'
-    const isOwner = commerce.owner_id === user.id
-    if (!isAdmin && !isOwner) {
+    const isAdmin  = profile?.role === 'admin'
+    const isOwner  = commerce.owner_id === user.id
+    const isClient = redemption.user_id === user.id
+    if (!isAdmin && !isOwner && !isClient) {
       return NextResponse.json({ error: 'No autorizado' }, { status: 403 })
     }
+    const cancelledByOwner = isAdmin || isOwner
 
-    // Marcamos como cancelled — saldo y stock no se tocan.
+    // Devolver saldo reservado: sumamos points_spent al membership. Es
+    // un UPDATE simple, no necesita RPC porque sumar es seguro contra
+    // race-conditions.
+    const isStars    = commerce.prog_type === 'stars'
+    const balanceCol = isStars ? 'stars' : 'points'
+    const refund     = redemption.points_spent || 0
+    let refundedTo   = null
+    if (refund > 0) {
+      const { data: m } = await supabaseAdmin
+        .from('memberships')
+        .select('id, stars, points')
+        .eq('id', redemption.membership_id)
+        .single()
+      if (m) {
+        const cur  = (isStars ? m.stars : m.points) || 0
+        refundedTo = cur + refund
+        await supabaseAdmin
+          .from('memberships')
+          .update({ [balanceCol]: refundedTo })
+          .eq('id', redemption.membership_id)
+      }
+    }
+
+    // Marcamos como cancelled â saldo ya devuelto, stock nunca se toco.
     const { error: updErr } = await supabaseAdmin
       .from('redemptions')
       .update({
         status:           'cancelled',
         cancelled_reason: reason ? String(reason).slice(0, 200) : null,
+        responder_id:     user.id,
       })
       .eq('id', redemption_id)
     if (updErr) throw updErr
 
-    // Cargar nombre del premio para mostrar en la notif.
     const { data: prize } = await supabaseAdmin
       .from('prizes').select('name').eq('id', redemption.prize_id).single()
+    const unitTxt = `${refund} ${isStars ? 'estrellas' : 'puntos'}`
 
     try {
-      await notify({
-        userId: redemption.user_id,
-        type:   'redeem_cancelled',
-        title:  `Tu canje de "${prize?.name || 'tu premio'}" fue rechazado`,
-        body:   reason
-          ? `${commerce.name}: ${reason}. Tus puntos siguen intactos.`
-          : `${commerce.name} no pudo confirmar el canje. Tus puntos siguen intactos.`,
-        // Llevamos al cliente a su wallet (Mis Clubs) — ahí ve el
-        // balance que sigue intacto y mantiene acceso a campana/chat
-        // (la página /club/[slug] no los monta).
-        link:   '/?view=client&tab=mis clubs',
-        metadata: {
-          commerce_id: commerce.id,
-          prize_id:    redemption.prize_id,
-          kind:        'redeem_cancelled',
-          code:        redemption.code,
-          reason:      reason || null,
-        },
-      })
+      if (cancelledByOwner) {
+        // Lo cancelo el dueno â notif al cliente.
+        await notify({
+          userId: redemption.user_id,
+          type:   'redeem_cancelled',
+          title:  `Tu canje de "${prize?.name || 'tu premio'}" fue rechazado`,
+          body:   reason
+            ? `${commerce.name}: ${reason}. Te devolvimos ${unitTxt} a tu saldo.`
+            : `${commerce.name} no pudo confirmar el canje. Te devolvimos ${unitTxt} a tu saldo.`,
+          link:   '/?view=client&tab=mis clubs',
+          metadata: {
+            commerce_id: commerce.id,
+            prize_id:    redemption.prize_id,
+            kind:        'redeem_cancelled',
+            code:        redemption.code,
+            reason:      reason || null,
+            refunded:    refund,
+          },
+        })
+      } else {
+        // Lo cancelo el cliente â notif al dueno.
+        const { data: clientProfile } = await supabaseAdmin
+          .from('profiles').select('full_name, name').eq('id', redemption.user_id).single()
+        const clientName = clientProfile?.full_name || clientProfile?.name || 'Un cliente'
+        await notify({
+          userId: commerce.owner_id,
+          type:   'redeem_cancelled',
+          title:  `${clientName} cancelo su solicitud de "${prize?.name || 'un premio'}"`,
+          body:   `Le devolvimos ${unitTxt} a su saldo. No tenes que hacer nada.`,
+          link:   '/?view=commerce-settings&tab=canjes',
+          metadata: {
+            commerce_id:  commerce.id,
+            prize_id:     redemption.prize_id,
+            kind:         'redeem_cancelled',
+            code:         redemption.code,
+            cancelled_by: 'client',
+            refunded:     refund,
+          },
+        })
+      }
     } catch (e) {
-      console.error('[redemption-cancel] notif al cliente falló:', e)
+      console.error('[redemption-cancel] notif fallo:', e)
     }
 
     return NextResponse.json({
-      ok:            true,
+      ok:           true,
       redemption_id,
-      status:        'cancelled',
+      status:       'cancelled',
+      refunded:     refund,
+      new_balance:  refundedTo,
+      cancelled_by: cancelledByOwner ? 'owner' : 'client',
     })
   } catch (err) {
     console.error('[redemption-cancel] error:', err)

@@ -1,12 +1,15 @@
 // POST /api/redemption-confirm
 // Body: { redemption_id }
 //
-// Endpoint del DUEÑO: confirma un canje que estaba en 'pending'. Recién acá
-// se descuenta el saldo del cliente y el stock del premio. Después
-// dispara una notif al cliente para que vea que su canje quedó concretado.
+// Endpoint del DUEÃO: confirma un canje que estaba en 'pending'. El
+// saldo del cliente YA fue debitado al crear el pending (reserva en
+// /api/redeem-request), asi que aca solo:
+//   - cambiamos status a 'completed'
+//   - bajamos stock del premio (-1, y desactivamos si llega a 0)
+//   - notificamos al cliente que su canje quedo concretado
 //
 // Auth: el caller tiene que ser el owner del comercio del canje (o admin).
-// La validación se hace leyendo la cookie de sesión vía @supabase/ssr;
+// La validaciÃ³n se hace leyendo la cookie de sesiÃ³n vÃ­a @supabase/ssr;
 // si el caller no matchea, devolvemos 403.
 
 import { NextResponse } from 'next/server'
@@ -95,44 +98,28 @@ export async function POST(request) {
       return NextResponse.json({ error: 'Sin stock disponible' }, { status: 400 })
     }
 
-    // Débito atómico: solo descuenta si hay saldo. El RPC
-    // debit_membership_balance protege contra race-conditions.
-    const isStars    = commerce.prog_type === 'stars'
-    const balanceCol = isStars ? 'stars' : 'points'
-    const { data: debited, error: debitErr } = await supabaseAdmin.rpc('debit_membership_balance', {
-      p_membership_id: redemption.membership_id,
-      p_amount:        prize.cost,
-      p_column:        balanceCol,
-    })
-    if (debitErr) throw debitErr
-    if (!debited || debited.length === 0) {
-      return NextResponse.json({
-        error:  'El cliente ya no tiene saldo suficiente. Pedile que vuelva con más visitas.',
-        needed: prize.cost,
-      }, { status: 400 })
-    }
-    const newBalance = debited[0].new_balance
+    // El saldo YA fue debitado al crear el pending (en redeem-request).
+    // Aca solo leemos el saldo actual del cliente para mostrarlo en la
+    // notif. No tocamos el balance.
+    const isStars = commerce.prog_type === 'stars'
+    const { data: membership } = await supabaseAdmin
+      .from('memberships')
+      .select('id, stars, points')
+      .eq('id', redemption.membership_id)
+      .single()
+    const newBalance = membership ? (isStars ? membership.stars : membership.points) : 0
 
-    // Marcamos el canje como completed + persistimos los puntos gastados
-    // y el momento de confirmación.
+    // Marcamos el canje como completed + el momento de confirmacion.
+    // points_spent ya quedo registrado en redeem-request, no lo pisamos.
     const { error: updErr } = await supabaseAdmin
       .from('redemptions')
       .update({
         status:       'completed',
         confirmed_at: new Date().toISOString(),
-        points_spent: prize.cost,
+        responder_id: user.id,
       })
       .eq('id', redemption_id)
-    if (updErr) {
-      // Si falla el update, intentamos revertir el débito para no dejar
-      // al cliente con saldo restado y sin canje registrado.
-      await supabaseAdmin.rpc('debit_membership_balance', {
-        p_membership_id: redemption.membership_id,
-        p_amount:        -prize.cost,
-        p_column:        balanceCol,
-      })
-      throw updErr
-    }
+    if (updErr) throw updErr
 
     // Stock: -1, y si llega a 0 lo desactivamos automáticamente.
     let stockDepleted = false
