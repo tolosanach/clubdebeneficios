@@ -8245,7 +8245,7 @@ function ClientView({ setView, user, profile, onLogout, initialTab }) {
     setLoading(true)
     Promise.all([
       supabase.from('memberships').select('*, commerce:commerces(id,name,img_url,slug,prog_type,prog_goal,category,city_name,brand_color,rating,promotions(id,type,value,description,days,expires_at,active,expiration_type,expiration_days),prizes(id,name,cost,img_url,system_type,active,stock)), client_promotions(id,promotion_id,expires_at,granted_at,used_at,status)').eq('user_id', user.id),
-      supabase.from('visits').select('*, commerce:commerces(name, img_url)').eq('user_id', user.id).order('scanned_at', { ascending:false }).limit(40),
+      supabase.from('visits').select('*, commerce:commerces(name, img_url, prog_type)').eq('user_id', user.id).order('scanned_at', { ascending:false }).limit(40),
       // Canjes (premios + descuentos usados). Joinea prize.name y commerce
       // para mostrar contexto en el timeline del historial.
       supabase.from('redemptions').select('id, kind, points_spent, discount_value, redeemed_at, created_at, prize:prizes(name, img_url), commerce:commerces(name, img_url, prog_type)').eq('user_id', user.id).order('redeemed_at', { ascending:false }).limit(40),
@@ -8933,12 +8933,18 @@ function ClientView({ setView, user, profile, onLogout, initialTab }) {
             const events = []
             // Visitas
             for (const v of (displayVisits || [])) {
+              const isStars = v.commerce?.prog_type === 'stars'
+              const amount  = v.points_earned || 1
+              // Suma doble: para stars, amount > 1 implica que la promo
+              // double_points estaba activa al momento de la visita.
+              const isDouble = isStars && amount >= 2
               events.push({
                 kind:    'visit',
                 date:    v.scanned_at || v.created_at,
                 commerce: v.commerce,
-                isStars: v.prog_type === 'stars',
-                amount:  v.points_earned || 1,
+                isStars,
+                amount,
+                isDouble,
                 amountSpent: v.amount_spent,
                 id:      `v-${v.id}`,
               })
@@ -8995,6 +9001,20 @@ function ClientView({ setView, user, profile, onLogout, initialTab }) {
                   <span style={{ display:'inline-flex', alignItems:'center', gap:4, padding:'2px 8px', background:`${meta.color}22`, border:`1px solid ${meta.border}`, borderRadius:50, fontSize:10, fontWeight:700, color:meta.color, fontFamily:FN }}>
                     <UnitIc size={10} strokeWidth={2} {...(ev.isStars ? { strokeWidth:0, fill:'currentColor' } : {})} />
                     +{ev.amount}
+                    {ev.isDouble && (
+                      <span style={{
+                        marginLeft: 2,
+                        padding: '1px 5px',
+                        borderRadius: 4,
+                        background: 'linear-gradient(135deg, #FE5000, #BD4BF8)',
+                        color: '#fff',
+                        fontSize: 9, fontWeight: 900,
+                        letterSpacing: '.02em',
+                        lineHeight: 1.2,
+                      }}>
+                        ×2
+                      </span>
+                    )}
                   </span>
                 )
               } else if (ev.kind === 'redeem-prize') {
