@@ -19485,7 +19485,15 @@ function CommerceSettingsView({ user, profile, setView, onLogout, onOwnerProfile
           // Helper para acordeón: por default todas las secciones colapsadas,
           // al abrir una se cierra la anterior automáticamente (un único id
           // abierto a la vez en expandedConfigSection).
-          const ConfigAccordion = ({ id, Icon: AIcon, label, children, hideSave }) => {
+          // configAccordion: helper que devuelve JSX directamente.
+          // No es un componente React (lowercase). Como esta fn se
+          // redefine en cada render del padre (esta dentro del IIFE),
+          // si fuera <ConfigAccordion> React la veria como nuevo
+          // componente en cada render y desmontaria el subtree, los
+          // inputs perdian foco a cada keystroke. Llamandola como
+          // funcion la JSX resultante se reconcilia como DOM y foco
+          // persiste.
+          const configAccordion = ({ id, Icon: AIcon, label, children, hideSave }) => {
             const isOpen = expandedConfigSection === id
             // Anti-jump del header al togglear. Cuando se abre un accordion,
             // el que estaba abierto antes se cierra y eso desplaza vertical-
@@ -19640,7 +19648,7 @@ function CommerceSettingsView({ user, profile, setView, onLogout, onOwnerProfile
               </div>
 
               {/* ── INFORMACIÓN BÁSICA ── */}
-              <ConfigAccordion id="basica" Icon={Building2} label="Información básica">
+              {configAccordion({ id: "basica", Icon: Building2, label: "Información básica", children: (<>
 
                 {/* Logo */}
                 <div style={{ marginBottom:16 }}>
@@ -19833,10 +19841,10 @@ function CommerceSettingsView({ user, profile, setView, onLogout, onOwnerProfile
                     <span style={{ fontSize:10, color:C.dust }}>{(form.description||'').length}/200</span>
                   </div>
                 </div>
-              </ConfigAccordion>
+              </>) })}
 
               {/* ── CONTACTO ── */}
-              <ConfigAccordion id="contacto" Icon={Phone} label="Contacto">
+              {configAccordion({ id: "contacto", Icon: Phone, label: "Contacto", children: (<>
 
                 <div style={{ marginBottom:14 }}>
                   <FieldLabel optional>Teléfono / WhatsApp</FieldLabel>
@@ -19875,10 +19883,10 @@ function CommerceSettingsView({ user, profile, setView, onLogout, onOwnerProfile
                       style={{ ...iStyle(false, !(form.facebook||'').trim()), paddingLeft: 105 }} />
                   </div>
                 </div>
-              </ConfigAccordion>
+              </>) })}
 
               {/* ── UBICACIÓN ── */}
-              <ConfigAccordion id="ubicacion" Icon={MapPin} label="Ubicación">
+              {configAccordion({ id: "ubicacion", Icon: MapPin, label: "Ubicación", children: (<>
 
                 {/* Provincia + Localidad lado a lado formando dos celdas
                     con un divisor vertical entre ellas. */}
@@ -19915,12 +19923,12 @@ function CommerceSettingsView({ user, profile, setView, onLogout, onOwnerProfile
                   <MapPin size={11} strokeWidth={2} />
                   La dirección se geolocaliza automáticamente al guardar.
                 </div>
-              </ConfigAccordion>
+              </>) })}
 
               {/* ── HORARIOS ── */}
-              <ConfigAccordion id="horarios" Icon={Clock} label="Horarios de atención">
+              {configAccordion({ id: "horarios", Icon: Clock, label: "Horarios de atención", children: (<>
                 {hoursForm && <HoursEditor value={hoursForm} onChange={v => { setHoursForm(v); setIsDirty(true) }} />}
-              </ConfigAccordion>
+              </>) })}
 
               {/* Botón "Eliminar mi negocio" — acción destructiva al fondo
                   de la pestaña Configuración. Visualmente separado de las
