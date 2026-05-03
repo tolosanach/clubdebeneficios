@@ -17316,112 +17316,65 @@ function CommerceSettingsView({ user, profile, setView, onLogout, onOwnerProfile
             superior del panel para que no se vea una línea doble. */}
         {tab === 'recompensas' && (
           <div style={{
-            display: 'flex',
-            gap: 4,
+            display: 'grid',
+            gridTemplateColumns: '1fr 1fr',
+            gap: 12,
             marginTop: 4,
-            marginBottom: 0,
-            paddingLeft: 0,
-            position: 'relative',
-            zIndex: 2,
+            marginBottom: 16,
           }}>
             {(() => {
-              const TABS = [
-                { id: 'how',      label: 'Sistema para sumar' },
-                { id: 'discount', label: 'Descuento próxima compra' },
+              const SHORTCUTS = [
+                { id: 'how',      Icon: Sparkles, label: 'Sistema para sumar',     short: 'Sistema' },
+                { id: 'discount', Icon: Percent,  label: 'Descuento próx compra',  short: 'Descuento' },
               ]
-              // ── Paleta de la "carpeta" — contraste subido ──
-              // El panel ahora usa un bg notoriamente más claro que el
-              // fondo de la página (#0a0612 o similar) para que se lea
-              // claramente como "ventana" sobre el fondo. El border es
-              // tinted violeta para alinear con la marca y se nota más
-              // que un blanco translúcido neutro. La solapa activa
-              // hereda exactamente el bg+border del panel (queda como
-              // una sola pieza); la inactiva queda visiblemente más
-              // oscura para que la jerarquía se lea de un vistazo.
-              // Paleta de la "carpeta" — contraste subido en may 2026 a
-              // pedido del dueño. El panel ahora usa bg violeta 0.12 (antes
-              // 0.07) para sentirse claramente como ventana sobre el fondo.
-              // Border 0.50 (antes 0.32). La inactiva tiene texto a 0.62
-              // (antes 0.42) — sigue siendo "está atrás" pero legible.
-              const PANEL_BG       = 'rgba(189,75,248,0.12)'
-              const PANEL_BORDER   = 'rgba(189,75,248,0.50)'
-              const INACTIVE_BG    = 'rgba(255,255,255,0.03)'
-              const INACTIVE_BORDER= 'rgba(255,255,255,0.10)'
-              return TABS.map((t, idx) => {
-                const active = recompensasSubTab === t.id
-                const stepNum = idx + 1
+              const VIOLET_GRADIENT = 'linear-gradient(135deg, #7C3AED, #BD4BF8)'
+              return SHORTCUTS.map(s => {
+                const active = recompensasSubTab === s.id
+                const Icon = s.Icon
                 return (
-                  <button key={t.id}
-                    onClick={() => setRecompensasSubTab(t.id)}
+                  <button key={s.id}
+                    onClick={() => setRecompensasSubTab(s.id)}
+                    aria-pressed={active}
                     style={{
-                      borderRadius: '12px 12px 0 0',
-                      borderTop:    `1px solid ${active ? PANEL_BORDER : INACTIVE_BORDER}`,
-                      borderLeft:   `1px solid ${active ? PANEL_BORDER : INACTIVE_BORDER}`,
-                      borderRight:  `1px solid ${active ? PANEL_BORDER : INACTIVE_BORDER}`,
-                      borderBottom: active
-                        ? `1px solid ${PANEL_BG}`
-                        : `1px solid ${INACTIVE_BORDER}`,
-                      background: active ? PANEL_BG : INACTIVE_BG,
-                      position: 'relative',
-                      zIndex: active ? 3 : 1,
-                      marginBottom: -1,
-                      padding: '11px 14px 12px',
-                      cursor: 'pointer',
-                      fontFamily: FN,
-                      fontSize: 12,
-                      fontWeight: active ? 800 : 600,
-                      letterSpacing: '.02em',
-                      color: active ? '#fff' : 'rgba(255,255,255,0.62)',
-                      transition: 'color 180ms ease, background 180ms ease, border-color 180ms ease',
-                      // Highlight violeta más fuerte arriba de la solapa
-                      // activa — rema con la marca y refuerza la
-                      // jerarquía visual sin romper la fusión con el panel.
-                      boxShadow: active
-                        ? 'inset 0 3px 0 0 rgba(189,75,248,0.95)'
-                        : 'none',
-                      // Layout: numero circular a la izquierda + label.
-                      display: 'inline-flex', alignItems: 'center', gap: 8,
-                    }}
-                  >
-                    {/* Círculo con número del paso — refuerza el orden y
-                        da feedback visual de "esto es 1 de 2 / 2 de 2".
-                        Activo: violeta sólido + texto blanco. Inactivo:
-                        outline gris claro. */}
-                    <span style={{
-                      width: 20, height: 20, borderRadius: '50%',
+                      display: 'flex',
+                      flexDirection: 'column',
+                      alignItems: 'flex-start',
+                      justifyContent: 'space-between',
+                      gap: 10,
+                      minHeight: 96,
+                      padding: '14px 14px',
+                      borderRadius: 16,
                       background: active
-                        ? 'linear-gradient(135deg, #7C3AED, #BD4BF8)'
-                        : 'rgba(255,255,255,0.06)',
-                      border: active ? 'none' : '1px solid rgba(255,255,255,0.20)',
-                      color: active ? '#fff' : 'rgba(255,255,255,0.65)',
-                      fontFamily: FN, fontSize: 10.5, fontWeight: 800,
+                        ? VIOLET_GRADIENT
+                        : 'rgba(255,255,255,0.04)',
+                      border: active
+                        ? '1px solid rgba(189,75,248,0.55)'
+                        : '1px solid rgba(255,255,255,0.10)',
+                      color: active ? '#fff' : 'rgba(255,255,255,0.85)',
+                      cursor: 'pointer',
+                      fontFamily: 'inherit',
+                      textAlign: 'left',
+                      boxShadow: active
+                        ? '0 8px 24px -4px rgba(189,75,248,0.45)'
+                        : 'none',
+                      transition: 'background 200ms ease, border-color 200ms ease, box-shadow 200ms ease',
+                    }}>
+                    <span style={{
+                      width: 36, height: 36, borderRadius: 10,
+                      background: active ? 'rgba(255,255,255,0.18)' : 'rgba(189,75,248,0.14)',
+                      border: active ? '1px solid rgba(255,255,255,0.20)' : '1px solid rgba(189,75,248,0.30)',
                       display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
                       flexShrink: 0,
-                      boxShadow: active ? '0 2px 8px rgba(189,75,248,0.45)' : 'none',
-                    }}>{stepNum}</span>
-                    {/* Animación temática en lugar del título plano. La
-                        tab 'how' muestra estrellas o contador de puntos
-                        según prog_type (preview incluido). La tab
-                        'discount' muestra el cupón de %OFF rotando
-                        entre valores típicos (10/15/20/30). */}
-                    {(() => {
-                      // Buscamos el cupon discount_next ACTIVO con mayor valor
-                      // para que la animacion del tab refleje el % real
-                      // configurado por el dueno. Si no hay ninguno, queda
-                      // null y la anim cicla entre valores teaser (10/15/20/30).
-                      const activeDiscount = (promos || [])
-                        .filter(p => p.type === 'discount_next' && p.active)
-                        .sort((a, b) => (b.value || 0) - (a.value || 0))[0]
-                      const cfgPercent = activeDiscount ? activeDiscount.value : null
-                      return (
-                        <RecompensasTabAnim
-                          tabId={t.id}
-                          systemType={pendingSystemType ?? commerce?.prog_type ?? 'stars'}
-                          active={active}
-                          discountPercent={cfgPercent}
-                        />
-                      )
-                    })()}
+                    }}>
+                      <Icon size={20} color={active ? '#fff' : '#BD4BF8'} strokeWidth={2.2} />
+                    </span>
+                    <span style={{
+                      fontFamily: FN, fontSize: 13, fontWeight: active ? 800 : 600,
+                      lineHeight: 1.25,
+                      color: active ? '#fff' : 'rgba(255,255,255,0.92)',
+                    }}>
+                      {s.label}
+                    </span>
                   </button>
                 )
               })
