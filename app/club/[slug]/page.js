@@ -1457,10 +1457,10 @@ function LimitedTimeBenefitsSlider({ promos, unitLabel, editMode = false, onEdit
               style={{
                 display:'inline-flex', alignItems:'center', justifyContent:'center',
                 width:28, height:28, borderRadius:'50%',
-                background:'linear-gradient(135deg, #7C3AED, #BD4BF8)',
-                border:'1px solid rgba(255,255,255,0.18)',
+                background:'linear-gradient(135deg, #B45309, #F5A623)',
+                border:'1px solid rgba(255,255,255,0.22)',
                 color:'#fff', cursor:'pointer', padding:0,
-                boxShadow:'0 4px 12px rgba(189,75,248,0.45)',
+                boxShadow:'0 4px 12px rgba(245,166,35,0.50)',
                 flexShrink: 0,
               }}>
               <Pen size={13} strokeWidth={2.4} />
@@ -1566,10 +1566,10 @@ function LimitedTimeBenefitsSlider({ promos, unitLabel, editMode = false, onEdit
               style={{
                 display:'inline-flex', alignItems:'center', justifyContent:'center',
                 width:28, height:28, borderRadius:'50%',
-                background:'linear-gradient(135deg, #7C3AED, #BD4BF8)',
-                border:'1px solid rgba(255,255,255,0.18)',
+                background:'linear-gradient(135deg, #15803D, #22E698)',
+                border:'1px solid rgba(255,255,255,0.22)',
                 color:'#fff', cursor:'pointer', padding:0,
-                boxShadow:'0 4px 12px rgba(189,75,248,0.45)',
+                boxShadow:'0 4px 12px rgba(34,230,152,0.50)',
                 flexShrink: 0,
               }}>
               <Pen size={13} strokeWidth={2.4} />
@@ -1710,10 +1710,12 @@ function LimitedTimeBenefitsSlider({ promos, unitLabel, editMode = false, onEdit
                         zIndex: 5,
                         display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
                         width: 30, height: 30, borderRadius: '50%',
-                        background: 'linear-gradient(135deg, #7C3AED, #BD4BF8)',
+                        // Promo activa = ya cargada → verde (todos los lapices
+                        // del modo ojo van en verde si hay info, amarillo si no).
+                        background: 'linear-gradient(135deg, #15803D, #22E698)',
                         border: '1px solid rgba(255,255,255,0.30)',
                         color: '#fff', cursor: 'pointer', padding: 0,
-                        boxShadow: '0 4px 12px rgba(189,75,248,0.50)',
+                        boxShadow: '0 4px 12px rgba(34,230,152,0.50)',
                       }}
                     >
                       <Pen size={13} strokeWidth={2.4} />
@@ -3462,12 +3464,13 @@ export default function ClubProfilePage() {
                     onClick={() => navigateEditField('prize')}
                     style={{
                       padding: '10px 18px', borderRadius: 12,
-                      background: 'linear-gradient(135deg, #7C3AED, #BD4BF8)',
-                      border: '1px solid rgba(255,255,255,0.18)',
+                      // Estado vacio = sin premios cargados → amarillo.
+                      background: 'linear-gradient(135deg, #B45309, #F5A623)',
+                      border: '1px solid rgba(255,255,255,0.22)',
                       color: '#fff',
                       fontFamily: FN, fontSize: 12.5, fontWeight: 700,
                       cursor: 'pointer',
-                      boxShadow: '0 6px 18px rgba(189,75,248,0.45)',
+                      boxShadow: '0 6px 18px rgba(245,166,35,0.50)',
                       display: 'inline-flex', alignItems: 'center', gap: 6,
                     }}>
                     <Pen size={12} strokeWidth={2.4} /> Agregar premios
@@ -3534,11 +3537,12 @@ export default function ClubProfilePage() {
                           style={{
                             position:'absolute', top:-8, right:-8, zIndex:5,
                             width:30, height:30, borderRadius:'50%',
-                            background:'linear-gradient(135deg, #7C3AED, #BD4BF8)',
+                            // Premio activo (renderizado en la grilla) = ya cargado → verde.
+                            background:'linear-gradient(135deg, #15803D, #22E698)',
                             border:'2px solid #0a0a14',
                             color:'#fff', cursor:'pointer', padding:0,
                             display:'flex', alignItems:'center', justifyContent:'center',
-                            boxShadow:'0 4px 14px rgba(189,75,248,0.55)',
+                            boxShadow:'0 4px 14px rgba(34,230,152,0.55)',
                           }}>
                           <Pen size={13} strokeWidth={2.4} />
                         </button>
