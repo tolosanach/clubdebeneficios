@@ -13823,42 +13823,6 @@ function CommerceSettingsView({ user, profile, setView, onLogout, onOwnerProfile
   // Como `position: fixed`, da igual dónde caiga en el árbol JSX —
   // siempre flota arriba del contenido.
 
-  // Banner "Volver al preview" — sticky encima de todo cuando el dueño
-  // llegó al panel desde el ojo (vista pública con ?edit=1). Aparece en
-  // TODAS las pestañas del commerce-settings hasta que el dueño lo
-  // descarta o navega de vuelta al preview. Renderizado al lado del
-  // navbar superior con fondo violeta tenue para diferenciarlo de un
-  // toast o un alert (es navegación, no aviso).
-  const previewBackBanner = previewBackSlug ? (
-    <div style={{
-      position: 'fixed',
-      top: 62,
-      left: 0, right: 0,
-      zIndex: 200,
-      background: 'linear-gradient(135deg, rgba(124,58,237,0.92), rgba(189,75,248,0.92))',
-      borderBottom: '1px solid rgba(255,255,255,0.16)',
-      padding: '8px 14px',
-      display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 10,
-      boxShadow: '0 4px 14px rgba(189,75,248,0.30)',
-    }}>
-      <button
-        onClick={handleBackToPreview}
-        style={{
-          background: 'rgba(255,255,255,0.18)',
-          border: '1px solid rgba(255,255,255,0.30)',
-          borderRadius: 99,
-          padding: '6px 14px',
-          color: '#fff',
-          fontFamily: FN, fontSize: 12, fontWeight: 700,
-          cursor: 'pointer',
-          display: 'inline-flex', alignItems: 'center', gap: 6,
-          letterSpacing: '.02em',
-        }}>
-        <ArrowLeft size={13} strokeWidth={2.6} /> Volver al preview
-      </button>
-    </div>
-  ) : null
-
   const merchantTopTabsNav = (
     <nav style={{
       position: 'fixed',
@@ -15942,7 +15906,6 @@ function CommerceSettingsView({ user, profile, setView, onLogout, onOwnerProfile
         {/* MerchantTopTabs — render via variable reutilizable definida
             arriba del if(intentPickerActive). Misma instancia se usa
             tanto acá como en el render principal de abajo. */}
-        {previewBackBanner}
         {merchantTopTabsNav}
         {/* Radial menu deshabilitado en este sprint — se mantenía como cog
             flotante. Ahora la navegación mobile vive arriba en MerchantTopTabs. */}
@@ -16293,7 +16256,6 @@ function CommerceSettingsView({ user, profile, setView, onLogout, onOwnerProfile
           Análisis, Configuración, etc.) para que la navegación esté
           siempre presente. Como es position:fixed flota arriba del
           contenido sin desplazarlo. */}
-      {previewBackBanner}
       {merchantTopTabsNav}
       {upgradeModal && (
         <UpgradeModal
@@ -16713,16 +16675,20 @@ function CommerceSettingsView({ user, profile, setView, onLogout, onOwnerProfile
       {/* ── CONTENIDO ── */}
       <div style={{ flex:1, padding: isMobile ? '20px 16px 80px 30px' : '28px 28px 80px', overflowY:'auto', maxWidth:720 }}>
 
-        {/* ── Botón "Volver a tarjetas" ──
+        {/* ── Botón "Volver a..." ──
             Siempre visible al tope de cualquier pestaña del panel.
-            Tap → reabre el intent picker con las tarjetas. Le da al
-            dueño una salida de un solo tap a la pantalla de progreso de
-            configuración, sin importar desde qué pestaña esté navegando
-            ni cómo haya llegado ahí. */}
+            • Si el dueño llegó acá desde el ojo (vista pública con ?edit=1)
+              el botón dice "Volver al preview" y lo manda a /club/[slug]?edit=1.
+            • Si llegó por navegación normal, dice "Volver a tarjetas" y
+              reabre el intent picker. */}
         <button
           onClick={() => {
-            setIntentPickerActive(true)
-            setCameFromConfigCards(false)
+            if (previewBackSlug) {
+              handleBackToPreview()
+            } else {
+              setIntentPickerActive(true)
+              setCameFromConfigCards(false)
+            }
           }}
           style={{
             display: 'inline-flex', alignItems: 'center', gap: 7,
@@ -16741,7 +16707,7 @@ function CommerceSettingsView({ user, profile, setView, onLogout, onOwnerProfile
           onMouseLeave={e => { e.currentTarget.style.background = 'rgba(189,75,248,0.12)'; e.currentTarget.style.color = '#D8B4FE' }}
         >
           <ArrowLeft size={13} strokeWidth={2.6} />
-          Volver a tarjetas
+          {previewBackSlug ? 'Volver al preview' : 'Volver a tarjetas'}
         </button>
 
         {/* ── DASHBOARD ──
