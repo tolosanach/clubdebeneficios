@@ -2068,6 +2068,11 @@ export default function ClubProfilePage() {
     if (idx !== galleryIdx && idx >= 0) setGalleryIdx(idx)
   }
   const [toasts, setToasts]             = useState([])
+  // bellModal: ventana centrada que aparece tras tocar la campanita de
+  // suscripcion al club. La fila se setea con { message, success } y se
+  // cierra con la X (no auto-dismiss) para asegurar que el user vea el
+  // resultado de su accion.
+  const [bellModal, setBellModal] = useState(null)
 
   function addToast(type, msg) {
     const id = Date.now()
@@ -2871,13 +2876,25 @@ export default function ClubProfilePage() {
                   commerceName={commerce.name}
                   onToggleResult={({ subscribed, success, commerceName }) => {
                     if (!success) {
-                      addToast('error', 'No se pudo guardar tu preferencia. Intenta de nuevo.')
+                      setBellModal({
+                        success: false,
+                        title: 'No se pudo guardar',
+                        body: 'Intenta de nuevo en un momento.',
+                      })
                       return
                     }
                     if (subscribed) {
-                      addToast('success', `Te avisaremos de premios y promos nuevas en ${commerceName || 'este club'}.`)
+                      setBellModal({
+                        success: true,
+                        title: 'Notificaciones activadas',
+                        body: `Te vamos a avisar cuando ${commerceName || 'este club'} suba premios o promociones nuevas.`,
+                      })
                     } else {
-                      addToast('success', `Ya no recibis avisos de ${commerceName || 'este club'}.`)
+                      setBellModal({
+                        success: true,
+                        title: 'Notificaciones desactivadas',
+                        body: `Ya no vas a recibir avisos de ${commerceName || 'este club'}. Pode reactivar la campanita cuando quieras.`,
+                      })
                     }
                   }}
                 />
@@ -4345,6 +4362,94 @@ export default function ClubProfilePage() {
           })}
         </div>
       )}
+
+      {/* Modal centrado de confirmacion de la campanita de suscripcion al
+          club. NO se cierra solo: el user lo descarta con la X o tocando
+          el fondo. Mas notorio que un toast porque la accion es importante
+          (activar/desactivar suscripcion al feed del comercio). */}
+      {bellModal && (() => {
+        const color = bellModal.success ? '#22E698' : '#F87444'
+        return (
+          <div
+            onClick={() => setBellModal(null)}
+            style={{
+              position: 'fixed',
+              inset: 0,
+              zIndex: 2100,
+              background: 'rgba(8,4,18,0.62)',
+              backdropFilter: 'blur(6px)',
+              WebkitBackdropFilter: 'blur(6px)',
+              display: 'flex', alignItems: 'center', justifyContent: 'center',
+              padding: 20,
+              animation: 'fadeUp .24s ease',
+            }}
+            role="dialog"
+            aria-modal="true"
+            aria-label="Notificaciones del club"
+          >
+            <div
+              onClick={(e) => e.stopPropagation()}
+              style={{
+                position: 'relative',
+                maxWidth: 380, width: '100%',
+                padding: '24px 22px 20px',
+                borderRadius: 18,
+                background: 'linear-gradient(180deg, rgba(28,18,48,0.98), rgba(18,12,32,0.98))',
+                border: `1px solid ${color}55`,
+                boxShadow: '0 32px 64px -12px rgba(0,0,0,0.85), 0 0 0 1px rgba(255,255,255,0.04)',
+                fontFamily: FN, color: '#fff',
+              }}
+            >
+              <button
+                onClick={() => setBellModal(null)}
+                aria-label="Cerrar"
+                style={{
+                  position: 'absolute', top: 10, right: 10,
+                  width: 32, height: 32, borderRadius: 8,
+                  background: 'rgba(255,255,255,0.06)',
+                  border: '1px solid rgba(255,255,255,0.10)',
+                  color: 'rgba(255,255,255,0.78)',
+                  cursor: 'pointer', padding: 0,
+                  display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
+                }}
+              >
+                <X size={15} strokeWidth={2.4} />
+              </button>
+              <div style={{
+                width: 56, height: 56, borderRadius: 14,
+                background: `${color}22`,
+                border: `1px solid ${color}55`,
+                display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
+                marginBottom: 14,
+              }}>
+                <Bell size={26} color={color} strokeWidth={2.2} />
+              </div>
+              <div style={{ fontSize: 16, fontWeight: 800, lineHeight: 1.3, marginBottom: 6, paddingRight: 36 }}>
+                {bellModal.title}
+              </div>
+              {bellModal.body && (
+                <div style={{ fontSize: 13, fontWeight: 400, lineHeight: 1.5, color: 'rgba(255,255,255,0.72)', marginBottom: 18 }}>
+                  {bellModal.body}
+                </div>
+              )}
+              <button
+                onClick={() => setBellModal(null)}
+                style={{
+                  width: '100%', padding: '12px 16px',
+                  borderRadius: 12,
+                  background: 'linear-gradient(135deg, #FE5000, #BD4BF8)',
+                  border: 'none', color: '#fff',
+                  fontFamily: FN, fontSize: 13.5, fontWeight: 700,
+                  cursor: 'pointer',
+                  boxShadow: '0 10px 24px rgba(189,75,248,0.40)',
+                }}
+              >
+                Entendido
+              </button>
+            </div>
+          </div>
+        )
+      })()}
 
       {/* ── FLOATING ACTIONS STACK (chat soporte + campana de notifs) ──
           Espejamos lo que monta app/page.js para que el user logueado
