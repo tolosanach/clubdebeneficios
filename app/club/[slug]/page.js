@@ -2081,36 +2081,54 @@ export default function ClubProfilePage() {
 
   async function doRedeem(prize) {
     if (!membership?.id || !user?.id) return
+    // SINCRONICO: abrimos un tab vacio durante el click para no perder
+    // el contexto de "user gesture". Si el canje sale OK, redirigimos
+    // ese tab a wa.me. Sin esto, Safari iOS bloquea el window.open que
+    // se llama despues del await async.
+    const waWin = (typeof window !== 'undefined') ? window.open('', '_blank') : null
     setRedeeming(prize.id)
     try {
-      const res = await fetch('/api/redeem', {
+      const res = await fetch('/api/redeem-request', {
         method:'POST', headers:{ 'Content-Type':'application/json' },
         body: JSON.stringify({ membership_id: membership.id, prize_id: prize.id, commerce_id: commerce.id, user_id: user.id }),
       })
       const d = await res.json()
-      if (d.ok) {
-        addToast('success', `¡${prize.name} canjeado! Mostralo en caja.`)
+      if (res.ok && d.ok) {
+        addToast('success', `Solicitud enviada. ${prize.name}: esperando confirmacion del comercio.`)
+        // El saldo se reserva al crear el pending (en /api/redeem-request),
+        // asi que descontamos localmente para reflejar el cambio inmediato.
         const field = d.prog_type === 'stars' ? 'stars' : 'points'
-        setMembership(prev => ({ ...prev, [field]: d.new_balance }))
-        // Cerrar la vista de detalle si estaba abierta.
+        setMembership(prev => ({ ...prev, [field]: Math.max(0, (prev?.[field] || 0) - (prize.cost || 0)) }))
         setPrizeDetail(null)
-        // Abrir WhatsApp con el comercio y mensaje pre-llenado para que el
-        // cliente avise que viene a retirar el premio. Opcional — solo si
-        // el comercio tiene número cargado. Hacemos esto en el client-side
-        // porque navigator.open desde un user click no requiere permisos
-        // y abre el chat directamente en mobile (deep link a WhatsApp).
+        // Armamos el mensaje de WhatsApp con el codigo del canje. El
+        // comercio lo lee y al confirmar desde su panel cierra el canje.
         const userName = (userProfile?.name || '').trim() || 'un cliente'
-        const message  = `Hola, soy ${userName}. Quiero canjear mis puntos por el beneficio "${prize.name}".`
-        const waUrl    = buildWhatsappUrl(commerce?.phone, message)
-        if (waUrl) {
-          // Pequeño delay para que el toast de éxito alcance a verse antes
-          // del context-switch a WhatsApp.
-          setTimeout(() => { window.open(waUrl, '_blank', 'noopener,noreferrer') }, 350)
+        const isStars  = d.prog_type === 'stars'
+        const unitTxt  = isStars ? `${prize.cost} estrella${prize.cost === 1 ? '' : 's'}` : `${prize.cost} puntos`
+        const message  = (
+          `Hola ${d.commerce?.name || commerce?.name}! Soy ${userName}.\n\n` +
+          `Vine a canjear:\n` +
+          `🎁 ${prize.name}\n` +
+          `${isStars ? '⭐' : '💎'} Costo: ${unitTxt}\n\n` +
+          `Codigo de canje: *${d.code}*\n\n` +
+          `Confirma desde tu app cuando me lo entregues. Gracias!`
+        )
+        const phoneSrc = d.commerce?.phone || commerce?.phone
+        const waUrl    = buildWhatsappUrl(phoneSrc, message)
+        if (waUrl && waWin) {
+          try { waWin.location.href = waUrl } catch { try { waWin.close() } catch {} }
+        } else if (waWin) {
+          // Sin telefono cargado â cerramos el tab vacio.
+          try { waWin.close() } catch {}
         }
       } else {
+        if (waWin) { try { waWin.close() } catch {} }
         addToast('error', d.error || 'Error al canjear')
       }
-    } catch { addToast('error', 'Error de conexión') }
+    } catch {
+      if (waWin) { try { waWin.close() } catch {} }
+      addToast('error', 'Error de conexion')
+    }
     setRedeeming(null)
   }
 
