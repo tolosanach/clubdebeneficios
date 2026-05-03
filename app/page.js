@@ -12734,6 +12734,10 @@ function CommerceSettingsView({ user, profile, setView, onLogout, onOwnerProfile
       // También actualizamos commerce en DB para que el cambio sea inmediato
       // (igual que hace handleLogoCropSave del flujo del accordion).
       await supabase.from('commerces').update({ img_url: bustedUrl }).eq('id', commerce.id)
+      // Y el state local de `commerce` para que widgets que dependen de
+      // commerce.img_url (banner Negocio activo en dashboard, scanner,
+      // etc.) reflejen el nuevo logo al toque sin esperar otro fetch.
+      setCommerce(c => c ? { ...c, img_url: bustedUrl } : c)
       return true
     } finally {
       setUploadingLogo(false)
@@ -12801,6 +12805,9 @@ function CommerceSettingsView({ user, profile, setView, onLogout, onOwnerProfile
       const bustedUrl = `${data.publicUrl}?v=${Date.now()}`
       set('img_url', bustedUrl)
       await supabase.from('commerces').update({ img_url: bustedUrl }).eq('id', commerce.id)
+      // Reflejar en state local — banner de Negocio activo y otros widgets
+      // que leen commerce.img_url se actualizan sin esperar un fetch.
+      setCommerce(c => c ? { ...c, img_url: bustedUrl } : c)
       showToast('success', 'Logo guardado.')
     } else {
       showToast('error', 'Error al subir el logo.')
