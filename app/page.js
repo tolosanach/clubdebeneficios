@@ -7382,8 +7382,8 @@ function WalletCardFront({ club, colors, onFlip, visible }) {
                 )}
                 {doublePromo && (
                   <span style={{
-                    display:'inline-flex', alignItems:'center', gap:3,
-                    padding:'3px 8px',
+                    display:'inline-flex', alignItems:'center', gap:5,
+                    padding:'3px 10px 3px 8px',
                     background:'rgba(0,0,0,0.20)',
                     border:`1px solid ${colors.detail}`,
                     borderRadius:99,
@@ -7391,7 +7391,8 @@ function WalletCardFront({ club, colors, onFlip, visible }) {
                     color:colors.text,
                     letterSpacing:'.02em',
                   }}>
-                    ×2 {isStars ? '★' : 'pts'}
+                    <span style={{ fontWeight:900 }}>×2</span>
+                    Hoy sumás doble {isStars ? 'estrellas' : 'puntos'}
                   </span>
                 )}
               </div>

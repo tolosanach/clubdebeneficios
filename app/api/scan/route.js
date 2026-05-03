@@ -86,17 +86,29 @@ export async function POST(request) {
     // skip_star=true, no se suma estrella pero sí se procesa la visita para
     // que el cliente reciba el cupón de descuento próximo (si hay promo activa).
 
-    // Cargar todas las promos activas del comercio (doble puntos + descuentos)
+    // Cargar todas las promos activas del comercio (doble puntos + descuentos).
+    // Tambien necesitamos `days` para filtrar la double_points por dia
+    // de la semana — sin esto, el multiplier se aplicaba en cualquier dia.
     const now = new Date().toISOString()
     const { data: activePromos } = await supabaseAdmin
       .from('promotions')
-      .select('id, type, value, expires_at, expiration_type, expiration_date, expiration_days')
+      .select('id, type, value, days, expires_at, expiration_type, expiration_date, expiration_days')
       .eq('commerce_id', commerce_id)
       .eq('active', true)
     const validPromos = (activePromos || []).filter(p =>
       !p.expires_at || p.expires_at > now
     )
-    const hasDouble = validPromos.some(p => p.type === 'double_points')
+    // Para Suma doble: el promo aplica si
+    //   (a) days es null o array vacio  → todos los dias
+    //   (b) days incluye el dia de hoy  → lo aplicamos
+    // Normalizamos a numero porque la DB puede tener strings ("0", "1")
+    // o ints (0, 1) segun version del codigo que escribio la fila.
+    const todayDow = new Date().getDay()  // 0=domingo, 1=lunes, ...
+    const hasDouble = validPromos.some(p => {
+      if (p.type !== 'double_points') return false
+      if (!Array.isArray(p.days) || p.days.length === 0) return true
+      return p.days.some(d => Number(d) === todayDow)
+    })
     const ptsPerVisit = hasDouble ? basePts * 2 : basePts
 
     // Obtener o crear membresía (race-safe via UPSERT con UNIQUE(user_id, commerce_id))
@@ -178,9 +190,12 @@ export async function POST(request) {
       last_visit:   new Date().toISOString(),
       status:       'active',  // primera visita activa la membresía (pending → active, idempotente)
     }
-    // Stars: sumar 1 estrella SALVO que el cashier confirmó "no aplica" el mínimo.
+    // Stars: sumar ptsPerVisit estrellas (1 por default, 2 si hay
+    // Suma doble activa). Antes estaba hardcodeado en +1 ignorando el
+    // multiplier, asi que la promo de Suma doble no aplicaba nunca para
+    // sistemas de estrellas.
     if (commerce.prog_type === 'stars') {
-      if (!skip_star) updateData.stars = (membership.stars || 0) + 1
+      if (!skip_star) updateData.stars = (membership.stars || 0) + ptsPerVisit
       else            updateData.stars = (membership.stars || 0)  // no cambia
     } else {
       updateData.points = (membership.points || 0) + ptsPerVisit
