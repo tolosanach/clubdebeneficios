@@ -20956,6 +20956,27 @@ function ScannerView({ user, profile, setView }) {
   // para que el owner elija qué hacer. Una vez elegido, modeSelected pasa a true.
   const [scanMode, setScanMode]       = useState(null)
   const [modeSelected, setModeSelected] = useState(false)
+
+  // Listener 'benefix:scan-mode' — lo dispara MerchantQRSheet (al elegir
+  // "Mostrar QR del negocio" o "Registrar visita") y ClientQRSheet (al elegir
+  // "Escanear QR de negocio"). Setea el scanMode + modeSelected para que
+  // el ScannerView aterrice directo en el sub-flujo correspondiente,
+  // saltando el intent picker interno.
+  useEffect(() => {
+    function onScanMode(e) {
+      const mode = e.detail?.mode
+      if (!mode) return
+      if (mode === 'register-visit') {
+        setScanMode(null)
+        setModeSelected(true)
+      } else {
+        setScanMode(mode)
+        setModeSelected(true)
+      }
+    }
+    window.addEventListener('benefix:scan-mode', onScanMode)
+    return () => window.removeEventListener('benefix:scan-mode', onScanMode)
+  }, [])
   // Accordion del scanner — qué sección está abierta (null = todas cerradas).
   // Solo una abierta a la vez. Permite a los dos grupos "Abrir escáner" y
   // "Mostrar QR" comportarse como desplegables como en el intent picker.
