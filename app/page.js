@@ -20747,6 +20747,7 @@ function ScannerView({ user, profile, setView }) {
   const [scanGate, setScanGate]       = useState(null)
   const [skipStar, setSkipStar]       = useState(false)  // true si dijo "no aplica" — escanea sin sumar estrella
   const [hasActiveDiscount, setHasActiveDiscount] = useState(false)  // ¿comercio tiene discount_next activo?
+  const [activeDiscount,    setActiveDiscount]    = useState(null)   // la promo entera (para mostrar %)
   // Post-scan: si el cliente usó un descuento, preguntar si renovarlo.
   const [renewDiscountPromo, setRenewDiscountPromo] = useState(null)  // { promoId, expiresAt, membershipId } | null
   // discountDecisionResult: rastrea la decisión que tomó el dueño en el modal
@@ -20774,14 +20775,60 @@ function ScannerView({ user, profile, setView }) {
       })
   }, [user])
 
+  // ── Realtime: cuando el cliente esta mostrando su QR personal, escuchar
+  // inserts en `notifications` para detectar cuando un comercio le escanea
+  // y registra una visita. Auto-redirige a la pestaña Mi billetera del
+  // cliente con la card del comercio destacada (via sessionStorage flag).
+  useEffect(() => {
+    if (!user?.id) return
+    if (scanMode !== 'show-my-qr') return
+    const channel = supabase
+      .channel(`client-qr-listen-${user.id}`)
+      .on('postgres_changes', {
+        event: 'INSERT',
+        schema: 'public',
+        table: 'notifications',
+        filter: `user_id=eq.${user.id}`,
+      }, (payload) => {
+        const n = payload.new || {}
+        // Solo nos interesan los eventos transaccionales que indican que
+        // un comercio acaba de tocar al cliente: visita, canje de premio,
+        // canje de descuento, otorgamiento manual. Skipeamos avisos
+        // sistémicos como `no_prizes_warning` o `discount_renewed`.
+        const TRIGGER_TYPES = new Set(['visit', 'prize_redeem', 'discount_redeem', 'discount_granted'])
+        if (!TRIGGER_TYPES.has(n.type)) return
+        const commerceId = n.metadata?.commerce_id || null
+        try {
+          if (commerceId) sessionStorage.setItem('benefix:highlight-commerce-id', commerceId)
+          sessionStorage.setItem('benefix:highlight-tab', 'mis clubs')
+        } catch {}
+        // Cerrar el QR fullscreen y navegar al cliente.
+        setScanMode(null)
+        setModeSelected(false)
+        if (typeof window !== 'undefined') {
+          window.dispatchEvent(new CustomEvent('benefix:navigate', {
+            detail: { view: 'client', tab: 'mis clubs' },
+          }))
+        }
+      })
+      .subscribe()
+    return () => {
+      try { supabase.removeChannel(channel) } catch {}
+    }
+  }, [scanMode, user?.id])
+
   // Cuando se selecciona un comercio, chequear si tiene promo discount_next
   // activa (afecta el flow de "no aplica" del min purchase).
   useEffect(() => {
-    if (!commerceId) { setHasActiveDiscount(false); return }
-    supabase.from('promotions').select('id, expires_at').eq('commerce_id', commerceId).eq('active', true).eq('type', 'discount_next')
+    if (!commerceId) { setHasActiveDiscount(false); setActiveDiscount(null); return }
+    // Traemos también `value` y `description` para poder mostrar el %
+    // exacto del cupón en el resumen post-scan ("Cupón activo: 10% OFF").
+    supabase.from('promotions').select('id, value, description, expires_at').eq('commerce_id', commerceId).eq('active', true).eq('type', 'discount_next')
       .then(({ data }) => {
         const now = Date.now()
-        setHasActiveDiscount((data || []).some(p => !p.expires_at || new Date(p.expires_at).getTime() > now))
+        const live = (data || []).find(p => !p.expires_at || new Date(p.expires_at).getTime() > now) || null
+        setHasActiveDiscount(!!live)
+        setActiveDiscount(live)
       })
   }, [commerceId])
 
@@ -21729,7 +21776,7 @@ function ScannerView({ user, profile, setView }) {
                 </div>
 
                 {/* Stats — visitas totales + balance actual */}
-                <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:8, marginBottom:14 }}>
+                <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:8, marginBottom:10 }}>
                   <div style={{ background:C.bg3, borderRadius:10, padding:'10px 12px', textAlign:'center' }}>
                     <div style={{ fontFamily:FN, fontSize:22, fontWeight:700, color:C.o }}>{result.visit_count}</div>
                     <div style={{ fontSize:10, color:C.dust }}>visitas totales</div>
@@ -21738,6 +21785,74 @@ function ScannerView({ user, profile, setView }) {
                     <div style={{ fontFamily:FN, fontSize:22, fontWeight:700, color:unitColor }}>{unitIcon} {result.points_now}</div>
                     <div style={{ fontSize:10, color:C.dust }}>{unitLabel}</div>
                   </div>
+                </div>
+
+                {/* Estado del cupón %OFF próxima compra ──
+                    Card que avisa al dueño si tiene o no el cupón activo
+                    en este comercio. Si lo tiene, muestra el valor (ej:
+                    10% OFF) y un check verde. Si no, banner amarillo con
+                    CTA para activarlo en Recompensas. Es independiente
+                    del cupón GUARDADO del cliente — esto le habla al
+                    dueño sobre su propia config. */}
+                <div style={{
+                  marginBottom: 14,
+                  padding: '12px 14px',
+                  borderRadius: 12,
+                  background: hasActiveDiscount
+                    ? 'rgba(34,230,152,0.08)'
+                    : 'rgba(245,166,35,0.08)',
+                  border: hasActiveDiscount
+                    ? '1px solid rgba(34,230,152,0.30)'
+                    : '1px solid rgba(245,166,35,0.32)',
+                  display: 'flex', alignItems: 'center', gap: 10,
+                }}>
+                  <div style={{
+                    width: 32, height: 32, borderRadius: 9,
+                    background: hasActiveDiscount ? 'rgba(34,230,152,0.18)' : 'rgba(245,166,35,0.18)',
+                    border: hasActiveDiscount ? '1px solid rgba(34,230,152,0.45)' : '1px solid rgba(245,166,35,0.45)',
+                    display: 'flex', alignItems: 'center', justifyContent: 'center',
+                    flexShrink: 0,
+                  }}>
+                    <Percent size={15} color={hasActiveDiscount ? '#22E698' : '#F5A623'} strokeWidth={2.4} />
+                  </div>
+                  <div style={{ flex: 1, minWidth: 0 }}>
+                    <div style={{
+                      fontFamily: FN, fontSize: 10, fontWeight: 800,
+                      color: hasActiveDiscount ? '#22E698' : '#F5A623',
+                      letterSpacing: '.08em', textTransform: 'uppercase',
+                      marginBottom: 2,
+                    }}>
+                      Cupón próxima compra
+                    </div>
+                    <div style={{ fontSize: 12.5, color: C.pearl, lineHeight: 1.4 }}>
+                      {hasActiveDiscount && activeDiscount?.value
+                        ? <><strong style={{ color: '#fff' }}>{activeDiscount.value}% OFF</strong> activo para tus clientes.</>
+                        : hasActiveDiscount
+                          ? <>Tenés un cupón <strong style={{ color: '#fff' }}>activo</strong> para tus clientes.</>
+                          : <>No tenés cupón activo. <span style={{ color: '#F5A623', fontWeight: 700 }}>Activalo en Recompensas →</span></>}
+                    </div>
+                  </div>
+                  {!hasActiveDiscount && (
+                    <button
+                      onClick={() => {
+                        setView('commerce-settings')
+                        setTimeout(() => {
+                          window.dispatchEvent(new CustomEvent('benefix:set-tab', { detail: { tab: 'recompensas' } }))
+                        }, 50)
+                      }}
+                      style={{
+                        flexShrink: 0,
+                        padding: '7px 11px', borderRadius: 8,
+                        background: 'rgba(245,166,35,0.18)',
+                        border: '1px solid rgba(245,166,35,0.45)',
+                        color: '#F5A623',
+                        fontFamily: FN, fontSize: 10.5, fontWeight: 800,
+                        cursor: 'pointer',
+                        letterSpacing: '.04em',
+                      }}>
+                      Activar
+                    </button>
+                  )}
                 </div>
 
                 {/* CTA de canje si puede */}
