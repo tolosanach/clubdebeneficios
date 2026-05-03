@@ -12034,6 +12034,11 @@ function CommerceSettingsView({ user, profile, setView, onLogout, onOwnerProfile
   const [railTabHandSeen, setRailTabHandSeen] = useState(false)
   const [hoursForm, setHoursForm]         = useState(null)
   const [isDirty, setIsDirty]             = useState(false)
+  // pendingDoubleDays: cuando el dueno toca chips de dias en Suma doble,
+  // NO persistimos al toque — acumulamos el cambio aca y dejamos que el
+  // boton Guardar lo confirme. Asi el dueno ve que tiene cambios pendientes
+  // antes de salvarlos. null = sin cambio pending, array = nueva config.
+  const [pendingDoubleDays, setPendingDoubleDays] = useState(null)
   // Sincroniza con flag global usada por setTab (wrapper) y beforeunload.
   useEffect(() => {
     if (typeof window === 'undefined') return
@@ -12501,22 +12506,32 @@ function CommerceSettingsView({ user, profile, setView, onLogout, onOwnerProfile
     const update = {
       prog_type: form.prog_type,
       prog_pts:  1,
-      // Solo persiste compra mínima cuando stars está activo. Si está vacío o
-      // no es número válido, se guarda NULL = sin mínimo.
       prog_min_purchase: form.prog_type === 'stars' && parseInt(form.prog_min_purchase) > 0
         ? parseInt(form.prog_min_purchase)
         : null,
     }
     await supabase.from('commerces').update(update).eq('id', commerce.id)
     setCommerce(c => ({ ...c, ...update }))
-    // Sincronizar el form con el valor real persistido. Si el user escribio
-    // "0" (= sin minimo) la DB queda con null; sin este sync el form sigue
-    // mostrando "0" y el dirty-detect lo cuenta como cambio pendiente para
-    // siempre, dejando el boton Guardar prendido aunque ya se guardo.
     setForm(f => ({ ...f, prog_min_purchase: update.prog_min_purchase ?? '' }))
-    logActivity('settings', `Sistema de fidelización actualizado`)
+
+    // Persistir cambios pending de los dias de Suma doble. Si el dueno
+    // toco chips de dias pero no salvo, ahora si los confirmamos en DB.
+    if (pendingDoubleDays != null) {
+      const activeDouble = (Array.isArray(promos) ? promos : []).find(p =>
+        p.active && p.type === 'double_points')
+      if (activeDouble) {
+        try {
+          await updatePromo(activeDouble.id, { days: pendingDoubleDays })
+        } catch (e) {
+          console.warn('[saveFidelizacion] error guardando dias suma doble:', e)
+        }
+      }
+      setPendingDoubleDays(null)
+    }
+
+    logActivity('settings', `Sistema de fidelizacion actualizado`)
     setSaving(false); setSaved(true); setSavingSystem(false)
-    showToast('success', 'Configuración guardada.')
+    showToast('success', 'Configuracion guardada.')
     setTimeout(() => setSaved(false), 3000)
   }
 
@@ -17729,7 +17744,10 @@ function CommerceSettingsView({ user, profile, setView, onLogout, onOwnerProfile
               const isOn = !!activeDouble
               // Días seleccionados — vacío o length 7 = "todos los días".
               // Almacenados como [0..6] donde 0=Domingo, 1=Lunes, etc.
-              const selectedDays = isOn && Array.isArray(activeDouble?.days) ? activeDouble.days : []
+              // Si el dueno modifico los dias pero no salvo aun,
+              // mostramos los dias pending (no los persistidos en DB).
+              const dbDays      = isOn && Array.isArray(activeDouble?.days) ? activeDouble.days : []
+              const selectedDays = pendingDoubleDays != null ? pendingDoubleDays : dbDays
               const allDays = !isOn || selectedDays.length === 0 || selectedDays.length === 7
               const handleToggle = async () => {
                 if (isOn) {
@@ -17760,21 +17778,26 @@ function CommerceSettingsView({ user, profile, setView, onLogout, onOwnerProfile
               // existente. Mutual exclusivity entre "todos los días" y
               // "día específico": si destildás un día estando en "todos",
               // el array pasa de [] a [los 6 días sin ese].
-              const toggleDay = async (v) => {
+              const toggleDay = (v) => {
                 if (!activeDouble) return
-                const cur = Array.isArray(activeDouble.days) ? activeDouble.days : []
+                // Tomamos selectedDays (que ya considera pending) como base.
+                const cur = selectedDays
                 let next
                 if (cur.length === 0) {
-                  // Estaba "todos los días" — empezamos con los 7 menos el tappeado
+                  // Estaba "todos los dias" — empezamos con los 7 menos el tappeado
                   next = [0,1,2,3,4,5,6].filter(d => d !== v)
                 } else if (cur.includes(v)) {
                   next = cur.filter(d => d !== v)
                 } else {
                   next = [...cur, v]
                 }
-                // Si quedó con 0 ó 7, normalizamos a [] (= todos los días)
+                // Si quedo con 0 o 7, normalizamos a [] (= todos los dias).
                 if (next.length === 0 || next.length === 7) next = []
-                await updatePromo(activeDouble.id, { days: next })
+                // No persistimos al toque: dejamos como pending y que el
+                // boton Guardar lo confirme. Si el resultado coincide con
+                // lo que esta en DB (despues de varios toques), limpiamos.
+                const same = JSON.stringify(next.slice().sort()) === JSON.stringify(dbDays.slice().sort())
+                setPendingDoubleDays(same ? null : next)
               }
               const DAYS = [
                 { l:'Lu', v:1 }, { l:'Ma', v:2 }, { l:'Mi', v:3 },
@@ -17934,10 +17957,13 @@ function CommerceSettingsView({ user, profile, setView, onLogout, onOwnerProfile
               }
               const cmpMinDirty = normMin(cmpMinCur) !== normMin(commerce?.prog_min_purchase)
               // hasPendingChange viene del scope de SYSTEMS y maneja el
-              // preview de cambio de sistema. No la duplicamos acá; el
+              // preview de cambio de sistema. No la duplicamos aca; el
               // banner de "guardar cambio de sistema" tiene su propio CTA.
-              const canSave = cmpMinDirty
-              const showCheck = !cmpMinDirty && saved
+              // pendingDoubleDays != null significa que el dueno cambio
+              // los dias de Suma doble y todavia no los salvo.
+              const daysDirty = pendingDoubleDays != null
+              const canSave = cmpMinDirty || daysDirty
+              const showCheck = !canSave && saved
               return (
                 <button
                   onClick={canSave && !saving ? saveFidelizacion : undefined}
