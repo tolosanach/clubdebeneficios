@@ -8558,13 +8558,16 @@ function ClientView({ setView, user, profile, onLogout, initialTab }) {
   }
   const helpForTab = TAB_HELP[tab]
 
+  // paddingTop antes era 58px para esquivar al ClientBottomNav fijo
+  // (top:62). Ahora ClientBottomNav está oculto (return null) y el
+  // BottomNavV2 vive abajo, así que solo queda un padding chico para
+  // que el contenido respire sobre el spacer 80px del Navbar global.
   return (
-    <div style={{ maxWidth:520, margin:'0 auto', padding:'58px 15px 24px' }}>
+    <div style={{ maxWidth:520, margin:'0 auto', padding:'4px 15px 90px' }}>
 
       {/* Banner top "¿Tenés un negocio?" — renderizado adentro de ClientView
-          en lugar de en App.js, porque acá ya estamos después del paddingTop:58
-          que esquiva al ClientBottomNav fijo. Se sincroniza vía localStorage
-          con el resto de los entry points (modal 10s, card del perfil). */}
+          en lugar de en App.js. Se sincroniza vía localStorage con el resto
+          de los entry points (modal 10s, card del perfil). */}
       <BizPromptBanner profile={profile} />
 
       {/* Cartel de ayuda — SIEMPRE primero, inmediatamente debajo del navbar.
@@ -14767,7 +14770,11 @@ function CommerceSettingsView({ user, profile, setView, onLogout, onOwnerProfile
             })}
           </div>
         )}
-      <div style={{ flex:1, maxWidth: isDesktop ? 1120 : 520, width:'100%', margin:'0 auto', padding: isMobile ? '70px 0 80px' : '78px 0 80px', overflowX:'hidden', minWidth:0 }}>
+      {/* paddingTop antes era 70/78px para esquivar al MerchantTopTabs fijo.
+          Ahora ese top-tabs está oculto (merchantTopTabsNav = null) y la
+          navegación vive abajo en BottomNavV2, así que solo queda un padding
+          chico para que el contenido respire sobre el spacer 80px del Navbar. */}
+      <div style={{ flex:1, maxWidth: isDesktop ? 1120 : 520, width:'100%', margin:'0 auto', padding: isMobile ? '6px 0 90px' : '12px 0 90px', overflowX:'hidden', minWidth:0 }}>
         {/* Padding lateral para el contenido principal — el slider rompe
             con margin negativo para llegar a los bordes. */}
         <div style={{ padding: isMobile ? '0 18px' : '0 28px', maxWidth:'100%', minWidth:0, overflowX:'hidden' }}>
@@ -17323,19 +17330,34 @@ function CommerceSettingsView({ user, profile, setView, onLogout, onOwnerProfile
             marginBottom -1 superpone el borde inferior del tab con el
             superior del panel para que no se vea una línea doble. */}
         {tab === 'recompensas' && (
+          // Accesos directos estilo Mercado Pago (pastel cards) pero en
+          // tonalidades de marca violeta. Card ACTIVA con violeta saturado
+          // (la que primero la usa el ojo, igual que el "Pagar servicio" de
+          // la referencia). Card INACTIVA con violeta MUY pálido. Icono y
+          // label tienen el mismo color violeta de marca para que la pieza
+          // se sienta monocromática y limpia, distinto del look "dark glass"
+          // del resto del panel.
           <div style={{
             display: 'grid',
             gridTemplateColumns: '1fr 1fr',
-            gap: 12,
+            gap: 10,
             marginTop: 4,
             marginBottom: 16,
           }}>
             {(() => {
               const SHORTCUTS = [
-                { id: 'how',      Icon: Sparkles, label: 'Sistema para sumar',     short: 'Sistema' },
-                { id: 'discount', Icon: Percent,  label: 'Descuento próx compra',  short: 'Descuento' },
+                { id: 'how',      Icon: Sparkles, label: 'Sistema para sumar' },
+                { id: 'discount', Icon: Percent,  label: 'Descuento próx compra' },
               ]
-              const VIOLET_GRADIENT = 'linear-gradient(135deg, #7C3AED, #BD4BF8)'
+              // Paleta MP-style adaptada a violeta de marca:
+              // - ACTIVE: lavanda saturada (similar al #D5D8FA del reference)
+              // - INACTIVE: lavanda pálida (similar al #EDEEFF del reference)
+              // Texto e ícono comparten el mismo violeta oscuro de marca para
+              // contrastar con el fondo claro de la card.
+              const ACTIVE_BG     = '#D8C4FF'   // pastel violeta saturado
+              const INACTIVE_BG   = '#EFE4FF'   // pastel violeta pálido
+              const FG_ACTIVE     = '#4C1D95'   // violeta brand muy oscuro (más contraste)
+              const FG_INACTIVE   = '#6D28D9'   // violeta brand medio
               return SHORTCUTS.map(s => {
                 const active = recompensasSubTab === s.id
                 const Icon = s.Icon
@@ -17346,40 +17368,34 @@ function CommerceSettingsView({ user, profile, setView, onLogout, onOwnerProfile
                     style={{
                       display: 'flex',
                       flexDirection: 'column',
-                      alignItems: 'flex-start',
-                      justifyContent: 'space-between',
+                      alignItems: 'center',
+                      justifyContent: 'center',
                       gap: 10,
-                      minHeight: 96,
-                      padding: '14px 14px',
-                      borderRadius: 16,
-                      background: active
-                        ? VIOLET_GRADIENT
-                        : 'rgba(255,255,255,0.04)',
-                      border: active
-                        ? '1px solid rgba(189,75,248,0.55)'
-                        : '1px solid rgba(255,255,255,0.10)',
-                      color: active ? '#fff' : 'rgba(255,255,255,0.85)',
+                      minHeight: 104,
+                      padding: '16px 12px',
+                      borderRadius: 18,
+                      background: active ? ACTIVE_BG : INACTIVE_BG,
+                      border: 'none',
                       cursor: 'pointer',
                       fontFamily: 'inherit',
-                      textAlign: 'left',
+                      textAlign: 'center',
                       boxShadow: active
-                        ? '0 8px 24px -4px rgba(189,75,248,0.45)'
-                        : 'none',
-                      transition: 'background 200ms ease, border-color 200ms ease, box-shadow 200ms ease',
+                        ? '0 8px 22px -8px rgba(124,58,237,0.55)'
+                        : '0 2px 10px -4px rgba(124,58,237,0.20)',
+                      transition: 'background 200ms ease, box-shadow 200ms ease, transform 160ms ease',
                     }}>
+                    <Icon
+                      size={26}
+                      color={active ? FG_ACTIVE : FG_INACTIVE}
+                      strokeWidth={2.2}
+                    />
                     <span style={{
-                      width: 36, height: 36, borderRadius: 10,
-                      background: active ? 'rgba(255,255,255,0.18)' : 'rgba(189,75,248,0.14)',
-                      border: active ? '1px solid rgba(255,255,255,0.20)' : '1px solid rgba(189,75,248,0.30)',
-                      display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
-                      flexShrink: 0,
-                    }}>
-                      <Icon size={20} color={active ? '#fff' : '#BD4BF8'} strokeWidth={2.2} />
-                    </span>
-                    <span style={{
-                      fontFamily: FN, fontSize: 13, fontWeight: active ? 800 : 600,
-                      lineHeight: 1.25,
-                      color: active ? '#fff' : 'rgba(255,255,255,0.92)',
+                      fontFamily: FN,
+                      fontSize: 13,
+                      fontWeight: 800,
+                      lineHeight: 1.2,
+                      color: active ? FG_ACTIVE : FG_INACTIVE,
+                      letterSpacing: '-0.01em',
                     }}>
                       {s.label}
                     </span>
@@ -17424,15 +17440,9 @@ function CommerceSettingsView({ user, profile, setView, onLogout, onOwnerProfile
           // acumulación". headerCol sigue tinteando el ícono Gift.
           return (
             <div style={{ marginBottom:14 }}>
-              <div style={{ display:'flex', alignItems:'center', gap:8, marginBottom:10 }}>
-                <div style={{ width:34, height:34, borderRadius:9, background:'rgba(255,255,255,0.05)', border:'1px solid rgba(255,255,255,0.10)', display:'flex', alignItems:'center', justifyContent:'center' }}>
-                  <QrCode size={17} color={C.mist} strokeWidth={2} />
-                </div>
-                <ArrowRight size={13} color={C.dust} strokeWidth={2.5} />
-                <div style={{ width:34, height:34, borderRadius:9, background:`${headerCol}1F`, border:`1px solid ${headerCol}40`, display:'flex', alignItems:'center', justifyContent:'center' }}>
-                  <Gift size={17} color={headerCol} strokeWidth={2} />
-                </div>
-              </div>
+              {/* Mini diagrama QR → Gift removido (mayo 2026) — los accesos
+                  directos pastel violeta arriba ya cuentan la historia, y
+                  el ícono extra en el header se sentía redundante. */}
               <div style={{ display:'flex', alignItems:'center', gap:8 }}>
                 <div style={{ fontFamily:FN, fontSize:18, fontWeight:900, color:C.white, letterSpacing:'.08em', textTransform:'uppercase' }}>Sistema para sumar</div>
                 <InfoHint align="left" text={
