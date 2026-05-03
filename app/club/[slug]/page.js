@@ -1446,7 +1446,7 @@ function LimitedTimeBenefitsSlider({ promos, unitLabel, editMode = false, onEdit
           <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
             <Flame size={16} color="#fff" strokeWidth={2.4} />
             <h3 style={{ fontFamily: FN, fontSize: 13, fontWeight: 800, color: '#fff', letterSpacing: '.10em', textTransform: 'uppercase', margin: 0 }}>
-              Beneficios por tiempo limitado
+              Beneficios
             </h3>
           </div>
           {onEdit && (
@@ -1549,7 +1549,7 @@ function LimitedTimeBenefitsSlider({ promos, unitLabel, editMode = false, onEdit
         <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
           <Flame size={16} color="#fff" strokeWidth={2.4} />
           <h3 style={{ fontFamily: FN, fontSize: 13, fontWeight: 800, color: '#fff', letterSpacing: '.10em', textTransform: 'uppercase', margin: 0 }}>
-            Beneficios por tiempo limitado
+            Beneficios
           </h3>
         </div>
         <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
@@ -3136,7 +3136,7 @@ export default function ClubProfilePage() {
                 desplegable controlado por la flecha al pie de esa card. */}
 
             {/* La card "Promoción activa" se removió porque ahora el slider
-                "Beneficios por tiempo limitado" (más abajo en este mismo
+                "Beneficios" (más abajo en este mismo
                 tab) muestra TODAS las promos activas con su countdown,
                 evitando duplicación visual. */}
 
