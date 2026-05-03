@@ -1368,7 +1368,7 @@ function CoverLightboxGallery({ covers, startIdx, onClose, scrollRef }) {
 // automáticamente cada AUTOSCROLL_MS milisegundos. También permite scroll
 // horizontal manual (swipe en mobile, drag/scroll en desktop). Cuando el
 // user interactúa, pausamos la auto-rotación temporalmente.
-function LimitedTimeBenefitsSlider({ promos, unitLabel, editMode = false }) {
+function LimitedTimeBenefitsSlider({ promos, unitLabel, editMode = false, onEdit }) {
   const AUTOSCROLL_MS  = 3500
   const SWIPE_THRESHOLD = 40       // px mínimo para considerar swipe
   const WHEEL_THRESHOLD = 30       // delta acumulado mínimo para avanzar/retroceder con trackpad
@@ -1433,7 +1433,57 @@ function LimitedTimeBenefitsSlider({ promos, unitLabel, editMode = false }) {
     }
   }
 
-  if (count === 0) return null
+  // Sin promos activas: en modo público no se muestra nada. En editMode
+  // sí mostramos un container placeholder con header + lápiz para que el
+  // dueño descubra esta sección y vaya a configurar promos. Sin esto, el
+  // dueño que entra a editar la página pública nunca sabría que existe
+  // este bloque (solo aparecería cuando ya tiene promos activas).
+  if (count === 0) {
+    if (!editMode) return null
+    return (
+      <div>
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12 }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+            <Flame size={16} color="#fff" strokeWidth={2.4} />
+            <h3 style={{ fontFamily: FN, fontSize: 13, fontWeight: 800, color: '#fff', letterSpacing: '.10em', textTransform: 'uppercase', margin: 0 }}>
+              Beneficios por tiempo limitado
+            </h3>
+          </div>
+          {onEdit && (
+            <button
+              onClick={(e) => { e.stopPropagation(); onEdit() }}
+              title="Editar beneficios"
+              aria-label="Editar beneficios"
+              style={{
+                display:'inline-flex', alignItems:'center', justifyContent:'center',
+                width:28, height:28, borderRadius:'50%',
+                background:'linear-gradient(135deg, #7C3AED, #BD4BF8)',
+                border:'1px solid rgba(255,255,255,0.18)',
+                color:'#fff', cursor:'pointer', padding:0,
+                boxShadow:'0 4px 12px rgba(189,75,248,0.45)',
+                flexShrink: 0,
+              }}>
+              <Pen size={13} strokeWidth={2.4} />
+            </button>
+          )}
+        </div>
+        <div style={{
+          padding: '32px 20px', borderRadius: 20,
+          background: 'rgba(255,255,255,0.03)',
+          border: '1px dashed rgba(255,255,255,0.14)',
+          textAlign: 'center',
+        }}>
+          <Flame size={28} color="rgba(255,255,255,0.40)" strokeWidth={1.8} style={{ marginBottom: 10 }} />
+          <div style={{ fontFamily: FN, fontSize: 14, fontWeight: 700, color: 'rgba(255,255,255,0.85)', marginBottom: 6 }}>
+            Sin beneficios activos
+          </div>
+          <div style={{ fontSize: 12, color: 'rgba(255,255,255,0.55)', lineHeight: 1.5 }}>
+            Activá un %OFF próxima compra o Suma doble para que aparezcan acá.
+          </div>
+        </div>
+      </div>
+    )
+  }
 
   // ── Cálculo de urgencia ──
   // Paleta restringida a BLANCO + VIOLETA. La urgencia se comunica con:
@@ -1502,11 +1552,30 @@ function LimitedTimeBenefitsSlider({ promos, unitLabel, editMode = false }) {
             Beneficios por tiempo limitado
           </h3>
         </div>
-        {count > 1 && (
-          <div style={{ fontSize: 11, color: 'rgba(255,255,255,0.50)', fontWeight: 600 }}>
-            {idx + 1}/{count}
-          </div>
-        )}
+        <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+          {count > 1 && (
+            <div style={{ fontSize: 11, color: 'rgba(255,255,255,0.50)', fontWeight: 600 }}>
+              {idx + 1}/{count}
+            </div>
+          )}
+          {editMode && onEdit && (
+            <button
+              onClick={(e) => { e.stopPropagation(); onEdit() }}
+              title="Editar beneficios"
+              aria-label="Editar beneficios"
+              style={{
+                display:'inline-flex', alignItems:'center', justifyContent:'center',
+                width:28, height:28, borderRadius:'50%',
+                background:'linear-gradient(135deg, #7C3AED, #BD4BF8)',
+                border:'1px solid rgba(255,255,255,0.18)',
+                color:'#fff', cursor:'pointer', padding:0,
+                boxShadow:'0 4px 12px rgba(189,75,248,0.45)',
+                flexShrink: 0,
+              }}>
+              <Pen size={13} strokeWidth={2.4} />
+            </button>
+          )}
+        </div>
       </div>
 
       {/* Track con transform: translateX. El padre tiene overflow:hidden
@@ -3258,13 +3327,19 @@ export default function ClubProfilePage() {
                 que el primer impacto del cliente sean los beneficios
                 urgentes con vencimiento, y después navegue tranquilo el
                 catálogo de premios canjeables. */}
-            <LimitedTimeBenefitsSlider promos={promos} unitLabel={unitLabel} editMode={editMode} />
+            <LimitedTimeBenefitsSlider promos={promos} unitLabel={unitLabel} editMode={editMode} onEdit={() => navigateEditField('promo')} />
 
             {/* Header "Premios" + subtítulo agrupados en un solo bloque
                 (sin marginBottom propio) para que el gap:16 del padre se
-                aplique de forma consistente entre header→primera card. */}
+                aplique de forma consistente entre header→primera card.
+                En editMode mostramos un lápiz al lado del título que
+                navega a la pestaña Premios del panel del comercio para
+                que el dueño pueda agregar/editar/desactivar. */}
             <div>
-              <h2 style={{ fontFamily:FN, fontSize:20, fontWeight:700, color:C.white, margin:0, letterSpacing:'-0.02em' }}>Premios</h2>
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 10 }}>
+                <h2 style={{ fontFamily:FN, fontSize:20, fontWeight:700, color:C.white, margin:0, letterSpacing:'-0.02em' }}>Premios</h2>
+                {editMode && editPencil('prize', 'Editar premios')}
+              </div>
               <div style={{ fontSize:13, color:C.mist, marginTop:4, display:'flex', alignItems:'center', gap:5 }}>
                 {isMember
                   ? <><UnitIcon size={13} {...unitIconProps} /> <span style={{ color:unitColor, fontWeight:600 }}>{bal}</span> {unitLabel} disponibles</>
@@ -3276,7 +3351,23 @@ export default function ClubProfilePage() {
               <GlassCard style={{ textAlign:'center', padding:'48px 20px', borderRadius:20 }} hover={false}>
                 <div style={{ marginBottom:14 }}><Gift size={44} strokeWidth={1.5} color="rgba(255,255,255,0.4)" /></div>
                 <div style={{ fontFamily:FN, fontSize:16, fontWeight:700, color:C.white, marginBottom:8 }}>Sin premios disponibles</div>
-                <div style={{ fontSize:13, color:C.mist }}>El negocio aún no tiene premios activos.</div>
+                <div style={{ fontSize:13, color:C.mist, marginBottom: editMode ? 16 : 0 }}>El negocio aún no tiene premios activos.</div>
+                {editMode && (
+                  <button
+                    onClick={() => navigateEditField('prize')}
+                    style={{
+                      padding: '10px 18px', borderRadius: 12,
+                      background: 'linear-gradient(135deg, #7C3AED, #BD4BF8)',
+                      border: '1px solid rgba(255,255,255,0.18)',
+                      color: '#fff',
+                      fontFamily: FN, fontSize: 12.5, fontWeight: 700,
+                      cursor: 'pointer',
+                      boxShadow: '0 6px 18px rgba(189,75,248,0.45)',
+                      display: 'inline-flex', alignItems: 'center', gap: 6,
+                    }}>
+                    <Pen size={12} strokeWidth={2.4} /> Agregar premios
+                  </button>
+                )}
               </GlassCard>
             ) : (
               <div style={{
