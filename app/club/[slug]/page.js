@@ -1369,69 +1369,21 @@ function CoverLightboxGallery({ covers, startIdx, onClose, scrollRef }) {
 // horizontal manual (swipe en mobile, drag/scroll en desktop). Cuando el
 // user interactúa, pausamos la auto-rotación temporalmente.
 function LimitedTimeBenefitsSlider({ promos, unitLabel, editMode = false, onEdit }) {
-  const AUTOSCROLL_MS  = 3500
-  const SWIPE_THRESHOLD = 40       // px mínimo para considerar swipe
-  const WHEEL_THRESHOLD = 30       // delta acumulado mínimo para avanzar/retroceder con trackpad
-  const [idx, setIdx]   = useState(0)
+  // Slider con MARQUEE continuo (no discreto). El track avanza con CSS
+  // animation linear, las cards se duplican para loop seamless. El user
+  // puede poner el dedo encima (touch) o el mouse (hover) para pausar la
+  // animacion y leer una card sin que se le escape. Sin idx, swipe ni
+  // dots: el flujo es continuo y no hay "posicion actual" discreta.
   const list  = promos || []
   const count = list.length
+  const [paused, setPaused] = useState(false)
 
-  // Touch refs para swipe manual + wheel acumulado para trackpad horizontal.
-  const touchStartXRef = useRef(0)
-  const touchEndXRef   = useRef(0)
-  const wheelAccumRef  = useRef(0)
-  const wheelLockRef   = useRef(false)
-
-  // Auto-advance CONTINUO. No se pausa nunca.
-  useEffect(() => {
-    if (count < 2) return
-    const id = setInterval(() => {
-      setIdx(i => (i + 1) % count)
-    }, AUTOSCROLL_MS)
-    return () => clearInterval(id)
-  }, [count])
-
-  // Touch / swipe — el delta finger‑pos lo interpretamos como "el usuario
-  // está empujando la card en esa dirección". Si arrastra a la DERECHA
-  // (dx > 0), está empujando la card actual hacia la derecha → la siguiente
-  // entra desde la izquierda → idx anterior. Si arrastra a la IZQUIERDA
-  // (dx < 0), idx siguiente. El reporte original ("se comporta al revés")
-  // venía de tener invertida esta convención mental: nuestro slider con
-  // auto‑rotación empuja a la izquierda para mostrar la próxima, así que
-  // lo natural es replicar ese mismo gesto con el dedo.
-  const onTouchStart = (e) => { touchStartXRef.current = e.touches[0].clientX; touchEndXRef.current = e.touches[0].clientX }
-  const onTouchMove  = (e) => { touchEndXRef.current   = e.touches[0].clientX }
-  const onTouchEnd   = () => {
-    const dx = touchEndXRef.current - touchStartXRef.current
-    if (Math.abs(dx) < SWIPE_THRESHOLD) return
-    if (dx > 0) setIdx(i => (i + 1) % count)              // swipe derecha → siguiente
-    else        setIdx(i => (i - 1 + count) % count)      // swipe izquierda → anterior
-  }
-
-  // Wheel horizontal (trackpad / mouse de Apple / shift+wheel). Acumulamos
-  // el deltaX y al pasar el threshold avanzamos/retrocedemos con un lock
-  // chiquito para no saltar varias cards de un pase. La dirección sigue la
-  // misma convención que el swipe arriba: "empujar hacia la derecha" =
-  // siguiente card. Solo escuchamos cuando el gesto es predominantemente
-  // horizontal — sino dejamos pasar el scroll vertical normal de la página.
-  const onWheel = (e) => {
-    if (count < 2) return
-    if (Math.abs(e.deltaX) < Math.abs(e.deltaY)) return
-    e.preventDefault()
-    if (wheelLockRef.current) return
-    wheelAccumRef.current += e.deltaX
-    if (wheelAccumRef.current > WHEEL_THRESHOLD) {
-      setIdx(i => (i + 1) % count)
-      wheelLockRef.current = true
-      wheelAccumRef.current = 0
-      setTimeout(() => { wheelLockRef.current = false }, 350)
-    } else if (wheelAccumRef.current < -WHEEL_THRESHOLD) {
-      setIdx(i => (i - 1 + count) % count)
-      wheelLockRef.current = true
-      wheelAccumRef.current = 0
-      setTimeout(() => { wheelLockRef.current = false }, 350)
-    }
-  }
+  // Track duplicado: [...list, ...list] para loop seamless. La animacion
+  // va de 0% a -50% (= scrollear el primer set fuera de viewport, que
+  // queda exactamente igual al segundo set entrante).
+  const dupList = count > 0 ? [...list, ...list] : []
+  // Velocidad: 12s por card. Con count=2 cards => 24s ciclo completo.
+  const animDuration = `${Math.max(8, count * 12)}s`
 
   // Sin promos activas: en modo público no se muestra nada. En editMode
   // sí mostramos un container placeholder con header + lápiz para que el
@@ -1553,11 +1505,6 @@ function LimitedTimeBenefitsSlider({ promos, unitLabel, editMode = false, onEdit
           </h3>
         </div>
         <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-          {count > 1 && (
-            <div style={{ fontSize: 11, color: 'rgba(255,255,255,0.50)', fontWeight: 600 }}>
-              {idx + 1}/{count}
-            </div>
-          )}
           {editMode && onEdit && (
             <button
               onClick={(e) => { e.stopPropagation(); onEdit() }}
@@ -1578,14 +1525,22 @@ function LimitedTimeBenefitsSlider({ promos, unitLabel, editMode = false, onEdit
         </div>
       </div>
 
-      {/* Track con transform: translateX. El padre tiene overflow:hidden
-          y el hijo se desplaza por CSS transition. Esto evita peleas con
-          el scroll-snap nativo del browser. Touch handlers en el padre
-          permiten swipe manual entre cards. */}
+      {/* Track con MARQUEE continuo. El padre tiene overflow:hidden
+          y el track interior corre la animacion CSS "benefits-marquee".
+          Pause-on-hover/touch: el user pone el dedo o el mouse y el
+          animationPlayState pasa a paused para que pueda leer la card. */}
+      <style>{`
+        @keyframes benefits-marquee {
+          from { transform: translateX(0%); }
+          to   { transform: translateX(-50%); }
+        }
+      `}</style>
       <div
-        onTouchStart={onTouchStart}
-        onTouchMove={onTouchMove}
-        onTouchEnd={onTouchEnd}
+        onMouseEnter={() => setPaused(true)}
+        onMouseLeave={() => setPaused(false)}
+        onTouchStart={() => setPaused(true)}
+        onTouchEnd={() => setPaused(false)}
+        onTouchCancel={() => setPaused(false)}
         style={{
           position: 'relative',
           overflow: 'hidden',
@@ -1595,11 +1550,12 @@ function LimitedTimeBenefitsSlider({ promos, unitLabel, editMode = false, onEdit
         <div style={{
           display: 'flex',
           flexWrap: 'nowrap',
-          width: `${count * 100}%`,
-          transform: `translateX(-${idx * (100 / count)}%)`,
-          transition: 'transform 600ms cubic-bezier(0.22,1,0.36,1)',
+          width: `${count * 200}%`,
+          animation: count > 1 ? `benefits-marquee ${animDuration} linear infinite` : 'none',
+          animationPlayState: paused ? 'paused' : 'running',
+          willChange: 'transform',
         }}>
-        {list.map((promo, i) => {
+        {dupList.map((promo, i) => {
             const isDouble   = promo.type === 'double_points'
             const isDiscount = promo.type === 'discount_next'
             // Número grande estilo display: para % OFF mostramos el value
@@ -1615,8 +1571,8 @@ function LimitedTimeBenefitsSlider({ promos, unitLabel, editMode = false, onEdit
             const urgency    = calcUrgency(promo)
 
             return (
-              <div key={promo.id} style={{
-                width: `${100 / count}%`,
+              <div key={`${promo.id}-${i}`} style={{
+                width: `${100 / (count * 2)}%`,
                 flexShrink: 0,
                 padding: '0 2px',
                 boxSizing: 'border-box',
@@ -1692,35 +1648,10 @@ function LimitedTimeBenefitsSlider({ promos, unitLabel, editMode = false, onEdit
                     mixBlendMode: 'screen',
                   }} />
 
-                  {/* Lápiz de edición — solo en modo previsualización del
-                      dueño (editMode=true). Posicionado ADENTRO de la
-                      card (top:12, right:12) para que no se corte con
-                      overflow:hidden y se vea bien sobre el inner glow.
-                      Tap → redirige a la pestaña "Promociones" del panel
-                      de configuración del comercio (donde el dueño
-                      gestiona discount_next y double_points). */}
-                  {editMode && (
-                    <button
-                      onClick={(e) => { e.stopPropagation(); navigateEditField('promo') }}
-                      title="Editar promoción"
-                      aria-label="Editar promoción"
-                      style={{
-                        position: 'absolute',
-                        top: 12, right: 12,
-                        zIndex: 5,
-                        display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
-                        width: 30, height: 30, borderRadius: '50%',
-                        // Promo activa = ya cargada → verde (todos los lapices
-                        // del modo ojo van en verde si hay info, amarillo si no).
-                        background: 'linear-gradient(135deg, #15803D, #22E698)',
-                        border: '1px solid rgba(255,255,255,0.30)',
-                        color: '#fff', cursor: 'pointer', padding: 0,
-                        boxShadow: '0 4px 12px rgba(34,230,152,0.50)',
-                      }}
-                    >
-                      <Pen size={13} strokeWidth={2.4} />
-                    </button>
-                  )}
+                  {/* Lapiz inline de cada card eliminado: el unico
+                      lapiz visible ahora es el del header del slider
+                      (al lado del titulo "Beneficios"), para evitar
+                      duplicacion y dejar las cards limpias. */}
 
                   {/* ═══ CONTENIDO CENTRADO ═══ */}
                   {/* Tag superior — los días vigentes son INFO CRÍTICA
@@ -1730,11 +1661,21 @@ function LimitedTimeBenefitsSlider({ promos, unitLabel, editMode = false, onEdit
                                  sin días → "TODOS LOS DÍAS" (no "Activo ahora").
                       • Para %OFF: mismo patrón pero sin días → "Activo ahora". */}
                   {(() => {
+                    // Los days vienen como integers 0-6 con la convencion
+                    // JS Date.getDay (0=domingo, 1=lunes...). Antes el
+                    // codigo hacia String(d).toUpperCase() y mostraba "1",
+                    // "2" en vez de los nombres reales. Mapeamos contra
+                    // DAY_NAMES para que se lea "LUNES Y MARTES".
+                    const DAY_NAMES = ['DOMINGO','LUNES','MARTES','MIÉRCOLES','JUEVES','VIERNES','SÁBADO']
                     const days = promo.days || []
                     const hasDays = days.length > 0
                     let tagLabel
                     if (hasDays) {
-                      const upper = days.map(d => String(d).toUpperCase())
+                      const upper = days.map(d => {
+                        const n = Number(d)
+                        if (Number.isFinite(n) && DAY_NAMES[n]) return DAY_NAMES[n]
+                        return String(d).toUpperCase()
+                      })
                       if (upper.length === 1)      tagLabel = upper[0]
                       else if (upper.length === 2) tagLabel = `${upper[0]} Y ${upper[1]}`
                       else                          tagLabel = `${upper.slice(0, -1).join(', ')} Y ${upper[upper.length - 1]}`
@@ -1824,20 +1765,7 @@ function LimitedTimeBenefitsSlider({ promos, unitLabel, editMode = false, onEdit
         </div>
       </div>
 
-      {/* Dots de paginación — solo si hay 2+ promos */}
-      {count > 1 && (
-        <div style={{ display: 'flex', justifyContent: 'center', gap: 6, marginTop: 12 }}>
-          {list.map((_, i) => (
-            <button key={i} onClick={() => setIdx(i)} aria-label={`Beneficio ${i+1}`}
-              style={{
-                width: idx === i ? 22 : 6, height: 6, borderRadius: 99,
-                background: idx === i ? 'linear-gradient(135deg, #FE5000, #BD4BF8)' : 'rgba(255,255,255,0.18)',
-                border: 'none', cursor: 'pointer', padding: 0,
-                transition: 'width 320ms cubic-bezier(0.22,1,0.36,1), background 320ms ease',
-              }} />
-          ))}
-        </div>
-      )}
+      {/* Dots eliminados: con marquee continuo no hay posicion discreta. */}
     </div>
   )
 }
