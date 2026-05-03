@@ -20896,7 +20896,24 @@ function ScannerView({ user, profile, setView }) {
 
   async function handleScan(qrCode) {
     if (processing || !commerceId) return
-    if (!qrCode.startsWith('CLUB-')) return
+    // ── Validación del formato del QR ──
+    // El QR del cliente es 'CLUB-<uuid>'. Antes el handler silenciaba en
+    // silencio cualquier otro QR (else return), lo que confundía al
+    // dueño porque "no pasaba nada" al apuntar a algo equivocado.
+    // Ahora detectamos 2 casos concretos y mostramos un toast claro:
+    //   • QR de OTRO comercio Benefix: el cliente está mostrando el QR
+    //     del LOCAL en vez de su QR personal — es un error común.
+    //   • QR completamente distinto (no Benefix): no contiene 'CLUB-'
+    //     ni la URL de benefix.com.ar/club/.
+    if (!qrCode.startsWith('CLUB-')) {
+      const isBusinessQr = /benefix\.com\.ar\/club\//i.test(qrCode) || qrCode.startsWith('http')
+      if (isBusinessQr && /benefix/i.test(qrCode)) {
+        showToast('warn', 'Ese es el QR del local, no del cliente. Pedile que abra "Mi QR" desde su app.', 5500)
+      } else {
+        showToast('error', 'Ese QR no es de Benefix. Pedile al cliente que abra "Mi QR" desde su app.', 5500)
+      }
+      return
+    }
     setProcessing(true)
     await stopCamera()
     const res = await fetch('/api/scan', {
