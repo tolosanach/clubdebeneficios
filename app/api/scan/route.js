@@ -321,7 +321,12 @@ export async function POST(request) {
       const isStars = commerce.prog_type === 'stars'
       const unitLabel = isStars ? 'estrella' : 'punto'
       const unitLabelPlural = isStars ? 'estrellas' : 'puntos'
-      const earned = isStars ? (skip_star ? 0 : 1) : ptsPerVisit
+      // earned refleja cuanto se sumo realmente al saldo. Para stars, si
+      // el cashier confirmo que NO aplica el minimo (skip_star) sumamos 0;
+      // si aplica, sumamos ptsPerVisit (1 normal, 2 si Suma doble esta
+      // activa). Antes estaba hardcodeado en 1, lo que hacia que la notif
+      // dijera "Sumaste 1 estrella" aunque realmente se sumaron 2.
+      const earned = isStars ? (skip_star ? 0 : ptsPerVisit) : ptsPerVisit
 
       // Calcular info de descuento del cliente (si tiene cupón activo
       // discount_next listo para usar en su PRÓXIMA visita, después de
@@ -348,7 +353,7 @@ export async function POST(request) {
         const ownerBody = (() => {
           // Línea 1: cuánto sumó + saldo actual.
           const earnedDetail = isStars
-            ? `Le sumaste ${earned > 0 ? '1 estrella' : '0 estrellas'}.`
+            ? `Le sumaste ${earned} ${earned === 1 ? 'estrella' : 'estrellas'}.`
             : `Le sumaste ${ptsPerVisit} puntos.`
           const balanceDetail = `Saldo: ${newTotal} ${unitLabelPlural}.`
           // Línea 2: estado del descuento.
