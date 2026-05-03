@@ -19916,10 +19916,68 @@ function CommerceSettingsView({ user, profile, setView, onLogout, onOwnerProfile
                 Eliminar mi negocio
               </button>
 
-              {/* Sticky save bar removida — cada ConfigAccordion expandido
-                  trae su propio botón "Guardar cambios" inline al pie de
-                  su bloque. Si en el futuro el dueño quiere un atajo
-                  global, se puede volver a montar acá una versión flotante. */}
+              {/* ── Sticky save bar flotante ──
+                  Reemplazo del modelo viejo donde cada accordion tenía su
+                  propio "Guardar cambios" al pie. El user reportó que la
+                  pantalla es muy larga y cuando edita un campo del primer
+                  accordion (ej: logo) tiene que scrollear hasta abajo para
+                  guardar. Ahora hay un botón fixed en el bottom del
+                  viewport que aparece SOLO cuando hay cambios sin guardar
+                  (isDirty=true). Animación slide-up al aparecer. Cuando
+                  el dueño guarda y todo queda clean, se oculta solo. */}
+              {isDirty && (
+                <div style={{
+                  position: 'fixed',
+                  bottom: 16, left: 0, right: 0,
+                  zIndex: 180,
+                  display: 'flex', justifyContent: 'center',
+                  padding: '0 16px',
+                  pointerEvents: 'none',
+                  animation: 'fadeUp .25s ease',
+                }}>
+                  <div style={{
+                    pointerEvents: 'auto',
+                    display: 'flex', alignItems: 'center', gap: 10,
+                    padding: '10px 14px',
+                    background: 'rgba(8,4,18,0.92)',
+                    backdropFilter: 'blur(18px) saturate(180%)',
+                    WebkitBackdropFilter: 'blur(18px) saturate(180%)',
+                    border: '1px solid rgba(255,255,255,0.14)',
+                    borderRadius: 99,
+                    boxShadow: '0 12px 36px rgba(0,0,0,0.55), 0 4px 16px rgba(189,75,248,0.30)',
+                    maxWidth: 460, width: '100%',
+                  }}>
+                    <div style={{
+                      flex: 1, minWidth: 0,
+                      fontFamily: FN, fontSize: 12, fontWeight: 700,
+                      color: '#fff',
+                      whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis',
+                    }}>
+                      <span style={{
+                        display: 'inline-block', width: 6, height: 6, borderRadius: '50%',
+                        background: '#F5A623', marginRight: 8, verticalAlign: 'middle',
+                        boxShadow: '0 0 6px rgba(245,166,35,0.85)',
+                      }} />
+                      Cambios sin guardar
+                    </div>
+                    <button onClick={saveConfiguracion} disabled={saving}
+                      style={{
+                        padding: '9px 18px', borderRadius: 99,
+                        background: saving ? 'rgba(255,255,255,0.10)' : G,
+                        border: 'none',
+                        color: '#fff',
+                        fontFamily: FN, fontSize: 12.5, fontWeight: 800,
+                        cursor: saving ? 'wait' : 'pointer',
+                        boxShadow: saving ? 'none' : '0 6px 18px rgba(254,80,0,0.40)',
+                        transition: 'background 160ms ease',
+                        whiteSpace: 'nowrap',
+                        flexShrink: 0,
+                      }}>
+                      {saving ? 'Guardando…' : 'Guardar cambios'}
+                    </button>
+                  </div>
+                </div>
+              )}
 
             </div>
           )
