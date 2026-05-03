@@ -20908,9 +20908,9 @@ function ScannerView({ user, profile, setView }) {
     if (!qrCode.startsWith('CLUB-')) {
       const isBusinessQr = /benefix\.com\.ar\/club\//i.test(qrCode) || qrCode.startsWith('http')
       if (isBusinessQr && /benefix/i.test(qrCode)) {
-        showToast('warn', 'Ese es el QR del local, no del cliente. Pedile que abra "Mi QR" desde su app.', 5500)
+        showToast('warn', 'Ese es el QR del local, no del cliente. Pedile que abra "Mostrar QR personal" desde su app.', 5500)
       } else {
-        showToast('error', 'Ese QR no es de Benefix. Pedile al cliente que abra "Mi QR" desde su app.', 5500)
+        showToast('error', 'Ese QR no es de Benefix. Pedile al cliente que abra "Mostrar QR personal" desde su app.', 5500)
       }
       return
     }
