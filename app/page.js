@@ -23479,12 +23479,18 @@ export default function App() {
       const targetView = e.detail?.view
       const tab = e.detail?.tab
       if (!targetView) return
-      if (targetView !== view) navigate(targetView)
+      const sameView = targetView === view
+      if (!sameView) navigate(targetView)
       if (tab) {
-        // Pequeño delay para asegurar que el componente destino esté montado
-        setTimeout(() => {
-          window.dispatchEvent(new CustomEvent('benefix:set-tab', { detail: { tab } }))
-        }, 80)
+        // Reenviamos el set-tab varias veces para cubrir el race entre el
+        // mount del componente destino y el registro de su listener. Si
+        // estamos en la misma view, el primer dispatch va al toque (sync),
+        // sino esperamos un poquito a que monte. Reintento extra a 300ms
+        // por las dudas de slow-mount en mobile. Cada listener idempotente.
+        const fire = () => window.dispatchEvent(new CustomEvent('benefix:set-tab', { detail: { tab } }))
+        if (sameView) fire()
+        setTimeout(fire, 80)
+        setTimeout(fire, 300)
       }
     }
     window.addEventListener('benefix:navigate', onNavigate)
