@@ -1979,6 +1979,20 @@ export default function ClubProfilePage() {
   // URL como string; ahora idx para que el lightbox pueda navegar entre todas
   // las portadas (swipe / scroll horizontal en zoom).
   const [coverLightbox, setCoverLightbox] = useState(null)
+  // showWelcomeMerchantBanner: banner verde "¡Tu club ya está vivo!" que
+  // aparece la primera vez que el dueño llega al ojo recién registrado.
+  // Se dispara desde sessionStorage `benefix:welcome-merchant` que setea
+  // el MinimalSignupModal al terminar el signup merchant. Se descarta al
+  // tocar la X o salir del modo edición.
+  const [showWelcomeMerchantBanner, setShowWelcomeMerchantBanner] = useState(false)
+  useEffect(() => {
+    if (typeof window === 'undefined') return
+    try {
+      if (sessionStorage.getItem('benefix:welcome-merchant') === '1') {
+        setShowWelcomeMerchantBanner(true)
+      }
+    } catch {}
+  }, [])
   // Refs de touch para el swipe horizontal entre portadas en el HERO.
   const heroTouchStartXRef = useRef(0)
   const heroTouchEndXRef   = useRef(0)
@@ -2649,6 +2663,60 @@ export default function ClubProfilePage() {
             style={{ fontFamily:FN, fontSize:11, fontWeight:800, color:'#fff', background:'rgba(0,0,0,0.30)', padding:'6px 12px', borderRadius:99, textDecoration:'none', whiteSpace:'nowrap', flexShrink:0 }}>
             Salir
           </a>
+        </div>
+      )}
+
+      {/* Banner de bienvenida post-signup — sessionStorage flag que setea
+          el wizard de registro al terminar (welcome-merchant). Aparece UNA
+          vez, explicando que esto es la página pública de su club, que los
+          lápices editan campos sueltos, y que el botón "Mi Negocio" del
+          navbar permite acceder al panel completo (premios, beneficios,
+          mensajes, clientes, análisis). Click en X o "Entendido" lo
+          descarta y nunca vuelve a aparecer. */}
+      {editMode && showWelcomeMerchantBanner && (
+        <div style={{
+          background:'linear-gradient(135deg, rgba(34,230,152,0.16), rgba(34,197,94,0.10))',
+          borderTop:'1px solid rgba(34,230,152,0.30)',
+          borderBottom:'1px solid rgba(34,230,152,0.40)',
+          padding:'14px 16px',
+          fontFamily:FI,
+          position:'relative',
+        }}>
+          <button onClick={() => {
+              try { sessionStorage.removeItem('benefix:welcome-merchant') } catch {}
+              setShowWelcomeMerchantBanner(false)
+            }}
+            aria-label="Cerrar"
+            style={{
+              position:'absolute', top:8, right:10,
+              width:24, height:24, borderRadius:'50%',
+              background:'rgba(255,255,255,0.06)',
+              border:'1px solid rgba(255,255,255,0.14)',
+              color:'rgba(255,255,255,0.70)',
+              cursor:'pointer', padding:0,
+              display:'flex', alignItems:'center', justifyContent:'center',
+              fontSize:14, lineHeight:1,
+            }}>×</button>
+          <div style={{ display:'flex', alignItems:'flex-start', gap:10, paddingRight:24 }}>
+            <div style={{
+              width:28, height:28, borderRadius:8,
+              background:'rgba(34,230,152,0.20)',
+              border:'1px solid rgba(34,230,152,0.45)',
+              display:'flex', alignItems:'center', justifyContent:'center',
+              flexShrink:0,
+              color:'#22E698',
+              fontSize:14, fontWeight:900,
+            }}>✓</div>
+            <div style={{ flex:1, minWidth:0 }}>
+              <div style={{ fontFamily:FN, fontSize:13, fontWeight:800, color:'#fff', marginBottom:4 }}>
+                ¡Tu club ya está vivo!
+              </div>
+              <div style={{ fontSize:12, color:'rgba(255,255,255,0.78)', lineHeight:1.5 }}>
+                Esto es lo que ven tus clientes. Tocá los <strong style={{ color:'#fff' }}>lápices violetas</strong> para
+                editar lo que falta, o entrá a <strong style={{ color:'#fff' }}>Mi Negocio</strong> (ícono <Store size={11} style={{ display:'inline', verticalAlign:'-1px' }} /> en el navbar) para cargar premios, beneficios y mensajes.
+              </div>
+            </div>
+          </div>
         </div>
       )}
 
@@ -4178,4 +4246,28 @@ export default function ClubProfilePage() {
             return (
               <div key={t.id} style={{ display:'flex', alignItems:'center', gap:10, padding:'12px 16px', background: isOk ? 'rgba(34,230,152,0.14)' : 'rgba(248,116,68,0.14)', backdropFilter:'blur(24px)', WebkitBackdropFilter:'blur(24px)', border:`1px solid ${isOk ? 'rgba(34,230,152,0.30)' : 'rgba(248,116,68,0.30)'}`, borderRadius:14, boxShadow:'0 8px 32px rgba(0,0,0,0.4)', animation:'fadeUp .3s ease' }}>
                 <span style={{ fontSize:15 }}>{isOk ? '✓' : '!'}</span>
-                <span style={
+                <span style={{ fontSize:13, color:'#F0EAFF', fontFamily:FI, lineHeight:1.4, flex:1 }}>{t.msg}</span>
+              </div>
+            )
+          })}
+        </div>
+      )}
+
+      {/* ── FLOATING ACTIONS STACK (chat soporte + campana de notifs) ──
+          Espejamos lo que monta app/page.js para que el user logueado
+          conserve sus shortcuts también acá. Los componentes con
+          hideButton se montan para que sus drawers existan, y el
+          FloatingActionsTab agrupa los dos shortcuts en una sola pill
+          flotante a la derecha. */}
+      {user && (
+        <>
+          <SwRegister />
+          <FloatingActionsTab />
+          <NotificationsBell hideButton role="client" />
+          <SupportChat hideButton role="client" />
+          <EnablePushPrompt />
+        </>
+      )}
+    </div>
+  )
+}

@@ -22890,6 +22890,21 @@ export default function App() {
             // el modo.
             await loadProfile(user.id)
             if (mode === 'merchant') {
+              // Después del signup merchant: redirigir a la vista pública
+              // del club en modo edit (?edit=1) en lugar del panel completo.
+              // El dueño ve cómo le quedó la página de su comercio y puede
+              // tocar los lápices para editar campo a campo. Setea
+              // sessionStorage.welcome-merchant=1 para que la página del
+              // ojo muestre un banner explicando que para más opciones
+              // (premios, beneficios, mensajes) hay que ir a Mi Negocio.
+              try {
+                sessionStorage.setItem('benefix:welcome-merchant', '1')
+              } catch {}
+              if (slug && typeof window !== 'undefined') {
+                window.location.href = `/club/${slug}?edit=1`
+                return
+              }
+              // Fallback si no llegó el slug — al panel.
               navigate('commerce-settings')
             } else {
               navigate('client')
