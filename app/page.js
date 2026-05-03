@@ -14663,10 +14663,12 @@ function CommerceSettingsView({ user, profile, setView, onLogout, onOwnerProfile
               p.active && p.type === 'double_points' && (!p.expires_at || new Date(p.expires_at) > now)
             )
             const activePrizeCount = prizes.filter(p => p.active).length
-            // Si no hay nada activo Y el plan no soporta promos, no tiene
-            // sentido mostrar el resumen vacío — escondemos el bloque.
-            const showAny = !!activeDiscount || !!activeDouble || activePrizeCount > 0 || canPromote
-            if (!showAny) return null
+            // Antes escondíamos el bloque cuando no había nada configurado
+            // (showAny = !!activeDiscount || ... || canPromote). Ahora los
+            // chips se muestran SIEMPRE, en estado "apagado" cuando no hay
+            // nada cargado, para que el dueño vea la estructura completa
+            // del estado de su negocio desde el primer momento y entienda
+            // qué puede activar tocando los lápices.
 
             // Helper local: formatea el array `days` de un double_points
             // a texto compacto para mostrar como aclaratoria. Misma lógica
