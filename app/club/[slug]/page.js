@@ -2348,7 +2348,10 @@ export default function ClubProfilePage() {
     instagram:    { tab: 'configuracion', section: 'contacto' },
     facebook:     { tab: 'configuracion', section: 'contacto' },
     prize:        { tab: 'premios',       section: null },
-    promo:        { tab: 'recompensas',   section: 'promociones' },
+    // Beneficios: el lápiz va directo a la sub-tab "Descuento próxima
+    // compra" de Recompensas (donde se gestionan las promos discount_next
+    // + suma doble). subTab pasa por URL como `subTab=discount`.
+    promo:        { tab: 'recompensas',   section: null, subTab: 'discount' },
   }
   const navigateEditField = (field) => {
     const mapping = FIELD_NAV_MAP[field] || { tab: 'configuracion', section: null }
@@ -2357,10 +2360,19 @@ export default function ClubProfilePage() {
       sessionStorage.setItem('benefix:nextTab', mapping.tab)
       if (mapping.section) sessionStorage.setItem('benefix:edit-section', mapping.section)
       else sessionStorage.removeItem('benefix:edit-section')
+      // Flag "vine del preview con slug X" — el panel CommerceSettingsView
+      // lo lee al montar para mostrar un banner "Volver al preview" arriba
+      // que devuelve a /club/[slug]?edit=1. Slug lo sacamos del prop del
+      // componente padre. El flag se borra cuando el dueño efectivamente
+      // toca "Volver al preview" o sale del panel.
+      if (slug) sessionStorage.setItem('benefix:preview-back-slug', slug)
     } catch {}
     if (typeof window !== 'undefined') {
-      const sectionParam = mapping.section ? `&section=${mapping.section}` : ''
-      window.location.href = `/?view=commerce-settings&tab=${mapping.tab}${sectionParam}`
+      const params = []
+      params.push(`tab=${encodeURIComponent(mapping.tab)}`)
+      if (mapping.section) params.push(`section=${encodeURIComponent(mapping.section)}`)
+      if (mapping.subTab)  params.push(`subTab=${encodeURIComponent(mapping.subTab)}`)
+      window.location.href = `/?view=commerce-settings&${params.join('&')}`
     }
   }
   const editPencil = (field, label = 'Editar') => editMode ? (
@@ -4166,28 +4178,4 @@ export default function ClubProfilePage() {
             return (
               <div key={t.id} style={{ display:'flex', alignItems:'center', gap:10, padding:'12px 16px', background: isOk ? 'rgba(34,230,152,0.14)' : 'rgba(248,116,68,0.14)', backdropFilter:'blur(24px)', WebkitBackdropFilter:'blur(24px)', border:`1px solid ${isOk ? 'rgba(34,230,152,0.30)' : 'rgba(248,116,68,0.30)'}`, borderRadius:14, boxShadow:'0 8px 32px rgba(0,0,0,0.4)', animation:'fadeUp .3s ease' }}>
                 <span style={{ fontSize:15 }}>{isOk ? '✓' : '!'}</span>
-                <span style={{ fontSize:13, color:'#F0EAFF', fontFamily:FI, lineHeight:1.4, flex:1 }}>{t.msg}</span>
-              </div>
-            )
-          })}
-        </div>
-      )}
-
-      {/* ── FLOATING ACTIONS STACK (chat soporte + campana de notifs) ──
-          Espejamos lo que monta app/page.js para que el user logueado
-          conserve sus shortcuts también acá. Los componentes con
-          hideButton se montan para que sus drawers existan, y el
-          FloatingActionsTab agrupa los dos shortcuts en una sola pill
-          flotante a la derecha. */}
-      {user && (
-        <>
-          <SwRegister />
-          <FloatingActionsTab />
-          <NotificationsBell hideButton role="client" />
-          <SupportChat hideButton role="client" />
-          <EnablePushPrompt />
-        </>
-      )}
-    </div>
-  )
-}
+                <span style={

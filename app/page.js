@@ -11876,8 +11876,44 @@ function CommerceSettingsView({ user, profile, setView, onLogout, onOwnerProfile
           }, 250)
         }, 100)
       }
+      // Soporte para ?subTab=discount en URL (lápiz de Beneficios desde el
+      // preview lleva acá). Se lee al mount y se setea el sub-tab de la
+      // pestaña Recompensas. La pestaña principal ya viene seteada por el
+      // deep-link `tab=recompensas`. Sin esto el lápiz aterrizaba en la
+      // sub-tab "Sistema de acumulación" por default.
+      const url = new URL(window.location.href)
+      const subTab = url.searchParams.get('subTab')
+      if (subTab === 'discount' || subTab === 'how') {
+        setRecompensasSubTab(subTab)
+        // No hace falta tocar la query string — el useEffect corre 1 vez al
+        // mount y la URL ya tiene el tab pedido.
+      }
     } catch {}
   }, [])
+
+  // Banner "Volver al preview" — cuando el dueño llegó al panel desde el
+  // ojo (vista pública con ?edit=1), guardamos el slug en sessionStorage.
+  // Acá lo leemos al mount y lo dejamos en state para mostrar el banner
+  // arriba. Click en "Volver al preview" → navega de vuelta a /club/[slug]
+  // ?edit=1 y borra el flag. El flag NO se borra automáticamente al entrar
+  // — solo cuando el dueño explícitamente toca "Volver al preview" o
+  // navega a otra vista que no sea commerce-settings (mejor UX: si está
+  // editando varias cosas seguidas, el banner se mantiene como atajo).
+  const [previewBackSlug, setPreviewBackSlug] = useState(null)
+  useEffect(() => {
+    if (typeof window === 'undefined') return
+    try {
+      const s = sessionStorage.getItem('benefix:preview-back-slug')
+      if (s) setPreviewBackSlug(s)
+    } catch {}
+  }, [])
+  function handleBackToPreview() {
+    if (typeof window === 'undefined') return
+    const s = previewBackSlug
+    try { sessionStorage.removeItem('benefix:preview-back-slug') } catch {}
+    setPreviewBackSlug(null)
+    if (s) window.location.href = `/club/${s}?edit=1`
+  }
   const [autoTeaser, setAutoTeaser]       = useState(null)  // 'reactivacion'|'cercaPremio'|'primeraVisita' — modal marketinero
   const [autoConfigs, setAutoConfigs]     = useState({
     reactivacion:  { active: true, days: 7  },
@@ -13786,6 +13822,43 @@ function CommerceSettingsView({ user, profile, setView, onLogout, onOwnerProfile
   // Premios/etc. se perdía la barra. Ahora se renderiza siempre.
   // Como `position: fixed`, da igual dónde caiga en el árbol JSX —
   // siempre flota arriba del contenido.
+
+  // Banner "Volver al preview" — sticky encima de todo cuando el dueño
+  // llegó al panel desde el ojo (vista pública con ?edit=1). Aparece en
+  // TODAS las pestañas del commerce-settings hasta que el dueño lo
+  // descarta o navega de vuelta al preview. Renderizado al lado del
+  // navbar superior con fondo violeta tenue para diferenciarlo de un
+  // toast o un alert (es navegación, no aviso).
+  const previewBackBanner = previewBackSlug ? (
+    <div style={{
+      position: 'fixed',
+      top: 62,
+      left: 0, right: 0,
+      zIndex: 200,
+      background: 'linear-gradient(135deg, rgba(124,58,237,0.92), rgba(189,75,248,0.92))',
+      borderBottom: '1px solid rgba(255,255,255,0.16)',
+      padding: '8px 14px',
+      display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 10,
+      boxShadow: '0 4px 14px rgba(189,75,248,0.30)',
+    }}>
+      <button
+        onClick={handleBackToPreview}
+        style={{
+          background: 'rgba(255,255,255,0.18)',
+          border: '1px solid rgba(255,255,255,0.30)',
+          borderRadius: 99,
+          padding: '6px 14px',
+          color: '#fff',
+          fontFamily: FN, fontSize: 12, fontWeight: 700,
+          cursor: 'pointer',
+          display: 'inline-flex', alignItems: 'center', gap: 6,
+          letterSpacing: '.02em',
+        }}>
+        <ArrowLeft size={13} strokeWidth={2.6} /> Volver al preview
+      </button>
+    </div>
+  ) : null
+
   const merchantTopTabsNav = (
     <nav style={{
       position: 'fixed',
@@ -15869,6 +15942,7 @@ function CommerceSettingsView({ user, profile, setView, onLogout, onOwnerProfile
         {/* MerchantTopTabs — render via variable reutilizable definida
             arriba del if(intentPickerActive). Misma instancia se usa
             tanto acá como en el render principal de abajo. */}
+        {previewBackBanner}
         {merchantTopTabsNav}
         {/* Radial menu deshabilitado en este sprint — se mantenía como cog
             flotante. Ahora la navegación mobile vive arriba en MerchantTopTabs. */}
@@ -16219,6 +16293,7 @@ function CommerceSettingsView({ user, profile, setView, onLogout, onOwnerProfile
           Análisis, Configuración, etc.) para que la navegación esté
           siempre presente. Como es position:fixed flota arriba del
           contenido sin desplazarlo. */}
+      {previewBackBanner}
       {merchantTopTabsNav}
       {upgradeModal && (
         <UpgradeModal
