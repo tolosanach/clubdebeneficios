@@ -21386,12 +21386,11 @@ function ScannerView({ user, profile, setView }) {
                     fontFamily:'inherit',
                   }}>
                   <div style={{
-                    width:48, height:48, borderRadius:13,
-                    background: VIOLET.iconBg,
+                    width:56, height:56,
                     display:'flex', alignItems:'center', justifyContent:'center',
-                    flexShrink:0, boxShadow: VIOLET.shadow,
+                    flexShrink:0,
                   }}>
-                    <sec.Icon size={22} color="#fff" strokeWidth={2.2} />
+                    <sec.Icon size={42} color="#C4B5FD" strokeWidth={2.2} />
                   </div>
                   <div style={{ flex:1, minWidth:0, fontFamily:FN, fontSize:15, fontWeight:800, color:'#fff' }}>
                     {sec.title}
@@ -23486,3 +23485,4 @@ export default function App() {
     </>
   )
 }
+                                                                                       
