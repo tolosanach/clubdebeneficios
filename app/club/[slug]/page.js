@@ -2389,24 +2389,40 @@ export default function ClubProfilePage() {
       window.location.href = `/?view=commerce-settings&${params.join('&')}`
     }
   }
-  const editPencil = (field, label = 'Editar') => editMode ? (
-    <button
-      onClick={(e) => { e.stopPropagation(); navigateEditField(field) }}
-      title={label}
-      aria-label={label}
-      style={{
-        display:'inline-flex', alignItems:'center', justifyContent:'center',
-        width:28, height:28, borderRadius:'50%',
-        background:'linear-gradient(135deg, #7C3AED, #BD4BF8)',
-        border:'1px solid rgba(255,255,255,0.18)',
-        color:'#fff', cursor:'pointer', padding:0,
-        boxShadow:'0 4px 12px rgba(189,75,248,0.45)',
-        marginLeft:8,
-        flexShrink:0,
-      }}>
-      <Pen size={13} strokeWidth={2.4} />
-    </button>
-  ) : null
+  // editPencil — boton circular con icono Pen que aparece al lado de cada
+  // campo editable cuando editMode=true. Acepta un 3er parametro `done`
+  // boolean: true=campo ya tiene info → fondo verde; false=campo vacío →
+  // fondo amarillo. Asi el dueño ve de un vistazo qué le falta cargar.
+  // Default `done=true` para mantener compat: si el caller no pasa el
+  // dato, asumimos que ya tiene contenido (no se pinta de amarillo
+  // espuriamente).
+  const editPencil = (field, label = 'Editar', done = true) => {
+    if (!editMode) return null
+    const grad = done
+      ? 'linear-gradient(135deg, #15803D, #22E698)'
+      : 'linear-gradient(135deg, #B45309, #F5A623)'
+    const shadow = done
+      ? '0 4px 12px rgba(34,230,152,0.40)'
+      : '0 4px 12px rgba(245,166,35,0.45)'
+    return (
+      <button
+        onClick={(e) => { e.stopPropagation(); navigateEditField(field) }}
+        title={label}
+        aria-label={label}
+        style={{
+          display:'inline-flex', alignItems:'center', justifyContent:'center',
+          width:28, height:28, borderRadius:'50%',
+          background: grad,
+          border:'1px solid rgba(255,255,255,0.22)',
+          color:'#fff', cursor:'pointer', padding:0,
+          boxShadow: shadow,
+          marginLeft:8,
+          flexShrink:0,
+        }}>
+        <Pen size={13} strokeWidth={2.4} />
+      </button>
+    )
+  }
 
   // URL "Cómo llegar" — siempre direcciones (con destino), no solo búsqueda.
   // Con coords es más preciso; sin coords usamos dirección + ciudad + provincia
@@ -2811,25 +2827,34 @@ export default function ClubProfilePage() {
                   posicionado debajo de la campanita en la esquina sup-derecha.
                   Tap → navega a Configuración → Información básica donde
                   vive el upload multi-portada. */}
-              {editMode && (
-                <button
-                  onClick={(e) => { e.stopPropagation(); navigateEditField('cover_images') }}
-                  title="Editar portadas"
-                  aria-label="Editar portadas"
-                  style={{
-                    position: 'absolute',
-                    top: 64, right: 16, zIndex: 21,
-                    width: 40, height: 40, borderRadius: '50%',
-                    background: 'linear-gradient(135deg, #7C3AED, #BD4BF8)',
-                    border: '1px solid rgba(255,255,255,0.22)',
-                    color: '#fff', cursor: 'pointer', padding: 0,
-                    display: 'flex', alignItems: 'center', justifyContent: 'center',
-                    boxShadow: '0 4px 14px rgba(189,75,248,0.55)',
-                  }}
-                >
-                  <Pen size={16} strokeWidth={2.4} />
-                </button>
-              )}
+              {editMode && (() => {
+                const hasCovers = covers.length > 0
+                const grad = hasCovers
+                  ? 'linear-gradient(135deg, #15803D, #22E698)'
+                  : 'linear-gradient(135deg, #B45309, #F5A623)'
+                const shadow = hasCovers
+                  ? '0 4px 14px rgba(34,230,152,0.50)'
+                  : '0 4px 14px rgba(245,166,35,0.55)'
+                return (
+                  <button
+                    onClick={(e) => { e.stopPropagation(); navigateEditField('cover_images') }}
+                    title="Editar portadas"
+                    aria-label="Editar portadas"
+                    style={{
+                      position: 'absolute',
+                      top: 64, right: 16, zIndex: 21,
+                      width: 40, height: 40, borderRadius: '50%',
+                      background: grad,
+                      border: '1px solid rgba(255,255,255,0.22)',
+                      color: '#fff', cursor: 'pointer', padding: 0,
+                      display: 'flex', alignItems: 'center', justifyContent: 'center',
+                      boxShadow: shadow,
+                    }}
+                  >
+                    <Pen size={16} strokeWidth={2.4} />
+                  </button>
+                )
+              })()}
             </section>
             {/* Lightbox modal — imagen ampliada full-screen con backdrop
                 oscuro. Tap fuera de la imagen / X cierra. */}
@@ -2883,7 +2908,7 @@ export default function ClubProfilePage() {
                     <div style={{ display:'flex', alignItems:'center' }}>
                       <div style={{ fontFamily:FN, fontSize:16, fontWeight:700, color:C.white, lineHeight:1.2 }}>{commerce.name}</div>
                       <span onClick={e => e.stopPropagation()} style={{ display:'inline-flex' }}>
-                        {editPencil('name', 'Editar nombre')}
+                        {editPencil('name', 'Editar nombre', !!commerce.name)}
                       </span>
                     </div>
                     <div style={{ display:'flex', alignItems:'center', gap:6, marginTop:4 }}>
@@ -2894,7 +2919,7 @@ export default function ClubProfilePage() {
                         </span>
                       )}
                       <span onClick={e => e.stopPropagation()} style={{ display:'inline-flex' }}>
-                        {editPencil('category', 'Editar categoría')}
+                        {editPencil('category', 'Editar categoría', !!commerce.category || (Array.isArray(commerce.categories) && commerce.categories.length > 0))}
                       </span>
                     </div>
                   </div>
@@ -2961,7 +2986,7 @@ export default function ClubProfilePage() {
                   <p style={{ fontSize:13, color: commerce.description ? 'rgba(255,255,255,0.70)' : 'rgba(255,255,255,0.30)', fontStyle: commerce.description ? 'normal' : 'italic', lineHeight:1.6, margin:0, flex:1, minWidth:0 }}>
                     {commerce.description || 'Este negocio todavía no agregó una descripción.'}
                   </p>
-                  {editPencil('description', 'Editar descripción')}
+                  {editPencil('description', 'Editar descripción', !!(commerce.description && commerce.description.trim()))}
                 </div>
               </div>
 
@@ -2991,7 +3016,7 @@ export default function ClubProfilePage() {
                         </div>
                         <ChevronDown size={18} color="rgba(255,255,255,0.35)" style={{ transform: showHours ? 'rotate(180deg)' : 'none', transition:'transform .2s', flexShrink:0 }} />
                       </button>
-                      {editPencil('hours', 'Editar horarios')}
+                      {editPencil('hours', 'Editar horarios', true /* en este branch ya hay horarios cargados */)}
                     </div>
                     <div style={{ maxHeight: showHours ? 320 : 0, overflow:'hidden', transition:'max-height 0.25s ease-out' }}>
                       <div style={{ padding:'0 16px 14px 46px', fontSize:13, color:C.mist, lineHeight:1.9 }}>
@@ -3036,7 +3061,7 @@ export default function ClubProfilePage() {
                     </div>
                     <span style={{ background:'transparent', color:'#BD4BF8', border:'1.5px solid #BD4BF8', borderRadius:8, padding:'6px 12px', fontSize:12, fontWeight:700, fontFamily:FN, whiteSpace:'nowrap', flexShrink:0 }}>Cómo llegar →</span>
                   </a>
-                  {editPencil('address', 'Editar ubicación')}
+                  {editPencil('address', 'Editar ubicación', true /* en este branch hay address o coords */)}
                 </div>
               ) : (
                 <div style={{ display:'flex', alignItems:'center', gap:12, padding:'14px 16px', fontFamily:FI }}>
@@ -3045,7 +3070,7 @@ export default function ClubProfilePage() {
                     <p style={{ color:'rgba(255,255,255,0.35)', fontSize:14, fontWeight:500, margin:0, fontStyle:'italic' }}>Dirección no informada</p>
                     {commerce.city?.name && <p style={{ color:'rgba(255,255,255,0.30)', fontSize:12, margin:'2px 0 0' }}>{commerce.city.name}</p>}
                   </div>
-                  {editPencil('address', 'Agregar ubicación')}
+                  {editPencil('address', 'Agregar ubicación', false /* sin info, va amarillo */)}
                 </div>
               )}
 
@@ -3061,13 +3086,13 @@ export default function ClubProfilePage() {
                     </div>
                     <ChevronRight size={18} color="rgba(255,255,255,0.35)" />
                   </a>
-                  {editPencil('instagram', 'Editar Instagram')}
+                  {editPencil('instagram', 'Editar Instagram', !!commerce.instagram)}
                 </div>
               ) : (
                 <div style={{ display:'flex', alignItems:'center', gap:12, padding:'14px 16px', fontFamily:FI }}>
                   <Camera size={18} strokeWidth={2} color="rgba(255,255,255,0.25)" />
                   <p style={{ flex:1, color:'rgba(255,255,255,0.35)', fontSize:14, fontWeight:500, margin:0, fontStyle:'italic' }}>Sin redes sociales</p>
-                  {editPencil('instagram', 'Agregar Instagram')}
+                  {editPencil('instagram', 'Agregar Instagram', false /* sin info, va amarillo */)}
                 </div>
               )}
             </div>
@@ -3418,7 +3443,7 @@ export default function ClubProfilePage() {
             <div>
               <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 10 }}>
                 <h2 style={{ fontFamily:FN, fontSize:20, fontWeight:700, color:C.white, margin:0, letterSpacing:'-0.02em' }}>Premios</h2>
-                {editMode && editPencil('prize', 'Editar premios')}
+                {editMode && editPencil('prize', 'Editar premios', activePrizes.length > 0)}
               </div>
               <div style={{ fontSize:13, color:C.mist, marginTop:4, display:'flex', alignItems:'center', gap:5 }}>
                 {isMember
