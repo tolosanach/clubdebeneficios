@@ -12231,7 +12231,34 @@ function CommerceSettingsView({ user, profile, setView, onLogout, onOwnerProfile
         if (data && !data.onboarding_done) setShowOnboardingBanner(true)
         setLoading(false)
         if (data) {
-          supabase.from('prizes').select('*').eq('commerce_id', data.id).order('created_at').then(r => setPrizes(r.data||[]))
+          supabase.from('prizes').select('*').eq('commerce_id', data.id).order('created_at').then(r => {
+            const fetched = r.data || []
+            setPrizes(fetched)
+            // Auto-trigger del modal de premios sugeridos por rubro la PRIMERA
+            // vez que el dueño entra al panel y no tiene premios activos en
+            // el sistema actual (stars/points). Flag por commerce_id en
+            // localStorage para no volver a abrirlo. Capa 1 del sistema de
+            // premios obligatorios — antes solo se abría desde el botón del
+            // estado vacío de la pestaña Premios, lo que dejaba al user
+            // dueño sin descubrirlo si nunca entraba a esa tab.
+            try {
+              const sys = data?.prog_type || 'stars'
+              const flagKey = `benefix:welcome-prizes-shown-${data.id}`
+              if (!localStorage.getItem(flagKey)) {
+                const activeForSys = fetched.filter(p =>
+                  p.active && (p.system_type || sys) === sys
+                )
+                if (activeForSys.length === 0) {
+                  // Cambiar a la pestaña Premios para que cuando el modal
+                  // cierre el user se quede en el contexto correcto.
+                  setTab('premios')
+                  setSuggestedPrizesModalOpen(true)
+                  setAddedSuggestedNames(new Set())
+                }
+                localStorage.setItem(flagKey, '1')
+              }
+            } catch (_) { /* localStorage puede fallar en SSR/private */ }
+          })
           supabase.from('promotions').select('*').eq('commerce_id', data.id).order('created_at', {ascending:false}).then(r => setPromos(r.data||[]))
           supabase.from('commerce_activity').select('*').eq('commerce_id', data.id).order('created_at', {ascending:false}).limit(60).then(r => setActivity(r.data||[]))
           // Canjes por premio (para mostrar contador en cada card)
