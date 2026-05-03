@@ -3142,7 +3142,7 @@ function Navbar({ setView, cityName, user, profile, onLogin, onLogout, currentVi
           <LogOut size={16} color="rgba(255,255,255,0.70)" strokeWidth={2} />
         </button>
       )}
-      {/*
+      {false && (
       <div className="liquid-glass-strong" style={{ position:'relative', display:'flex', gap:3, alignItems:'center', borderRadius:12, padding:4, overflow:'hidden' }}>
 
         {role === 'admin' && (<>
@@ -3226,7 +3226,7 @@ function Navbar({ setView, cityName, user, profile, onLogin, onLogout, currentVi
         </>)}
 
       </div>
-      */}
+      )}
     </nav>
   )
 }
