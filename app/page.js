@@ -20748,6 +20748,18 @@ function ScannerView({ user, profile, setView }) {
   const [skipStar, setSkipStar]       = useState(false)  // true si dijo "no aplica" — escanea sin sumar estrella
   const [hasActiveDiscount, setHasActiveDiscount] = useState(false)  // ¿comercio tiene discount_next activo?
   const [activeDiscount,    setActiveDiscount]    = useState(null)   // la promo entera (para mostrar %)
+  // Aviso flotante sobre el visor de la camara cuando el QR escaneado no es
+  // de un cliente Benefix. { type:'warn'|'error', text:string } | null. Se
+  // auto-descarta a los 5s desde el setter (ver setScanWarningWithTimeout).
+  const [scanWarning, setScanWarning] = useState(null)
+  const scanWarningTimeoutRef = useRef(null)
+  const setScanWarningWithTimeout = (warning) => {
+    if (scanWarningTimeoutRef.current) clearTimeout(scanWarningTimeoutRef.current)
+    setScanWarning(warning)
+    if (warning) {
+      scanWarningTimeoutRef.current = setTimeout(() => setScanWarning(null), 5500)
+    }
+  }
   // Post-scan: si el cliente usó un descuento, preguntar si renovarlo.
   const [renewDiscountPromo, setRenewDiscountPromo] = useState(null)  // { promoId, expiresAt, membershipId } | null
   // discountDecisionResult: rastrea la decisión que tomó el dueño en el modal
@@ -20908,9 +20920,15 @@ function ScannerView({ user, profile, setView }) {
     if (!qrCode.startsWith('CLUB-')) {
       const isBusinessQr = /benefix\.com\.ar\/club\//i.test(qrCode) || qrCode.startsWith('http')
       if (isBusinessQr && /benefix/i.test(qrCode)) {
-        showToast('warn', 'Ese es el QR del local, no del cliente. Pedile que abra "Mostrar QR personal" desde su app.', 5500)
+        setScanWarningWithTimeout({
+          type: 'warn',
+          text: 'Ese es el QR del local, no del cliente. Pedile que abra "Mostrar QR personal" desde su app.',
+        })
       } else {
-        showToast('error', 'Ese QR no es de Benefix. Pedile al cliente que abra "Mostrar QR personal" desde su app.', 5500)
+        setScanWarningWithTimeout({
+          type: 'error',
+          text: 'Ese QR no es de Benefix. Pedile al cliente que abra "Mostrar QR personal" desde su app.',
+        })
       }
       return
     }
@@ -21607,12 +21625,64 @@ function ScannerView({ user, profile, setView }) {
       )}
 
       {/* Visor de cámara */}
-      <PCard style={{ overflow:'hidden', marginBottom:14 }}>
+      <PCard style={{ overflow:'hidden', marginBottom:14, position:'relative' }}>
         {cameraActive && (
           <JsQrScanner
             onDecode={(text) => handleScan(text)}
             onError={() => setCameraError('No se pudo acceder a la cámara. Revisá los permisos.')}
           />
+        )}
+
+        {/* Aviso flotante encima del visor — solo cuando hay un scanWarning
+            activo Y la camara esta abierta. Antes los avisos iban como toast
+            arriba de la pagina, fuera del campo visual del cashier. Ahora
+            quedan justo donde el dueño esta mirando. */}
+        {cameraActive && scanWarning && (
+          <div style={{
+            position: 'absolute',
+            top: 12, left: 12, right: 12,
+            zIndex: 10,
+            padding: '12px 14px',
+            borderRadius: 12,
+            background: scanWarning.type === 'warn'
+              ? 'rgba(245,166,35,0.95)'
+              : 'rgba(248,116,68,0.95)',
+            backdropFilter: 'blur(12px)',
+            WebkitBackdropFilter: 'blur(12px)',
+            border: '1px solid rgba(255,255,255,0.30)',
+            boxShadow: '0 12px 32px rgba(0,0,0,0.55)',
+            display: 'flex', alignItems: 'flex-start', gap: 10,
+            animation: 'fadeUp .25s ease',
+          }}>
+            <div style={{
+              flexShrink: 0,
+              width: 24, height: 24, borderRadius: '50%',
+              background: 'rgba(0,0,0,0.18)',
+              display: 'flex', alignItems: 'center', justifyContent: 'center',
+              color: '#fff', fontSize: 14, fontWeight: 900,
+              fontFamily: FN,
+            }}>!</div>
+            <div style={{
+              flex: 1, minWidth: 0,
+              fontFamily: FI, fontSize: 13, fontWeight: 600,
+              color: '#fff', lineHeight: 1.4,
+            }}>
+              {scanWarning.text}
+            </div>
+            <button onClick={() => setScanWarningWithTimeout(null)}
+              aria-label="Cerrar aviso"
+              style={{
+                flexShrink: 0,
+                width: 24, height: 24, borderRadius: '50%',
+                background: 'rgba(0,0,0,0.20)',
+                border: '1px solid rgba(255,255,255,0.25)',
+                color: '#fff',
+                cursor: 'pointer', padding: 0,
+                display: 'flex', alignItems: 'center', justifyContent: 'center',
+              }}>
+              <X size={12} strokeWidth={2.5} />
+            </button>
+          </div>
         )}
 
         {!cameraActive && !processing && (
