@@ -12481,6 +12481,11 @@ function CommerceSettingsView({ user, profile, setView, onLogout, onOwnerProfile
     }
     await supabase.from('commerces').update(update).eq('id', commerce.id)
     setCommerce(c => ({ ...c, ...update }))
+    // Sincronizar el form con el valor real persistido. Si el user escribio
+    // "0" (= sin minimo) la DB queda con null; sin este sync el form sigue
+    // mostrando "0" y el dirty-detect lo cuenta como cambio pendiente para
+    // siempre, dejando el boton Guardar prendido aunque ya se guardo.
+    setForm(f => ({ ...f, prog_min_purchase: update.prog_min_purchase ?? '' }))
     logActivity('settings', `Sistema de fidelización actualizado`)
     setSaving(false); setSaved(true); setSavingSystem(false)
     showToast('success', 'Configuración guardada.')
@@ -17266,11 +17271,24 @@ function CommerceSettingsView({ user, profile, setView, onLogout, onOwnerProfile
                         según prog_type (preview incluido). La tab
                         'discount' muestra el cupón de %OFF rotando
                         entre valores típicos (10/15/20/30). */}
-                    <RecompensasTabAnim
-                      tabId={t.id}
-                      systemType={pendingSystemType ?? commerce?.prog_type ?? 'stars'}
-                      active={active}
-                    />
+                    {(() => {
+                      // Buscamos el cupon discount_next ACTIVO con mayor valor
+                      // para que la animacion del tab refleje el % real
+                      // configurado por el dueno. Si no hay ninguno, queda
+                      // null y la anim cicla entre valores teaser (10/15/20/30).
+                      const activeDiscount = (promos || [])
+                        .filter(p => p.type === 'discount_next' && p.active)
+                        .sort((a, b) => (b.value || 0) - (a.value || 0))[0]
+                      const cfgPercent = activeDiscount ? activeDiscount.value : null
+                      return (
+                        <RecompensasTabAnim
+                          tabId={t.id}
+                          systemType={pendingSystemType ?? commerce?.prog_type ?? 'stars'}
+                          active={active}
+                          discountPercent={cfgPercent}
+                        />
+                      )
+                    })()}
                   </button>
                 )
               })
@@ -17840,7 +17858,15 @@ function CommerceSettingsView({ user, profile, setView, onLogout, onOwnerProfile
                 - Después de guardar muestra ✓ y vuelve a inactivo. */}
             {(() => {
               const cmpMinCur   = form?.prog_min_purchase
-              const cmpMinDirty = String(cmpMinCur ?? '') !== String(commerce?.prog_min_purchase ?? '')
+              // Normalizamos ambos lados antes de comparar: "0", "", null y
+              // undefined son todos equivalentes conceptualmente (sin minimo).
+              // Sin esto, despues de guardar 0 el form queda con "0" pero la
+              // DB queda con null, y el boton Guardar nunca vuelve a apagarse.
+              const normMin = v => {
+                const n = parseInt(v)
+                return Number.isFinite(n) && n > 0 ? n : null
+              }
+              const cmpMinDirty = normMin(cmpMinCur) !== normMin(commerce?.prog_min_purchase)
               // hasPendingChange viene del scope de SYSTEMS y maneja el
               // preview de cambio de sistema. No la duplicamos acá; el
               // banner de "guardar cambio de sistema" tiene su propio CTA.
@@ -19840,10 +19866,14 @@ function CommerceSettingsView({ user, profile, setView, onLogout, onOwnerProfile
 
                 <div>
                   <FieldLabel optional>Facebook</FieldLabel>
-                  <input value={form.facebook||''}
-                    onChange={e => set('facebook', e.target.value)}
-                    placeholder="facebook.com/tunegocio"
-                    style={iStyle(false, !(form.facebook||'').trim())} />
+                  <div style={{ position:'relative' }}>
+                    <span style={{ position:'absolute', left:13, top:'50%', transform:'translateY(-50%)', color:C.mist, fontSize:13, pointerEvents:'none', fontFamily:'inherit' }}>facebook.com/</span>
+                    <input
+                      value={(form.facebook||'').replace(/^https?:\/\//i,'').replace(/^(www\.)?facebook\.com\//i,'')}
+                      onChange={e => set('facebook', e.target.value.replace(/^https?:\/\//i,'').replace(/^(www\.)?facebook\.com\//i,''))}
+                      placeholder="tunegocio"
+                      style={{ ...iStyle(false, !(form.facebook||'').trim()), paddingLeft: 105 }} />
+                  </div>
                 </div>
               </ConfigAccordion>
 
