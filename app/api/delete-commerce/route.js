@@ -9,12 +9,6 @@
 // la app como cliente).
 //
 // Auth: solo el dueño del comercio o un admin global. Acción irreversible.
-//
-// Diseño: cada paso de borrado se ejecuta y SI FALLA, se loguea con detalle
-// pero NO se aborta el flujo (excepto el delete final del propio commerce).
-// Devolvemos siempre JSON con `ok` boolean + detalle de errores parciales en
-// `partial_errors` para poder diagnosticar si el botón "no funciona" o si
-// tira algún error de FK específico.
 
 import { NextResponse } from 'next/server'
 import { createClient } from '@supabase/supabase-js'
@@ -59,15 +53,22 @@ export async function POST(request) {
       return NextResponse.json({ ok: false, error: 'Falta commerce_id' }, { status: 400 })
     }
 
-    // Verificar que el caller es dueño del comercio (o admin global)
+    // Verificar que el caller es dueño del comercio (o admin global).
+    // Nota schema real: el logo está en `img_url` (no logo_url) y la portada
+    // en `cover_image` (singular legacy) o `cover_images` (array, formato
+    // actual). Pedimos los 3 para barrer ambos casos al limpiar Storage.
     const { data: commerce, error: cErr } = await supabaseAdmin
       .from('commerces')
-      .select('id, owner_id, name, logo_url, cover_url')
+      .select('id, owner_id, name, img_url, cover_image, cover_images')
       .eq('id', commerce_id)
       .single()
     if (cErr || !commerce) {
       console.warn('[delete-commerce] comercio no encontrado:', commerce_id, cErr?.message)
-      return NextResponse.json({ ok: false, error: 'Comercio no encontrado' }, { status: 404 })
+      return NextResponse.json({
+        ok: false,
+        error: 'Comercio no encontrado',
+        detail: cErr?.message || null,
+      }, { status: 404 })
     }
     if (commerce.owner_id !== user.id) {
       const { data: callerProfile } = await supabaseAdmin
@@ -119,10 +120,14 @@ export async function POST(request) {
         .filter('metadata->>commerce_id', 'eq', commerce_id)
     } catch (_) {}
 
-    // Limpiar archivos de Storage (logo + cover).
+    // Limpiar archivos de Storage (logo + portada singular + portadas array).
     try {
+      const urls = []
+      if (commerce.img_url)     urls.push(commerce.img_url)
+      if (commerce.cover_image) urls.push(commerce.cover_image)
+      if (Array.isArray(commerce.cover_images)) urls.push(...commerce.cover_images)
       const paths = []
-      for (const url of [commerce.logo_url, commerce.cover_url]) {
+      for (const url of urls) {
         if (!url || typeof url !== 'string') continue
         const m = url.match(/\/commerce-assets\/(.+)$/)
         if (m) paths.push(m[1])
