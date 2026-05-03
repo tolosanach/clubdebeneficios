@@ -3,11 +3,18 @@
 //
 // Elimina el comercio del user logueado junto con todos sus datos asociados:
 // memberships, visits, redemptions, prizes, promotions, client_promotions,
-// pending_grants, commerce_activity, reviews. La cuenta del usuario NO se
-// borra — el dueño queda como user sin comercio (puede registrar otro o
-// seguir usando la app como cliente).
+// pending_grants, commerce_activity, reviews, notifications relacionadas, y
+// archivos de Storage del comercio. La cuenta del usuario NO se borra — el
+// dueño queda como user sin comercio (puede registrar otro o seguir usando
+// la app como cliente).
 //
 // Auth: solo el dueño del comercio o un admin global. Acción irreversible.
+//
+// Diseño: cada paso de borrado se ejecuta y SI FALLA, se loguea con detalle
+// pero NO se aborta el flujo (excepto el delete final del propio commerce).
+// Devolvemos siempre JSON con `ok` boolean + detalle de errores parciales en
+// `partial_errors` para poder diagnosticar si el botón "no funciona" o si
+// tira algún error de FK específico.
 
 import { NextResponse } from 'next/server'
 import { createClient } from '@supabase/supabase-js'
@@ -19,88 +26,162 @@ const supabaseAdmin = createClient(
   { auth: { persistSession: false } }
 )
 
+// Helper: ejecuta un delete y loguea sin romper el flujo. Devuelve string con
+// el error o null si OK. Lo recolectamos en `errors[]` para devolver al cliente.
+async function safeDelete(label, query) {
+  try {
+    const { error } = await query
+    if (error) {
+      console.error('[delete-commerce] ' + label + ' fallo:', error.message || error)
+      return label + ': ' + (error.message || 'error desconocido')
+    }
+    return null
+  } catch (e) {
+    console.error('[delete-commerce] ' + label + ' excepcion:', e?.message || e)
+    return label + ': ' + (e?.message || 'excepcion')
+  }
+}
+
 export async function POST(request) {
+  const errors = []
   try {
     const supabase = await createSupabaseServer()
     const { data: { user }, error: authError } = await supabase.auth.getUser()
     if (authError || !user) {
-      return NextResponse.json({ error: 'No autenticado' }, { status: 401 })
+      console.warn('[delete-commerce] sin auth', authError?.message)
+      return NextResponse.json({ ok: false, error: 'No autenticado' }, { status: 401 })
     }
 
-    const { commerce_id } = await request.json()
+    let body
+    try { body = await request.json() } catch { body = {} }
+    const commerce_id = body?.commerce_id
     if (!commerce_id) {
-      return NextResponse.json({ error: 'Falta commerce_id' }, { status: 400 })
+      return NextResponse.json({ ok: false, error: 'Falta commerce_id' }, { status: 400 })
     }
 
     // Verificar que el caller es dueño del comercio (o admin global)
-    const { data: commerce } = await supabaseAdmin
+    const { data: commerce, error: cErr } = await supabaseAdmin
       .from('commerces')
-      .select('id, owner_id, name')
+      .select('id, owner_id, name, logo_url, cover_url')
       .eq('id', commerce_id)
       .single()
-    if (!commerce) return NextResponse.json({ error: 'Comercio no encontrado' }, { status: 404 })
+    if (cErr || !commerce) {
+      console.warn('[delete-commerce] comercio no encontrado:', commerce_id, cErr?.message)
+      return NextResponse.json({ ok: false, error: 'Comercio no encontrado' }, { status: 404 })
+    }
     if (commerce.owner_id !== user.id) {
       const { data: callerProfile } = await supabaseAdmin
         .from('profiles').select('role').eq('id', user.id).single()
       if (callerProfile?.role !== 'admin') {
-        return NextResponse.json({ error: 'No autorizado' }, { status: 403 })
+        console.warn('[delete-commerce] no autorizado: caller', user.id, 'owner', commerce.owner_id)
+        return NextResponse.json({ ok: false, error: 'No autorizado' }, { status: 403 })
       }
     }
 
+    console.log('[delete-commerce] iniciando borrado de', commerce.name, commerce_id)
+
     // Borrado en cascada — orden importa: hijos antes que padres.
-    // Las tablas opcionales se envuelven en try/catch por si no existen.
-    // client_promotions cae junto con sus memberships (ON DELETE CASCADE),
-    // pero por las dudas las borramos explícito.
-    const { data: memberships } = await supabaseAdmin
+    const { data: memberships, error: memErr } = await supabaseAdmin
       .from('memberships').select('id').eq('commerce_id', commerce_id)
+    if (memErr) {
+      console.error('[delete-commerce] no pude leer memberships:', memErr.message)
+      errors.push('leer memberships: ' + memErr.message)
+    }
     const membershipIds = (memberships || []).map(m => m.id)
 
     if (membershipIds.length > 0) {
-      await supabaseAdmin.from('client_promotions').delete().in('membership_id', membershipIds)
+      const e = await safeDelete('client_promotions', supabaseAdmin
+        .from('client_promotions').delete().in('membership_id', membershipIds))
+      if (e) errors.push(e)
     }
 
-    await supabaseAdmin.from('redemptions').delete().eq('commerce_id', commerce_id)
-    await supabaseAdmin.from('visits').delete().eq('commerce_id', commerce_id)
-    await supabaseAdmin.from('memberships').delete().eq('commerce_id', commerce_id)
-    await supabaseAdmin.from('prizes').delete().eq('commerce_id', commerce_id)
-    await supabaseAdmin.from('promotions').delete().eq('commerce_id', commerce_id)
+    let e
+    e = await safeDelete('redemptions', supabaseAdmin.from('redemptions').delete().eq('commerce_id', commerce_id)); if (e) errors.push(e)
+    e = await safeDelete('visits',      supabaseAdmin.from('visits').delete().eq('commerce_id', commerce_id));      if (e) errors.push(e)
+    e = await safeDelete('memberships', supabaseAdmin.from('memberships').delete().eq('commerce_id', commerce_id)); if (e) errors.push(e)
+    e = await safeDelete('prizes',      supabaseAdmin.from('prizes').delete().eq('commerce_id', commerce_id));      if (e) errors.push(e)
+    e = await safeDelete('promotions',  supabaseAdmin.from('promotions').delete().eq('commerce_id', commerce_id));  if (e) errors.push(e)
 
     // Tablas que pueden no existir en todos los schemas — best-effort
-    const optionalDeletes = [
-      'pending_grants',
-      'commerce_activity',
-      'reviews',
-    ]
+    const optionalDeletes = ['pending_grants', 'commerce_activity', 'reviews']
     for (const tbl of optionalDeletes) {
       try {
         await supabaseAdmin.from(tbl).delete().eq('commerce_id', commerce_id)
-      } catch (_) {}
+      } catch (_) { /* tabla no existe — ignorar */ }
     }
 
-    // Finalmente, el comercio
-    const { error: delErr } = await supabaseAdmin.from('commerces').delete().eq('id', commerce_id)
-    if (delErr) throw delErr
+    // Limpiar notificaciones huerfanas: las que tienen commerce_id en metadata
+    // (notifs `no_prizes_warning` por ejemplo). No-bloqueante.
+    try {
+      await supabaseAdmin
+        .from('notifications')
+        .delete()
+        .filter('metadata->>commerce_id', 'eq', commerce_id)
+    } catch (_) {}
 
-    // Bajar el role del dueño a 'client' — no tiene más comercio asociado.
-    // Solo si el role era 'commerce_owner' (no tocamos admins). Esto hace
-    // que al recargar la app, el navbar oculte los botones del ojo y "Mi
-    // Negocio", y el scanner deje de mostrar las opciones de owner
-    // (registrar visita, mostrar QR del negocio).
+    // Limpiar archivos de Storage (logo + cover).
+    try {
+      const paths = []
+      for (const url of [commerce.logo_url, commerce.cover_url]) {
+        if (!url || typeof url !== 'string') continue
+        const m = url.match(/\/commerce-assets\/(.+)$/)
+        if (m) paths.push(m[1])
+      }
+      if (paths.length > 0) {
+        await supabaseAdmin.storage.from('commerce-assets').remove(paths)
+      }
+    } catch (e2) {
+      console.warn('[delete-commerce] no pude limpiar Storage:', e2?.message)
+    }
+
+    // Finalmente, el comercio. Este SI es bloqueante.
+    const { error: delErr } = await supabaseAdmin
+      .from('commerces').delete().eq('id', commerce_id)
+    if (delErr) {
+      console.error('[delete-commerce] DELETE final fallo:', delErr.message)
+      return NextResponse.json({
+        ok: false,
+        error: 'No se pudo borrar el comercio: ' + delErr.message,
+        partial_errors: errors,
+      }, { status: 500 })
+    }
+
+    // Bajar el role del dueño a 'client' Y resetear user_intent para que la app
+    // arranque coherente. Si quedaba 'merchant' o 'both', el navbar/intent
+    // serian inconsistentes con la realidad (ya no tiene comercio).
     if (commerce.owner_id === user.id) {
       try {
         const { data: prof } = await supabaseAdmin
-          .from('profiles').select('role').eq('id', user.id).single()
-        if (prof?.role === 'commerce_owner') {
-          await supabaseAdmin.from('profiles').update({ role: 'client' }).eq('id', user.id)
+          .from('profiles')
+          .select('role, user_intent')
+          .eq('id', user.id)
+          .single()
+
+        const updates = {}
+        if (prof?.role === 'commerce_owner') updates.role = 'client'
+        if (prof?.user_intent === 'merchant' || prof?.user_intent === 'both') {
+          updates.user_intent = 'client'
         }
-      } catch (e) {
-        console.error('[delete-commerce] no pude bajar role a client:', e)
+        if (Object.keys(updates).length > 0) {
+          await supabaseAdmin.from('profiles').update(updates).eq('id', user.id)
+        }
+      } catch (e3) {
+        console.error('[delete-commerce] no pude actualizar profile:', e3?.message)
       }
     }
 
-    return NextResponse.json({ ok: true, name: commerce.name })
+    console.log('[delete-commerce] OK —', commerce.name, 'borrado. errores parciales:', errors.length)
+    return NextResponse.json({
+      ok: true,
+      name: commerce.name,
+      partial_errors: errors,
+    })
   } catch (err) {
-    console.error('[delete-commerce]', err)
-    return NextResponse.json({ error: err.message || 'Error interno' }, { status: 500 })
+    console.error('[delete-commerce] excepcion top-level:', err?.message || err)
+    return NextResponse.json({
+      ok: false,
+      error: err?.message || 'Error interno',
+      partial_errors: errors,
+    }, { status: 500 })
   }
 }

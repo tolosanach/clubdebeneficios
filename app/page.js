@@ -12478,7 +12478,12 @@ function CommerceSettingsView({ user, profile, setView, onLogout, onOwnerProfile
   // historial). Después llama al endpoint que hace el cascade delete y
   // redirige al user a home con reload completo.
   async function deleteCommerce() {
-    if (!commerce?.id) return
+    if (!commerce?.id) {
+      console.warn('[deleteCommerce] sin commerce.id, abort')
+      showToast('error', 'No hay un negocio cargado para eliminar')
+      return
+    }
+    console.log('[deleteCommerce] click — commerce:', commerce.id, commerce.name)
     const ok = await showConfirm({
       title: '¿Eliminar tu negocio?',
       message:
@@ -12492,17 +12497,35 @@ function CommerceSettingsView({ user, profile, setView, onLogout, onOwnerProfile
       cancelText: 'Cancelar',
       danger: true,
     })
+    console.log('[deleteCommerce] confirm result:', ok)
     if (!ok) return
     try {
+      console.log('[deleteCommerce] llamando POST /api/delete-commerce...')
       const res = await fetch('/api/delete-commerce', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ commerce_id: commerce.id }),
       })
-      const data = await res.json()
-      if (!data.ok) {
-        showToast('error', data.error || 'No se pudo eliminar el negocio')
+      console.log('[deleteCommerce] response status:', res.status)
+      // Parse defensivo: si el endpoint devuelve algo que no es JSON (ej. HTML
+      // de error de Vercel), no queremos crashear acá. Leemos como texto y
+      // tratamos de parsear, si falla mostramos el texto crudo.
+      const raw = await res.text()
+      let data = null
+      try { data = raw ? JSON.parse(raw) : null } catch (_) {
+        console.error('[deleteCommerce] respuesta no es JSON:', raw.slice(0, 300))
+      }
+      console.log('[deleteCommerce] response body:', data)
+      if (!res.ok || !data?.ok) {
+        const detail = data?.error || raw?.slice(0, 200) || `HTTP ${res.status}`
+        if (data?.partial_errors?.length) {
+          console.error('[deleteCommerce] errores parciales:', data.partial_errors)
+        }
+        showToast('error', `No se pudo eliminar: ${detail}`)
         return
+      }
+      if (data.partial_errors?.length) {
+        console.warn('[deleteCommerce] borrado OK pero con errores parciales:', data.partial_errors)
       }
       showToast('success', 'Tu negocio fue eliminado')
       // Limpieza de flags locales para que la app arranque "fresh" como si
@@ -12526,7 +12549,8 @@ function CommerceSettingsView({ user, profile, setView, onLogout, onOwnerProfile
         window.location.replace('/')
       }
     } catch (e) {
-      showToast('error', e?.message || 'Error de red')
+      console.error('[deleteCommerce] excepcion:', e)
+      showToast('error', `Error de red: ${e?.message || 'desconocido'}`)
     }
   }
 
