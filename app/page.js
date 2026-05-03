@@ -9547,12 +9547,17 @@ function ClientView({ setView, user, profile, onLogout, initialTab }) {
                 <button
                   disabled={canRedeem && kind === 'prize' && redeemRequesting}
                   onClick={async () => {
-                    // Premios canjeables: nuevo flujo pending+WhatsApp.
                     if (kind === 'prize' && canRedeem) {
                       if (!membership || !user) {
-                        setRedeemRequestError('Iniciá sesión para canjear.')
+                        setRedeemRequestError('Inicia sesion para canjear.')
                         return
                       }
+                      // Abrimos un tab vacio SINCRONICO durante el gesto del
+                      // user, para no perder el contexto de interaccion. Si
+                      // el canje se crea OK, redirigimos ese tab al wa.me
+                      // armado. Sino, lo cerramos. Necesario porque Safari
+                      // iOS bloquea window.open llamado tras un await async.
+                      const waWin = (typeof window !== 'undefined') ? window.open('', '_blank') : null
                       setRedeemRequesting(true)
                       setRedeemRequestError('')
                       try {
@@ -9568,15 +9573,38 @@ function ClientView({ setView, user, profile, onLogout, initialTab }) {
                         })
                         const json = await res.json()
                         if (!res.ok || !json.ok) {
+                          if (waWin) { try { waWin.close() } catch {} }
                           setRedeemRequestError(json.error || 'No se pudo solicitar el canje.')
                         } else {
-                          // Cerramos el modal del beneficio y abrimos el modal
-                          // pendiente con el código + WhatsApp.
                           setSelectedBenefit(null)
                           setPendingRedeem(json)
+                          const phoneClean = (json.commerce?.phone || '').replace(/[^\d]/g, '')
+                          if (phoneClean.length >= 8 && waWin) {
+                            const isStars = json.prog_type === 'stars'
+                            const unitTxt = isStars
+                              ? `${json.prize.cost} estrella${json.prize.cost === 1 ? '' : 's'}`
+                              : `${json.prize.cost} puntos`
+                            const cName   = profile?.full_name || profile?.name || 'un cliente'
+                            const message = (
+                              `Hola ${json.commerce.name}! Soy ${cName}.\n\n` +
+                              `Vine a canjear:\n` +
+                              `🎁 ${json.prize.name}\n` +
+                              `${isStars ? '⭐' : '💎'} Costo: ${unitTxt}\n\n` +
+                              `Codigo de canje: *${json.code}*\n\n` +
+                              `Confirma desde tu app cuando me lo entregues. Gracias!`
+                            )
+                            try {
+                              waWin.location.href = `https://wa.me/${phoneClean}?text=${encodeURIComponent(message)}`
+                            } catch {
+                              try { waWin.close() } catch {}
+                            }
+                          } else if (waWin) {
+                            try { waWin.close() } catch {}
+                          }
                         }
                       } catch (err) {
-                        setRedeemRequestError('Error de red. Probá de nuevo.')
+                        if (waWin) { try { waWin.close() } catch {} }
+                        setRedeemRequestError('Error de red. Proba de nuevo.')
                       } finally {
                         setRedeemRequesting(false)
                       }
@@ -19895,14 +19923,41 @@ function CommerceSettingsView({ user, profile, setView, onLogout, onOwnerProfile
 
                 <div>
                   <FieldLabel optional>Facebook</FieldLabel>
-                  <div style={{ position:'relative' }}>
-                    <span style={{ position:'absolute', left:13, top:'50%', transform:'translateY(-50%)', color:C.mist, fontSize:13, pointerEvents:'none', fontFamily:'inherit' }}>facebook.com/</span>
-                    <input
-                      value={(form.facebook||'').replace(/^https?:\/\//i,'').replace(/^(www\.)?facebook\.com\//i,'')}
-                      onChange={e => set('facebook', e.target.value.replace(/^https?:\/\//i,'').replace(/^(www\.)?facebook\.com\//i,''))}
-                      placeholder="tunegocio"
-                      style={{ ...iStyle(false, !(form.facebook||'').trim()), paddingLeft: 105 }} />
-                  </div>
+                  {/* Layout flex para asegurar que el prefijo "facebook.com/"
+                      siempre se vea. Antes era un absolute span con padding-left
+                      pero el override de padding no se respetaba consistentemente
+                      contra el shorthand de iStyle. Aca el container hace de
+                      input visualmente y el <input> real no tiene background
+                      ni borde, solo aporta el cursor + texto del usuario. */}
+                  {(() => {
+                    const isEmpty = !(form.facebook||'').trim()
+                    const cleanVal = (form.facebook||'').replace(/^https?:\/\//i,'').replace(/^(www\.)?facebook\.com\//i,'')
+                    return (
+                      <div style={{
+                        display:'flex', alignItems:'center',
+                        background:'rgba(0,0,0,0.30)',
+                        backdropFilter:'blur(12px)', WebkitBackdropFilter:'blur(12px)',
+                        border:`1px solid ${isEmpty ? 'rgba(189,75,248,0.45)' : C.rim}`,
+                        borderRadius:10, padding:'0 13px',
+                        fontFamily:FI, boxSizing:'border-box',
+                        boxShadow: isEmpty
+                          ? '0 0 0 1px rgba(189,75,248,0.18), 0 0 18px rgba(189,75,248,0.22)'
+                          : 'none',
+                        transition: 'border-color 180ms ease, box-shadow 220ms ease',
+                      }}>
+                        <span style={{ color:C.mist, fontSize:13, fontFamily:FI, flexShrink:0, userSelect:'none' }}>facebook.com/</span>
+                        <input
+                          value={cleanVal}
+                          onChange={e => set('facebook', e.target.value.replace(/^https?:\/\//i,'').replace(/^(www\.)?facebook\.com\//i,''))}
+                          placeholder="tunegocio"
+                          style={{
+                            flex:1, minWidth:0,
+                            background:'transparent', border:'none', outline:'none',
+                            padding:'10px 0', fontSize:13, color:C.pearl, fontFamily:FI,
+                          }} />
+                      </div>
+                    )
+                  })()}
                 </div>
               </>) })}
 
