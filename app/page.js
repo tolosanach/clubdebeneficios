@@ -13973,7 +13973,13 @@ function CommerceSettingsView({ user, profile, setView, onLogout, onOwnerProfile
   // Como `position: fixed`, da igual dónde caiga en el árbol JSX —
   // siempre flota arriba del contenido.
 
-  const merchantTopTabsNav = (
+  // MerchantTopTabs OCULTADO el 2026-05-03: el BottomNavV2 ya cubre la
+  // navegacion principal y los items secundarios viven en MoreSheet, asi
+  // que esta barra horizontal scrolleable es redundante. Para volver a
+  // mostrarla, cambiar `null` por la JSX original (commit 0f52279 tiene
+  // la version completa).
+  const merchantTopTabsNav = null
+  const _merchantTopTabsNav_legacy = (
     <nav style={{
       position: 'fixed',
       top: 62,
@@ -17320,7 +17326,7 @@ function CommerceSettingsView({ user, profile, setView, onLogout, onOwnerProfile
           }}>
             {(() => {
               const TABS = [
-                { id: 'how',      label: 'Sistema de acumulación' },
+                { id: 'how',      label: 'Sistema para sumar' },
                 { id: 'discount', label: 'Descuento próxima compra' },
               ]
               // ── Paleta de la "carpeta" — contraste subido ──
@@ -17467,7 +17473,7 @@ function CommerceSettingsView({ user, profile, setView, onLogout, onOwnerProfile
                 </div>
               </div>
               <div style={{ display:'flex', alignItems:'center', gap:8 }}>
-                <div style={{ fontFamily:FN, fontSize:18, fontWeight:900, color:C.white, letterSpacing:'.08em', textTransform:'uppercase' }}>Sistema de acumulación</div>
+                <div style={{ fontFamily:FN, fontSize:18, fontWeight:900, color:C.white, letterSpacing:'.08em', textTransform:'uppercase' }}>Sistema para sumar</div>
                 <InfoHint align="left" text={
                   'Es el sistema base con el que tus clientes acumulan recompensas al escanear su QR.\n\n' +
                   '• Estrellas: 1 estrella por compra. Simple, ideal para tickets parecidos.\n\n' +
@@ -18098,7 +18104,7 @@ function CommerceSettingsView({ user, profile, setView, onLogout, onOwnerProfile
                   </div>
                   <div style={{ flex: 1, minWidth: 0 }}>
                     <div style={{ fontFamily: FN, fontSize: 13.5, fontWeight: 700, color: '#fff', lineHeight: 1.25 }}>
-                      Ver catálogo de premios
+                      Configurar premios
                     </div>
                     <div style={{ fontSize: 11, color: 'rgba(255,255,255,0.55)', marginTop: 2, lineHeight: 1.4 }}>
                       {activePrizesCount > 0
@@ -23847,7 +23853,8 @@ export default function App() {
               NotificationsBell y SupportChat se siguen montando para que
               sus drawers existan, pero con `hideButton` para que no
               dupliquen botones flotantes. La interacción se delega vía eventos `benefix:open-notifications` y `benefix:open-support`. */}
-          <FloatingActionsTab />
+          {/* FloatingActionsTab OCULTADO el 2026-05-03: redundante con el slot Notificaciones del BottomNavV2. */}
+          {false && <FloatingActionsTab />}
           <NotificationsBell hideButton role={view === 'commerce-settings' ? 'merchant' : 'client'} />
           <SupportChat hideButton role={view === 'commerce-settings' ? 'merchant' : 'client'} />
           {/* Banner para activar push del navegador. */}
