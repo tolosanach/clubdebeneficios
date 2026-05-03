@@ -17879,17 +17879,15 @@ function CommerceSettingsView({ user, profile, setView, onLogout, onOwnerProfile
           </div>
         )}
 
-        {/* ── PREMIOS ── */}
+        {/* ── PREMIOS ──
+            Pantalla rediseñada (may 2026): se sacó el HelpBanner azul de
+            arriba (su info ya vive en la card del estado vacío). Sacó el
+            botón "Volver a previsualización" porque ahora hay un banner
+            sticky violeta arriba (previewBackBanner). El subtítulo solo
+            aparece cuando ya hay >=1 premio cargado — sino sería
+            redundante con la card grande del estado vacío. */}
         {tab === 'premios' && (
           <div>
-            <HelpBanner
-              id="merchant-premios"
-              title="Tu catálogo de premios"
-              body="Lo que tus clientes pueden canjear con sus estrellas o puntos."
-              details={<>
-                Cada premio tiene un <strong style={{ color:'#fff' }}>costo</strong>, <strong style={{ color:'#fff' }}>stock</strong> y se puede <strong style={{ color:'#fff' }}>pausar sin borrarlo</strong>. Tocá <strong style={{ color:'#fff' }}>"Crear premio"</strong> para agregar uno nuevo.
-              </>}
-            />
             {/* Botón "← Volver a recompensas" si el usuario vino de ahí. */}
             {cameFromTab === 'recompensas' && (
               <button onClick={() => setTab('recompensas')}
@@ -17897,39 +17895,37 @@ function CommerceSettingsView({ user, profile, setView, onLogout, onOwnerProfile
                 <ArrowLeft size={13} strokeWidth={2.5} /> Volver a recompensas
               </button>
             )}
-            {/* Botón "← Volver a previsualización pública" si el usuario vino del preview con el ojo. */}
-            {typeof window !== 'undefined' && localStorage.getItem('benefix:cameFromPreview') === '1' && (
-              <button onClick={() => {
-                try { localStorage.removeItem('benefix:cameFromPreview') } catch {}
-                onOwnerProfile?.()
-              }}
-                style={{ display:'inline-flex', alignItems:'center', gap:6, marginBottom:14, marginLeft: cameFromTab === 'recompensas' ? 8 : 0, padding:'6px 12px 6px 8px', background:'rgba(189,75,248,0.10)', border:'1px solid rgba(189,75,248,0.30)', borderRadius:99, color:'#BD4BF8', fontFamily:FN, fontSize:11.5, fontWeight:700, cursor:'pointer' }}>
-                <ArrowLeft size={13} strokeWidth={2.5} /> Volver a previsualización
-              </button>
-            )}
-            {/* Header con contador de límite */}
-            <div style={{ display:'flex', alignItems:'flex-start', justifyContent:'space-between', marginBottom:10, gap:10 }}>
+            {/* Header — título + chip de contador. Compacto, una sola línea
+                de info. El chip muestra "X/Y" usando el color del sistema
+                cuando OK y rojo cuando llegó al tope. InfoHint se mantiene
+                porque el detalle (qué pasa al cambiar de sistema, stock,
+                etc.) sigue siendo útil pero discreto. */}
+            <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', marginBottom: prizes.filter(p => p.active && (p.system_type || (commerce?.prog_type || 'stars')) === (commerce?.prog_type || 'stars')).length > 0 ? 8 : 18, gap:10 }}>
               <div style={{ display:'flex', alignItems:'center', gap:8 }}>
                 <div style={{ fontFamily:FN, fontSize:18, fontWeight:900, color:C.white, letterSpacing:'.08em', textTransform:'uppercase' }}>Premios</div>
                 <InfoHint align="left" text={
                   'Cargá los premios que tus clientes pueden canjear con sus estrellas o puntos acumulados.\n\n' +
-                  'Cada premio tiene un costo (en la unidad de tu sistema activo), un nombre, una imagen opcional y stock opcional.\n\n' +
+                  'Cada premio tiene un costo, nombre, imagen opcional y stock opcional. Pausá sin borrar para esconderlos sin perder el historial.\n\n' +
                   'Si cambiás de sistema (estrellas ↔ puntos), los premios viejos quedan pausados y los volvés a cargar en el sistema nuevo.'
                 } />
               </div>
               {perms.max_rewards !== null && (
                 <div style={{ display:'flex', alignItems:'center', gap:6, background: rewardsAtLimit ? '#f874441a' : `${C.v}11`, border:`1px solid ${rewardsAtLimit ? '#f8744444' : `${C.v}33`}`, borderRadius:8, padding:'4px 10px', flexShrink:0 }}>
                   <span style={{ fontFamily:FN, fontSize:11, fontWeight:700, color: rewardsAtLimit ? '#f87444' : C.v }}>
-                    {activeRewardsCount}/{perms.max_rewards} activos
+                    {activeRewardsCount}/{perms.max_rewards}
                   </span>
                   {rewardsAtLimit && <Lock size={10} color='#f87444' strokeWidth={2.5} />}
                 </div>
               )}
             </div>
-            <div style={{ fontSize:12, color:C.mist, marginBottom: rewardsAtLimit ? 12 : 20 }}>
-              Definí qué puede canjear el cliente con sus {unitLabel}.
-              {perms.max_rewards !== null && <span style={{ color:C.dust }}> Plan FREE: hasta {perms.max_rewards} premios activos.</span>}
-            </div>
+            {/* Subtítulo: solo cuando ya hay >=1 premio activo del sistema
+                actual. Si no hay nada, la card del estado vacío más abajo
+                explica todo, así evitamos el doble copy. */}
+            {prizes.filter(p => p.active && (p.system_type || (commerce?.prog_type || 'stars')) === (commerce?.prog_type || 'stars')).length > 0 && (
+              <div style={{ fontSize:12, color:C.mist, marginBottom: rewardsAtLimit ? 12 : 18 }}>
+                Definí qué puede canjear el cliente con sus {unitLabel}.
+              </div>
+            )}
 
             {/* Banner de límite alcanzado */}
             {rewardsAtLimit && (
@@ -18147,43 +18143,55 @@ function CommerceSettingsView({ user, profile, setView, onLogout, onOwnerProfile
               )
             })()}
 
-            {/* CTA "Crear premio" — abre el wizard modal de 3 pasos.
-                Si el comercio llegó al límite del plan, el CTA se reemplaza
-                por una pill de bloqueo que abre el upgrade modal. */}
-            {rewardsAtLimit ? (
-              <div onClick={() => setUpgradeModal('rewards')} style={{ marginTop:12, border:`1px dashed ${C.v}44`, borderRadius:14, padding:20, cursor:'pointer', opacity:0.65, display:'flex', flexDirection:'column', alignItems:'center', gap:8, background:`${C.v}08` }}>
-                <Lock size={22} color={C.mist} strokeWidth={1.5} />
-                <div style={{ fontFamily:FN, fontSize:13, fontWeight:700, color:C.white }}>+ Crear premio</div>
-                <div style={{ fontSize:11, color:C.mist, textAlign:'center', lineHeight:1.5 }}>
-                  Disponible en <strong style={{ color:PLANS.starter.color }}>STARTER</strong>.<br/>
-                  <span style={{ color:C.v, textDecoration:'underline' }}>Desbloqueá premios ilimitados →</span>
-                </div>
-              </div>
-            ) : (
-              <button
-                onClick={() => { setNewPrize({ name:'', description:'', cost:'', img_url:'', stock:'' }); setEditingPrizeId(null); setOriginalPrize(null); setPrizeError(''); setCreatePrizeOpen(true) }}
-                style={{
-                  width:'100%', marginTop:12,
-                  padding:'15px 18px',
-                  background: G, border:'none',
-                  borderRadius: 14,
-                  color:'#fff', fontFamily: FN, fontSize: 14, fontWeight: 800,
-                  cursor:'pointer',
-                  display:'flex', alignItems:'center', justifyContent:'space-between',
-                  boxShadow:'0 8px 22px -6px rgba(254,80,0,0.50)',
-                }}>
-                <span style={{ display:'flex', alignItems:'center', gap:8 }}>
-                  <Plus size={16} strokeWidth={2.8} color="#fff" />
-                  Crear premio
-                </span>
-                {perms.max_rewards !== null && (
-                  <span style={{ fontSize:11, fontWeight:700, color:'rgba(255,255,255,0.85)' }}>
-                    {activeRewardsCount}/{perms.max_rewards}
-                    {activeRewardsCount === perms.max_rewards - 1 && ' · último'}
+            {/* CTA "Crear premio" al fondo — solo cuando ya hay >=1 premio
+                activo del sistema actual. Si no hay premios, la card del
+                estado vacío más arriba ya provee el CTA "+ Crear mi primer
+                premio" (gradient marca) y "Ver premios sugeridos para mi
+                rubro", así que mostrar este pill al fondo sería redundante.
+                Cuando se llegó al tope del plan, el pill aparece como
+                bloqueado y abre el upgrade modal. */}
+            {(() => {
+              const sysCurrent = commerce?.prog_type || 'stars'
+              const hasPrizesNow = prizes.filter(p => p.active && (p.system_type || sysCurrent) === sysCurrent).length > 0
+              if (!hasPrizesNow) return null
+              if (rewardsAtLimit) {
+                return (
+                  <div onClick={() => setUpgradeModal('rewards')} style={{ marginTop:12, border:`1px dashed ${C.v}44`, borderRadius:14, padding:20, cursor:'pointer', opacity:0.65, display:'flex', flexDirection:'column', alignItems:'center', gap:8, background:`${C.v}08` }}>
+                    <Lock size={22} color={C.mist} strokeWidth={1.5} />
+                    <div style={{ fontFamily:FN, fontSize:13, fontWeight:700, color:C.white }}>+ Crear premio</div>
+                    <div style={{ fontSize:11, color:C.mist, textAlign:'center', lineHeight:1.5 }}>
+                      Disponible en <strong style={{ color:PLANS.starter.color }}>STARTER</strong>.<br/>
+                      <span style={{ color:C.v, textDecoration:'underline' }}>Desbloqueá premios ilimitados →</span>
+                    </div>
+                  </div>
+                )
+              }
+              return (
+                <button
+                  onClick={() => { setNewPrize({ name:'', description:'', cost:'', img_url:'', stock:'' }); setEditingPrizeId(null); setOriginalPrize(null); setPrizeError(''); setCreatePrizeOpen(true) }}
+                  style={{
+                    width:'100%', marginTop:12,
+                    padding:'15px 18px',
+                    background: G, border:'none',
+                    borderRadius: 14,
+                    color:'#fff', fontFamily: FN, fontSize: 14, fontWeight: 800,
+                    cursor:'pointer',
+                    display:'flex', alignItems:'center', justifyContent:'space-between',
+                    boxShadow:'0 8px 22px -6px rgba(254,80,0,0.50)',
+                  }}>
+                  <span style={{ display:'flex', alignItems:'center', gap:8 }}>
+                    <Plus size={16} strokeWidth={2.8} color="#fff" />
+                    Crear premio
                   </span>
-                )}
-              </button>
-            )}
+                  {perms.max_rewards !== null && (
+                    <span style={{ fontSize:11, fontWeight:700, color:'rgba(255,255,255,0.85)' }}>
+                      {activeRewardsCount}/{perms.max_rewards}
+                      {activeRewardsCount === perms.max_rewards - 1 && ' · último'}
+                    </span>
+                  )}
+                </button>
+              )
+            })()}
 
             {/* CTA upgrade STARTER — solo se muestra cuando el plan tiene límite
                 de premios pero aún no se llegó al tope (rewardsAtLimit ya tiene
