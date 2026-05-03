@@ -27,6 +27,7 @@ import InfoHint from '../lib/InfoHint'
 import PlacesAutocomplete from '../lib/PlacesAutocomplete'
 import IntentPickerView from '../lib/IntentPickerView'
 import SuggestedPrizesModal from '../lib/SuggestedPrizesModal'
+import RecompensasTabAnim from '../lib/RecompensasTabAnim'
 import HelpBanner, { resetAllHelpBanners } from '../lib/HelpBanner'
 import JsQrScanner from '../lib/JsQrScanner'
 import { QRCodeSVG } from 'qrcode.react'
@@ -17198,7 +17199,16 @@ function CommerceSettingsView({ user, profile, setView, onLogout, onOwnerProfile
                       flexShrink: 0,
                       boxShadow: active ? '0 2px 8px rgba(189,75,248,0.45)' : 'none',
                     }}>{stepNum}</span>
-                    {t.label}
+                    {/* Animación temática en lugar del título plano. La
+                        tab 'how' muestra estrellas o contador de puntos
+                        según prog_type (preview incluido). La tab
+                        'discount' muestra el cupón de %OFF rotando
+                        entre valores típicos (10/15/20/30). */}
+                    <RecompensasTabAnim
+                      tabId={t.id}
+                      systemType={pendingSystemType ?? commerce?.prog_type ?? 'stars'}
+                      active={active}
+                    />
                   </button>
                 )
               })
