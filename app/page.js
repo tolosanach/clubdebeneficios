@@ -22766,9 +22766,12 @@ export default function App() {
           vistas que NO tienen sub-nav fijo propio. ClientView tiene su
           ClientBottomNav fijo en top:62, así que el banner se renderiza
           INTERNAMENTE dentro de ClientView (después de su paddingTop:58 que
-          ya esquiva el sub-nav). Para todas las otras vistas se renderiza
-          acá en el flow general. */}
-      {user && profile && view !== 'client' && (
+          ya esquiva el sub-nav). En home tampoco va: el HeroV2 ya cumple
+          ese rol (CTAs "Empezar gratis" + "Quiero conocer más") y al no
+          haber spacer del navbar (full-bleed), el banner se solapaba con
+          el logo. El item "¿Tenés un comercio?" del menú de perfil cubre
+          el caso del cliente logueado en home. */}
+      {user && profile && view !== 'client' && view !== 'home' && (
         <div style={{ maxWidth: 1120, margin: '0 auto', padding: '0 15px' }}>
           <BizPromptBanner profile={profile} />
         </div>
@@ -22800,7 +22803,7 @@ export default function App() {
           <EnablePushPrompt />
           {/* Nudges cross-rol temporizados:
               • 10s — si es cliente sin respuesta, sugerir registrar negocio.
-              • 15s — si es dueño, recordar que tiene QR personal de cliente. */}
+              • 15s —si es dueño, recordar que tiene QR personal de cliente. */}
           <CrossRoleNudges profile={profile} setView={navigate} />
         </>
       )}
