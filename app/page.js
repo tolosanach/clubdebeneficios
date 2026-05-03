@@ -15902,6 +15902,22 @@ function CommerceSettingsView({ user, profile, setView, onLogout, onOwnerProfile
           updatingSystem={updatingSystem}
         />
 
+        {/* UpgradeModal montado también dentro del render del intent picker.
+            Sin esto, al hacer click en una card lockedByPlan el handler
+            setea upgradeModal pero el modal solo está montado en el render
+            principal (donde tab !== 'dashboard'), entonces nunca aparece
+            visualmente. El UpgradeModal global de línea ~16210 sigue ahí
+            para los casos donde el intent picker NO está activo. */}
+        {upgradeModal && (
+          <UpgradeModal
+            feature={upgradeModal}
+            onUpgrade={async (plan) => { await upgradePlan(plan); setUpgradeModal(null) }}
+            onViewPlans={() => { setIntentPickerActive(false); setTab('planes'); setUpgradeModal(null) }}
+            onContactSupport={(plan) => { contactSupportForUpgrade(plan); setUpgradeModal(null) }}
+            onClose={() => setUpgradeModal(null)}
+          />
+        )}
+
       </div>
       </div>
     )
