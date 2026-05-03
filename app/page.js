@@ -28,6 +28,11 @@ import PlacesAutocomplete from '../lib/PlacesAutocomplete'
 import IntentPickerView from '../lib/IntentPickerView'
 import SuggestedPrizesModal from '../lib/SuggestedPrizesModal'
 import RecompensasTabAnim from '../lib/RecompensasTabAnim'
+import BottomNavV2 from '../lib/BottomNavV2'
+import ContextSwitchPill from '../lib/ContextSwitchPill'
+import ClientQRSheet from '../lib/ClientQRSheet'
+import MerchantQRSheet from '../lib/MerchantQRSheet'
+import MoreSheet from '../lib/MoreSheet'
 import HelpBanner, { resetAllHelpBanners } from '../lib/HelpBanner'
 import JsQrScanner from '../lib/JsQrScanner'
 import { QRCodeSVG } from 'qrcode.react'
@@ -2831,7 +2836,7 @@ function FullscreenLoader({ message }) {
 }
 
 // ─── NAVBAR ───────────────────────────────────────────────────────────────────
-function Navbar({ setView, cityName, user, profile, onLogin, onLogout, currentView, clientTab, onOwnerProfile }) {
+function Navbar({ setView, cityName, user, profile, onLogin, onLogout, currentView, clientTab, onOwnerProfile, activeContext, onContextChange, showContextSwitch }) {
   const role = profile?.role || 'client'
   // userIntent — capturado en el step de Intent post-OAuth. Si el user
   // explícitamente eligió 'client', escondemos los botones del kit dueño
@@ -3119,6 +3124,25 @@ function Navbar({ setView, cityName, user, profile, onLogin, onLogout, currentVi
   return (
     <nav className="navbar-glass" style={{ ...NAV, ...NAV_TRANSITION, ...NAV_SCROLL_STATE, padding:'0 16px' }}>
       <div style={{ cursor:'pointer' }} onClick={() => setView('home')}><Logo /></div>
+      {/* LEGACY NAVBAR — reemplazado por BottomNavV2 el 2026-05-03.
+          Borrar despues de validar 1 sprint. Bloque original con kit
+          dueno (Eye + Store + Scan + User + LogOut) movido al final del
+          archivo en un comentario JSX si hace falta volver. Por ahora
+          dejamos solo la ContextSwitchPill aca; el resto de la chrome
+          de cuenta vive en el MoreSheet del BottomNavV2. */}
+      {showContextSwitch ? (
+        <ContextSwitchPill
+          activeContext={activeContext}
+          onChange={onContextChange}
+          visible={true}
+        />
+      ) : (
+        <button title="Salir" onClick={onLogout}
+          style={{ display: user ? 'inline-flex' : 'none', alignItems:'center', justifyContent:'center', width:34, height:34, borderRadius:9, background:'transparent', border:'none', cursor:'pointer' }}>
+          <LogOut size={16} color="rgba(255,255,255,0.70)" strokeWidth={2} />
+        </button>
+      )}
+      {/*
       <div className="liquid-glass-strong" style={{ position:'relative', display:'flex', gap:3, alignItems:'center', borderRadius:12, padding:4, overflow:'hidden' }}>
 
         {role === 'admin' && (<>
@@ -3202,6 +3226,7 @@ function Navbar({ setView, cityName, user, profile, onLogin, onLogout, currentVi
         </>)}
 
       </div>
+      */}
     </nav>
   )
 }
@@ -23154,6 +23179,23 @@ export default function App() {
   // y acá lo guardamos para que el Navbar pueda saber cuál tab está activa
   // y coordinar el highlight del botón persona vs los tabs del nav inferior.
   const [clientTab, setClientTab] = useState('mis clubs')
+  // Tab activa del CommerceSettingsView para que BottomNavV2 pueda iluminar
+  // el slot correcto. Lo dispatcha CommerceSettingsView via 'benefix:commerce-tab-changed'.
+  const [merchantTab, setMerchantTab] = useState('dashboard')
+  // activeContext: 'client' | 'merchant'. Determina que slots muestra el
+  // BottomNavV2 y que QR sheet abre el boton central. Se inicializa en
+  // 'client' por defecto y se ajusta cuando carga el profile via useEffect.
+  const [activeContext, setActiveContext] = useState('client')
+  // hasMemberships: para decidir si mostrar el ContextSwitchPill cuando el
+  // user es merchant pero ademas es cliente de otros clubes.
+  const [hasMemberships, setHasMemberships] = useState(false)
+  // unreadNotifsCount: lo dispatcha NotificationsBell via 'benefix:notifications-count'.
+  // Lo usa BottomNavV2 para mostrar el dot rojo en el slot de Notificaciones.
+  const [unreadNotifsCount, setUnreadNotifsCount] = useState(0)
+  // Sheets del nuevo bottom-nav v2.
+  const [clientQRSheetOpen, setClientQRSheetOpen]     = useState(false)
+  const [merchantQRSheetOpen, setMerchantQRSheetOpen] = useState(false)
+  const [moreSheetOpen, setMoreSheetOpen]             = useState(false)
   const [cities,        setCities]        = useState([])
   const [citiesLoading, setCitiesLoading] = useState(true)
   const [showOnboarding, setShowOnboarding] = useState(false)
@@ -23433,6 +23475,103 @@ export default function App() {
     return () => window.removeEventListener('benefix:client-tab-changed', onClientTabChanged)
   }, [])
 
+  // CommerceSettingsView nos avisa cada vez que cambia su tab — eso permite
+  // que BottomNavV2 marque el slot correcto activo (Inicio / Beneficios / etc).
+  useEffect(() => {
+    function onMerchantTabChanged(e) {
+      const next = e.detail?.tab
+      if (next) setMerchantTab(next)
+    }
+    window.addEventListener('benefix:commerce-tab-changed', onMerchantTabChanged)
+    return () => window.removeEventListener('benefix:commerce-tab-changed', onMerchantTabChanged)
+  }, [])
+
+  // Escucha el contador de no-leidas que dispatcha NotificationsBell.
+  useEffect(() => {
+    function onCount(e) {
+      const c = Number(e.detail?.count) || 0
+      setUnreadNotifsCount(c)
+    }
+    window.addEventListener('benefix:notifications-count', onCount)
+    return () => window.removeEventListener('benefix:notifications-count', onCount)
+  }, [])
+
+  // Carga el conteo de memberships del user para decidir si mostrar el
+  // ContextSwitchPill cuando es 'merchant' pero ademas es cliente de otros
+  // clubes. Una sola query liviana al login. Si falla, asumimos 0.
+  useEffect(() => {
+    if (!user?.id) { setHasMemberships(false); return }
+    let cancelled = false
+    const sb = getSupabase()
+    sb.from('memberships').select('id', { count: 'exact', head: true }).eq('user_id', user.id)
+      .then(({ count }) => { if (!cancelled) setHasMemberships((count || 0) > 0) })
+      .catch(() => { if (!cancelled) setHasMemberships(false) })
+    return () => { cancelled = true }
+  }, [user?.id])
+
+  // Resuelve activeContext inicial cuando carga el profile. Reglas:
+  //   - user_intent='client' o sin comercios -> 'client'
+  //   - user_intent='merchant' o tiene comercios y user_intent NULL -> 'merchant'
+  //   - user_intent='both' -> recordar ultimo estado en localStorage,
+  //     fallback 'merchant' si tiene comercio.
+  useEffect(() => {
+    if (typeof window === 'undefined' || !profile) return
+    const intent = profile.user_intent
+    const hasCommerce = profile.role === 'commerce_owner'
+    let next = 'client'
+    if (intent === 'both') {
+      const stored = (() => { try { return localStorage.getItem('benefix:active-context') } catch { return null } })()
+      if (stored === 'client' || stored === 'merchant') next = stored
+      else next = hasCommerce ? 'merchant' : 'client'
+    } else if (intent === 'client') {
+      next = 'client'
+    } else if (intent === 'merchant') {
+      next = 'merchant'
+    } else {
+      next = hasCommerce ? 'merchant' : 'client'
+    }
+    setActiveContext(next)
+  }, [profile?.user_intent, profile?.role])
+
+  // Handler para cambiar contexto desde el ContextSwitchPill. Persiste en
+  // localStorage, dispara evento custom y navega a la vista raiz del rol.
+  function handleContextChange(next) {
+    setActiveContext(next)
+    try { localStorage.setItem('benefix:active-context', next) } catch {}
+    try { window.dispatchEvent(new CustomEvent('benefix:context-changed', { detail: { context: next } })) } catch {}
+    if (next === 'client') {
+      window.dispatchEvent(new CustomEvent('benefix:navigate', { detail: { view: 'client', tab: 'mis clubs' } }))
+    } else {
+      window.dispatchEvent(new CustomEvent('benefix:navigate', { detail: { view: 'commerce-settings', tab: 'dashboard' } }))
+    }
+  }
+
+  // Handler del boton QR central del BottomNavV2. Abre el sheet correspondiente
+  // segun el contexto activo.
+  function handleQRTap() {
+    if (activeContext === 'merchant') setMerchantQRSheetOpen(true)
+    else                              setClientQRSheetOpen(true)
+  }
+
+  // Handler de navegacion del BottomNavV2 y MoreSheet. Delega al sistema
+  // existente via 'benefix:navigate' que ya sabe propagar el tab al destino.
+  function handleNavGo(v, t) {
+    if (!v) return
+    window.dispatchEvent(new CustomEvent('benefix:navigate', { detail: { view: v, tab: t || null } }))
+  }
+
+  // Reglas de visibilidad del ContextSwitchPill:
+  //   - user_intent='both' siempre
+  //   - user_intent='merchant' Y memberships > 0 (cliente de otros clubes)
+  //   - en cualquier otro caso, no se monta
+  const shouldShowContextSwitch = (() => {
+    const intent = profile?.user_intent
+    if (!user || !profile) return false
+    if (intent === 'both') return true
+    if (intent === 'merchant' && hasMemberships) return true
+    return false
+  })()
+
   // Consume el deep-link una sola vez. Después del primer render (donde ya
   // se aplicó view + initialTab a los componentes destino), nullificamos
   // las propiedades de _DEEP_LINK para que futuros mounts de ClientView /
@@ -23635,7 +23774,20 @@ export default function App() {
           }}
         />
       )}
-      <Navbar setView={navigate} cityName={currentCity?.name} user={user} profile={profile} onLogin={handleLogin} onLogout={handleLogout} currentView={view} clientTab={clientTab} onOwnerProfile={handleOwnerProfile} />
+      <Navbar
+        setView={navigate}
+        cityName={currentCity?.name}
+        user={user}
+        profile={profile}
+        onLogin={handleLogin}
+        onLogout={handleLogout}
+        currentView={view}
+        clientTab={clientTab}
+        onOwnerProfile={handleOwnerProfile}
+        activeContext={activeContext}
+        onContextChange={handleContextChange}
+        showContextSwitch={shouldShowContextSwitch}
+      />
       {/* Spacer del navbar — solo cuando NO es home. En home el splash
           arranca pegado al navbar para que se sienta full-bleed (la
           sección tiene su propio padding-top interno para que el
@@ -23683,6 +23835,49 @@ export default function App() {
               • 10s — si es cliente sin respuesta, sugerir registrar negocio.
               • 15s —si es dueño, recordar que tiene QR personal de cliente. */}
           <CrossRoleNudges profile={profile} setView={navigate} />
+          {/* BottomNavV2 — nav contextual estilo Mercado Pago. Reemplaza
+              el role-aware kit del navbar viejo. El boton QR central abre
+              ClientQRSheet (modo cliente) o MerchantQRSheet (modo merchant).
+              El slot Mas (solo merchant) abre MoreSheet con todos los
+              accesos secundarios. */}
+          <BottomNavV2
+            activeContext={activeContext}
+            currentView={view}
+            currentTab={view === 'commerce-settings' ? merchantTab : (view === 'client' ? clientTab : '')}
+            onNavigate={handleNavGo}
+            unreadCount={unreadNotifsCount}
+            onQRTap={handleQRTap}
+            onMoreTap={() => setMoreSheetOpen(true)}
+          />
+          <ClientQRSheet
+            open={clientQRSheetOpen}
+            onClose={() => setClientQRSheetOpen(false)}
+            profile={profile}
+          />
+          <MerchantQRSheet
+            open={merchantQRSheetOpen}
+            onClose={() => setMerchantQRSheetOpen(false)}
+            commerceName={commerce?.name}
+            onShowCommerceQR={() => {
+              if (view !== 'scanner') navigate('scanner')
+              setTimeout(() => {
+                window.dispatchEvent(new CustomEvent('benefix:scan-mode', { detail: { mode: 'show-business-qr' } }))
+              }, 80)
+            }}
+            onScanClient={() => {
+              if (view !== 'scanner') navigate('scanner')
+              setTimeout(() => {
+                window.dispatchEvent(new CustomEvent('benefix:scan-mode', { detail: { mode: 'register-visit' } }))
+              }, 80)
+            }}
+          />
+          <MoreSheet
+            open={moreSheetOpen}
+            onClose={() => setMoreSheetOpen(false)}
+            onNavigate={handleNavGo}
+            onLogout={handleLogout}
+            profile={profile}
+          />
         </>
       )}
       <DevToolbar user={user} profile={profile} onRoleChange={() => loadProfile(user.id)} />
