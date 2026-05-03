@@ -2833,13 +2833,6 @@ function Navbar({ setView, cityName, user, profile, onLogin, onLogout, currentVi
   // - 'merchant'/'both' → mostrar botones (sin importar role).
   const userIntent     = profile?.user_intent || null
   const showOwnerKit   = role === 'commerce_owner' && userIntent !== 'client'
-  // DEBUG temporal para diagnosticar por qué no aparecen Eye+Store después del
-  // signup. Si el log muestra role='commerce_owner' pero showOwnerKit=false,
-  // el bug está en el cálculo. Si role='client', el frontend no recargó el
-  // profile (cache del browser o SW). Quitar cuando esté resuelto.
-  if (typeof window !== 'undefined') {
-    console.log('[Navbar] role:', role, 'userIntent:', userIntent, 'showOwnerKit:', showOwnerKit, 'profile:', profile)
-  }
 
   // Modal "¿Cómo querés entrar?" — aparece al tocar Entrar cuando no hay user.
   // Pregunta si entra como cliente o como negocio. La elección se persiste en
