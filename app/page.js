@@ -11730,6 +11730,16 @@ function CommerceSettingsView({ user, profile, setView, onLogout, onOwnerProfile
     setCameFromTab(source)
     _setTabRaw(next)
   }, [tab])
+
+  // Cada vez que el tab cambia, le avisamos al AppRoot para que BottomNavV2
+  // pueda sincronizar el slot activo (Inicio / Beneficios / etc). Igual al
+  // patron de ClientView con 'benefix:client-tab-changed'. Sin esto, el
+  // BottomNavV2 nunca cambia de color al navegar entre tabs del comercio.
+  useEffect(() => {
+    if (typeof window === 'undefined') return
+    window.dispatchEvent(new CustomEvent('benefix:commerce-tab-changed', { detail: { tab } }))
+  }, [tab])
+
   const [form, setForm]                   = useState(null)
   const [promoTeaser, setPromoTeaser]     = useState(null)  // 'discount' | 'double' | null — modal marketinero del tab Promociones bloqueado
   const [isEditingSystem, setIsEditingSystem] = useState(false)
