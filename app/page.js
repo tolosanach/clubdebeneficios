@@ -22876,6 +22876,7 @@ export default function App() {
       {signupModal && user && (
         <MinimalSignupModal
           user={user}
+          profile={profile}
           mode={signupModal.mode}
           // Permitimos cerrar SIN guardar solo cuando el modal vino de un
           // open-signup cross-rol manual (el user ya tiene cuenta funcionando).
