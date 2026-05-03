@@ -13161,9 +13161,26 @@ function CommerceSettingsView({ user, profile, setView, onLogout, onOwnerProfile
   }
 
   async function togglePromo(promo) {
+    const wasInactive = !promo.active
     await supabase.from('promotions').update({ active: !promo.active }).eq('id', promo.id)
     setPromos(p => p.map(x => x.id === promo.id ? { ...x, active: !x.active } : x))
     logActivity('promo_toggled', `Promo "${promo.description}" ${promo.active ? 'desactivada' : 'activada'}`)
+    // Si la promo paso de inactiva a activa, fan-out a los subscribers
+    // del club para que les aparezca la notif in-app (modal centrado).
+    // Lo hacemos solo en el toggle inactiva->activa para no spamear cada
+    // vez que el dueno la pausa/reactiva sin razon.
+    if (wasInactive && commerce?.id) {
+      fetch('/api/notify-club-update', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          commerce_id: commerce.id,
+          kind:        'promo',
+          name:        promo.description,
+          value:       promo.value,
+        }),
+      }).catch(() => {})
+    }
   }
 
   // Actualiza descripción y/o vencimiento de una promo activa.
