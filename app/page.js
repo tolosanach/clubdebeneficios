@@ -14631,6 +14631,61 @@ function CommerceSettingsView({ user, profile, setView, onLogout, onOwnerProfile
             Configurá tu negocio
           </h1>
 
+          {/* ── Banner "Negocio activo" ──
+              Identifica de un vistazo cuál es el comercio que el dueño
+              está editando ahora. Útil sobre todo si maneja varios. Va
+              entre el H1 y el container de Estado actual + Casi listo.
+              Visual: pill verde con LED + label "NEGOCIO ACTIVO" + nombre
+              del comercio. Si hay logo, se muestra como avatar a la izq. */}
+          {commerce?.name && (
+            <div style={{
+              display: 'flex', alignItems: 'center', gap: 12,
+              padding: '10px 14px',
+              marginBottom: 12,
+              background: 'linear-gradient(135deg, rgba(34,230,152,0.10), rgba(21,128,61,0.06))',
+              border: '1px solid rgba(34,230,152,0.32)',
+              borderRadius: 14,
+            }}>
+              <div style={{
+                width: 36, height: 36, borderRadius: 10,
+                background: commerce.img_url ? 'transparent' : 'rgba(34,230,152,0.18)',
+                border: commerce.img_url ? '1px solid rgba(255,255,255,0.16)' : '1px solid rgba(34,230,152,0.45)',
+                display: 'flex', alignItems: 'center', justifyContent: 'center',
+                flexShrink: 0,
+                overflow: 'hidden',
+              }}>
+                {commerce.img_url ? (
+                  <img src={commerce.img_url} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }} />
+                ) : (
+                  <Store size={17} color="#22E698" strokeWidth={2.2} />
+                )}
+              </div>
+              <div style={{ flex: 1, minWidth: 0 }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 2 }}>
+                  <span style={{
+                    width: 6, height: 6, borderRadius: '50%',
+                    background: '#22E698',
+                    boxShadow: '0 0 6px rgba(34,230,152,0.85)',
+                    flexShrink: 0,
+                  }} />
+                  <span style={{
+                    fontFamily: FN, fontSize: 9.5, fontWeight: 800,
+                    color: '#22E698', letterSpacing: '.10em', textTransform: 'uppercase',
+                  }}>
+                    Negocio activo
+                  </span>
+                </div>
+                <div style={{
+                  fontFamily: FN, fontSize: 14, fontWeight: 700, color: '#fff',
+                  whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis',
+                  letterSpacing: '-.005em', lineHeight: 1.2,
+                }}>
+                  {commerce.name}
+                </div>
+              </div>
+            </div>
+          )}
+
           {/* ── Container EXTERNO unificado ──
               Agrupa los dos sub-bloques ("Estado actual" + chips, y
               "Casi listo!" + barra de progreso) bajo una sola card de
