@@ -9,6 +9,13 @@
 //   • mode='merchant'— además crea la fila en `commerces` con rubro(s),
 //                      ciudad y prog_type elegido. Setea profile.role.
 //
+// Auto-promotion de user_intent al crear comercio: si el user habia elegido
+// 'client' en el IntentPicker (post-OAuth) y ahora abre negocio, pasa a 'both'.
+// Si era NULL, pasa a 'merchant'. Sino, no se toca. intent_prompt_shown=true
+// para que el picker no vuelva a aparecer. Esto sincroniza el navbar gate
+// (showOwnerKit = role==='commerce_owner' && userIntent !== 'client') con la
+// realidad post-signup.
+//
 // Diseño: low friction. NO subimos logo, NO pedimos descripción, NO armamos
 // sistema de premios — todo eso queda para que el comerciante lo cargue
 // después en el panel "Mi negocio". El objetivo es que en menos de 30 segundos
@@ -28,6 +35,16 @@ function makeSlug(str) {
   return str.toLowerCase()
     .normalize('NFD').replace(/[̀-ͯ]/g, '')
     .replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '').slice(0, 50)
+}
+
+// Decide el nuevo user_intent al crear/asociar un comercio.
+//   - NULL    -> 'merchant' (no habia decidido)
+//   - 'client'-> 'both'     (cliente que ahora abre negocio)
+//   - 'merchant'/'both' -> sin cambio
+function promoteIntent(currentIntent) {
+  if (!currentIntent) return 'merchant'
+  if (currentIntent === 'client') return 'both'
+  return currentIntent
 }
 
 export async function POST(request) {
@@ -100,6 +117,12 @@ export async function POST(request) {
 
     const safeProgType = ['stars', 'points'].includes(prog_type) ? prog_type : 'stars'
 
+    // Leer user_intent actual antes de cualquier update para decidir la
+    // promotion correcta (sin riesgo de leer despues de haber escrito).
+    const { data: profBefore } = await supabaseAdmin
+      .from('profiles').select('user_intent').eq('id', user.id).single()
+    const newIntent = promoteIntent(profBefore?.user_intent)
+
     // ¿Ya tiene comercio? — chequeo idempotente. Si ya existe, devolvemos
     // ok=true con el commerce_id existente para que el frontend no se rompa
     // si el modal se reenvía por accidente.
@@ -115,7 +138,9 @@ export async function POST(request) {
       await supabaseAdmin.from('profiles').update({
         ...(name?.trim() && { name: name.trim() }),
         ...(phone?.trim() && { phone: phone.trim() }),
-        role: 'commerce_owner',
+        role:                'commerce_owner',
+        user_intent:         newIntent,
+        intent_prompt_shown: true,
         onboarding_completed: true,
       }).eq('id', user.id)
       return NextResponse.json({ ok: true, mode: 'merchant', commerce_id: existing.id, slug: existing.slug })
@@ -179,7 +204,8 @@ export async function POST(request) {
       return NextResponse.json({ error: commerceError.message }, { status: 500 })
     }
 
-    // Profiles update — nombre/phone si vinieron, role + onboarding_completed.
+    // Profiles update — nombre/phone si vinieron, role + onboarding_completed
+    // + user_intent (auto-promotion via promoteIntent()).
     await supabaseAdmin.from('profiles').update({
       ...(name?.trim() && { name: name.trim() }),
       ...(phone?.trim() && { phone: phone.trim() }),
@@ -187,6 +213,8 @@ export async function POST(request) {
       province:             province.trim() || null,
       city:                 city.trim()     || null,
       role:                 'commerce_owner',
+      user_intent:          newIntent,
+      intent_prompt_shown:  true,
       onboarding_completed: true,
     }).eq('id', user.id)
 
