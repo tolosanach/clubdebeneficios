@@ -1369,21 +1369,108 @@ function CoverLightboxGallery({ covers, startIdx, onClose, scrollRef }) {
 // horizontal manual (swipe en mobile, drag/scroll en desktop). Cuando el
 // user interactúa, pausamos la auto-rotación temporalmente.
 function LimitedTimeBenefitsSlider({ promos, unitLabel, editMode = false, onEdit }) {
-  // Slider con MARQUEE continuo (no discreto). El track avanza con CSS
-  // animation linear, las cards se duplican para loop seamless. El user
-  // puede poner el dedo encima (touch) o el mouse (hover) para pausar la
-  // animacion y leer una card sin que se le escape. Sin idx, swipe ni
-  // dots: el flujo es continuo y no hay "posicion actual" discreta.
+  // Slider con auto-scroll CONTINUO LENTO + drag manual con el dedo. El
+  // track avanza solo via rAF, pero si el user pone el dedo y arrastra,
+  // pausamos el auto-scroll y movemos el track segun el delta del finger.
+  // Al soltar, el auto-scroll vuelve desde la posicion actual sin saltos.
+  //
+  // El offset vive en un ref (no state) para evitar 60 re-renders por
+  // segundo — lo aplicamos al DOM directo via trackRef.style.transform.
+  // Las cards estan duplicadas ([...list, ...list]) para que cuando el
+  // offset llegue al 50% del track, podamos saltar a 0% sin que se vea
+  // (el contenido ahi es identico).
   const list  = promos || []
   const count = list.length
-  const [paused, setPaused] = useState(false)
-
-  // Track duplicado: [...list, ...list] para loop seamless. La animacion
-  // va de 0% a -50% (= scrollear el primer set fuera de viewport, que
-  // queda exactamente igual al segundo set entrante).
   const dupList = count > 0 ? [...list, ...list] : []
-  // Velocidad: 12s por card. Con count=2 cards => 24s ciclo completo.
-  const animDuration = `${Math.max(8, count * 12)}s`
+
+  const trackRef     = useRef(null)
+  const containerRef = useRef(null)
+  const offsetRef    = useRef(0)        // 0..50 (% del track duplicado)
+  const draggingRef  = useRef(false)
+  const dragStartXRef     = useRef(0)
+  const dragStartYRef     = useRef(0)
+  const dragStartOffRef   = useRef(0)
+  const dragHorizontalRef = useRef(false) // se activa cuando el delta horizontal supera al vertical
+
+  // Auto-scroll loop via rAF. Velocidad: 12s por card. Movimiento
+  // expresado como % por ms del track duplicado (50% = 1 ciclo de cards).
+  useEffect(() => {
+    if (count < 2) return
+    const PCT_PER_MS = 50 / (count * 12 * 1000)
+    let last = performance.now()
+    let rafId
+    const tick = (now) => {
+      const dt = now - last
+      last = now
+      if (!draggingRef.current) {
+        offsetRef.current += PCT_PER_MS * dt
+        if (offsetRef.current >= 50) offsetRef.current -= 50
+        if (offsetRef.current < 0)  offsetRef.current += 50
+      }
+      if (trackRef.current) {
+        trackRef.current.style.transform = `translateX(${-offsetRef.current}%)`
+      }
+      rafId = requestAnimationFrame(tick)
+    }
+    rafId = requestAnimationFrame(tick)
+    return () => cancelAnimationFrame(rafId)
+  }, [count])
+
+  // Drag handlers compartidos entre touch y mouse. dx en pixeles →
+  // delta de offset del track, escalado por el ancho del container:
+  // mover el dedo `containerWidth` pixeles equivale a 50% del track
+  // (= 1 set completo de cards originales).
+  const startDrag = (clientX, clientY) => {
+    draggingRef.current      = true
+    dragStartXRef.current    = clientX
+    dragStartYRef.current    = clientY
+    dragStartOffRef.current  = offsetRef.current
+    dragHorizontalRef.current = false
+  }
+  const moveDrag = (clientX, clientY) => {
+    if (!draggingRef.current) return
+    const dx = clientX - dragStartXRef.current
+    const dy = clientY - dragStartYRef.current
+    // Lock direccional: hasta no decidir, dejamos pasar el scroll vertical.
+    // Una vez que abs(dx) > abs(dy) + 4, lockeamos en horizontal y manejamos
+    // el drag. Si nunca lockeamos y el user soltar, no hicimos nada.
+    if (!dragHorizontalRef.current) {
+      if (Math.abs(dy) > Math.abs(dx) + 4) {
+        // Es scroll vertical → abortamos drag
+        draggingRef.current = false
+        return
+      }
+      if (Math.abs(dx) > Math.abs(dy) + 4) {
+        dragHorizontalRef.current = true
+      } else {
+        return
+      }
+    }
+    const containerW = containerRef.current?.offsetWidth || 1
+    // Track duplicado tiene 200% de ancho del container, asi que recorrer
+    // containerW pixeles = 50% del track (= 1 set de cards).
+    const dxPct = (dx / containerW) * 50
+    let next = dragStartOffRef.current - dxPct
+    while (next < 0)   next += 50
+    while (next >= 50) next -= 50
+    offsetRef.current = next
+    if (trackRef.current) {
+      trackRef.current.style.transform = `translateX(${-next}%)`
+    }
+  }
+  const endDrag = () => {
+    draggingRef.current = false
+    dragHorizontalRef.current = false
+  }
+
+  const onTouchStart = (e) => startDrag(e.touches[0].clientX, e.touches[0].clientY)
+  const onTouchMove  = (e) => moveDrag(e.touches[0].clientX, e.touches[0].clientY)
+  const onTouchEnd   = () => endDrag()
+
+  const onMouseDown  = (e) => startDrag(e.clientX, e.clientY)
+  const onMouseMove  = (e) => moveDrag(e.clientX, e.clientY)
+  const onMouseUp    = () => endDrag()
+  const onMouseLeave = () => endDrag()
 
   // Sin promos activas: en modo público no se muestra nada. En editMode
   // sí mostramos un container placeholder con header + lápiz para que el
@@ -1525,36 +1612,37 @@ function LimitedTimeBenefitsSlider({ promos, unitLabel, editMode = false, onEdit
         </div>
       </div>
 
-      {/* Track con MARQUEE continuo. El padre tiene overflow:hidden
-          y el track interior corre la animacion CSS "benefits-marquee".
-          Pause-on-hover/touch: el user pone el dedo o el mouse y el
-          animationPlayState pasa a paused para que pueda leer la card. */}
-      <style>{`
-        @keyframes benefits-marquee {
-          from { transform: translateX(0%); }
-          to   { transform: translateX(-50%); }
-        }
-      `}</style>
+      {/* Track con auto-scroll continuo + drag manual. rAF en el
+          parent de este div maneja la animacion via trackRef.style.
+          touch-action: pan-y deja al browser scrollear vertical, pero
+          el horizontal lo manejamos nosotros. */}
       <div
-        onMouseEnter={() => setPaused(true)}
-        onMouseLeave={() => setPaused(false)}
-        onTouchStart={() => setPaused(true)}
-        onTouchEnd={() => setPaused(false)}
-        onTouchCancel={() => setPaused(false)}
+        ref={containerRef}
+        onTouchStart={onTouchStart}
+        onTouchMove={onTouchMove}
+        onTouchEnd={onTouchEnd}
+        onTouchCancel={onTouchEnd}
+        onMouseDown={onMouseDown}
+        onMouseMove={onMouseMove}
+        onMouseUp={onMouseUp}
+        onMouseLeave={onMouseLeave}
         style={{
           position: 'relative',
           overflow: 'hidden',
           borderRadius: 20,
+          touchAction: 'pan-y',
+          cursor: count > 1 ? 'grab' : 'default',
+          userSelect: 'none',
         }}
       >
-        <div style={{
-          display: 'flex',
-          flexWrap: 'nowrap',
-          width: `${count * 200}%`,
-          animation: count > 1 ? `benefits-marquee ${animDuration} linear infinite` : 'none',
-          animationPlayState: paused ? 'paused' : 'running',
-          willChange: 'transform',
-        }}>
+        <div
+          ref={trackRef}
+          style={{
+            display: 'flex',
+            flexWrap: 'nowrap',
+            width: `${count * 200}%`,
+            willChange: 'transform',
+          }}>
         {dupList.map((promo, i) => {
             const isDouble   = promo.type === 'double_points'
             const isDiscount = promo.type === 'discount_next'
