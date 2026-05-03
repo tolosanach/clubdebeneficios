@@ -15527,6 +15527,55 @@ function CommerceSettingsView({ user, profile, setView, onLogout, onOwnerProfile
                     }} />
                   )}
 
+                  {/* ── Overlay de "card bloqueada por plan" ──
+                      Combina 3 capas en un solo wrapper aria-hidden con
+                      pointerEvents:none para no bloquear el click sobre
+                      la card (que abre el upgrade modal):
+                        1) Oscurecer levemente — background rgba para
+                           atenuar visualmente el contenido sin taparlo.
+                        2) Línea diagonal sutil — linear-gradient con una
+                           banda angosta a 135deg que sugiere "candado",
+                           inspiración en patrones de "no-entry"/security
+                           sin ser literal.
+                        3) Candado grande al centro — Lock con opacity
+                           moderada, color del plan (lockColor) para que
+                           el user identifique de un vistazo qué plan
+                           desbloquea esta función. El contenido (título,
+                           descripción, chip de plan) sigue legible
+                           porque el ícono está al centro y semi-traslúcido. */}
+                  {isLocked && (
+                    <div aria-hidden style={{
+                      position: 'absolute', inset: 0,
+                      borderRadius: 'inherit',
+                      pointerEvents: 'none',
+                      zIndex: 2,
+                      // Capa 1 (oscurecer leve) + Capa 2 (banda diagonal sutil)
+                      background: `
+                        linear-gradient(135deg,
+                          transparent 0%,
+                          transparent 47%,
+                          ${lockColor}1F 49%,
+                          ${lockColor}33 50%,
+                          ${lockColor}1F 51%,
+                          transparent 53%,
+                          transparent 100%),
+                        rgba(0,0,0,0.32)
+                      `,
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                    }}>
+                      {/* Capa 3: candado grande al centro */}
+                      <div style={{
+                        width: 64, height: 64, borderRadius: '50%',
+                        background: `radial-gradient(circle, ${lockColor}33 0%, ${lockColor}11 60%, transparent 100%)`,
+                        display: 'flex', alignItems: 'center', justifyContent: 'center',
+                      }}>
+                        <Lock size={28} color={lockColor} strokeWidth={2.2} style={{ opacity: 0.92 }} />
+                      </div>
+                    </div>
+                  )}
+
                   {/* Glow inferior — "luz que sale por debajo" del card,
                       teñida con el color de la tab activa (amarillo en
                       Pendientes, verde en Completos). Antes era multicolor
