@@ -3542,13 +3542,20 @@ export default function ClubProfilePage() {
                       }}
                       onMouseEnter={e => { if (!isOos) e.currentTarget.style.transform = 'translateY(-1px)' }}
                       onMouseLeave={e => { e.currentTarget.style.transform = 'translateY(0)' }}>
-                      {/* Pen icon — solo en edit mode. Tap → redirige a la
-                          pestaña Premios del panel del comercio (no abre
-                          modal inline) para mantener consistencia con el
-                          resto de los lápices. */}
+                      {/* Pen icon — solo en edit mode. Tap → abre el
+                          wizard de edicion de ese premio especifico en
+                          el panel del comercio. Storeamos el prize.id en
+                          sessionStorage; el panel lo lee al montar y
+                          dispara startEditPrize(prize) automaticamente,
+                          asi que el dueno aterriza directo en el form
+                          de ese premio sin tener que buscarlo. */}
                       {editMode && (
                         <button
-                          onClick={(e) => { e.stopPropagation(); navigateEditField('prize') }}
+                          onClick={(e) => {
+                            e.stopPropagation()
+                            try { sessionStorage.setItem('benefix:edit-prize-id', prize.id) } catch {}
+                            navigateEditField('prize')
+                          }}
                           aria-label={`Editar ${prize.name}`}
                           style={{
                             position:'absolute', top:-8, right:-8, zIndex:5,

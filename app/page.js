@@ -13015,6 +13015,27 @@ function CommerceSettingsView({ user, profile, setView, onLogout, onOwnerProfile
     setCreatePrizeOpen(false)
   }
 
+  // Deep-link desde el lapiz de un premio en la vista publica del club
+  // (modo "ojo"). El click en ese lapiz almacena prize.id en sessionStorage
+  // y navega al panel con tab=premios. Acá lo leemos al cargar los
+  // prizes del comercio y, si el id matchea con uno cargado, abrimos el
+  // wizard de edicion de ese premio automaticamente. Asi el dueno aterriza
+  // directo en el form sin tener que buscar el premio en el listado.
+  useEffect(() => {
+    if (typeof window === 'undefined') return
+    if (!Array.isArray(prizes) || prizes.length === 0) return
+    let id
+    try { id = sessionStorage.getItem('benefix:edit-prize-id') } catch { return }
+    if (!id) return
+    const target = prizes.find(p => p.id === id)
+    if (target) {
+      try { sessionStorage.removeItem('benefix:edit-prize-id') } catch {}
+      // Pequeno delay para asegurar que la pestaa premios este montada
+      // antes de abrir el modal del wizard.
+      setTimeout(() => startEditPrize(target), 120)
+    }
+  }, [prizes])
+
   async function togglePrize(prize) {
     // Bloquear si intentan activar y ya están en el límite de premios activos
     if (!prize.active && perms.max_rewards !== null && activeRewardsCount >= perms.max_rewards) {
