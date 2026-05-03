@@ -7070,7 +7070,8 @@ function ClientBottomNav({ tab, setTab, profile, setView }) {
   // Para reactivarla, sacar este return null.
   return null
   // eslint-disable-next-line no-unreachable
-  /* LEGACY — mantenemos el cuerpo original por si volvemos en 1 sprint:
+  // LEGACY — mantenemos el cuerpo original por si volvemos en 1 sprint.
+  // El return null arriba lo deja unreachable (warning que silenciamos).
   // Nav superior de la vista cliente. Va fijo justo abajo del Navbar global.
   // Solo 3 pestañas porque "Mi Cuenta" y "Mi Negocio" ya tienen su botón
   // dedicado en el Navbar global de arriba.
@@ -7152,7 +7153,6 @@ function ClientBottomNav({ tab, setTab, profile, setView }) {
       </div>
     </nav>
   )
-*/
 }
 
 // ─── DYNAMIC GREETING ─────────────────────────────────────────────────────────
