@@ -20770,6 +20770,13 @@ function ScannerView({ user, profile, setView }) {
   }
   // Post-scan: si el cliente usó un descuento, preguntar si renovarlo.
   const [renewDiscountPromo, setRenewDiscountPromo] = useState(null)  // { promoId, expiresAt, membershipId } | null
+  // grantDiscountPromo: modal post-scan para preguntar al dueño si quiere
+  // OTORGAR un cupon nuevo (caso donde el cliente NO tenia cupon previo).
+  // shape: { promoId, value, membershipId, memberName }. El user pidio que
+  // siempre se le pregunte al dueño si le da/renueva el % OFF, asi sea o
+  // no la primera vez del cliente.
+  const [grantDiscountPromo, setGrantDiscountPromo] = useState(null)
+  const [grantingDiscount, setGrantingDiscount] = useState(false)
   // discountDecisionResult: rastrea la decisión que tomó el dueño en el modal
   // de "¿Renovar?" — null mientras el modal está abierto, 'renewed' si dijo sí,
   // 'declined' si dijo no o cerró con X. Se usa en el cartel narrativo
@@ -20958,6 +20965,11 @@ function ScannerView({ user, profile, setView }) {
     setResult({ ...data, ok: res.ok })
     setProcessing(false)
     // Si el backend reportó que se canjeó un descuento, abrir modal de renovar.
+    // Sino, si el comercio tiene un cupon discount_next activo configurado,
+    // ofrecemos OTORGARLE uno nuevo al cliente (ya sea su primer visita o
+    // ya estaba en el club pero nunca se le otorgo). El user pidio que al
+    // momento de cada visita siempre se le pregunte al dueño si le da o
+    // renueva el cupon.
     if (data.discount_redeemed) {
       setRenewDiscountPromo({
         promoId:      data.discount_redeemed.promo_id,
@@ -20965,6 +20977,13 @@ function ScannerView({ user, profile, setView }) {
         membershipId: data.membership_id,
         // value (el % del descuento) para mostrar en el modal de renovar.
         value:        data.discount_redeemed.value,
+      })
+    } else if (res.ok && data.membership_id && hasActiveDiscount && activeDiscount?.id) {
+      setGrantDiscountPromo({
+        promoId:      activeDiscount.id,
+        value:        activeDiscount.value,
+        membershipId: data.membership_id,
+        memberName:   data.member_name || null,
       })
     }
   }
@@ -21088,6 +21107,40 @@ function ScannerView({ user, profile, setView }) {
       showToast('error', e.message || 'Error de red')
     } finally {
       setRenewDiscountPromo(null)
+    }
+  }
+
+  // Decision del dueño sobre OTORGAR un cupon nuevo a un cliente que no
+  // tenia. decision='grant' llama /api/grant-promotion (otorga + notifica
+  // a las dos partes). decision='decline' simplemente cierra el modal.
+  async function submitGrantDecision(decision) {
+    if (!grantDiscountPromo) return
+    if (decision !== 'grant') {
+      setGrantDiscountPromo(null)
+      return
+    }
+    setGrantingDiscount(true)
+    try {
+      const res = await fetch('/api/grant-promotion', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          commerce_id:   commerceId,
+          membership_id: grantDiscountPromo.membershipId,
+          promotion_id:  grantDiscountPromo.promoId,
+        }),
+      })
+      const data = await res.json()
+      if (res.ok && (data.ok || data.success)) {
+        showToast('success', `Cupón otorgado a ${grantDiscountPromo.memberName?.split(' ')[0] || 'el cliente'}`)
+      } else {
+        showToast('error', data.error || data.message || 'No se pudo otorgar')
+      }
+    } catch (e) {
+      showToast('error', e.message || 'Error de red')
+    } finally {
+      setGrantingDiscount(false)
+      setGrantDiscountPromo(null)
     }
   }
 
@@ -21598,6 +21651,42 @@ function ScannerView({ user, profile, setView }) {
               style={{ width:'100%', padding:'13px', background:`linear-gradient(135deg, ${C.o}, #f97316)`, border:'none', borderRadius:12, color:'#fff', fontFamily:FN, fontSize:14, fontWeight:700, cursor:'pointer', boxShadow:`0 6px 22px rgba(254,80,0,0.40)` }}>
               Continuar y aplicar descuento
             </button>
+          </div>
+        </div>
+      )}
+
+      {/* ── POST-SCAN MODAL: otorgar cupon nuevo (cliente no tenia previo) ──
+          Aparece despues del scan cuando el comercio tiene un cupon
+          discount_next activo y el cliente no lo uso. El user pidio que
+          siempre se le pregunte al dueño si le da un cupon en cada visita.
+          X y backdrop = decline (no otorga, cierra silencioso). */}
+      {grantDiscountPromo && !renewDiscountPromo && (
+        <div onClick={() => submitGrantDecision('decline')}
+          style={{ position:'fixed', inset:0, zIndex:9999, background:'rgba(0,0,0,0.82)', backdropFilter:'blur(12px)', WebkitBackdropFilter:'blur(12px)', display:'flex', alignItems:'center', justifyContent:'center', padding:20 }}>
+          <div onClick={e => e.stopPropagation()}
+            style={{ position:'relative', borderRadius:20, padding:'24px 22px', width:'100%', maxWidth:360, background:'linear-gradient(180deg, rgba(254,80,0,0.18) 0%, rgba(254,80,0,0.04) 60%, rgba(0,0,0,0.4) 100%)', border:'1px solid rgba(254,80,0,0.40)', boxShadow:'0 32px 80px rgba(254,80,0,0.25)' }}>
+            <button onClick={() => submitGrantDecision('decline')} aria-label="Cerrar"
+              style={{ position:'absolute', top:14, right:14, width:30, height:30, borderRadius:'50%', background:'rgba(0,0,0,0.40)', border:'1px solid rgba(255,255,255,0.18)', color:'#fff', display:'flex', alignItems:'center', justifyContent:'center', cursor:'pointer', padding:0 }}>
+              <X size={14} strokeWidth={2.5} />
+            </button>
+            <div style={{ width:54, height:54, borderRadius:14, background:'rgba(254,80,0,0.22)', border:'1px solid rgba(254,80,0,0.50)', display:'flex', alignItems:'center', justifyContent:'center', marginBottom:14 }}>
+              <Percent size={26} color={C.o} strokeWidth={2.4} />
+            </div>
+            <div style={{ fontFamily:FN, fontSize:11, fontWeight:800, color:C.o, letterSpacing:'.08em', textTransform:'uppercase', marginBottom:6 }}>Cupón próxima compra</div>
+            <div style={{ fontFamily:FN, fontSize:18, fontWeight:900, color:C.white, lineHeight:1.3, marginBottom:10 }}>
+              ¿Otorgar {grantDiscountPromo.value ? `${grantDiscountPromo.value}% OFF` : 'descuento'} para próxima compra?
+            </div>
+            <div style={{ fontSize:12, color:C.mist, marginBottom:18, lineHeight:1.55 }}>
+              {grantDiscountPromo.memberName
+                ? `${grantDiscountPromo.memberName.split(' ')[0]} no tiene un cupón activo. Si le otorgás, recibe un aviso y lo va a poder usar la próxima vez que venga.`
+                : 'El cliente no tiene un cupón activo. Si le otorgás, recibe un aviso y lo va a poder usar la próxima vez que venga.'}
+            </div>
+            <div style={{ display:'flex', gap:10 }}>
+              <button onClick={() => submitGrantDecision('decline')} disabled={grantingDiscount}
+                style={{ flex:1, padding:'12px', background:'rgba(255,255,255,0.06)', border:'1px solid rgba(255,255,255,0.14)', borderRadius:12, color:C.pearl, fontFamily:FN, fontSize:13, fontWeight:600, cursor: grantingDiscount ? 'wait' : 'pointer', opacity: grantingDiscount ? 0.6 : 1 }}>No</button>
+              <button onClick={() => submitGrantDecision('grant')} disabled={grantingDiscount}
+                style={{ flex:1, padding:'12px', background:G, border:'none', borderRadius:12, color:'#fff', fontFamily:FN, fontSize:13, fontWeight:700, cursor: grantingDiscount ? 'wait' : 'pointer', opacity: grantingDiscount ? 0.7 : 1 }}>{grantingDiscount ? 'Otorgando…' : 'Sí, otorgar'}</button>
+            </div>
           </div>
         </div>
       )}
@@ -23262,7 +23351,7 @@ export default function App() {
           user={user}
           profile={profile}
           mode={signupModal.mode}
-          // Permitimos cerrar SIN guardar solo cuando el modal vino de un
+          // Permitimos cerrar SIN guardar solo cuando elmodal vino de un
           // open-signup cross-rol manual (el user ya tiene cuenta funcionando).
           // Si está completando el primer onboarding (profile.onboarding_completed=false),
           // no exponemos X — necesitamos los datos para no dejarlo a medias.
