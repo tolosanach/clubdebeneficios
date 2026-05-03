@@ -47,6 +47,40 @@ function promoteIntent(currentIntent) {
   return currentIntent
 }
 
+// Convierte el array openingHours de Google ({day:'Lunes', ranges:['09:00-13:00','16:00-22:00']})
+// al objeto hours_structured de Benefix (key=monday|...|sunday, {open, shifts:[{from,to}]}).
+// Si el array es null/vacio devuelve null para no sobreescribir el default.
+function googleHoursToBenefix(googleHours) {
+  if (!Array.isArray(googleHours) || googleHours.length === 0) return null
+  const DAY_KEY = {
+    'lunes':'monday', 'martes':'tuesday', 'miércoles':'wednesday', 'miercoles':'wednesday',
+    'jueves':'thursday', 'viernes':'friday', 'sábado':'saturday', 'sabado':'saturday', 'domingo':'sunday',
+  }
+  const result = {
+    monday:    { open:false, shifts:[] },
+    tuesday:   { open:false, shifts:[] },
+    wednesday: { open:false, shifts:[] },
+    thursday:  { open:false, shifts:[] },
+    friday:    { open:false, shifts:[] },
+    saturday:  { open:false, shifts:[] },
+    sunday:    { open:false, shifts:[] },
+  }
+  for (const item of googleHours) {
+    if (!item || !item.day) continue
+    const dayKey = DAY_KEY[item.day.toLowerCase()]
+    if (!dayKey) continue
+    if (Array.isArray(item.ranges) && item.ranges.length > 0) {
+      result[dayKey].open = true
+      result[dayKey].shifts = item.ranges.map(r => {
+        // Google format: '09:00–13:00' (en-dash) o '09:00-13:00' (hyphen).
+        const parts = r.split(/[–-]/).map(s => s.trim())
+        return { from: parts[0] || '09:00', to: parts[1] || '18:00' }
+      })
+    }
+  }
+  return result
+}
+
 export async function POST(request) {
   try {
     const supabase = await createSupabaseServer()
@@ -155,6 +189,12 @@ export async function POST(request) {
       .eq('slug', slug)
     if (count > 0) slug = `${slug}-${Date.now().toString(36)}`
 
+    // Datos extra del autocomplete de Google Places. Si el dueño eligió
+    // un local de las sugerencias, prellenamos address, lat/lng y horarios
+    // estructurados de una para evitar que tenga que volver a cargarlos.
+    const gp = body.googlePlace || null
+    const gpHours = gp ? googleHoursToBenefix(gp.openingHours) : null
+
     function buildPayload(currentSlug) {
       return {
         owner_id:     user.id,
@@ -175,6 +215,13 @@ export async function POST(request) {
         active:       true,
         featured:     false,
         rating:       5.0,
+        // ── Campos prellenados desde Google Places (si vino) ──
+        // Solo se setean si el autocomplete devolvió valor — sino quedan
+        // null y el dueño los carga después en Configuración.
+        ...(gp?.address  && { address: gp.address }),
+        ...(gp?.latitude  != null && { lat:  gp.latitude  }),
+        ...(gp?.longitude != null && { lng:  gp.longitude }),
+        ...(gpHours && { hours_structured: gpHours }),
         // El alta nueva (4 pasos) reemplaza el onboarding viejo de 10 pasos.
         // Marcamos onboarding_done en true para que CommerceSettingsView NO
         // vuelva a mostrar el flujo viejo después del signup.
