@@ -21113,9 +21113,13 @@ function ScannerView({ user, profile, setView }) {
   // Decision del dueño sobre OTORGAR un cupon nuevo a un cliente que no
   // tenia. decision='grant' llama /api/grant-promotion (otorga + notifica
   // a las dos partes). decision='decline' simplemente cierra el modal.
+  // En ambos casos se setea discountDecisionResult para que la card del
+  // resumen post-scan refleje exactamente qué pasó con ESTE cliente
+  // (en vez del estado generico del comercio).
   async function submitGrantDecision(decision) {
     if (!grantDiscountPromo) return
     if (decision !== 'grant') {
+      setDiscountDecisionResult('grant_declined')
       setGrantDiscountPromo(null)
       return
     }
@@ -21133,6 +21137,7 @@ function ScannerView({ user, profile, setView }) {
       const data = await res.json()
       if (res.ok && (data.ok || data.success)) {
         showToast('success', `Cupón otorgado a ${grantDiscountPromo.memberName?.split(' ')[0] || 'el cliente'}`)
+        setDiscountDecisionResult('granted')
       } else {
         showToast('error', data.error || data.message || 'No se pudo otorgar')
       }
@@ -21979,45 +21984,85 @@ function ScannerView({ user, profile, setView }) {
                     CTA para activarlo en Recompensas. Es independiente
                     del cupón GUARDADO del cliente — esto le habla al
                     dueño sobre su propia config. */}
+                {/* Card del cupon proxima compra — refleja la DECISION
+                    especifica que el dueño tomo en este scan (renovar /
+                    no renovar / otorgar / no otorgar) en vez del estado
+                    generico del comercio. Asi el dueño ve claramente que
+                    le paso a ESE cliente y no se confunde por el "activo
+                    para tus clientes" que sugeria que el cliente recibio
+                    el cupon cuando en realidad fue rechazado. */}
+                {(() => {
+                  const decision = discountDecisionResult
+                  const firstName = (result.member_name || 'el cliente').split(' ')[0]
+                  // Estado semantico segun la decision o, si no hubo, el
+                  // estado configuracional del comercio (fallback).
+                  let tone, label, body
+                  if (decision === 'renewed') {
+                    tone = 'green'
+                    label = 'Cupón renovado'
+                    body = <>Le <strong style={{ color: '#fff' }}>renovaste</strong> el cupón a {firstName}.</>
+                  } else if (decision === 'granted') {
+                    tone = 'green'
+                    label = 'Cupón otorgado'
+                    body = <>Le <strong style={{ color: '#fff' }}>otorgaste</strong> un cupón a {firstName}.</>
+                  } else if (decision === 'declined') {
+                    tone = 'gray'
+                    label = 'Sin renovación'
+                    body = <><strong style={{ color: '#fff' }}>No le renovaste</strong> el cupón a {firstName}.</>
+                  } else if (decision === 'grant_declined') {
+                    tone = 'gray'
+                    label = 'Sin cupón'
+                    body = <><strong style={{ color: '#fff' }}>No le otorgaste</strong> cupón a {firstName}.</>
+                  } else if (hasActiveDiscount && activeDiscount?.value) {
+                    tone = 'green'
+                    label = 'Cupón próxima compra'
+                    body = <><strong style={{ color: '#fff' }}>{activeDiscount.value}% OFF</strong> activo para tus clientes.</>
+                  } else if (hasActiveDiscount) {
+                    tone = 'green'
+                    label = 'Cupón próxima compra'
+                    body = <>Tenés un cupón <strong style={{ color: '#fff' }}>activo</strong> para tus clientes.</>
+                  } else {
+                    tone = 'amber'
+                    label = 'Cupón próxima compra'
+                    body = <>No tenés cupón activo. <span style={{ color: '#F5A623', fontWeight: 700 }}>Activalo en Recompensas →</span></>
+                  }
+                  const palette = tone === 'green'
+                    ? { bg:'rgba(34,230,152,0.08)', border:'rgba(34,230,152,0.30)', iconBg:'rgba(34,230,152,0.18)', iconBorder:'rgba(34,230,152,0.45)', icon:'#22E698', label:'#22E698' }
+                    : tone === 'amber'
+                      ? { bg:'rgba(245,166,35,0.08)', border:'rgba(245,166,35,0.32)', iconBg:'rgba(245,166,35,0.18)', iconBorder:'rgba(245,166,35,0.45)', icon:'#F5A623', label:'#F5A623' }
+                      : { bg:'rgba(255,255,255,0.04)', border:'rgba(255,255,255,0.10)', iconBg:'rgba(255,255,255,0.06)', iconBorder:'rgba(255,255,255,0.16)', icon:'rgba(255,255,255,0.55)', label:'rgba(255,255,255,0.55)' }
+                  return (
                 <div style={{
                   marginBottom: 14,
                   padding: '12px 14px',
                   borderRadius: 12,
-                  background: hasActiveDiscount
-                    ? 'rgba(34,230,152,0.08)'
-                    : 'rgba(245,166,35,0.08)',
-                  border: hasActiveDiscount
-                    ? '1px solid rgba(34,230,152,0.30)'
-                    : '1px solid rgba(245,166,35,0.32)',
+                  background: palette.bg,
+                  border: `1px solid ${palette.border}`,
                   display: 'flex', alignItems: 'center', gap: 10,
                 }}>
                   <div style={{
                     width: 32, height: 32, borderRadius: 9,
-                    background: hasActiveDiscount ? 'rgba(34,230,152,0.18)' : 'rgba(245,166,35,0.18)',
-                    border: hasActiveDiscount ? '1px solid rgba(34,230,152,0.45)' : '1px solid rgba(245,166,35,0.45)',
+                    background: palette.iconBg,
+                    border: `1px solid ${palette.iconBorder}`,
                     display: 'flex', alignItems: 'center', justifyContent: 'center',
                     flexShrink: 0,
                   }}>
-                    <Percent size={15} color={hasActiveDiscount ? '#22E698' : '#F5A623'} strokeWidth={2.4} />
+                    <Percent size={15} color={palette.icon} strokeWidth={2.4} />
                   </div>
                   <div style={{ flex: 1, minWidth: 0 }}>
                     <div style={{
                       fontFamily: FN, fontSize: 10, fontWeight: 800,
-                      color: hasActiveDiscount ? '#22E698' : '#F5A623',
+                      color: palette.label,
                       letterSpacing: '.08em', textTransform: 'uppercase',
                       marginBottom: 2,
                     }}>
-                      Cupón próxima compra
+                      {label}
                     </div>
                     <div style={{ fontSize: 12.5, color: C.pearl, lineHeight: 1.4 }}>
-                      {hasActiveDiscount && activeDiscount?.value
-                        ? <><strong style={{ color: '#fff' }}>{activeDiscount.value}% OFF</strong> activo para tus clientes.</>
-                        : hasActiveDiscount
-                          ? <>Tenés un cupón <strong style={{ color: '#fff' }}>activo</strong> para tus clientes.</>
-                          : <>No tenés cupón activo. <span style={{ color: '#F5A623', fontWeight: 700 }}>Activalo en Recompensas →</span></>}
+                      {body}
                     </div>
                   </div>
-                  {!hasActiveDiscount && (
+                  {tone === 'amber' && !decision && (
                     <button
                       onClick={() => {
                         setView('commerce-settings')
@@ -22039,6 +22084,8 @@ function ScannerView({ user, profile, setView }) {
                     </button>
                   )}
                 </div>
+                  )
+                })()}
 
                 {/* CTA de canje si puede */}
                 {result.can_redeem ? (
