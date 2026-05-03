@@ -888,7 +888,7 @@ function InlineEditModal({ title, field, initial, inputStyle, labelStyle, onClos
 // muestra el ícono apagado; con animación de "wiggle" cada 2s para llamar
 // la atención del usuario que aún no se suscribió. Al activar la suscripción
 // el ícono pasa a fucsia/violeta sólido y la animación se apaga.
-function ClubNotifyBell({ commerceId }) {
+function ClubNotifyBell({ commerceId, commerceName, onToggleResult }) {
   const [loaded,     setLoaded]     = useState(false)
   const [subscribed, setSubscribed] = useState(false)
   const [busy,       setBusy]       = useState(false)
@@ -906,16 +906,25 @@ function ClubNotifyBell({ commerceId }) {
     setBusy(true)
     const next = !subscribed
     setSubscribed(next)
+    let success = true
     try {
-      await fetch('/api/club-subscription', {
+      const res = await fetch('/api/club-subscription', {
         method: next ? 'POST' : 'DELETE',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ commerce_id: commerceId }),
       })
+      if (!res.ok) success = false
     } catch {
+      success = false
       setSubscribed(!next)
     } finally {
       setBusy(false)
+    }
+    // Reportar el resultado al padre para que pueda mostrar un toast
+    // y darle feedback al user. Sin esto, el unico cambio era el icono
+    // pasando de blanco a fucsia, dificil de notar.
+    if (typeof onToggleResult === 'function') {
+      onToggleResult({ subscribed: success ? next : !next, success, commerceName })
     }
   }
   // Animación de campanita: shake/wiggle cada 2 segundos cuando el cliente
@@ -2857,7 +2866,21 @@ export default function ClubProfilePage() {
                 <ChevronLeft size={20} />
               </button>
               {user?.id && commerce?.id && (
-                <ClubNotifyBell commerceId={commerce.id} />
+                <ClubNotifyBell
+                  commerceId={commerce.id}
+                  commerceName={commerce.name}
+                  onToggleResult={({ subscribed, success, commerceName }) => {
+                    if (!success) {
+                      addToast('error', 'No se pudo guardar tu preferencia. Intenta de nuevo.')
+                      return
+                    }
+                    if (subscribed) {
+                      addToast('success', `Te avisaremos de premios y promos nuevas en ${commerceName || 'este club'}.`)
+                    } else {
+                      addToast('success', `Ya no recibis avisos de ${commerceName || 'este club'}.`)
+                    }
+                  }}
+                />
               )}
               {/* Lápiz "editar portada" — solo en modo ojo del dueño,
                   posicionado debajo de la campanita en la esquina sup-derecha.
