@@ -15,6 +15,7 @@ Variables de entorno críticas en `.env.local` y Vercel:
 - `NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_ANON_KEY`, `SUPABASE_SERVICE_ROLE_KEY`
 - `ANTHROPIC_API_KEY` (chat de soporte con Claude Haiku 4.5)
 - `VAPID_PUBLIC_KEY`, `VAPID_PRIVATE_KEY`, `VAPID_SUBJECT` (web push del navegador). Las keys se generaron el 2026-04-26. Si faltan, las notifs in-app igual funcionan, solo no se dispara el push del SW.
+- `GOOGLE_PLACES_API_KEY` (autocomplete de comercios en el wizard de registro). NO usar `NEXT_PUBLIC_` — todas las llamadas a Google pasan por backend para no exponer la key + rate-limit por user + auditoría.
 
 Dependencias clave en `package.json`:
 - `web-push` (server, para enviar pushes desde `lib/notify-server.js`)
@@ -288,6 +289,198 @@ Ya estaba con HLS videos (3 cards con video de fondo full-bleed Mux + overlay co
 ### Issues conocidos
 - **Hydration warning con `cz-shortcut-listen="true"`**: ColorZilla u otra extensión de Chrome modifica el `<body>` antes de que React rehidrate. NO es nuestro código — ignorable o desactivar la extensión en localhost.
 - **El sandbox del agent NO puede borrar `.git/index.lock`** en Windows mounts. Si te pasa, podés `mv .git/index.lock .git/index.lock.bak` y el commit suele andar (lo hicimos en este sprint).
+
+## Cambios recientes (sprint may 2026 — autocomplete Google Places)
+
+Reducción de fricción del onboarding: cuando el dueño tipea el nombre de su comercio en el wizard de registro, ahora le sugerimos resultados de Google Maps y al elegir uno se prelena nombre, dirección, teléfono y categoría sugerida.
+
+### Variables de entorno nuevas
+- `GOOGLE_PLACES_API_KEY` — server only (sin `NEXT_PUBLIC_`). Va en `.env.local` y en Vercel. Las llamadas a Google se proxyan por nuestros endpoints API para evitar exponer la key, rate-limit por user, y auditar uso.
+
+### Endpoints API
+- `app/api/places/autocomplete/route.js` — `POST { input, sessionToken }` → `{ suggestions: [{ placeId, mainText, secondaryText }] }`. Auth guard supabase + rate limit 30/min in-memory por user. Llama a Places API (New) `places:autocomplete` con `X-Goog-FieldMask` (sólo `placeId`, `text`, `structuredFormat` — minimiza el costo). Sesgo a Argentina (`includedRegionCodes: ['ar']`) + locationBias centro La Pampa con 50km de radio. Devuelve lista vacía si Google falla (no rompe el flujo).
+- `app/api/places/details/route.js` — `POST { placeId, sessionToken }` → `{ place: { name, address, phone, website, latitude, longitude, openingHours, googleMapsUrl, suggestedCategories, primaryType, types } }`. Auth + rate limit 60/h por user. Llama a Places API (New) `places/{id}` con FieldMask de los campos necesarios. Normaliza el response al schema de `commerces` de Benefix. Mapea `primaryType` y `types` a categorías de Benefix vía `lib/googlePlacesCategoryMap.js`.
+
+### Mapeo de categorías Google → Benefix
+`lib/googlePlacesCategoryMap.js` exporta:
+- `GOOGLE_TYPE_TO_BENEFIX` — mapa estático con ~50 entries (bakery → Panadería, cafe → Cafetería, restaurant → Restaurante, beauty_salon → Peluquería, barber_shop → Barbería, gym → Gimnasio, pet_store → Pet shop, veterinary_care → Veterinaria, etc.).
+- `suggestBenefixCategories(primaryType, types)` — primero intenta `primaryType`; si no matchea, barre `types[]` en orden hasta encontrar uno. Devuelve hasta 3 categorías. Si nada matchea, devuelve `[]` y el dueño elige manualmente.
+
+### Componente frontend `lib/PlacesAutocomplete.js`
+- Input con icono Search a la izquierda + spinner a la derecha cuando está cargando.
+- Debounce 300ms en `onChange` antes de pegarle al endpoint.
+- Dropdown de sugerencias estilo glass (bg `rgba(20,12,32,0.96)` + `backdropFilter: blur(16px) saturate(160%)`) con cada fila mostrando MapPin violeta + `mainText` (negrita) + `secondaryText` (gris) — patrón Benefix.
+- **Session token**: UUID v4 generado al montar (vía `crypto.randomUUID()`). Pasa en TODAS las llamadas al backend. Se regenera tras cada selección exitosa O si pasaron > 3 minutos sin actividad. Esto agrupa autocomplete + details en una sola sesión Google → cobro mucho más barato.
+- `pointerEvents: none` en el spinner para no bloquear input.
+- Si Google falla, muestra mensaje suave "No pudimos buscar ahora — seguí escribiendo a mano" y el flujo manual sigue. NUNCA crashea el wizard.
+- `onPlaceSelected(place)` callback al elegir una sugerencia — el padre decide qué hacer con los datos.
+
+### Integración en `RegisterCommerceView` (wizard de registro)
+- Reemplaza el `<input>` simple del Paso 2 ("¿Cómo se llama tu negocio?") por el `<PlacesAutocomplete>`.
+- Al elegir una sugerencia, `handleGooglePlaceSelected` prelena `form.name`, `form.address`, `form.phone`, y si la primera categoría sugerida matchea con `COMMERCE_FAMILIES` la usa como `form.category`.
+- Banner "Datos importados de Google Maps" aparece debajo del input cuando hay datos importados — bg violeta tenue + border violeta + ícono CheckCircle violeta. Tiene un botón pequeño "Empezar de cero" que limpia los campos y ese banner.
+- City/province NO se prelenan automáticamente — Google los devuelve en `addressComponents` pero las listas de Benefix son enums fijos en `LOCATIONS` y los matches no son siempre 1:1; el dueño los confirma en el step 4 (ubicación).
+
+### Tabla de auditoría `google_places_usage`
+Migration aplicada:
+```sql
+CREATE TABLE google_places_usage (
+  id            uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  user_id       uuid NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,
+  endpoint      text NOT NULL CHECK (endpoint IN ('autocomplete', 'details')),
+  session_token text NULL,
+  created_at    timestamptz NOT NULL DEFAULT now()
+)
+```
+Index por `(user_id, created_at DESC)` y partial por `session_token` cuando no es null. RLS: cada user ve su propio uso (`SELECT TO authenticated USING user_id = auth.uid()`). Inserts vía service role desde los endpoints (fire-and-forget, no bloquean la respuesta si fallan). Permite auditar uso real, calcular costo aproximado, detectar abusos.
+
+### Cómo agregar la env var en Vercel
+1. Ir a `vercel.com/dashboard` → proyecto Benefix → Settings → Environment Variables.
+2. Añadir `GOOGLE_PLACES_API_KEY` con scope **Production + Preview + Development**.
+3. Redeploy (o esperar al próximo push).
+
+### Restricciones de seguridad
+- La API key NUNCA viaja al cliente. Si en algún momento querés usar el SDK JS de Google directo (caso raro), generá una key separada con HTTP referrer restrictions a `*.benefix.com.ar` — pero hoy todo va por backend.
+- El rate-limit es por user (no por IP) y vive en memoria del proceso. En multi-instancia conviene migrar a Redis o a una tabla en Postgres con TTL.
+- Si Google está caído, el wizard sigue funcionando sin importar (degradación graceful).
+
+## Cambios recientes (sprint may 2026 — user_intent + diferenciación cliente/comerciante)
+
+Capturamos al onboarding qué quiere hacer el usuario (cliente vs comerciante vs ambos) y diferenciamos la experiencia según esa elección. Antes todos los users que crearon cuenta para registrar un comercio terminaban con `role: commerce_owner` y veían todo el chrome del dueño en el navbar — confundía a los que después querían usar la app como cliente, y a los clientes nuevos que no sabían si los íconos del ojo/comercio les servían.
+
+### Migration aplicada
+```sql
+ALTER TABLE profiles
+  ADD COLUMN user_intent text
+    CHECK (user_intent IS NULL OR user_intent IN ('client', 'merchant', 'both'))
+    DEFAULT NULL;
+ALTER TABLE profiles
+  ADD COLUMN intent_prompt_shown boolean NOT NULL DEFAULT false;
+```
+Default `NULL` para no forzar re-onboarding a users existentes. La UI los trata según sus comercios:
+- Tiene comercio (role='commerce_owner') → trato como `merchant` implícito (muestra Eye + Store).
+- No tiene comercio (role='client') → trato como `client` implícito.
+- Si entran y `intent_prompt_shown=false` → les mostramos el step UNA vez y persistimos el resultado.
+
+### Nuevo componente `lib/IntentPickerView.js`
+Pantalla full-screen con greeting personalizado ("¡Hola, {nombre}!") + 3 cards verticales:
+- **Soy cliente** (fucsia, ShoppingBag) — "Quiero acumular puntos y aprovechar beneficios."
+- **Soy comerciante** (violeta de marca, Store) — "Quiero crear mi club y fidelizar a mis clientes."
+- **Las dos cosas** (ámbar, Sparkles) — "Tengo un comercio y también soy cliente de otros."
+
+Cards con gradient suave del color identidad, hover con borde más fuerte + lift de 2px, animación stagger fadeUp 80ms entre cards. Botón X arriba a la derecha y "Después decido" abajo — los dos disparan `onSkip` que persiste `intent_prompt_shown=true` sin tocar `user_intent`.
+
+### Hookeo en `app/page.js > AppRoot`
+Render condicional ANTES del return principal:
+```js
+if (user && profile && !profile.user_intent && !profile.intent_prompt_shown && !skipIntentForViews.includes(view)) {
+  return <IntentPickerView ... />
+}
+```
+- `skipIntentForViews = ['register-commerce', 'commerce-settings']` — no interrumpe a quien ya viene navegando explícitamente a esos flujos.
+- `handleIntentChoose(intent)` → `UPDATE profiles SET user_intent=intent, intent_prompt_shown=true` + `loadProfile()` + `navigate()`:
+  - `merchant` o `both` → wizard `register-commerce`
+  - `client` → vista `client` (Mi billetera)
+- `handleIntentSkip()` → solo setea `intent_prompt_shown=true`, no toca `user_intent`. La próxima vez no aparece más.
+
+### Navbar: gate de Eye + Store
+En `function Navbar`:
+```js
+const userIntent   = profile?.user_intent || null
+const showOwnerKit = role === 'commerce_owner' && userIntent !== 'client'
+```
+- `role === 'commerce_owner' && userIntent !== 'client'` → muestra los íconos Eye + Store (kit dueño).
+- Caso contrario → branch del cliente (sin Eye + Store).
+- Cubre el caso "soy commerce_owner pero quiero usar la app como cliente" (auto-promoción rara): si seteas `user_intent='client'` se ocultan los íconos del kit dueño aunque tengas comercios.
+
+### Item nuevo en `ClientView > tab='cuenta'`
+Card grande arriba de "Cerrar sesión / Eliminar cuenta" cuando `profile.role !== 'commerce_owner'`:
+- Background gradient violeta tenue + border violeta.
+- Ícono Store en círculo gradient violeta brillante con sombra.
+- Título "¿Tenés un comercio?" + subtítulo "Sumá tu club y empezá a fidelizar a tus clientes."
+- ChevronRight a la derecha.
+- Click → `setView('register-commerce')`.
+
+### Auto-promoción de user_intent al crear comercio (`/api/register-commerce`)
+Cuando un user toca "Sumar tu club" desde ese item del menú de perfil y completa el wizard:
+- `user_intent` actual `NULL` → pasa a `'merchant'` (no había elegido nada).
+- `user_intent` actual `'client'` → pasa a `'both'` (era cliente que decidió abrir su negocio).
+- `user_intent` actual `'merchant'` o `'both'` → no se toca.
+- También se setea `intent_prompt_shown=true` (decisión consciente).
+- `role` pasa a `'commerce_owner'` como ya hacía antes.
+
+### Restricciones cumplidas
+- **No rompe users existentes**: `user_intent=NULL` + tienen comercios → siguen viendo Eye + Store sin cambios. Solo se les muestra el prompt UNA vez (siempre que no tengan `intent_prompt_shown=true`).
+- **No es bloqueante eterno**: el botón X y "Después decido" cierran y marcan shown.
+- **Camino de upgrade preservado**: cualquier cliente puede abrir su comercio desde el menú de perfil (independiente del intent que haya elegido).
+
+## Cambios recientes (sprint may 2026 — premios obligatorios)
+
+Sistema de 3 capas para empujar a los comerciantes a cargar al menos un premio cuando activan su sistema de fidelización. Síntoma a evitar: clientes acumulando estrellas/puntos en un club sin premios para canjear → frustración → churn silencioso.
+
+### Capa 1 — Sugerencias por rubro (helper + modal)
+
+**`lib/suggestedPrizesByCategory.js`** (helper, ~270 líneas):
+- Mapa `SUGGESTED_PRIZES` con plantillas de premios típicos por categoría de Benefix. Cubre ~50 rubros (Cafetería, Restaurante, Bar, Pizzería, Heladería, Panadería, Rotisería, Cervecería, Vinería, Food truck, Kiosco, Almacén, Mini market, Supermercado, Verdulería, Carnicería, Pescadería, Pollería, Fiambrería, Dietética, Librería, Papelería, Ferretería, Pinturería, Bicicletería, Pet shop, Barbería, Peluquería, Manicura, Estética, Spa, Tatuajes, Depilación, Farmacia, Óptica, Kinesiología, Nutrición, Psicología, Odontología, Veterinaria, Indumentaria, Calzado, Lavandería, Tintorería, Lavadero, Gimnasio, Yoga/Pilates, Idiomas, Música, etc.) + `_default`.
+- Cada entry: array de `{ name, cost }`. Cost expresado en estrellas (sistema base); para points se multiplica por 100 (1 estrella ≈ 100 puntos, mismo orden de magnitud que 1pto = 1$).
+- `getSuggestedPrizes(categories, systemType)` — itera `categories[]` en orden, devuelve los premios del primer match. Fallback `_default`. Devuelve `{ name, cost, system_type }` — el cost ya escalado al sistema elegido.
+
+**`lib/SuggestedPrizesModal.js`** (componente, ~210 líneas):
+- Modal full-screen con overlay glass.
+- Header: ícono Gift en círculo gradient sysColor + título "Tus clientes ya pueden acumular {unitLabel}" + subtítulo "¿Qué van a poder canjear?"
+- Copy contextual: "Estos son premios típicos para {category}. Podés agregarlos con un click y editarlos después, o cargar los tuyos desde cero."
+- Lista de cards de premios sugeridos. Cada card: ícono de unidad (★/◆), nombre, costo, botón "+ Agregar" individual (cambia a "✓ Agregado" verde una vez agregado).
+- 2 botones grandes abajo: "Agregar todos los sugeridos" (gradient sysColor) + "Cargar los míos desde cero" (cierra modal).
+- Props: `open, onClose, categories, systemType, onAddOne, onAddAll, busy, addedPrizeNames`. El padre maneja los inserts reales y le pasa el `Set<string>` de nombres ya agregados para deshabilitar los botones individuales sin cerrar el modal.
+
+### Capa 2 — Estado vacío conversacional en pestaña Premios (`app/page.js`)
+
+Cuando `prizes.filter(p => p.active && p.system_type === currentSystem).length === 0`, en lugar del placeholder plano "No hay premios todavía", aparece una card destacada:
+- Ícono Gift grande en círculo gradient sysColor con sombra.
+- Título: "Tu sistema de {estrellas|puntos} está activo, pero no hay premios para canjear"
+- Body: "Tus clientes ya están sumando {unit} con cada compra. Cargá al menos un premio para que puedan empezar a canjear."
+- **Línea de urgencia condicional**: si hay clientes con balance > 0 ("3 clientes ya acumularon estrellas en tu club."), aparece en color del sistema con peso 700.
+- 2 CTAs apilados:
+  1. **"Crear mi primer premio"** — gradient G de marca, abre `createPrizeOpen=true` (wizard de premio).
+  2. **"Ver premios sugeridos para mi rubro"** — secundario, abre `SuggestedPrizesModal` con `addedSuggestedNames=new Set()` (reset cada vez que se abre).
+
+State + handlers en `CommerceSettingsView`:
+- `suggestedPrizesModalOpen` (bool), `addedSuggestedNames` (Set<string>), `addingSuggested` (bool).
+- `addSuggestedPrizeOne(suggested)` — insert directo a `prizes` con `commerce_id, system_type, name, cost, active=true`. Actualiza `setPrizes` y agrega el nombre al Set. Respeta `perms.max_rewards`.
+- `addSuggestedPrizesAll(prizesArr)` — itera y hace insert en serie. Respeta el tope del plan (sale del loop si llega al límite). Cierra el modal al final.
+
+### Capa 3 — Cron diario `no_prizes_warning` (notif al dueño)
+
+**`app/api/admin/check-empty-prize-clubs/route.js`** (GET y POST):
+- Auth: header `Authorization: Bearer ${CRON_SECRET}`. Vercel Cron lo inyecta automáticamente cuando la env var existe.
+- Lógica por cada commerce con `active=true`:
+  1. Cuenta `prizes` activos del sistema actual (filtro por `system_type`). Si > 0 → skip.
+  2. Cuenta `memberships` con balance > 0 (columna `stars` o `points` según `prog_type`). Si 0 → skip.
+  3. Throttle: ¿ya enviamos `no_prizes_warning` al `owner_id` en los últimos 7 días? Si sí → skip.
+  4. Insert en `notifications` con type `no_prizes_warning`, title "Tus clientes están acumulando sin nada para canjear", body con N clientes con balance, link `/comercio/recompensas`, metadata `{ clients_with_balance, system, commerce_id, commerce_name }`.
+- Devuelve stats `{ checked, notified, skipped_throttle, skipped_no_clients, skipped_has_prizes }`.
+
+**`vercel.json`** — agregado bloque `crons`:
+```json
+"crons": [
+  { "path": "/api/admin/check-empty-prize-clubs", "schedule": "0 14 * * *" }
+]
+```
+Schedule: todos los días a las 14:00 UTC (11:00 ART). Vercel garantiza ejecución at-least-once; el throttle de 7 días absorbe duplicados eventuales.
+
+**`lib/NotificationsBell.js`** — mapeo agregado:
+- `TYPE_ICON.no_prizes_warning = Gift`
+- `TYPE_COLOR.no_prizes_warning = '#BD4BF8'` (violeta de marca, alerta no agresiva).
+
+### Env vars y deploy
+- Setear `CRON_SECRET` en Vercel (production). Sin ella el endpoint devuelve 401 y el cron no ejecuta nada.
+- Después del primer deploy, Vercel registra el cron automáticamente. Verificación: `vercel.com/dashboard` → proyecto → Cron Jobs.
+- Para correr manualmente: `curl -X POST https://benefix.com.ar/api/admin/check-empty-prize-clubs -H "Authorization: Bearer $CRON_SECRET"`.
+
+### Lo que NO hace (intencional)
+- No envía push del navegador (solo notif in-app). El push se dispara desde el componente `NotificationsBell` cuando renderea — el cron NO llama `web-push` directamente. Si querés push, hay que agregarlo al final del insert.
+- No insiste todos los días: throttle de 7 días por owner. Si el dueño ignora la primera notif, espera una semana antes de la próxima.
+- No bloquea la operación del comercio. El sistema sigue activo y los clientes siguen acumulando — la notif es un nudge.
 
 ## Cómo trabaja el dueño (Nacho)
 

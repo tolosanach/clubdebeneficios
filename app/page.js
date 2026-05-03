@@ -26,6 +26,7 @@ import SwRegister from '../lib/sw-register'
 import InfoHint from '../lib/InfoHint'
 import PlacesAutocomplete from '../lib/PlacesAutocomplete'
 import IntentPickerView from '../lib/IntentPickerView'
+import SuggestedPrizesModal from '../lib/SuggestedPrizesModal'
 import HelpBanner, { resetAllHelpBanners } from '../lib/HelpBanner'
 import JsQrScanner from '../lib/JsQrScanner'
 import { QRCodeSVG } from 'qrcode.react'
@@ -11671,6 +11672,12 @@ function CommerceSettingsView({ user, profile, setView, onLogout, onOwnerProfile
   // El deep-link desde el intent picker (card "%OFF próx. compra") setea
   // este state a 'discount' para aterrizar directo en esa tab.
   const [recompensasSubTab, setRecompensasSubTab] = useState('how')
+  // Modal de premios sugeridos por rubro — se abre desde el estado vacío
+  // de Premios o al activar el sistema. addedSuggestedNames trackea los
+  // que ya se agregaron en esta sesión del modal para no duplicarlos.
+  const [suggestedPrizesModalOpen, setSuggestedPrizesModalOpen] = useState(false)
+  const [addedSuggestedNames, setAddedSuggestedNames] = useState(new Set())
+  const [addingSuggested, setAddingSuggested] = useState(false)
   // Clientes y stats
   const [members, setMembers]             = useState([])
   const [newMember, setNewMember]         = useState({ email:'', full_name:'', phone:'', province:'', locality:'' })
@@ -12799,6 +12806,78 @@ function CommerceSettingsView({ user, profile, setView, onLogout, onOwnerProfile
     setOriginalPrize(null)
     setCreatePrizeOpen(false)
     setAddingPrize(false)
+  }
+
+  // ── Premios sugeridos por rubro ──
+  // Insert directo a Supabase (sin pasar por addPrize que usa el form).
+  // Recibe un objeto { name, cost, system_type } del helper
+  // suggestedPrizesByCategory. Actualiza el state local addedSuggestedNames
+  // para que el modal marque ese premio como "✓ Agregado".
+  async function addSuggestedPrizeOne(suggested) {
+    if (!commerce) return
+    if (perms.max_rewards !== null && activeRewardsCount >= perms.max_rewards) {
+      setUpgradeModal('rewards')
+      return
+    }
+    setAddingSuggested(true)
+    try {
+      const { data, error } = await supabase.from('prizes').insert({
+        commerce_id: commerce.id,
+        system_type: suggested.system_type || commerce?.prog_type || 'stars',
+        name:        suggested.name,
+        cost:        parseInt(suggested.cost) || 0,
+        active:      true,
+      }).select().single()
+      if (!error && data) {
+        setPrizes(p => [...p, data])
+        setAddedSuggestedNames(prev => {
+          const next = new Set(prev)
+          next.add(suggested.name)
+          return next
+        })
+        logActivity('prize_added', `Premio sugerido agregado: "${data.name}"`)
+      }
+    } finally {
+      setAddingSuggested(false)
+    }
+  }
+
+  // Agrega TODOS los sugeridos en serie (insert por insert para que la
+  // UI vaya marcando cada uno como agregado a medida que termina).
+  async function addSuggestedPrizesAll(prizesArr) {
+    if (!commerce || !Array.isArray(prizesArr)) return
+    setAddingSuggested(true)
+    try {
+      for (const sug of prizesArr) {
+        if (addedSuggestedNames.has(sug.name)) continue
+        // Respetar tope del plan.
+        if (perms.max_rewards !== null && activeRewardsCount + (addedSuggestedNames.size) >= perms.max_rewards) {
+          setUpgradeModal('rewards')
+          break
+        }
+        const { data, error } = await supabase.from('prizes').insert({
+          commerce_id: commerce.id,
+          system_type: sug.system_type || commerce?.prog_type || 'stars',
+          name:        sug.name,
+          cost:        parseInt(sug.cost) || 0,
+          active:      true,
+        }).select().single()
+        if (!error && data) {
+          setPrizes(p => [...p, data])
+          setAddedSuggestedNames(prev => {
+            const next = new Set(prev)
+            next.add(sug.name)
+            return next
+          })
+        }
+      }
+      logActivity('prize_added', 'Premios sugeridos agregados en bloque')
+    } finally {
+      setAddingSuggested(false)
+      // Cerramos el modal después de agregar todos — el dueño ya no
+      // tiene nada más que hacer ahí.
+      setSuggestedPrizesModalOpen(false)
+    }
   }
 
   // Carga un premio existente al form para editarlo + abre el accordion.
@@ -17779,7 +17858,106 @@ function CommerceSettingsView({ user, profile, setView, onLogout, onOwnerProfile
               </div>
               )
             })}
-            {prizes.length === 0 && <div style={{ textAlign:'center', padding:'24px 0', color:C.dust, fontSize:12 }}>No hay premios todavía. Creá el primero.</div>}
+            {/* ── Estado vacío conversacional ──
+                Aparece cuando NO hay premios activos del sistema actual.
+                Antes era un "No hay premios todavía. Creá el primero."
+                plano. Ahora reemplaza eso por una card destacada con 2
+                CTAs: crear desde cero o ver sugeridos por rubro. Si el
+                club ya tiene clientes acumulando, agregamos urgencia. */}
+            {(() => {
+              const sysCurrent  = commerce?.prog_type || 'stars'
+              const sysUnit     = sysCurrent === 'points' ? 'puntos' : 'estrellas'
+              const sysColor    = sysCurrent === 'points' ? '#EC4899' : '#8B5CF6'
+              const sysColorD   = sysCurrent === 'points' ? '#DB2777' : '#7C3AED'
+              const activeForCurrentSys = prizes.filter(p =>
+                p.active && (p.system_type || sysCurrent) === sysCurrent
+              )
+              if (activeForCurrentSys.length > 0) return null
+              // Cantidad de clientes con balance > 0 en el sistema actual.
+              // Lo computamos desde memberships si está cargado en este
+              // scope; si no, omitimos la línea de urgencia.
+              const balCol = sysCurrent === 'points' ? 'points' : 'stars'
+              const clientsWithBalance = (Array.isArray(members) ? members : [])
+                .filter(m => (m[balCol] || 0) > 0).length
+              return (
+                <div style={{
+                  padding: '22px 20px',
+                  borderRadius: 18,
+                  background: `linear-gradient(135deg, ${sysColor}1A, ${sysColorD}10)`,
+                  border: `1px solid ${sysColor}40`,
+                  marginTop: 14,
+                  textAlign: 'center',
+                }}>
+                  <div style={{
+                    width: 56, height: 56, borderRadius: 18,
+                    background: `linear-gradient(135deg, ${sysColor}, ${sysColorD})`,
+                    display: 'flex', alignItems: 'center', justifyContent: 'center',
+                    margin: '0 auto 14px',
+                    boxShadow: `0 10px 28px -8px ${sysColor}AA`,
+                  }}>
+                    <Gift size={26} color="#fff" strokeWidth={2.2} />
+                  </div>
+                  <div style={{
+                    fontFamily: FN, fontSize: 16, fontWeight: 800, color: '#fff',
+                    marginBottom: 8, letterSpacing: '-.005em', lineHeight: 1.3,
+                  }}>
+                    Tu sistema de {sysUnit} está activo,<br/>pero no hay premios para canjear
+                  </div>
+                  <div style={{
+                    fontSize: 13, color: 'rgba(255,255,255,0.72)',
+                    lineHeight: 1.55, maxWidth: 360, margin: '0 auto 8px',
+                  }}>
+                    Tus clientes ya están sumando {sysUnit} con cada compra. Cargá al menos un premio para que puedan empezar a canjear.
+                  </div>
+                  {clientsWithBalance > 0 && (
+                    <div style={{
+                      fontSize: 12, color: sysColor, fontWeight: 700,
+                      marginBottom: 16, letterSpacing: '.01em',
+                    }}>
+                      {clientsWithBalance} {clientsWithBalance === 1 ? 'cliente ya acumuló' : 'clientes ya acumularon'} {sysUnit} en tu club.
+                    </div>
+                  )}
+                  <div style={{
+                    display: 'flex', flexDirection: 'column', gap: 8,
+                    maxWidth: 320, margin: '14px auto 0',
+                  }}>
+                    <button onClick={() => {
+                      setNewPrize({ name:'', description:'', cost:'', img_url:'', stock:'' })
+                      setEditingPrizeId(null)
+                      setOriginalPrize(null)
+                      setPrizeError('')
+                      setCreatePrizeOpen(true)
+                    }}
+                      style={{
+                        width: '100%', padding: '13px 16px', borderRadius: 13,
+                        background: G, border: 'none', color: '#fff',
+                        fontFamily: FN, fontSize: 13.5, fontWeight: 800,
+                        cursor: 'pointer',
+                        boxShadow: '0 8px 22px -6px rgba(189,75,248,0.55)',
+                        display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: 6,
+                      }}>
+                      <Plus size={14} strokeWidth={2.6} /> Crear mi primer premio
+                    </button>
+                    <button onClick={() => {
+                      setAddedSuggestedNames(new Set())
+                      setSuggestedPrizesModalOpen(true)
+                    }}
+                      style={{
+                        width: '100%', padding: '11px 16px', borderRadius: 12,
+                        background: 'rgba(255,255,255,0.04)',
+                        border: '1px solid rgba(255,255,255,0.14)',
+                        color: 'rgba(255,255,255,0.85)',
+                        fontFamily: FN, fontSize: 12.5, fontWeight: 600,
+                        cursor: 'pointer',
+                        display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: 6,
+                      }}>
+                      <Sparkles size={13} strokeWidth={2.4} />
+                      Ver premios sugeridos para mi rubro
+                    </button>
+                  </div>
+                </div>
+              )
+            })()}
 
             {/* CTA "Crear premio" — abre el wizard modal de 3 pasos.
                 Si el comercio llegó al límite del plan, el CTA se reemplaza
@@ -17881,6 +18059,22 @@ function CommerceSettingsView({ user, profile, setView, onLogout, onOwnerProfile
             prizeError={prizeError}
             uploadPrizeImg={uploadPrizeImg}
             uploadingImg={uploadingImg}
+          />
+        )}
+
+        {/* Modal de premios sugeridos por rubro — Capa 1 del sistema de
+            premios obligatorios. Se abre desde el estado vacío de la pestaña
+            Premios ("Ver premios sugeridos para mi rubro"). */}
+        {tab === 'premios' && (
+          <SuggestedPrizesModal
+            open={suggestedPrizesModalOpen}
+            onClose={() => setSuggestedPrizesModalOpen(false)}
+            categories={Array.isArray(commerce?.categories) ? commerce.categories : (commerce?.category ? [commerce.category] : [])}
+            systemType={commerce?.prog_type || 'stars'}
+            onAddOne={addSuggestedPrizeOne}
+            onAddAll={addSuggestedPrizesAll}
+            busy={addingSuggested}
+            addedPrizeNames={addedSuggestedNames}
           />
         )}
 
