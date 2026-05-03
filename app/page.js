@@ -17127,23 +17127,23 @@ function CommerceSettingsView({ user, profile, setView, onLogout, onOwnerProfile
               // hereda exactamente el bg+border del panel (queda como
               // una sola pieza); la inactiva queda visiblemente más
               // oscura para que la jerarquía se lea de un vistazo.
-              const PANEL_BG       = 'rgba(189,75,248,0.07)'
-              const PANEL_BORDER   = 'rgba(189,75,248,0.32)'
-              const INACTIVE_BG    = 'rgba(255,255,255,0.02)'
-              const INACTIVE_BORDER= 'rgba(255,255,255,0.07)'
-              return TABS.map(t => {
+              // Paleta de la "carpeta" — contraste subido en may 2026 a
+              // pedido del dueño. El panel ahora usa bg violeta 0.12 (antes
+              // 0.07) para sentirse claramente como ventana sobre el fondo.
+              // Border 0.50 (antes 0.32). La inactiva tiene texto a 0.62
+              // (antes 0.42) — sigue siendo "está atrás" pero legible.
+              const PANEL_BG       = 'rgba(189,75,248,0.12)'
+              const PANEL_BORDER   = 'rgba(189,75,248,0.50)'
+              const INACTIVE_BG    = 'rgba(255,255,255,0.03)'
+              const INACTIVE_BORDER= 'rgba(255,255,255,0.10)'
+              return TABS.map((t, idx) => {
                 const active = recompensasSubTab === t.id
+                const stepNum = idx + 1
                 return (
                   <button key={t.id}
                     onClick={() => setRecompensasSubTab(t.id)}
                     style={{
-                      // borderRadius solo en las top corners — la solapa
-                      // baja recta para fundirse con el panel.
                       borderRadius: '12px 12px 0 0',
-                      // Borde superior + laterales visibles. Bottom: en
-                      // el activo es DEL color del panel (se confunde con
-                      // el bg del panel); en el inactivo va con el borde
-                      // tenue para que se lea "está atrás".
                       borderTop:    `1px solid ${active ? PANEL_BORDER : INACTIVE_BORDER}`,
                       borderLeft:   `1px solid ${active ? PANEL_BORDER : INACTIVE_BORDER}`,
                       borderRight:  `1px solid ${active ? PANEL_BORDER : INACTIVE_BORDER}`,
@@ -17153,29 +17153,41 @@ function CommerceSettingsView({ user, profile, setView, onLogout, onOwnerProfile
                       background: active ? PANEL_BG : INACTIVE_BG,
                       position: 'relative',
                       zIndex: active ? 3 : 1,
-                      // Empuja el panel 1px hacia arriba para que el borde
-                      // superior del panel quede oculto debajo del activo
-                      // (no haya línea doble).
                       marginBottom: -1,
-                      padding: '12px 16px 13px',
+                      padding: '11px 14px 12px',
                       cursor: 'pointer',
                       fontFamily: FN,
                       fontSize: 12,
                       fontWeight: active ? 800 : 600,
                       letterSpacing: '.02em',
-                      // Texto: blanco brillante para activa, gris medio
-                      // para inactiva (se nota la diferencia clara entre
-                      // "estoy mirando esto" y "esta está disponible").
-                      color: active ? '#fff' : 'rgba(255,255,255,0.42)',
+                      color: active ? '#fff' : 'rgba(255,255,255,0.62)',
                       transition: 'color 180ms ease, background 180ms ease, border-color 180ms ease',
                       // Highlight violeta más fuerte arriba de la solapa
                       // activa — rema con la marca y refuerza la
                       // jerarquía visual sin romper la fusión con el panel.
                       boxShadow: active
-                        ? 'inset 0 3px 0 0 rgba(189,75,248,0.85)'
+                        ? 'inset 0 3px 0 0 rgba(189,75,248,0.95)'
                         : 'none',
+                      // Layout: numero circular a la izquierda + label.
+                      display: 'inline-flex', alignItems: 'center', gap: 8,
                     }}
                   >
+                    {/* Círculo con número del paso — refuerza el orden y
+                        da feedback visual de "esto es 1 de 2 / 2 de 2".
+                        Activo: violeta sólido + texto blanco. Inactivo:
+                        outline gris claro. */}
+                    <span style={{
+                      width: 20, height: 20, borderRadius: '50%',
+                      background: active
+                        ? 'linear-gradient(135deg, #7C3AED, #BD4BF8)'
+                        : 'rgba(255,255,255,0.06)',
+                      border: active ? 'none' : '1px solid rgba(255,255,255,0.20)',
+                      color: active ? '#fff' : 'rgba(255,255,255,0.65)',
+                      fontFamily: FN, fontSize: 10.5, fontWeight: 800,
+                      display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
+                      flexShrink: 0,
+                      boxShadow: active ? '0 2px 8px rgba(189,75,248,0.45)' : 'none',
+                    }}>{stepNum}</span>
                     {t.label}
                   </button>
                 )
@@ -17194,10 +17206,11 @@ function CommerceSettingsView({ user, profile, setView, onLogout, onOwnerProfile
           <div style={{
             // Panel del tab "Sistema de acumulación" — mismo bg+border
             // tinteado violeta que la solapa activa, así se lee como una
-            // pieza continua. Contraste subido con respecto al fondo de
-            // la página para que se note "ventana" claramente.
-            background:'rgba(189,75,248,0.07)',
-            border:'1px solid rgba(189,75,248,0.32)',
+            // pieza continua. Paleta subida en may 2026: bg 0.12 (antes
+            // 0.07), border 0.50 (antes 0.32) para mejor contraste sobre
+            // el fondo casi negro de la página.
+            background:'rgba(189,75,248,0.12)',
+            border:'1px solid rgba(189,75,248,0.50)',
             // top-left: 0 si la tab "how" está activa (la solapa se conecta).
             // top-right: 12 (la otra solapa NO está activa, así que hay borde).
             // bottom: 16 ambos.
@@ -18254,9 +18267,9 @@ function CommerceSettingsView({ user, profile, setView, onLogout, onOwnerProfile
           <div style={{
             // Mismos colores que la tab "how" — panel violeta tinteado,
             // border violeta más visible, sombra suave para elevarlo
-            // sobre el fondo.
-            background:'rgba(189,75,248,0.07)',
-            border:'1px solid rgba(189,75,248,0.32)',
+            // sobre el fondo. Paleta subida en may 2026.
+            background:'rgba(189,75,248,0.12)',
+            border:'1px solid rgba(189,75,248,0.50)',
             // Cuando la tab "discount" está activa, la conexión visual va
             // por el TOP-RIGHT (no top-left). Border-radius asimétrico.
             borderRadius:'12px 0 16px 16px',
