@@ -19929,13 +19929,39 @@ function CommerceSettingsView({ user, profile, setView, onLogout, onOwnerProfile
 
                 <div style={{ marginBottom:14 }}>
                   <FieldLabel optional>Instagram</FieldLabel>
-                  <div style={{ position:'relative' }}>
-                    <span style={{ position:'absolute', left:13, top:'50%', transform:'translateY(-50%)', color:C.mist, fontSize:13, pointerEvents:'none' }}>@</span>
-                    <input value={(form.instagram||'').replace(/^@/,'')}
-                      onChange={e => set('instagram', e.target.value.replace(/^@/,''))}
-                      placeholder="tunegocio"
-                      style={{ ...iStyle(false, !(form.instagram||'').trim()), paddingLeft:28 }} />
-                  </div>
+                  {/* Flex layout para que el prefijo "@" siempre se vea.
+                      Mismo patron que Facebook: container hace de input
+                      visualmente, el <input> real no tiene background ni
+                      borde. */}
+                  {(() => {
+                    const isEmpty = !(form.instagram||'').trim()
+                    const cleanVal = (form.instagram||'').replace(/^@/,'')
+                    return (
+                      <div style={{
+                        display:'flex', alignItems:'center',
+                        background:'rgba(0,0,0,0.30)',
+                        backdropFilter:'blur(12px)', WebkitBackdropFilter:'blur(12px)',
+                        border:`1px solid ${isEmpty ? 'rgba(189,75,248,0.45)' : C.rim}`,
+                        borderRadius:10, padding:'0 13px',
+                        fontFamily:FI, boxSizing:'border-box',
+                        boxShadow: isEmpty
+                          ? '0 0 0 1px rgba(189,75,248,0.18), 0 0 18px rgba(189,75,248,0.22)'
+                          : 'none',
+                        transition: 'border-color 180ms ease, box-shadow 220ms ease',
+                      }}>
+                        <span style={{ color:C.mist, fontSize:13, fontFamily:FI, flexShrink:0, userSelect:'none' }}>@</span>
+                        <input
+                          value={cleanVal}
+                          onChange={e => set('instagram', e.target.value.replace(/^@/,''))}
+                          placeholder="tunegocio"
+                          style={{
+                            flex:1, minWidth:0,
+                            background:'transparent', border:'none', outline:'none',
+                            padding:'10px 0 10px 4px', fontSize:13, color:C.pearl, fontFamily:FI,
+                          }} />
+                      </div>
+                    )
+                  })()}
                 </div>
 
                 <div>
