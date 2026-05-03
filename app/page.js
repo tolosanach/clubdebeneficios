@@ -20753,10 +20753,18 @@ function ScannerView({ user, profile, setView }) {
   // auto-descarta a los 5s desde el setter (ver setScanWarningWithTimeout).
   const [scanWarning, setScanWarning] = useState(null)
   const scanWarningTimeoutRef = useRef(null)
+  // resetSignal: contador que se incrementa cada vez que queremos liberar
+  // el lock interno del JsQrScanner (decodedRef). Sin esto, despues del
+  // primer scan invalido el scanner queda lockeado y los siguientes QRs
+  // no se detectan hasta cerrar/reabrir la camara.
+  const [scanResetSignal, setScanResetSignal] = useState(0)
   const setScanWarningWithTimeout = (warning) => {
     if (scanWarningTimeoutRef.current) clearTimeout(scanWarningTimeoutRef.current)
     setScanWarning(warning)
     if (warning) {
+      // Liberamos el lock del scanner para que detecte nuevos QRs aunque
+      // el cliente vuelva a equivocarse antes de que el aviso se descarte.
+      setScanResetSignal(s => s + 1)
       scanWarningTimeoutRef.current = setTimeout(() => setScanWarning(null), 5500)
     }
   }
@@ -21630,6 +21638,7 @@ function ScannerView({ user, profile, setView }) {
           <JsQrScanner
             onDecode={(text) => handleScan(text)}
             onError={() => setCameraError('No se pudo acceder a la cámara. Revisá los permisos.')}
+            resetSignal={scanResetSignal}
           />
         )}
 
