@@ -20646,7 +20646,7 @@ function ScannerView({ user, profile, setView }) {
 
   useEffect(() => {
     if (!user) return
-    supabase.from('commerces').select('id, name, slug, prog_type, prog_min_purchase').eq('owner_id', user.id)
+    supabase.from('commerces').select('id, name, slug, prog_type, prog_min_purchase, img_url').eq('owner_id', user.id)
       .then(({ data }) => {
         const list = data || []
         setMyCommerces(list)
@@ -20970,41 +20970,54 @@ function ScannerView({ user, profile, setView }) {
     // sin fondo de color, ícono también con outline (no relleno) en violeta.
     // Todas las opciones se ven idénticas — la diferenciación queda en el
     // ícono y el texto.
-    const renderOption = opt => (
-      <button key={opt.id}
-        onClick={() => { setScanMode(opt.id); setModeSelected(true) }}
-        style={{
-          width:'100%', textAlign:'left',
-          padding:'16px 16px',
-          background:'transparent',
-          border:'1px solid rgba(168,85,247,0.35)',
-          borderRadius:14,
-          cursor:'pointer',
-          display:'flex', alignItems:'center', gap:14,
-          fontFamily:'inherit',
-          transition:'transform 160ms ease, border-color 160ms ease, background 160ms ease',
-        }}
-        onMouseDown={e => e.currentTarget.style.transform = 'scale(0.98)'}
-        onMouseUp={e => e.currentTarget.style.transform = 'scale(1)'}
-        onMouseLeave={e => e.currentTarget.style.transform = 'scale(1)'}
-        onMouseEnter={e => e.currentTarget.style.background = 'rgba(168,85,247,0.06)'}
-        onPointerLeave={e => e.currentTarget.style.background = 'transparent'}>
-        <div style={{
-          width:42, height:42, borderRadius:11,
-          background:'transparent',
-          border:'1px solid rgba(168,85,247,0.45)',
-          display:'flex', alignItems:'center', justifyContent:'center',
-          flexShrink:0,
-        }}>
-          <opt.Icon size={20} color="#D8B4FE" strokeWidth={2} />
-        </div>
-        <div style={{ flex:1, minWidth:0 }}>
-          <div style={{ fontFamily:FN, fontSize:14, fontWeight:700, color:'#fff', marginBottom:3 }}>{opt.title}</div>
-          <div style={{ fontSize:12, color:'rgba(216,180,254,0.65)', lineHeight:1.45 }}>{opt.desc}</div>
-        </div>
-        <ArrowRight size={18} color="rgba(216,180,254,0.85)" strokeWidth={2.2} style={{ flexShrink:0 }} />
-      </button>
-    )
+    const renderOption = opt => {
+      // Para la opcion "Mostrar QR de negocio", si el comerciante tiene
+      // logo cargado lo usamos como avatar en lugar del icono Store
+      // generico. Asi reconoce al toque cuál es su comercio (especialmente
+      // útil si el dueño tiene varios comercios). Sino → fallback al icono.
+      const businessLogo = (opt.id === 'show-business-qr' && myCommerces[0]?.img_url) || null
+      return (
+        <button key={opt.id}
+          onClick={() => { setScanMode(opt.id); setModeSelected(true) }}
+          style={{
+            width:'100%', textAlign:'left',
+            padding:'16px 16px',
+            background:'transparent',
+            border:'1px solid rgba(168,85,247,0.35)',
+            borderRadius:14,
+            cursor:'pointer',
+            display:'flex', alignItems:'center', gap:14,
+            fontFamily:'inherit',
+            transition:'transform 160ms ease, border-color 160ms ease, background 160ms ease',
+          }}
+          onMouseDown={e => e.currentTarget.style.transform = 'scale(0.98)'}
+          onMouseUp={e => e.currentTarget.style.transform = 'scale(1)'}
+          onMouseLeave={e => e.currentTarget.style.transform = 'scale(1)'}
+          onMouseEnter={e => e.currentTarget.style.background = 'rgba(168,85,247,0.06)'}
+          onPointerLeave={e => e.currentTarget.style.background = 'transparent'}>
+          <div style={{
+            width:42, height:42, borderRadius:11,
+            background:'transparent',
+            border: businessLogo ? '1px solid rgba(255,255,255,0.18)' : '1px solid rgba(168,85,247,0.45)',
+            display:'flex', alignItems:'center', justifyContent:'center',
+            flexShrink:0,
+            overflow: 'hidden',
+          }}>
+            {businessLogo ? (
+              <img src={businessLogo} alt="Logo del negocio"
+                style={{ width:'100%', height:'100%', objectFit:'cover', display:'block' }} />
+            ) : (
+              <opt.Icon size={20} color="#D8B4FE" strokeWidth={2} />
+            )}
+          </div>
+          <div style={{ flex:1, minWidth:0 }}>
+            <div style={{ fontFamily:FN, fontSize:14, fontWeight:700, color:'#fff', marginBottom:3 }}>{opt.title}</div>
+            <div style={{ fontSize:12, color:'rgba(216,180,254,0.65)', lineHeight:1.45 }}>{opt.desc}</div>
+          </div>
+          <ArrowRight size={18} color="rgba(216,180,254,0.85)" strokeWidth={2.2} style={{ flexShrink:0 }} />
+        </button>
+      )
+    }
 
     return (
       <div style={{ maxWidth:440, margin:'0 auto', padding:'24px 18px 80px' }}>
@@ -22990,8 +23003,7 @@ export default function App() {
               pill (campana de notifs + chat de soporte). Los componentes
               NotificationsBell y SupportChat se siguen montando para que
               sus drawers existan, pero con `hideButton` para que no
-              dupliquen botones flotantes. La interacción se delega vía
-              eventos `benefix:open-notifications` y `benefix:open-support`. */}
+              dupliquen botones flotantes. La interacción se delega vía eventos `benefix:open-notifications` y `benefix:open-support`. */}
           <FloatingActionsTab />
           <NotificationsBell hideButton role={view === 'commerce-settings' ? 'merchant' : 'client'} />
           <SupportChat hideButton role={view === 'commerce-settings' ? 'merchant' : 'client'} />
