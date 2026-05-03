@@ -2361,6 +2361,10 @@ function Btn({ variant = 'primary', size = 'md', onClick, children, style: xs, .
 // onCTA: callback para botón en home (registro)
 function PlanCards({ currentPlan=null, clientCount=0, planLimit=null, onUpgrade, onCTA }) {
   const PLAN_LIST = [
+    // Features actualizados may 2026 contra PLAN_PERMISSIONS reales:
+    //   - FREE:    max_clients=30, max_rewards=2, no promos, no automatizaciones
+    //   - STARTER: max_clients=60, premios ilimitados, promos sí, no autom.
+    //   - PRO:     todo ilimitado + mensajes automáticos por WhatsApp
     {
       key:'free',
       Icon: Package,
@@ -2386,10 +2390,10 @@ function PlanCards({ currentPlan=null, clientCount=0, planLimit=null, onUpgrade,
       features:[
         'Hasta 60 clientes activos',
         'Premios ilimitados',
-        'Descuentos y días con bonus ×2',
-        'Carga manual de clientes nuevos',
+        'Cupón de descuento en próxima compra',
+        'Días con suma ×2',
         'Soporte prioritario por chat',
-        'Todo lo del Free incluido',
+        'Todo lo del FREE incluido',
       ],
       price:25000,
       priceHint:'Menos de $850 por día',
@@ -2403,10 +2407,10 @@ function PlanCards({ currentPlan=null, clientCount=0, planLimit=null, onUpgrade,
       features:[
         'Clientes ilimitados',
         'Mensajes automáticos por WhatsApp',
-        'Reactivar clientes que no vuelven',
-        'Avisar cuando un cliente puede canjear',
+        'Reactivar clientes inactivos',
+        'Aviso cuando un cliente está cerca de canjear',
         'Saludo automático en primera visita',
-        'Soporte dedicado, todos los días',
+        'Todo lo del STARTER incluido',
       ],
       price:45000,
       priceHint:null,
@@ -2586,13 +2590,19 @@ function PlanCards({ currentPlan=null, clientCount=0, planLimit=null, onUpgrade,
               color: 'rgba(255,255,255,0.80)',
               lineHeight: 1.4,
             }}>
+              {/* Tilde con relleno violeta sólido en las 3 cards (FREE / STARTER /
+                  PRO) — refuerza identidad de marca y sube contraste. Antes era
+                  círculo violeta a 15% opacidad con check violeta encima, casi
+                  invisible. Ahora es círculo violeta sólido + check blanco
+                  sobre él. */}
               <span style={{
-                width: 14, height: 14, borderRadius: '50%',
-                background: `${C.v}26`,           // siempre violeta sutil
+                width: 16, height: 16, borderRadius: '50%',
+                background: 'linear-gradient(135deg, #7C3AED, #BD4BF8)',
                 display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
                 flexShrink: 0, marginTop: 1,
+                boxShadow: `0 2px 6px ${C.v}55`,
               }}>
-                <Check size={8} color={accent} strokeWidth={3.5} />
+                <Check size={9} color="#fff" strokeWidth={3.5} />
               </span>
               <span>{f}</span>
             </li>
