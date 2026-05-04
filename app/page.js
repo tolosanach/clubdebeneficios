@@ -7242,16 +7242,11 @@ function ChipEMV() {
   )
 }
 
-// ─── BENEFIX WATERMARK ───────────────────────────────────────────────────────
-function BenefixWatermark({ color = 'rgba(255,255,255,0.09)', size = 120 }) {
-  return (
-    <svg width={size} height={size} viewBox="0 0 28 28" fill="none" aria-hidden="true">
-      <path d="M14 4C8.477 4 4 8.477 4 14s4.477 10 10 10" stroke={color} strokeWidth="3" strokeLinecap="round"/>
-      <rect x="16" y="5.5" width="8" height="5" rx="2.5" fill={color}/>
-      <rect x="16" y="12" width="9" height="5.5" rx="2.75" fill={color}/>
-    </svg>
-  )
-}
+// BenefixWatermark removido (mayo 2026, rebrand fase 2). Era el icono
+// "infinity" gradient que viv-ia detras de las wallet cards. Quitado
+// del JSX en fase 1 + funcion eliminada en fase 2 (dead code).
+// Si en el futuro se quiere agregar un watermark al wordmark nuevo,
+// reescribir desde cero — el SVG path viejo no aplica al brush.
 
 // ─── WALLET CARD FRONT ───────────────────────────────────────────────────────
 function WalletCardFront({ club, colors, onFlip, visible }) {
