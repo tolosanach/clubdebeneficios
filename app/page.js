@@ -33,6 +33,7 @@ import ContextSwitchPill from '../lib/ContextSwitchPill'
 import ClientQRSheet from '../lib/ClientQRSheet'
 import MerchantQRSheet from '../lib/MerchantQRSheet'
 import MoreSheet from '../lib/MoreSheet'
+import Logo from '../lib/Logo'
 import HelpBanner, { resetAllHelpBanners } from '../lib/HelpBanner'
 import JsQrScanner from '../lib/JsQrScanner'
 import { QRCodeSVG } from 'qrcode.react'
@@ -965,26 +966,11 @@ function OnboardingFlow({ user, onComplete }) {
 }
 
 // ─── PRIMITIVES ───────────────────────────────────────────────────────────────
-function Logo({ big = false }) {
-  const sz = big ? 44 : 34
-  const fs = big ? 22 : 15
-  const dotSz = big ? 5 : 4
-  const dotTop = big ? -7 : -5
-  return (
-    <div style={{ display:'flex', alignItems:'center', gap: big ? 12 : 10 }}>
-      <div style={{ width:sz, height:sz, borderRadius:Math.round(sz*.28), background:G, display:'flex', alignItems:'center', justifyContent:'center', boxShadow:'0 4px 16px #FE500044', flexShrink:0 }}>
-        <svg width={sz*.72} height={sz*.72} viewBox="0 0 28 28" fill="none">
-          <path d="M14 4C8.477 4 4 8.477 4 14s4.477 10 10 10" stroke="white" strokeWidth="3.5" strokeLinecap="round"/>
-          <rect x="16" y="5.5" width="8" height="5" rx="2.5" fill="white" opacity=".9"/>
-          <rect x="16" y="12" width="9" height="5.5" rx="2.75" fill="white"/>
-        </svg>
-      </div>
-      <div style={{ fontFamily:FN, fontSize:fs, fontWeight:900, color:C.white, lineHeight:1, letterSpacing:'-.02em' }}>
-        Benefix
-      </div>
-    </div>
-  )
-}
+// Logo — definicion local removida (mayo 2026, rebrand fase 1).
+// Ahora viene de lib/Logo.js: <img> al SVG wordmark del rebrand violeta
+// solido. Variants: white|violet|full, sizes: sm|md|lg.
+// La unica llamada que pedia trato especial era <Logo big /> en el
+// header del AdminView — se reemplaza por <Logo size="lg" />.
 
 function GBtn({ children, onClick, sm, outline, style:s={}, disabled }) {
   const [hov, setHov] = useState(false)
@@ -22659,7 +22645,7 @@ function AdminView({ cities: initialCities, profile }) {
     <div style={{ maxWidth:980, margin:'0 auto', padding:'26px 18px 80px' }}>
       {/* Header */}
       <div className="fu" style={{ display:'flex', justifyContent:'space-between', alignItems:'flex-end', marginBottom:18, flexWrap:'wrap', gap:11 }}>
-        <Logo big />
+        <Logo size="lg" />
         <Pill color={C.ok}>● Sistema activo</Pill>
       </div>
       <GradLine />
