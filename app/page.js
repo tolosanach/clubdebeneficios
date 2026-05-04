@@ -14809,18 +14809,23 @@ function CommerceSettingsView({ user, profile, setView, onLogout, onOwnerProfile
               nombre 13. El boton del ojo va a la derecha como pill
               violeta — al tap navega a /club/[slug]?edit=1. */}
           {commerce?.name && (
+            // Banner Negocio activo — version minimalista (mayo 2026):
+            // sin fondo, perimetro fino blanco con bordes redondeados.
+            // Verde solo en la luz LED, en el label "NEGOCIO ACTIVO" y
+            // en el boton de la derecha (Pen + "Editar"), que abre el
+            // preview editable del negocio en /club/[slug]?edit=1.
             <div style={{
               display: 'flex', alignItems: 'center', gap: 10,
               padding: '6px 8px 6px 10px',
               marginBottom: 12,
-              background: 'linear-gradient(135deg, rgba(34,230,152,0.10), rgba(21,128,61,0.06))',
-              border: '1px solid rgba(34,230,152,0.32)',
+              background: 'transparent',
+              border: '1px solid rgba(255,255,255,0.18)',
               borderRadius: 12,
             }}>
               <div style={{
                 width: 28, height: 28, borderRadius: 8,
-                background: commerce.img_url ? 'transparent' : 'rgba(34,230,152,0.18)',
-                border: commerce.img_url ? '1px solid rgba(255,255,255,0.16)' : '1px solid rgba(34,230,152,0.45)',
+                background: commerce.img_url ? 'transparent' : 'rgba(255,255,255,0.04)',
+                border: '1px solid rgba(255,255,255,0.16)',
                 display: 'flex', alignItems: 'center', justifyContent: 'center',
                 flexShrink: 0,
                 overflow: 'hidden',
@@ -14828,7 +14833,7 @@ function CommerceSettingsView({ user, profile, setView, onLogout, onOwnerProfile
                 {commerce.img_url ? (
                   <img src={commerce.img_url} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }} />
                 ) : (
-                  <Store size={14} color="#22E698" strokeWidth={2.2} />
+                  <Store size={14} color="rgba(255,255,255,0.65)" strokeWidth={2.2} />
                 )}
               </div>
               <div style={{ flex: 1, minWidth: 0 }}>
@@ -14854,8 +14859,10 @@ function CommerceSettingsView({ user, profile, setView, onLogout, onOwnerProfile
                   {commerce.name}
                 </div>
               </div>
-              {/* Boton del ojo — preview publico del negocio. Reemplaza al
-                  Eye del navbar global que se oculto al pasar a BottomNavV2. */}
+              {/* Boton "Editar" — abre el preview editable del negocio en
+                  /club/[slug]?edit=1. Antes era un Eye + "Ver", lo cambiamos
+                  por Pen + "Editar" para reflejar mejor la accion (en esa
+                  vista los lapices te llevan a editar campos sueltos). */}
               {commerce.slug && (
                 <button
                   type="button"
@@ -14864,16 +14871,16 @@ function CommerceSettingsView({ user, profile, setView, onLogout, onOwnerProfile
                       window.location.href = `/club/${commerce.slug}?edit=1`
                     }
                   }}
-                  aria-label="Ver el negocio como cliente"
-                  title="Ver el negocio como cliente"
+                  aria-label="Editar el negocio en la vista pública"
+                  title="Editar el negocio en la vista pública"
                   style={{
                     flexShrink: 0,
                     display: 'inline-flex', alignItems: 'center', gap: 6,
                     padding: '6px 10px 6px 9px',
                     borderRadius: 99,
-                    background: 'rgba(189,75,248,0.16)',
-                    border: '1px solid rgba(189,75,248,0.45)',
-                    color: '#fff',
+                    background: 'rgba(34,230,152,0.12)',
+                    border: '1px solid rgba(34,230,152,0.45)',
+                    color: '#22E698',
                     cursor: 'pointer',
                     fontFamily: FN, fontSize: 11, fontWeight: 700,
                     letterSpacing: '.02em',
@@ -14883,8 +14890,8 @@ function CommerceSettingsView({ user, profile, setView, onLogout, onOwnerProfile
                   onMouseUp={e   => { e.currentTarget.style.transform = 'scale(1)' }}
                   onMouseLeave={e => { e.currentTarget.style.transform = 'scale(1)' }}
                 >
-                  <Eye size={13} strokeWidth={2.2} color="#BD4BF8" />
-                  <span>Ver</span>
+                  <Pen size={13} strokeWidth={2.2} color="#22E698" />
+                  <span>Editar</span>
                 </button>
               )}
             </div>
@@ -23906,6 +23913,25 @@ export default function App() {
             onNavigate={handleNavGo}
             onLogout={handleLogout}
             profile={profile}
+            onActivateClientMode={async () => {
+              // Cross-role: el merchant decide tambien usar Benefix como
+              // cliente. Persistimos user_intent='both' (sigue siendo
+              // merchant pero tambien activado para cliente), refrescamos
+              // profile, cambiamos activeContext y navegamos a la vista
+              // cliente.
+              try {
+                if (user?.id) {
+                  await supabase.from('profiles').update({ user_intent: 'both' }).eq('id', user.id)
+                  await loadProfile(user.id)
+                }
+                setActiveContext('client')
+                try { localStorage.setItem('benefix:active-context', 'client') } catch {}
+                try { window.dispatchEvent(new CustomEvent('benefix:context-changed', { detail: { context: 'client' } })) } catch {}
+                navigate('client')
+              } catch (err) {
+                console.warn('[onActivateClientMode] error:', err)
+              }
+            }}
           />
         </>
       )}

@@ -23,6 +23,10 @@ import { FAMILIES_DATA } from '../../../lib/commerce-families-data'
 import FloatingActionsTab from '../../../lib/FloatingActionsTab'
 import NotificationsBell from '../../../lib/NotificationsBell'
 import SupportChat from '../../../lib/SupportChat'
+// BottomNavV2 — el bottom-nav del panel del comerciante. Lo montamos
+// tambien en editMode del eye preview para que el dueño no pierda la
+// chrome inferior cuando se mete a editar la vista publica.
+import BottomNavV2 from '../../../lib/BottomNavV2'
 import EnablePushPrompt from '../../../lib/EnablePushPrompt'
 import SwRegister from '../../../lib/sw-register'
 
@@ -2518,8 +2522,12 @@ export default function ClubProfilePage() {
             (app/page.js) según el role del user. Si no, al venir desde "Mis
             Clubes" el dueño/admin perdía Vista pública / Mi Negocio / Panel
             admin y la barra superior se sentía "rota". El role viene de
-            /api/club-profile (profile.role). */}
-      <div style={{ position:'fixed', top:0, left:0, right:0, zIndex:200 }}>
+            /api/club-profile (profile.role).
+            En editMode (dueño previsualizando con el ojo) este navbar
+            queda oculto — la navegacion de Inicio/Beneficios/QR/Notifs/
+            Mas vive en el BottomNavV2 que montamos al final del archivo,
+            asi se siente continuo con el panel del comerciante. */}
+      <div style={{ position:'fixed', top:0, left:0, right:0, zIndex:200, display: editMode ? 'none' : 'block' }}>
         <nav style={{ background:'rgba(0,0,0,0.75)', backdropFilter:'blur(24px)', WebkitBackdropFilter:'blur(24px)', borderBottom:`1px solid ${C.rim}`, padding:'0 16px', display:'flex', alignItems:'center', justifyContent:'space-between', height:58 }}>
           <Logo />
           <div style={{ display:'flex', gap:6, alignItems:'center' }}>
@@ -2703,8 +2711,10 @@ export default function ClubProfilePage() {
       </div>
 
       {/* Spacer: navbar superior (58px) + sub-nav cliente (~44px) + banner demo si aplica.
-          En editMode el sub-nav cliente está oculto, así que descontamos esos 44px. */}
-      <div style={{ height: isDemo ? (editMode ? 92 : 136) : (editMode ? 58 : 102) }} />
+          En editMode TODO el navbar superior queda oculto (el dueño usa
+          el BottomNavV2 que montamos al final), asi que el spacer es 0
+          (o solo el banner demo si aplica). */}
+      <div style={{ height: isDemo ? (editMode ? 34 : 136) : (editMode ? 0 : 102) }} />
 
       {/* Banner "Modo edición" — render INLINE (no fixed) inmediatamente
           después del spacer del navbar. Toma su propio espacio vertical y
@@ -3891,6 +3901,43 @@ export default function ClubProfilePage() {
             <ClubTopNav tab={tab} setTab={setTab} prizesCount={activePrizes.length} editMode={editMode} />
        */}
 
+      {/* ── BOTTOM NAV V2 (solo editMode) ──
+            En el eye preview montamos el MISMO BottomNavV2 del panel del
+            comerciante para que la chrome inferior se sienta continua —
+            cuando el dueño le pega al ojo desde el panel, la barra de abajo
+            no desaparece. Las acciones de slots/QR/Mas navegan back al
+            panel via window.location.href con deep-link de view+tab. Asi
+            si el dueño tapeo "Beneficios", aterriza en /?view=commerce-
+            settings&tab=recompensas y la AppRoot deep-linker se encarga
+            del resto. Para el slot Notificaciones reusamos el evento
+            'benefix:open-notifications' que la NotificationsBell que ya
+            esta en este page escucha (la importamos arriba). */}
+      {editMode && (
+        <BottomNavV2
+          activeContext="merchant"
+          currentView="commerce-settings"
+          currentTab={null}
+          onNavigate={(v, t) => {
+            if (typeof window === 'undefined') return
+            const params = new URLSearchParams()
+            if (v) params.set('view', v)
+            if (t) params.set('tab', t)
+            window.location.href = `/?${params.toString()}`
+          }}
+          onQRTap={() => {
+            if (typeof window !== 'undefined') {
+              window.location.href = '/?view=commerce-settings'
+            }
+          }}
+          onMoreTap={() => {
+            if (typeof window !== 'undefined') {
+              window.location.href = '/?view=commerce-settings'
+            }
+          }}
+          unreadCount={0}
+        />
+      )}
+
       {/* ── JOIN MODAL ── */}
       {showModal && (
         <div style={{ position:'fixed', inset:0, background:'rgba(0,0,0,0.80)', backdropFilter:'blur(12px)', WebkitBackdropFilter:'blur(12px)', zIndex:999, display:'flex', alignItems:'flex-end', justifyContent:'center' }}
@@ -4421,6 +4468,7 @@ export default function ClubProfilePage() {
                   border: '1px solid rgba(255,255,255,0.10)',
                   color: 'rgba(255,255,255,0.78)',
                   cursor: 'pointer', padding: 0,
+            
                   display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
                 }}
               >
