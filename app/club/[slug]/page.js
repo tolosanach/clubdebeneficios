@@ -2674,7 +2674,12 @@ export default function ClubProfilePage() {
               edición del dueño (editMode). Cuando el dueño previsualiza
               su propio club vía el ojo, no tiene sentido mostrar atajos
               al área de cliente — está actuando como dueño. */}
-        {!editMode && (
+        {/* SUB-NAV CLIENTE OCULTO en el perfil público — la navegación
+            global ahora vive en el BottomNavV2 (abajo). El sub-nav superior
+            con Mi billetera / Mis beneficios / Historial / Perfil duplicaba
+            la nav inferior y confundía. Lo dejamos en {false && ...} por si
+            volvemos a necesitarlo. */}
+        {false && (
         <nav style={{
           background: 'rgba(10, 10, 10, 0.75)',
           backdropFilter: 'blur(14px)',
@@ -3936,7 +3941,11 @@ export default function ClubProfilePage() {
             del resto. Para el slot Notificaciones reusamos el evento
             'benefix:open-notifications' que la NotificationsBell que ya
             esta en este page escucha (la importamos arriba). */}
-      {editMode && (
+      {/* BottomNavV2 — siempre visible. Si el dueño está mirando su propio
+          club via el ojo (editMode), el nav usa context='merchant' y todo
+          deep-linkea de vuelta al panel. Si es un visitante (cliente o
+          anónimo), context='client' y los slots llevan a la app cliente. */}
+      {editMode ? (
         <BottomNavV2
           activeContext="merchant"
           currentView="commerce-settings"
@@ -3956,6 +3965,30 @@ export default function ClubProfilePage() {
           onMoreTap={() => {
             if (typeof window !== 'undefined') {
               window.location.href = '/?view=commerce-settings'
+            }
+          }}
+          unreadCount={0}
+        />
+      ) : (
+        <BottomNavV2
+          activeContext="client"
+          currentView="client"
+          currentTab="mis clubs"
+          onNavigate={(v, t) => {
+            if (typeof window === 'undefined') return
+            const params = new URLSearchParams()
+            if (v) params.set('view', v)
+            if (t) params.set('tab', t)
+            window.location.href = `/?${params.toString()}`
+          }}
+          onQRTap={() => {
+            if (typeof window !== 'undefined') {
+              window.location.href = '/?view=client&tab=mis%20clubs'
+            }
+          }}
+          onMoreTap={() => {
+            if (typeof window !== 'undefined') {
+              window.location.href = '/?view=client&tab=cuenta'
             }
           }}
           unreadCount={0}
@@ -4534,18 +4567,14 @@ export default function ClubProfilePage() {
         )
       })()}
 
-      {/* ── FLOATING ACTIONS STACK (chat soporte + campana de notifs) ──
-          Espejamos lo que monta app/page.js para que el user logueado
-          conserve sus shortcuts también acá. Los componentes con
-          hideButton se montan para que sus drawers existan, y el
-          FloatingActionsTab agrupa los dos shortcuts en una sola pill
-          flotante a la derecha. */}
+      {/* ── FLOATING ACTIONS STACK ──
+          En el perfil público del club, el contexto es del COMERCIO,
+          no del cliente. Sus flotantes (chat soporte + campanita +
+          tab de acciones) viven en app/page.js, no acá. Solo dejamos
+          el SwRegister y el banner para activar push. */}
       {user && (
         <>
           <SwRegister />
-          {!editMode && <FloatingActionsTab />}
-          {!editMode && <NotificationsBell hideButton role="client" />}
-          {!editMode && <SupportChat hideButton role="client" />}
           <EnablePushPrompt />
         </>
       )}
