@@ -2517,6 +2517,37 @@ export default function ClubProfilePage() {
         <Splash commerce={commerce} UnitIcon={UnitIcon} unitIconProps={unitIconProps} unitLabel={unitLabel} onClose={() => setShowSplash(false)} />
       )}
 
+      {/* ── NAVBAR MINIMO (solo editMode) ──
+            En editMode (eye preview) reemplazamos la barra completa de
+            iconos del navbar viejo por una barra liviana que SOLO tiene
+            el logo Benefix. Asi se mantiene el branding arriba sin la
+            chrome de iconos role-aware (que se sentia ruidosa en este
+            modo). El navegar entre vistas vive en el BottomNavV2 que
+            montamos al final + el "Volver al panel" del banner de
+            Modo edicion. */}
+      {editMode && (
+        <div style={{ position:'fixed', top:0, left:0, right:0, zIndex:200 }}>
+          <nav style={{
+            background:'rgba(0,0,0,0.75)',
+            backdropFilter:'blur(24px)', WebkitBackdropFilter:'blur(24px)',
+            borderBottom:`1px solid ${C.rim}`,
+            padding:'0 16px',
+            display:'flex', alignItems:'center', justifyContent:'flex-start',
+            height:58,
+          }}>
+            <a href="/" style={{ display:'inline-flex', alignItems:'center', textDecoration:'none' }}
+              onClick={(e) => {
+                // Full reload para asegurar que App Router no se trague el click.
+                e.preventDefault()
+                if (typeof window !== 'undefined') window.location.href = '/'
+              }}
+              aria-label="Volver al inicio">
+              <Logo />
+            </a>
+          </nav>
+        </div>
+      )}
+
       {/* ── NAVBAR FIJO ──
             Espejamos el set completo de botones del navbar de la app principal
             (app/page.js) según el role del user. Si no, al venir desde "Mis
@@ -2524,9 +2555,7 @@ export default function ClubProfilePage() {
             admin y la barra superior se sentía "rota". El role viene de
             /api/club-profile (profile.role).
             En editMode (dueño previsualizando con el ojo) este navbar
-            queda oculto — la navegacion de Inicio/Beneficios/QR/Notifs/
-            Mas vive en el BottomNavV2 que montamos al final del archivo,
-            asi se siente continuo con el panel del comerciante. */}
+            queda oculto — lo reemplazamos por el navbar minimo de arriba. */}
       <div style={{ position:'fixed', top:0, left:0, right:0, zIndex:200, display: editMode ? 'none' : 'block' }}>
         <nav style={{ background:'rgba(0,0,0,0.75)', backdropFilter:'blur(24px)', WebkitBackdropFilter:'blur(24px)', borderBottom:`1px solid ${C.rim}`, padding:'0 16px', display:'flex', alignItems:'center', justifyContent:'space-between', height:58 }}>
           <Logo />
@@ -2711,10 +2740,10 @@ export default function ClubProfilePage() {
       </div>
 
       {/* Spacer: navbar superior (58px) + sub-nav cliente (~44px) + banner demo si aplica.
-          En editMode TODO el navbar superior queda oculto (el dueño usa
-          el BottomNavV2 que montamos al final), asi que el spacer es 0
-          (o solo el banner demo si aplica). */}
-      <div style={{ height: isDemo ? (editMode ? 34 : 136) : (editMode ? 0 : 102) }} />
+          En editMode el navbar superior es el "minimo" (solo logo, 58px)
+          — sin el sub-nav cliente (~44px) que oculta editMode — asi que
+          el spacer queda en 58px (o 92px si el banner demo se suma). */}
+      <div style={{ height: isDemo ? (editMode ? 92 : 136) : (editMode ? 58 : 102) }} />
 
       {/* Banner "Modo edición" — render INLINE (no fixed) inmediatamente
           después del spacer del navbar. Toma su propio espacio vertical y
@@ -4519,9 +4548,9 @@ export default function ClubProfilePage() {
       {user && (
         <>
           <SwRegister />
-          <FloatingActionsTab />
-          <NotificationsBell hideButton role="client" />
-          <SupportChat hideButton role="client" />
+          {!editMode && <FloatingActionsTab />}
+          {!editMode && <NotificationsBell hideButton role="client" />}
+          {!editMode && <SupportChat hideButton role="client" />}
           <EnablePushPrompt />
         </>
       )}
