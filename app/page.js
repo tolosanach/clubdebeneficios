@@ -7333,10 +7333,12 @@ function WalletCardFront({ club, colors, onFlip, visible }) {
         `,
       }}
     >
-      {/* Watermark — behind everything */}
-      <div style={{ position:'absolute', right:'-6%', top:'50%', transform:'translateY(-50%)', pointerEvents:'none', zIndex:0 }}>
-        <BenefixWatermark color={colors.watermark} size={220} />
-      </div>
+      {/* Watermark removido (rebrand mayo 2026, fase 1).
+          Antes habia un BenefixWatermark gigante (220px, infinity icon
+          gradient) detras del contenido. La presencia de marca vive
+          ahora solo en el wordmark Benefix del navbar — la card queda
+          mas limpia y el CommerceLogo del comercio (top-left) domina
+          visualmente como protagonista de la tarjeta. */}
 
       {/* ── Shine overlay ──
           Una banda de luz diagonal a 45° (135deg en CSS) que recorre la
@@ -7480,7 +7482,8 @@ function WalletCardFront({ club, colors, onFlip, visible }) {
             right:14, bottom:12,
             zIndex:6,
             display:'inline-flex', alignItems:'center', gap:5,
-            background:'linear-gradient(135deg, #7C3AED, #BD4BF8)',
+            // Rebrand mayo 2026: violeta brand solido, sin gradient.
+            background:'#7131E1',
             border:'1px solid rgba(255,255,255,0.22)',
             borderRadius:9999,
             padding:'6px 11px',
@@ -7488,7 +7491,7 @@ function WalletCardFront({ club, colors, onFlip, visible }) {
             fontFamily:FN, fontSize:11, fontWeight:800,
             letterSpacing:'.02em',
             textDecoration:'none',
-            boxShadow:'0 6px 16px rgba(189,75,248,0.50)',
+            boxShadow:'0 6px 16px rgba(113,49,225,0.40)',
           }}
         >
           <span>Ir al club</span>
@@ -7574,10 +7577,9 @@ function WalletCardBack({ club, colors, onFlip, userId }) {
         </div>
       )}
 
-      {/* Watermark */}
-      <div style={{ position:'absolute', right:'-6%', top:'50%', transform:'translateY(-50%)', pointerEvents:'none', zIndex:0 }}>
-        <BenefixWatermark color={colors.watermark} size={220} />
-      </div>
+      {/* Watermark removido (rebrand mayo 2026, fase 1).
+          Mismo razonamiento que el frente: el wordmark del navbar +
+          el CommerceLogo del comercio cubren la presencia de marca. */}
 
       <div style={{ position:'absolute', inset:0, padding:'16px 22px 18px', display:'flex', flexDirection:'column', justifyContent:'space-between', zIndex:1 }}>
 
@@ -7621,7 +7623,7 @@ function WalletCardBack({ club, colors, onFlip, userId }) {
         <div onClick={e => e.stopPropagation()} style={{ display:'flex', justifyContent:'space-between', alignItems:'center' }}>
           {/* Botones del back de la tarjeta — par armónico:
                 "Mi QR": pill glass outlined, secundaria.
-                "Ir al club": pill glass + gradient violeta de marca, primaria.
+                "Ir al club": pill violeta brand sólido (#7131E1), primaria.
               Ambos con backdrop-blur para que se sientan parte de la tarjeta
               sin chocar con el color de fondo del club. */}
           <button
@@ -7656,7 +7658,8 @@ function WalletCardBack({ club, colors, onFlip, userId }) {
                 }}
                 style={{
                   display:'inline-flex', alignItems:'center', gap:6,
-                  background:'linear-gradient(135deg, #7C3AED, #BD4BF8)',
+                  // Rebrand mayo 2026: violeta brand solido, sin gradient.
+                  background:'#7131E1',
                   border:'1px solid rgba(255,255,255,0.22)',
                   borderRadius:9999,
                   padding:'7px 14px',
@@ -7664,7 +7667,7 @@ function WalletCardBack({ club, colors, onFlip, userId }) {
                   fontFamily:FN, fontSize:12, fontWeight:800,
                   letterSpacing:'.02em',
                   textDecoration:'none',
-                  boxShadow:'0 6px 18px rgba(189,75,248,0.45)',
+                  boxShadow:'0 6px 18px rgba(113,49,225,0.40)',
                 }}
               >
                 <span>Ir al club</span>
