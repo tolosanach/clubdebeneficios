@@ -2894,7 +2894,10 @@ function Navbar({ setView, cityName, user, profile, onLogin, onLogout, currentVi
   const BTN = { position:'relative', zIndex:1, display:'flex', alignItems:'center', justifyContent:'center', width:34, height:34, borderRadius:9, flexShrink:0, transition:'background 220ms ease, box-shadow 220ms ease' }
   const NEUTRAL = { background:'transparent', border:'none' }
   // Activo = degradé de marca
-  const GRAD_ACTIVE = { background:G, border:'none', boxShadow:'0 2px 10px rgba(168,85,247,0.42)' }
+  // Rebrand mayo 2026: violeta brand sólido (#7131E1) en lugar del
+  // gradient orange→fucsia (G). Mantiene la lectura de "indicador
+  // activo" sin contradecir la nueva identidad sólida.
+  const GRAD_ACTIVE = { background:'#7131E1', border:'none', boxShadow:'0 2px 10px rgba(113,49,225,0.42)' }
   // Aliases legacy (mantenidos para compatibilidad de los call sites; ahora todos
   // los activos usan el mismo gradient)
   const QR_HINT = NEUTRAL
@@ -3159,11 +3162,13 @@ function Navbar({ setView, cityName, user, profile, onLogin, onLogout, currentVi
           {(() => {
             const eyeActive   = currentView === 'commerce'
             const storeActive = currentView === 'commerce-settings'
-            // Style del activo del kit dueño: violeta sólido con glow, ícono blanco.
+            // Rebrand mayo 2026: violeta brand sólido (#7131E1) en
+            // lugar del gradient violeta-violeta. Misma intencion: marcar
+            // el icono activo del kit duenio con glow brand, ícono blanco.
             const VIOLET_ACTIVE = {
-              background: 'linear-gradient(135deg, #7C3AED 0%, #BD4BF8 100%)',
+              background: '#7131E1',
               border: 'none',
-              boxShadow: '0 2px 10px rgba(189,75,248,0.55)',
+              boxShadow: '0 2px 10px rgba(113,49,225,0.55)',
             }
             return (
               <>
@@ -7498,6 +7503,11 @@ function WalletCardFront({ club, colors, onFlip, visible }) {
           <ArrowRight size={11} strokeWidth={2.6} color="#fff" />
         </a>
       )}
+
+      {/* Badge "benefixclub" descartado (mayo 2026). El CommerceLogo del
+          comercio top-left + el wordmark Benefix del navbar ya cubren
+          la presencia de marca; sumar otro elemento abajo agregaba ruido
+          y competia con el botón "Ir al club". Card queda más limpia. */}
     </div>
   )
 }
@@ -7677,6 +7687,9 @@ function WalletCardBack({ club, colors, onFlip, userId }) {
           }
         </div>
       </div>
+
+      {/* Badge "benefixclub" descartado (mayo 2026) — el dorso queda limpio,
+          la marca ya está implícita en la UI envolvente. */}
     </div>
   )
 }
