@@ -27,6 +27,7 @@ import SupportChat from '../../../lib/SupportChat'
 // tambien en editMode del eye preview para que el dueño no pierda la
 // chrome inferior cuando se mete a editar la vista publica.
 import BottomNavV2 from '../../../lib/BottomNavV2'
+import Logo from '../../../lib/Logo'
 import EnablePushPrompt from '../../../lib/EnablePushPrompt'
 import SwRegister from '../../../lib/sw-register'
 
@@ -47,15 +48,20 @@ const C = {
   pearl:   '#f0f0ff',
   mist:    '#a1a1aa',
   dust:    '#71717a',
-  v:       '#a855f7',
+  // Rebrand mayo 2026 fase 2: v migra a violeta brand sólido. pink y o
+  // se mantienen como acentos semánticos (cliente y descuento).
+  v:       '#7131E1',
   pink:    '#ec4899',
   o:       '#FE5000',
   ok:      '#22E698',
   okBg:    'rgba(0,31,16,0.8)',
 }
 
-const G   = 'linear-gradient(135deg, #FE5000, #a855f7)'
-const GA  = 'linear-gradient(135deg, #a855f7, #ec4899)'
+// G y GA — antes eran gradients orange→violet y violet→fucsia.
+// Rebrand mayo 2026 fase 2: ambos a violeta brand sólido. Mantengo
+// los nombres por compat con call sites.
+const G   = '#7131E1'
+const GA  = '#7131E1'
 
 const FN = "'Space Grotesk', system-ui, sans-serif"
 const FI = "'Inter', system-ui, sans-serif"
@@ -82,7 +88,7 @@ const GLOBAL_CSS = `
   @keyframes levelPop    { 0%{transform:scale(.7) rotate(-8deg)} 60%{transform:scale(1.15) rotate(3deg)} 100%{transform:scale(1) rotate(0)} }
   @keyframes pulse       { 0%,100%{opacity:1} 50%{opacity:.45} }
   @keyframes shimmer     { 0%{background-position:200% 0} 100%{background-position:-200% 0} }
-  @keyframes glowPulse   { 0%,100%{box-shadow:0 0 20px rgba(168,85,247,0.3)} 50%{box-shadow:0 0 40px rgba(168,85,247,0.6)} }
+  @keyframes glowPulse   { 0%,100%{box-shadow:0 0 20px rgba(113,49,225,0.3)} 50%{box-shadow:0 0 40px rgba(113,49,225,0.6)} }
   @keyframes cardIn      { from{opacity:0;transform:translateY(12px)} to{opacity:1;transform:translateY(0)} }
   @keyframes brand-bar-flow {
     0%, 100% { background-position: 100% 0; }
@@ -92,8 +98,8 @@ const GLOBAL_CSS = `
      del premio. Solo varía el glow — el color del fill (violeta pleno) se
      mantiene quieto. Da sensación de "vivo" sin distraer. */
   @keyframes brand-bar-pulse {
-    0%, 100% { box-shadow: 0 0 8px rgba(189,75,248,0.45), inset 0 0 6px rgba(255,255,255,0.20); }
-    50%      { box-shadow: 0 0 14px rgba(189,75,248,0.70), inset 0 0 10px rgba(255,255,255,0.32); }
+    0%, 100% { box-shadow: 0 0 8px rgba(113,49,225,0.45), inset 0 0 6px rgba(255,255,255,0.20); }
+    50%      { box-shadow: 0 0 14px rgba(113,49,225,0.70), inset 0 0 10px rgba(255,255,255,0.32); }
   }
   @keyframes gradient-slow {
     0%,100% { background-position: 0% 50%; }
@@ -102,7 +108,7 @@ const GLOBAL_CSS = `
   * { box-sizing:border-box; margin:0; padding:0; }
   html,body { background:#0a0a0f; }
   ::-webkit-scrollbar { width:3px; }
-  ::-webkit-scrollbar-thumb { background:rgba(168,85,247,0.4); border-radius:2px; }
+  ::-webkit-scrollbar-thumb { background:rgba(113,49,225,0.4); border-radius:2px; }
   .prize-gallery-strip::-webkit-scrollbar { display:none; }
   .prize-gallery-strip { scrollbar-width: none; }
   .animate-gradient-slow {
@@ -132,9 +138,9 @@ const GLOBAL_CSS = `
   }
   .prize-card:hover {
     background: rgba(255,255,255,0.09);
-    border-color: rgba(168,85,247,0.35);
+    border-color: rgba(113,49,225,0.35);
     transform: translateY(-3px) scale(1.02);
-    box-shadow: 0 16px 48px rgba(0,0,0,0.35), 0 0 0 1px rgba(168,85,247,0.15);
+    box-shadow: 0 16px 48px rgba(0,0,0,0.35), 0 0 0 1px rgba(113,49,225,0.15);
   }
   .info-row {
     width: 100%;
@@ -226,10 +232,10 @@ function Splash({ commerce, UnitIcon, unitIconProps, unitLabel, onClose }) {
           style={{ position:'absolute', top:12, right:12, zIndex:5, width:32, height:32, borderRadius:'50%', background:'rgba(0,0,0,0.35)', border:'1px solid rgba(255,255,255,0.15)', color:'#fff', cursor:'pointer', display:'flex', alignItems:'center', justifyContent:'center', padding:0, backdropFilter:'blur(8px)', WebkitBackdropFilter:'blur(8px)' }}>
           <X size={16} strokeWidth={2.4} />
         </button>
-        <div style={{ position:'absolute', top:-60, right:-40, width:200, height:200, borderRadius:'50%', background:'rgba(168,85,247,0.12)', filter:'blur(50px)', pointerEvents:'none' }} />
+        <div style={{ position:'absolute', top:-60, right:-40, width:200, height:200, borderRadius:'50%', background:'rgba(113,49,225,0.12)', filter:'blur(50px)', pointerEvents:'none' }} />
         <div style={{ position:'absolute', bottom:-40, left:-30, width:160, height:160, borderRadius:'50%', background:'rgba(236,72,153,0.10)', filter:'blur(40px)', pointerEvents:'none' }} />
 
-        <div style={{ width:84, height:84, borderRadius:24, background:GA, display:'flex', alignItems:'center', justifyContent:'center', fontSize:38, margin:'0 auto 20px', boxShadow:'0 16px 48px rgba(168,85,247,0.5)', position:'relative', zIndex:1 }}>
+        <div style={{ width:84, height:84, borderRadius:24, background:GA, display:'flex', alignItems:'center', justifyContent:'center', fontSize:38, margin:'0 auto 20px', boxShadow:'0 16px 48px rgba(113,49,225,0.5)', position:'relative', zIndex:1 }}>
           {commerce.img_url
             ? <img src={commerce.img_url} alt="" style={{ width:'100%', height:'100%', objectFit:'cover', borderRadius:24 }} />
             : <CatIcon category={commerce.category} size={38} color="#fff" />
@@ -265,7 +271,7 @@ function Splash({ commerce, UnitIcon, unitIconProps, unitLabel, onClose }) {
         <button onClick={close} className="btn-pulse" style={{
           width:'100%', padding:'15px', background:GA, border:'none', borderRadius:16,
           color:'#fff', fontFamily:FN, fontSize:15, fontWeight:700, cursor:'pointer',
-          boxShadow:'0 8px 28px rgba(168,85,247,0.45)', transition:'all .2s ease',
+          boxShadow:'0 8px 28px rgba(113,49,225,0.45)', transition:'all .2s ease',
           position:'relative', zIndex:1,
         }}>
           Ver el club →
@@ -282,7 +288,7 @@ function ProgressBar({ pct, color = GA, height = 8, glow = true }) {
       <div style={{
         height:'100%', width:`${pct}%`, borderRadius:99,
         background: color,
-        boxShadow: glow ? '0 0 12px rgba(168,85,247,0.5)' : 'none',
+        boxShadow: glow ? '0 0 12px rgba(113,49,225,0.5)' : 'none',
         transition:'width .7s cubic-bezier(.4,0,.2,1)',
       }} />
     </div>
@@ -326,25 +332,12 @@ function GlassCard({ children, style = {}, hover = true, onClick, className }) {
   )
 }
 
-// ── Logo (idéntico al del home) ────────────────────────────────────────────────
-function Logo() {
-  const sz = 34
-  return (
-    <a href="/" style={{ display:'flex', alignItems:'center', gap:10, textDecoration:'none' }}>
-      <div style={{ width:sz, height:sz, borderRadius:Math.round(sz*.28), background:G, display:'flex', alignItems:'center', justifyContent:'center', boxShadow:'0 4px 16px #FE500044', flexShrink:0 }}>
-        <svg width={sz*.72} height={sz*.72} viewBox="0 0 28 28" fill="none">
-          <path d="M14 4C8.477 4 4 8.477 4 14s4.477 10 10 10" stroke="white" strokeWidth="3.5" strokeLinecap="round"/>
-          <rect x="16" y="5.5" width="8" height="5" rx="2.5" fill="white" opacity=".9"/>
-          <rect x="16" y="12" width="9" height="5.5" rx="2.75" fill="white"/>
-        </svg>
-      </div>
-      <div>
-        <div style={{ fontFamily:FN, fontSize:14, fontWeight:900, color:C.white, lineHeight:1, letterSpacing:'-.01em' }}>club de</div>
-        <div style={{ fontFamily:FN, fontSize:15, fontWeight:900, lineHeight:1, letterSpacing:'-.01em', background:G, WebkitBackgroundClip:'text', WebkitTextFillColor:'transparent', backgroundClip:'text' }}>beneficios</div>
-      </div>
-    </a>
-  )
-}
+// Logo — definicion local removida (mayo 2026, rebrand fase 1).
+// Antes era un wrapper <a href="/"> con icono SVG inline + wordmark
+// "club de / beneficios" partido en dos lineas. Ahora usamos el
+// componente unificado lib/Logo.js (mismo wordmark "Benefix" que el
+// resto de la app). Los call sites siguen envueltos en <a href="/">
+// donde corresponda — el componente Logo no fuerza tag wrapper.
 
 
 // ── Bottom Nav ─────────────────────────────────────────────────────────────────
@@ -394,9 +387,9 @@ function SlideToJoinButton({ onJoin, isDemoClub }) {
         // Altura 78px → mismas proporciones iOS-like del slider de "deslizar
         // para apagar": pill bien generoso con thumb grande y padding parejo.
         position:'relative', width:'100%', height:78,
-        background:'rgba(168,85,247,0.08)',
+        background:'rgba(113,49,225,0.08)',
         backdropFilter:'blur(20px)', WebkitBackdropFilter:'blur(20px)',
-        border:'1px solid rgba(168,85,247,0.35)',
+        border:'1px solid rgba(113,49,225,0.35)',
         borderRadius:9999, overflow:'hidden',
         userSelect:'none',
         // touchAction:'none' le dice al browser que este elemento no scrollea
@@ -404,7 +397,7 @@ function SlideToJoinButton({ onJoin, isDemoClub }) {
         // ahora es passive por default y tira warnings cuando se llama).
         touchAction:'none',
         cursor: isDemoClub ? 'default' : 'pointer',
-        boxShadow:'0 0 24px rgba(168,85,247,0.15)',
+        boxShadow:'0 0 24px rgba(113,49,225,0.15)',
       }}
       onMouseMove={e => handleMove(e.clientX)}
       onMouseUp={handleEnd}
@@ -415,7 +408,7 @@ function SlideToJoinButton({ onJoin, isDemoClub }) {
       {/* Gradiente de fondo base (siempre visible, sutil) */}
       <div style={{
         position:'absolute', inset:0,
-        background:'linear-gradient(135deg, #a855f7, #ec4899)',
+        background:'linear-gradient(135deg, #7131E1, #ec4899)',
         opacity: 0.12,
         pointerEvents:'none',
       }} />
@@ -423,7 +416,7 @@ function SlideToJoinButton({ onJoin, isDemoClub }) {
       {/* Relleno de gradiente al deslizar */}
       <div style={{
         position:'absolute', inset:0,
-        background:'linear-gradient(135deg, #a855f7, #ec4899)',
+        background:'linear-gradient(135deg, #7131E1, #ec4899)',
         opacity: fillOpacity * 0.88,
         transition: isDragging ? 'none' : 'opacity 0.3s ease',
         pointerEvents:'none',
@@ -441,9 +434,9 @@ function SlideToJoinButton({ onJoin, isDemoClub }) {
 
       {/* Flechas — corridas a la derecha del thumb agrandado (thumb=70 + left=4 + 14gap = 88) */}
       <div style={{ position:'absolute', left:88, top:0, bottom:0, display:'flex', alignItems:'center', gap:1, pointerEvents:'none', opacity: slideX > 30 ? 0 : 1, transition:'opacity 0.2s' }}>
-        <ChevronRight size={18} color="rgba(168,85,247,0.9)" className="animate-arrow" style={{ animationDelay:'0ms' }} />
-        <ChevronRight size={18} color="rgba(168,85,247,0.6)" className="animate-arrow" style={{ animationDelay:'200ms' }} />
-        <ChevronRight size={18} color="rgba(168,85,247,0.35)" className="animate-arrow" style={{ animationDelay:'400ms' }} />
+        <ChevronRight size={18} color="rgba(113,49,225,0.9)" className="animate-arrow" style={{ animationDelay:'0ms' }} />
+        <ChevronRight size={18} color="rgba(113,49,225,0.6)" className="animate-arrow" style={{ animationDelay:'200ms' }} />
+        <ChevronRight size={18} color="rgba(113,49,225,0.35)" className="animate-arrow" style={{ animationDelay:'400ms' }} />
       </div>
 
       {/* Thumb — 70x70 con padding parejo de 4px arriba/abajo/izquierda
@@ -454,10 +447,10 @@ function SlideToJoinButton({ onJoin, isDemoClub }) {
           width:70, height:70,
           background: isComplete
             ? 'linear-gradient(135deg, #22c55e, #10b981)'
-            : 'linear-gradient(135deg, #a855f7, #ec4899)',
+            : 'linear-gradient(135deg, #7131E1, #ec4899)',
           borderRadius:'50%',
           display:'flex', alignItems:'center', justifyContent:'center',
-          boxShadow:'0 4px 20px rgba(168,85,247,0.55)',
+          boxShadow:'0 4px 20px rgba(113,49,225,0.55)',
           transform:`translateX(${slideX}px)`,
           transition: isDragging ? 'background 0.3s ease' : 'transform 0.35s cubic-bezier(0.34,1.56,0.64,1), background 0.3s ease',
           cursor: isDemoClub ? 'default' : 'grab',
@@ -623,7 +616,7 @@ function InlineEditModal({ title, field, initial, inputStyle, labelStyle, onClos
       <div style={{
         position:'relative', width:'100%', maxWidth:520, maxHeight:'92vh',
         background:'#0a0a14',
-        border:'1px solid rgba(189,75,248,0.30)',
+        border:'1px solid rgba(113,49,225,0.30)',
         borderRadius:'24px 24px 0 0',
         overflow:'hidden',
         display:'flex', flexDirection:'column',
@@ -633,7 +626,7 @@ function InlineEditModal({ title, field, initial, inputStyle, labelStyle, onClos
         {/* Header */}
         <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', padding:'18px 20px 14px', borderBottom:'1px solid rgba(255,255,255,0.06)' }}>
           <div>
-            <div style={{ fontSize:10, color:'#BD4BF8', fontWeight:800, letterSpacing:'.18em', textTransform:'uppercase', marginBottom:4, fontFamily:'inherit' }}>Editar</div>
+            <div style={{ fontSize:10, color:'#7131E1', fontWeight:800, letterSpacing:'.18em', textTransform:'uppercase', marginBottom:4, fontFamily:'inherit' }}>Editar</div>
             <h2 style={{ fontSize:18, fontWeight:900, color:'#fff', margin:0, letterSpacing:'-.01em', fontFamily:'inherit' }}>{title}</h2>
           </div>
           <button onClick={onClose} aria-label="Cerrar"
@@ -733,7 +726,7 @@ function InlineEditModal({ title, field, initial, inputStyle, labelStyle, onClos
                   ) : (
                     <div style={{ display:'flex', flexWrap:'wrap', gap:8 }}>
                       {selected.map(c => (
-                        <span key={c} style={{ display:'inline-flex', alignItems:'center', gap:6, padding:'6px 10px 6px 12px', background:'linear-gradient(135deg, rgba(124,58,237,0.30), rgba(189,75,248,0.30))', border:'1px solid rgba(189,75,248,0.45)', borderRadius:99, fontSize:12, color:'#fff', fontWeight:700 }}>
+                        <span key={c} style={{ display:'inline-flex', alignItems:'center', gap:6, padding:'6px 10px 6px 12px', background:'linear-gradient(135deg, rgba(113,49,225,0.30), rgba(113,49,225,0.30))', border:'1px solid rgba(113,49,225,0.45)', borderRadius:99, fontSize:12, color:'#fff', fontWeight:700 }}>
                           {c}
                           <button onClick={() => toggleCat(c)} aria-label={`Sacar ${c}`}
                             style={{ background:'rgba(0,0,0,0.30)', border:'none', borderRadius:'50%', width:18, height:18, color:'#fff', cursor:'pointer', display:'flex', alignItems:'center', justifyContent:'center', padding:0 }}>
@@ -753,7 +746,7 @@ function InlineEditModal({ title, field, initial, inputStyle, labelStyle, onClos
                       placeholder="Ej: Estudio de tatuajes"
                       style={{ ...inputStyle, flex:1 }} />
                     <button onClick={addCustom} disabled={!customDraft.trim() || selected.length >= 3}
-                      style={{ padding:'0 14px', background:'rgba(189,75,248,0.18)', color:'#fff', border:'1px solid rgba(189,75,248,0.45)', borderRadius:10, fontSize:12, fontWeight:800, cursor: !customDraft.trim() || selected.length >= 3 ? 'not-allowed' : 'pointer', opacity: !customDraft.trim() || selected.length >= 3 ? 0.5 : 1, fontFamily:'inherit', whiteSpace:'nowrap' }}>
+                      style={{ padding:'0 14px', background:'rgba(113,49,225,0.18)', color:'#fff', border:'1px solid rgba(113,49,225,0.45)', borderRadius:10, fontSize:12, fontWeight:800, cursor: !customDraft.trim() || selected.length >= 3 ? 'not-allowed' : 'pointer', opacity: !customDraft.trim() || selected.length >= 3 ? 0.5 : 1, fontFamily:'inherit', whiteSpace:'nowrap' }}>
                       Añadir
                     </button>
                   </div>
@@ -775,9 +768,9 @@ function InlineEditModal({ title, field, initial, inputStyle, labelStyle, onClos
                                 style={{
                                   padding:'6px 10px', borderRadius:99, fontSize:11.5, fontWeight:700, fontFamily:'inherit',
                                   cursor: disabled ? 'not-allowed' : 'pointer',
-                                  background: isSel ? 'linear-gradient(135deg, #7C3AED, #BD4BF8)' : 'rgba(255,255,255,0.05)',
+                                  background: isSel ? 'linear-gradient(135deg, #7131E1, #7131E1)' : 'rgba(255,255,255,0.05)',
                                   color: isSel ? '#fff' : 'rgba(255,255,255,0.78)',
-                                  border: isSel ? '1px solid rgba(189,75,248,0.55)' : '1px solid rgba(255,255,255,0.10)',
+                                  border: isSel ? '1px solid rgba(113,49,225,0.55)' : '1px solid rgba(255,255,255,0.10)',
                                   opacity: disabled ? 0.4 : 1,
                                 }}>
                                 {s.name}
@@ -852,7 +845,7 @@ function InlineEditModal({ title, field, initial, inputStyle, labelStyle, onClos
               {/* Toggle activo */}
               <label style={{ display:'flex', alignItems:'center', gap:10, cursor:'pointer', userSelect:'none', padding:'10px 12px', background:'rgba(255,255,255,0.04)', borderRadius:10, border:'1px solid rgba(255,255,255,0.10)' }}>
                 <input type="checkbox" checked={!!val.active} onChange={e => setVal(v => ({ ...v, active: e.target.checked }))}
-                  style={{ width:18, height:18, accentColor:'#BD4BF8' }} />
+                  style={{ width:18, height:18, accentColor:'#7131E1' }} />
                 <span style={{ fontSize:13, color:'#fff', fontFamily:'inherit', fontWeight:600 }}>Activo en el catálogo</span>
               </label>
               {/* Botón eliminar */}
@@ -877,7 +870,7 @@ function InlineEditModal({ title, field, initial, inputStyle, labelStyle, onClos
             Cancelar
           </button>
           <button onClick={save} disabled={saving}
-            style={{ flex:2, padding:'12px', background:'linear-gradient(135deg, #7C3AED, #BD4BF8)', color:'#fff', border:'none', borderRadius:12, fontSize:13, fontWeight:800, cursor: saving ? 'wait' : 'pointer', boxShadow:'0 6px 18px rgba(189,75,248,0.45)', fontFamily:'inherit', opacity: saving ? 0.7 : 1 }}>
+            style={{ flex:2, padding:'12px', background:'linear-gradient(135deg, #7131E1, #7131E1)', color:'#fff', border:'none', borderRadius:12, fontSize:13, fontWeight:800, cursor: saving ? 'wait' : 'pointer', boxShadow:'0 6px 18px rgba(113,49,225,0.45)', fontFamily:'inherit', opacity: saving ? 0.7 : 1 }}>
             {saving ? 'Guardando…' : 'Guardar'}
           </button>
         </div>
@@ -943,7 +936,7 @@ function ClubNotifyBell({ commerceId, commerceName, onToggleResult }) {
         position:'absolute', top:16, right:16, zIndex:20,
         width:40, height:40, borderRadius:'50%',
         background: subscribed
-          ? 'linear-gradient(135deg, #BD4BF8, #EC4899)'
+          ? 'linear-gradient(135deg, #7131E1, #EC4899)'
           : 'rgba(0,0,0,0.50)',
         backdropFilter: subscribed ? 'none' : 'blur(12px)',
         WebkitBackdropFilter: subscribed ? 'none' : 'blur(12px)',
@@ -952,7 +945,7 @@ function ClubNotifyBell({ commerceId, commerceName, onToggleResult }) {
         cursor: busy ? 'wait' : 'pointer',
         color:'#fff', padding:0,
         boxShadow: subscribed
-          ? '0 4px 16px rgba(189,75,248,0.55)'
+          ? '0 4px 16px rgba(113,49,225,0.55)'
           : '0 4px 12px rgba(0,0,0,0.35)',
         transition: 'background 220ms ease, box-shadow 220ms ease',
         opacity: loaded ? 1 : 0.7,
@@ -1030,10 +1023,10 @@ function ClubNotifyToggle({ commerceId, commerceName }) {
         display:'flex', alignItems:'center', gap:10,
         width:'100%', padding:'12px 14px',
         background: subscribed
-          ? 'linear-gradient(135deg, rgba(189,75,248,0.20), rgba(236,72,153,0.18))'
+          ? 'linear-gradient(135deg, rgba(113,49,225,0.20), rgba(236,72,153,0.18))'
           : 'rgba(255,255,255,0.04)',
         border: subscribed
-          ? '1px solid rgba(189,75,248,0.45)'
+          ? '1px solid rgba(113,49,225,0.45)'
           : '1px solid rgba(255,255,255,0.10)',
         borderRadius: 14,
         cursor: busy ? 'wait' : 'pointer',
@@ -1045,11 +1038,11 @@ function ClubNotifyToggle({ commerceId, commerceName }) {
       <div style={{
         width: 36, height: 36, borderRadius: 10, flexShrink: 0,
         background: subscribed
-          ? 'linear-gradient(135deg, #BD4BF8, #EC4899)'
+          ? 'linear-gradient(135deg, #7131E1, #EC4899)'
           : 'rgba(255,255,255,0.06)',
         border: subscribed ? 'none' : '1px solid rgba(255,255,255,0.10)',
         display: 'flex', alignItems: 'center', justifyContent: 'center',
-        boxShadow: subscribed ? '0 4px 14px rgba(189,75,248,0.40)' : 'none',
+        boxShadow: subscribed ? '0 4px 14px rgba(113,49,225,0.40)' : 'none',
       }}>
         {subscribed
           ? <Bell size={16} color="#fff" strokeWidth={2.4} />
@@ -1069,7 +1062,7 @@ function ClubNotifyToggle({ commerceId, commerceName }) {
       <div style={{
         flexShrink: 0,
         width: 38, height: 22, borderRadius: 99,
-        background: subscribed ? 'rgba(189,75,248,0.55)' : 'rgba(255,255,255,0.10)',
+        background: subscribed ? 'rgba(113,49,225,0.55)' : 'rgba(255,255,255,0.10)',
         border: '1px solid rgba(255,255,255,0.14)',
         position: 'relative',
         transition: 'background 220ms ease',
@@ -1103,7 +1096,7 @@ function MemberBadge({ createdAt }) {
       fontFamily:FN, fontSize:13, fontWeight:600,
       letterSpacing:'.005em',
       padding:'2px 2px',
-      color:'#BD4BF8',
+      color:'#7131E1',
     }}>
       <style>{`
         @keyframes member-badge-shimmer {
@@ -1111,11 +1104,11 @@ function MemberBadge({ createdAt }) {
           100% { background-position: -50% 0; }
         }
       `}</style>
-      <Check size={14} color="#BD4BF8" strokeWidth={2.2}
+      <Check size={14} color="#7131E1" strokeWidth={2.2}
         style={{ flexShrink: 0 }}
       />
       <span style={{
-        background: 'linear-gradient(100deg, #BD4BF8 0%, #BD4BF8 40%, #F0C2FF 50%, #BD4BF8 60%, #BD4BF8 100%)',
+        background: 'linear-gradient(100deg, #7131E1 0%, #7131E1 40%, #F0C2FF 50%, #7131E1 60%, #7131E1 100%)',
         backgroundSize: '300% 100%',
         WebkitBackgroundClip: 'text',
         backgroundClip: 'text',
@@ -1191,7 +1184,7 @@ function ClubHistory({ user, commerceId, unitLabel, unitColor, UnitIcon, unitIco
     return (
       <div style={{ textAlign:'center', padding:'40px 20px 20px' }}>
         <div style={{ display:'flex', justifyContent:'center', marginBottom:16 }}>
-          <div style={{ width:64, height:64, borderRadius:'50%', background:'rgba(168,85,247,0.12)', border:'1px solid rgba(168,85,247,0.25)', display:'flex', alignItems:'center', justifyContent:'center' }}>
+          <div style={{ width:64, height:64, borderRadius:'50%', background:'rgba(113,49,225,0.12)', border:'1px solid rgba(113,49,225,0.25)', display:'flex', alignItems:'center', justifyContent:'center' }}>
             <Clock size={28} strokeWidth={1.5} color={C.v} />
           </div>
         </div>
@@ -1217,7 +1210,7 @@ function ClubHistory({ user, commerceId, unitLabel, unitColor, UnitIcon, unitIco
             border:'1px solid rgba(255,255,255,0.08)',
             borderRadius:12, padding:'12px 14px',
           }}>
-            <div style={{ width:38, height:38, borderRadius:10, background: isVisit ? 'rgba(168,85,247,0.12)' : it.kind === 'discount' ? 'rgba(254,80,0,0.14)' : 'rgba(236,72,153,0.12)', display:'flex', alignItems:'center', justifyContent:'center', flexShrink:0 }}>
+            <div style={{ width:38, height:38, borderRadius:10, background: isVisit ? 'rgba(113,49,225,0.12)' : it.kind === 'discount' ? 'rgba(254,80,0,0.14)' : 'rgba(236,72,153,0.12)', display:'flex', alignItems:'center', justifyContent:'center', flexShrink:0 }}>
               {isVisit
                 ? <UnitIcon size={16} {...unitIconProps} color={unitColor} />
                 : it.kind === 'discount'
@@ -1690,17 +1683,17 @@ function LimitedTimeBenefitsSlider({ promos, unitLabel, editMode = false, onEdit
                   // de la card, no necesita sobresalir.
                   overflow: 'hidden',
                   minHeight: 240,
-                  border: '1px solid rgba(189,75,248,0.22)',
+                  border: '1px solid rgba(113,49,225,0.22)',
                   // El inner glow: múltiples sombras inset para crear el
                   // efecto "luz violeta saliendo desde los bordes hacia
                   // adentro". Combinado con una sombra externa sutil que
                   // ancla la card al fondo.
                   boxShadow: `
-                    inset 0 0 90px 12px rgba(189,75,248,0.55),
-                    inset 0 0 30px 4px rgba(189,75,248,0.45),
+                    inset 0 0 90px 12px rgba(113,49,225,0.55),
+                    inset 0 0 30px 4px rgba(113,49,225,0.45),
                     inset 0 0 0 1px rgba(255,255,255,0.06),
                     0 18px 40px rgba(0,0,0,0.50),
-                    0 4px 14px rgba(189,75,248,0.18)
+                    0 4px 14px rgba(113,49,225,0.18)
                   `,
                   animation: urgency?.pulse ? `card-glow-pulse-${i} 1.8s ease-in-out infinite` : 'none',
                 }}>
@@ -1708,19 +1701,19 @@ function LimitedTimeBenefitsSlider({ promos, unitLabel, editMode = false, onEdit
                     @keyframes card-glow-pulse-${i} {
                       0%, 100% {
                         box-shadow:
-                          inset 0 0 90px 12px rgba(189,75,248,0.55),
-                          inset 0 0 30px 4px rgba(189,75,248,0.45),
+                          inset 0 0 90px 12px rgba(113,49,225,0.55),
+                          inset 0 0 30px 4px rgba(113,49,225,0.45),
                           inset 0 0 0 1px rgba(255,255,255,0.06),
                           0 18px 40px rgba(0,0,0,0.50),
-                          0 4px 14px rgba(189,75,248,0.18);
+                          0 4px 14px rgba(113,49,225,0.18);
                       }
                       50% {
                         box-shadow:
-                          inset 0 0 110px 18px rgba(189,75,248,0.75),
-                          inset 0 0 40px 8px  rgba(189,75,248,0.65),
+                          inset 0 0 110px 18px rgba(113,49,225,0.75),
+                          inset 0 0 40px 8px  rgba(113,49,225,0.65),
                           inset 0 0 0 1px rgba(255,255,255,0.10),
                           0 18px 44px rgba(0,0,0,0.55),
-                          0 4px 22px rgba(189,75,248,0.40);
+                          0 4px 22px rgba(113,49,225,0.40);
                       }
                     }
                     @keyframes wave-rise {
@@ -1793,7 +1786,7 @@ function LimitedTimeBenefitsSlider({ promos, unitLabel, editMode = false, onEdit
                           display: 'inline-flex', alignItems: 'center', gap: 6,
                           padding: prominentDays ? '7px 16px' : '5px 12px',
                           background: prominentDays
-                            ? 'linear-gradient(135deg, rgba(189,75,248,0.30), rgba(124,58,237,0.30))'
+                            ? 'linear-gradient(135deg, rgba(113,49,225,0.30), rgba(113,49,225,0.30))'
                             : 'rgba(255,255,255,0.06)',
                           backdropFilter: 'blur(8px)', WebkitBackdropFilter: 'blur(8px)',
                           border: prominentDays ? '1px solid rgba(216,180,254,0.55)' : '1px solid rgba(255,255,255,0.20)',
@@ -1802,7 +1795,7 @@ function LimitedTimeBenefitsSlider({ promos, unitLabel, editMode = false, onEdit
                           fontWeight: 800,
                           letterSpacing: '.14em', textTransform: 'uppercase',
                           color: '#fff',
-                          boxShadow: prominentDays ? '0 4px 14px rgba(189,75,248,0.35)' : 'none',
+                          boxShadow: prominentDays ? '0 4px 14px rgba(113,49,225,0.35)' : 'none',
                         }}>
                           <Calendar size={prominentDays ? 12 : 11} strokeWidth={2.6} color="#fff" /> {tagLabel}
                         </div>
@@ -1822,7 +1815,7 @@ function LimitedTimeBenefitsSlider({ promos, unitLabel, editMode = false, onEdit
                       color: '#fff',
                       lineHeight: 0.95,
                       letterSpacing: '-0.04em',
-                      textShadow: '0 4px 24px rgba(189,75,248,0.50), 0 0 1px rgba(255,255,255,0.6)',
+                      textShadow: '0 4px 24px rgba(113,49,225,0.50), 0 0 1px rgba(255,255,255,0.6)',
                       // Stretch tipográfico para sentir un display heavy
                       transform: 'scaleY(1.08)',
                       transformOrigin: 'center',
@@ -2504,8 +2497,8 @@ export default function ClubProfilePage() {
         // (navbar 58px + sub-nav ~44px = 102px).
         <div style={{
           position:'fixed', top:102, left:0, right:0, zIndex:190,
-          background:'rgba(168,85,247,0.18)', backdropFilter:'blur(12px)', WebkitBackdropFilter:'blur(12px)',
-          borderBottom:'1px solid rgba(168,85,247,0.30)',
+          background:'rgba(113,49,225,0.18)', backdropFilter:'blur(12px)', WebkitBackdropFilter:'blur(12px)',
+          borderBottom:'1px solid rgba(113,49,225,0.30)',
           padding:'8px 16px', textAlign:'center',
           fontSize:12, color:'rgba(240,232,255,0.85)', fontFamily:FI,
         }}>
@@ -2558,19 +2551,21 @@ export default function ClubProfilePage() {
             queda oculto — lo reemplazamos por el navbar minimo de arriba. */}
       <div style={{ position:'fixed', top:0, left:0, right:0, zIndex:200, display: editMode ? 'none' : 'block' }}>
         <nav style={{ background:'rgba(0,0,0,0.75)', backdropFilter:'blur(24px)', WebkitBackdropFilter:'blur(24px)', borderBottom:`1px solid ${C.rim}`, padding:'0 16px', display:'flex', alignItems:'center', justifyContent:'space-between', height:58 }}>
-          <Logo />
+          <a href="/" style={{ display:'inline-flex', alignItems:'center', textDecoration:'none' }} aria-label="Volver al inicio">
+            <Logo />
+          </a>
           <div style={{ display:'flex', gap:6, alignItems:'center' }}>
             {(() => {
               // Estilos locales: NEUTRAL (default), ACTIVE (gradient G como en
               // el navbar principal de app/page.js cuando un botón coincide
               // con la vista actual), TRANSP (logout, sin fondo).
               const NEUTRAL = { display:'flex', alignItems:'center', justifyContent:'center', width:34, height:34, borderRadius:9, background:'rgba(255,255,255,0.06)', border:`1px solid ${C.rim}`, cursor:'pointer', color:'rgba(255,255,255,0.78)', textDecoration:'none' }
-              const ACTIVE  = { display:'flex', alignItems:'center', justifyContent:'center', width:34, height:34, borderRadius:9, background:G, border:'none', cursor:'default', color:'#fff', boxShadow:'0 2px 10px rgba(168,85,247,0.42)', textDecoration:'none' }
+              const ACTIVE  = { display:'flex', alignItems:'center', justifyContent:'center', width:34, height:34, borderRadius:9, background:G, border:'none', cursor:'default', color:'#fff', boxShadow:'0 2px 10px rgba(113,49,225,0.42)', textDecoration:'none' }
               // PRIMARY: idéntico al ACTIVE de gradient pero clickeable. Lo
               // usamos para el botón del User en esta vista — el cliente está
               // navegando en el "área de billetera" (los clubes a los que se
               // sumó), así que el ícono User queda iluminado siempre.
-              const PRIMARY = { display:'flex', alignItems:'center', justifyContent:'center', width:34, height:34, borderRadius:9, background:G, border:'none', cursor:'pointer', color:'#fff', boxShadow:'0 2px 10px rgba(168,85,247,0.42)', textDecoration:'none' }
+              const PRIMARY = { display:'flex', alignItems:'center', justifyContent:'center', width:34, height:34, borderRadius:9, background:G, border:'none', cursor:'pointer', color:'#fff', boxShadow:'0 2px 10px rgba(113,49,225,0.42)', textDecoration:'none' }
               const TRANSP  = { display:'flex', alignItems:'center', justifyContent:'center', width:34, height:34, borderRadius:9, background:'transparent', border:'none', cursor:'pointer', color:'rgba(255,255,255,0.70)', padding:0 }
 
               const role = userProfile?.role
@@ -2726,7 +2721,7 @@ export default function ClubProfilePage() {
                     <span style={{
                       position:'absolute', bottom:-1, left:'25%', right:'25%',
                       height: 2, borderRadius: 2,
-                      background:'linear-gradient(135deg, #FE5000, #BD4BF8)',
+                      background:'#7131E1',
                     }} />
                   )}
                 </a>
@@ -2756,7 +2751,7 @@ export default function ClubProfilePage() {
           "Salir" no hacia nada. */}
       {editMode && (
         <div style={{
-          background:'linear-gradient(135deg, rgba(124,58,237,0.96), rgba(189,75,248,0.96))',
+          background:'rgba(113,49,225,0.96)',
           borderTop:'1px solid rgba(255,255,255,0.10)',
           borderBottom:'1px solid rgba(255,255,255,0.18)',
           padding:'10px 16px',
@@ -2881,7 +2876,7 @@ export default function ClubProfilePage() {
                   className="animate-gradient-slow"
                   style={{ position:'absolute', inset:0, background:'linear-gradient(135deg, #1a1a2e, #2d1f3d, #1a1a2e)' }}>
                   <div style={{ position:'absolute', top:'20%', left:'10%', width:240, height:240, borderRadius:'50%', background:'rgba(236,72,153,0.18)', filter:'blur(70px)' }} />
-                  <div style={{ position:'absolute', bottom:'10%', right:'8%', width:200, height:200, borderRadius:'50%', background:'rgba(168,85,247,0.22)', filter:'blur(60px)' }} />
+                  <div style={{ position:'absolute', bottom:'10%', right:'8%', width:200, height:200, borderRadius:'50%', background:'rgba(113,49,225,0.22)', filter:'blur(60px)' }} />
                 </div>
               )}
               {covers.map((url, i) => (
@@ -3185,7 +3180,7 @@ export default function ClubProfilePage() {
                         {commerce.city && <p style={{ color:'rgba(255,255,255,0.45)', fontSize:12, margin:'2px 0 0' }}>{commerce.city.name}</p>}
                       </div>
                     </div>
-                    <span style={{ background:'transparent', color:'#BD4BF8', border:'1.5px solid #BD4BF8', borderRadius:8, padding:'6px 12px', fontSize:12, fontWeight:700, fontFamily:FN, whiteSpace:'nowrap', flexShrink:0 }}>Cómo llegar →</span>
+                    <span style={{ background:'transparent', color:'#7131E1', border:'1.5px solid #7131E1', borderRadius:8, padding:'6px 12px', fontSize:12, fontWeight:700, fontFamily:FN, whiteSpace:'nowrap', flexShrink:0 }}>Cómo llegar →</span>
                   </a>
                   {editPencil('address', 'Editar ubicación', true /* en este branch hay address o coords */)}
                 </div>
@@ -3399,8 +3394,8 @@ export default function ClubProfilePage() {
                     <button
                       onClick={() => setShowReviewForm(v => !v)}
                       style={{
-                        background: showReviewForm ? 'rgba(168,85,247,0.15)' : 'rgba(255,255,255,0.06)',
-                        border: `1px solid ${showReviewForm ? 'rgba(168,85,247,0.4)' : 'rgba(255,255,255,0.12)'}`,
+                        background: showReviewForm ? 'rgba(113,49,225,0.15)' : 'rgba(255,255,255,0.06)',
+                        border: `1px solid ${showReviewForm ? 'rgba(113,49,225,0.4)' : 'rgba(255,255,255,0.12)'}`,
                         borderRadius:9999, padding:'8px 16px',
                         color: showReviewForm ? C.v : C.mist,
                         fontFamily:FN, fontSize:13, fontWeight:600,
@@ -3413,7 +3408,7 @@ export default function ClubProfilePage() {
 
                 {/* Formulario */}
                 {showReviewForm && isMember && (
-                  <div style={{ background:'rgba(168,85,247,0.06)', border:'1px solid rgba(168,85,247,0.2)', borderRadius:16, padding:'18px', marginBottom:16, animation:'fadeUp .25s ease' }}>
+                  <div style={{ background:'rgba(113,49,225,0.06)', border:'1px solid rgba(113,49,225,0.2)', borderRadius:16, padding:'18px', marginBottom:16, animation:'fadeUp .25s ease' }}>
                     <p style={{ fontSize:13, color:C.mist, marginBottom:12, fontFamily:FI }}>
                       {userReview ? 'Actualizá tu reseña' : 'Contales a otros socios tu experiencia'}
                     </p>
@@ -3448,7 +3443,7 @@ export default function ClubProfilePage() {
                       </button>
                       <button onClick={handleSubmitReview} disabled={submittingReview || !reviewRating}
                         className="btn-pulse"
-                        style={{ flex:2, padding:'11px', background: !reviewRating ? 'rgba(255,255,255,0.05)' : 'linear-gradient(135deg, #a855f7, #ec4899)', border:'none', borderRadius:12, color: !reviewRating ? C.dust : '#fff', fontFamily:FN, fontSize:13, fontWeight:600, cursor: !reviewRating ? 'not-allowed' : 'pointer', transition:'all .2s' }}>
+                        style={{ flex:2, padding:'11px', background: !reviewRating ? 'rgba(255,255,255,0.05)' : 'linear-gradient(135deg, #7131E1, #ec4899)', border:'none', borderRadius:12, color: !reviewRating ? C.dust : '#fff', fontFamily:FN, fontSize:13, fontWeight:600, cursor: !reviewRating ? 'not-allowed' : 'pointer', transition:'all .2s' }}>
                         {submittingReview ? 'Enviando...' : userReview ? 'Actualizar' : 'Publicar reseña'}
                       </button>
                     </div>
@@ -3471,7 +3466,7 @@ export default function ClubProfilePage() {
                         <div style={{ display:'flex', alignItems:'center', gap:10 }}>
                           {r.profile?.avatar_url
                             ? <img src={r.profile.avatar_url} alt="" style={{ width:34, height:34, borderRadius:'50%', objectFit:'cover', flexShrink:0 }} />
-                            : <div style={{ width:34, height:34, borderRadius:'50%', background:'linear-gradient(135deg, #a855f7, #ec4899)', display:'flex', alignItems:'center', justifyContent:'center', fontSize:14, fontWeight:700, color:'#fff', flexShrink:0 }}>
+                            : <div style={{ width:34, height:34, borderRadius:'50%', background:'linear-gradient(135deg, #7131E1, #ec4899)', display:'flex', alignItems:'center', justifyContent:'center', fontSize:14, fontWeight:700, color:'#fff', flexShrink:0 }}>
                                 {(r.profile?.name || '?')[0].toUpperCase()}
                               </div>
                           }
@@ -3524,7 +3519,7 @@ export default function ClubProfilePage() {
             {isMember && (
               <div style={{ background:'rgba(255,255,255,0.05)', backdropFilter:'blur(16px)', WebkitBackdropFilter:'blur(16px)', border:'1px solid rgba(255,255,255,0.10)', borderRadius:20, padding:'20px', position:'relative', overflow:'hidden' }}>
                 <div style={{ position:'absolute', top:0, left:0, right:0, height:3, background:GA }} />
-                <div style={{ position:'absolute', top:-40, right:-30, width:140, height:140, borderRadius:'50%', background:'rgba(168,85,247,0.1)', filter:'blur(40px)', pointerEvents:'none' }} />
+                <div style={{ position:'absolute', top:-40, right:-30, width:140, height:140, borderRadius:'50%', background:'rgba(113,49,225,0.1)', filter:'blur(40px)', pointerEvents:'none' }} />
                 <div style={{ display:'flex', justifyContent:'space-between', alignItems:'flex-start' }}>
                   <div>
                     <div style={{ fontSize:11, color:C.mist, marginBottom:6, fontWeight:500 }}>Tu saldo</div>
@@ -3683,7 +3678,7 @@ export default function ClubProfilePage() {
                         {/* Imagen arriba — full width 4:3 para que se vea
                             generosa pero la card no quede demasiado alta
                             cuando hay muchos premios. */}
-                        <div style={{ width:'100%', aspectRatio:'4 / 3', position:'relative', overflow:'hidden', background:'linear-gradient(135deg, rgba(168,85,247,0.15), rgba(236,72,153,0.15))', display:'flex', alignItems:'center', justifyContent:'center' }}>
+                        <div style={{ width:'100%', aspectRatio:'4 / 3', position:'relative', overflow:'hidden', background:'linear-gradient(135deg, rgba(113,49,225,0.15), rgba(236,72,153,0.15))', display:'flex', alignItems:'center', justifyContent:'center' }}>
                           {prize.img_url
                             ? <img src={prize.img_url} alt={prize.name} style={{ width:'100%', height:'100%', objectFit:'cover' }} />
                             : <Gift size={36} strokeWidth={1.5} color="rgba(255,255,255,0.4)" />
@@ -3699,7 +3694,7 @@ export default function ClubProfilePage() {
                               top: 10,
                               left: -28,
                               transform: 'rotate(-45deg)',
-                              background: 'linear-gradient(135deg, #7C3AED 0%, #BD4BF8 50%, #A855F7 100%)',
+                              background: 'linear-gradient(135deg, #7131E1 0%, #7131E1 50%, #7131E1 100%)',
                               color: '#fff',
                               fontFamily: FN,
                               fontSize: 9,
@@ -3707,7 +3702,7 @@ export default function ClubProfilePage() {
                               letterSpacing: '.18em',
                               textTransform: 'uppercase',
                               padding: '3px 32px',
-                              boxShadow: '0 2px 8px rgba(124,58,237,0.55), 0 0 0 1px rgba(255,255,255,0.18) inset',
+                              boxShadow: '0 2px 8px rgba(113,49,225,0.55), 0 0 0 1px rgba(255,255,255,0.18) inset',
                               textShadow: '0 1px 2px rgba(0,0,0,0.40)',
                               pointerEvents: 'none',
                               zIndex: 2,
@@ -3739,8 +3734,8 @@ export default function ClubProfilePage() {
                               {prize.name}
                             </div>
                             <div style={{ display:'flex', alignItems:'center', gap:5, marginTop:4 }}>
-                              <Gem size={13} color="#a855f7" strokeWidth={2} />
-                              <span style={{ color:'#a855f7', fontSize:12, fontWeight:600, fontFamily:FN }}>
+                              <Gem size={13} color="#7131E1" strokeWidth={2} />
+                              <span style={{ color:'#7131E1', fontSize:12, fontWeight:600, fontFamily:FN }}>
                                 {prize.cost} {unitLabel}
                               </span>
                               {prize.stock !== null && (
@@ -3755,7 +3750,7 @@ export default function ClubProfilePage() {
                               • canRedeem (100%): degradé de marca naranja→violeta
                                 fluyendo lento (4.5s). Glow doble naranja + violeta.
                               • Aún no llegó al cost: violeta de marca pleno
-                                (#BD4BF8) sin animación de flow, con pulse muy
+                                (#7131E1) sin animación de flow, con pulse muy
                                 sutil para que se sienta "vivo" sin distraer. */}
                           <div>
                             <div style={{
@@ -3772,12 +3767,12 @@ export default function ClubProfilePage() {
                                   minWidth: progressPct > 0 ? 10 : 0,
                                   borderRadius:9999,
                                   background: canRedeem
-                                    ? 'linear-gradient(90deg, #FE5000 0%, #BD4BF8 50%, #FE5000 100%)'
-                                    : '#BD4BF8',
+                                    ? '#7131E1'
+                                    : '#7131E1',
                                   backgroundSize: canRedeem ? '200% 100%' : 'auto',
                                   boxShadow: canRedeem
-                                    ? '0 0 12px rgba(254,80,0,0.65), 0 0 22px rgba(189,75,248,0.55), inset 0 0 10px rgba(255,255,255,0.30)'
-                                    : '0 0 8px rgba(189,75,248,0.45), inset 0 0 6px rgba(255,255,255,0.20)',
+                                    ? '0 0 12px rgba(254,80,0,0.65), 0 0 22px rgba(113,49,225,0.55), inset 0 0 10px rgba(255,255,255,0.30)'
+                                    : '0 0 8px rgba(113,49,225,0.45), inset 0 0 6px rgba(255,255,255,0.20)',
                                   animation: canRedeem
                                     ? 'brand-bar-flow 4.5s ease-in-out infinite'
                                     : 'brand-bar-pulse 2.8s ease-in-out infinite',
@@ -3792,7 +3787,7 @@ export default function ClubProfilePage() {
                                     ? <><span style={{ color:C.white, fontWeight:600 }}>{pointsLeft}</span> {unitLabel}</>
                                     : `${prize.cost} ${unitLabel}`}
                               </p>
-                              <ChevronRight size={12} strokeWidth={2.6} color="#a855f7" style={{ flexShrink:0 }} />
+                              <ChevronRight size={12} strokeWidth={2.6} color="#7131E1" style={{ flexShrink:0 }} />
                             </div>
                           </div>
 
@@ -3826,7 +3821,7 @@ export default function ClubProfilePage() {
                 }}
               >
                 <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-                  <div style={{ width: 36, height: 36, borderRadius: 10, background: 'rgba(189,75,248,0.14)', border: '1px solid rgba(189,75,248,0.22)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                  <div style={{ width: 36, height: 36, borderRadius: 10, background: 'rgba(113,49,225,0.14)', border: '1px solid rgba(113,49,225,0.22)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                     <Clock size={16} color="#fff" strokeWidth={2.2} />
                   </div>
                   <div>
@@ -3993,7 +3988,7 @@ export default function ClubProfilePage() {
                 </div>
                 <button onClick={handleGoogleLogin}
                   className="btn-pulse"
-                  style={{ width:'100%', padding:'15px', background:'linear-gradient(135deg, #a855f7, #ec4899)', border:'none', borderRadius:15, color:'#fff', fontFamily:FN, fontSize:14, fontWeight:700, cursor:'pointer', display:'flex', alignItems:'center', justifyContent:'center', gap:10, boxShadow:'0 8px 28px rgba(168,85,247,0.45)', transition:'all .2s ease' }}>
+                  style={{ width:'100%', padding:'15px', background:'linear-gradient(135deg, #7131E1, #ec4899)', border:'none', borderRadius:15, color:'#fff', fontFamily:FN, fontSize:14, fontWeight:700, cursor:'pointer', display:'flex', alignItems:'center', justifyContent:'center', gap:10, boxShadow:'0 8px 28px rgba(113,49,225,0.45)', transition:'all .2s ease' }}>
                   <span style={{ fontWeight:900, fontSize:17 }}>G</span>Continuar con Google
                 </button>
                 <div style={{ textAlign:'center', marginTop:12, fontSize:11, color:C.dust }}>Gratis · Sin spam · Cancelá cuando quieras</div>
@@ -4012,7 +4007,7 @@ export default function ClubProfilePage() {
                 {joinError && <div style={{ fontSize:13, color:'#f87171', marginBottom:14 }}>{joinError}</div>}
                 <button onClick={() => handleJoin()} disabled={joining||!!phoneErr||!consent}
                   className="btn-pulse"
-                  style={{ width:'100%', padding:'15px', background:'linear-gradient(135deg, #a855f7, #ec4899)', border:'none', borderRadius:15, color:'#fff', fontFamily:FN, fontSize:15, fontWeight:700, cursor:joining||!consent?'not-allowed':'pointer', opacity:joining||!consent?0.6:1, boxShadow:'0 8px 28px rgba(168,85,247,0.4)', transition:'all .2s ease' }}>
+                  style={{ width:'100%', padding:'15px', background:'linear-gradient(135deg, #7131E1, #ec4899)', border:'none', borderRadius:15, color:'#fff', fontFamily:FN, fontSize:15, fontWeight:700, cursor:joining||!consent?'not-allowed':'pointer', opacity:joining||!consent?0.6:1, boxShadow:'0 8px 28px rgba(113,49,225,0.4)', transition:'all .2s ease' }}>
                   {joining ? '⟳ Uniéndome...' : 'Unirme al club →'}
                 </button>
               </>
@@ -4138,7 +4133,7 @@ export default function ClubProfilePage() {
                 <div style={{
                   width:'100%',
                   aspectRatio:'4 / 3',
-                  background:'linear-gradient(135deg, rgba(168,85,247,0.30), rgba(236,72,153,0.20))',
+                  background:'rgba(113,49,225,0.25)',
                   position:'relative',
                   overflow:'hidden',
                 }}>
@@ -4246,8 +4241,8 @@ export default function ClubProfilePage() {
                   <div style={{
                     display:'inline-flex', alignItems:'center', gap:8,
                     padding:'8px 14px', borderRadius:99,
-                    background:'rgba(168,85,247,0.14)',
-                    border:'1px solid rgba(168,85,247,0.40)',
+                    background:'rgba(113,49,225,0.14)',
+                    border:'1px solid rgba(113,49,225,0.40)',
                     color:'#c084fc',
                     fontFamily:FN, fontSize:14, fontWeight:800,
                     marginBottom:18,
@@ -4288,12 +4283,12 @@ export default function ClubProfilePage() {
                           minWidth: progressPct > 0 ? 10 : 0,
                           borderRadius:9999,
                           background: canRedeem
-                            ? 'linear-gradient(90deg, #FE5000 0%, #BD4BF8 50%, #FE5000 100%)'
-                            : '#BD4BF8',
+                            ? '#7131E1'
+                            : '#7131E1',
                           backgroundSize: canRedeem ? '200% 100%' : 'auto',
                           boxShadow: canRedeem
-                            ? '0 0 14px rgba(254,80,0,0.70), 0 0 26px rgba(189,75,248,0.60), inset 0 0 12px rgba(255,255,255,0.35)'
-                            : '0 0 8px rgba(189,75,248,0.45), inset 0 0 6px rgba(255,255,255,0.20)',
+                            ? '0 0 14px rgba(254,80,0,0.70), 0 0 26px rgba(113,49,225,0.60), inset 0 0 12px rgba(255,255,255,0.35)'
+                            : '0 0 8px rgba(113,49,225,0.45), inset 0 0 6px rgba(255,255,255,0.20)',
                           animation: canRedeem
                             ? 'brand-bar-flow 4.5s ease-in-out infinite'
                             : 'brand-bar-pulse 2.8s ease-in-out infinite',
@@ -4362,14 +4357,14 @@ export default function ClubProfilePage() {
                       width:'100%', padding:'14px 0',
                       // Violeta de marca con un toque de profundidad —
                       // mismo degradé que usamos en otros CTAs primarios
-                      // del comercio (#7C3AED → #BD4BF8).
-                      background:'linear-gradient(135deg, #7C3AED, #BD4BF8)',
+                      // del comercio (#7131E1 → #7131E1).
+                      background:'linear-gradient(135deg, #7131E1, #7131E1)',
                       border:'none', borderRadius:14,
                       color:'#fff', fontFamily:FN, fontSize:15, fontWeight:800,
                       letterSpacing:'.02em',
                       cursor: redeeming === p.id ? 'not-allowed' : 'pointer',
                       opacity: redeeming === p.id ? 0.6 : 1,
-                      boxShadow:'0 8px 24px rgba(189,75,248,0.50)',
+                      boxShadow:'0 8px 24px rgba(113,49,225,0.50)',
                       display:'flex', alignItems:'center', justifyContent:'center', gap:8,
                     }}>
                     <Gift size={18} strokeWidth={2.4} />
@@ -4391,8 +4386,8 @@ export default function ClubProfilePage() {
               style={{ position:'absolute', top:10, right:10, width:30, height:30, borderRadius:'50%', background:'rgba(255,255,255,0.05)', border:'1px solid rgba(255,255,255,0.10)', color:'#fff', cursor:'pointer', display:'flex', alignItems:'center', justifyContent:'center', padding:0 }}>
               <X size={14} strokeWidth={2.4} />
             </button>
-            <div style={{ width:48, height:48, borderRadius:'50%', background:'rgba(189,75,248,0.18)', display:'flex', alignItems:'center', justifyContent:'center', margin:'0 auto 14px' }}>
-              <Gift size={22} strokeWidth={1.5} color="#BD4BF8" />
+            <div style={{ width:48, height:48, borderRadius:'50%', background:'rgba(113,49,225,0.18)', display:'flex', alignItems:'center', justifyContent:'center', margin:'0 auto 14px' }}>
+              <Gift size={22} strokeWidth={1.5} color="#7131E1" />
             </div>
             <div style={{ fontFamily:FN, fontSize:17, fontWeight:800, color:'#fff', textAlign:'center', marginBottom:6 }}>¿Canjear {confirmPrize.name}?</div>
             <div style={{ fontSize:12, color:C.mist, textAlign:'center', lineHeight:1.6, marginBottom:20 }}>
@@ -4404,7 +4399,7 @@ export default function ClubProfilePage() {
             <div style={{ display:'flex', gap:10 }}>
               <button onClick={() => setConfirmPrize(null)} style={{ flex:1, padding:'11px', background:'rgba(255,255,255,0.08)', border:'1px solid rgba(255,255,255,0.12)', borderRadius:12, color:'#fff', fontFamily:FN, fontSize:13, fontWeight:600, cursor:'pointer' }}>Cancelar</button>
               <button onClick={() => { const p = confirmPrize; setConfirmPrize(null); doRedeem(p) }}
-                style={{ flex:1, padding:'11px', background:'linear-gradient(135deg,#7C3AED,#BD4BF8)', border:'none', borderRadius:12, color:'#fff', fontFamily:FN, fontSize:13, fontWeight:700, cursor:'pointer', boxShadow:'0 4px 14px rgba(189,75,248,0.45)' }}>
+                style={{ flex:1, padding:'11px', background:'linear-gradient(135deg,#7131E1,#7131E1)', border:'none', borderRadius:12, color:'#fff', fontFamily:FN, fontSize:13, fontWeight:700, cursor:'pointer', boxShadow:'0 4px 14px rgba(113,49,225,0.45)' }}>
                 Confirmar
               </button>
             </div>
@@ -4423,14 +4418,14 @@ export default function ClubProfilePage() {
               style={{ position:'absolute', top:10, right:10, width:30, height:30, borderRadius:'50%', background:'rgba(255,255,255,0.06)', border:'1px solid rgba(255,255,255,0.12)', color:'#fff', cursor:'pointer', display:'flex', alignItems:'center', justifyContent:'center', padding:0 }}>
               <X size={14} strokeWidth={2.4} />
             </button>
-            <div style={{ width:50, height:50, borderRadius:'50%', background:'rgba(189,75,248,0.18)', display:'flex', alignItems:'center', justifyContent:'center', margin:'0 auto 16px' }}>
-              <span style={{ fontFamily:FN, fontSize:22, fontWeight:900, color:'#BD4BF8' }}>G</span>
+            <div style={{ width:50, height:50, borderRadius:'50%', background:'rgba(113,49,225,0.18)', display:'flex', alignItems:'center', justifyContent:'center', margin:'0 auto 16px' }}>
+              <span style={{ fontFamily:FN, fontSize:22, fontWeight:900, color:'#7131E1' }}>G</span>
             </div>
             <div style={{ fontFamily:FN, fontSize:17, fontWeight:800, color:C.white, textAlign:'center', marginBottom:8 }}>Iniciar sesión con Google</div>
             <div style={{ fontSize:13, color:C.mist, textAlign:'center', lineHeight:1.7, marginBottom:22 }}>Te vamos a redirigir a Google para iniciar sesión. Después volvés a Benefix automáticamente.</div>
             <div style={{ display:'flex', gap:10 }}>
               <button onClick={() => setShowLoginPrompt(false)} style={{ flex:1, padding:'11px', background:'rgba(255,255,255,0.08)', border:'1px solid rgba(255,255,255,0.12)', borderRadius:12, color:'#F0EAFF', fontFamily:FN, fontSize:13, fontWeight:600, cursor:'pointer' }}>← Volver</button>
-              <button onClick={confirmGoogleLogin} style={{ flex:1, padding:'11px', background:'linear-gradient(135deg, #BD4BF8, #FE5000)', border:'none', borderRadius:12, color:'#fff', fontFamily:FN, fontSize:13, fontWeight:700, cursor:'pointer' }}>Continuar →</button>
+              <button onClick={confirmGoogleLogin} style={{ flex:1, padding:'11px', background:'#7131E1', border:'none', borderRadius:12, color:'#fff', fontFamily:FN, fontSize:13, fontWeight:700, cursor:'pointer' }}>Continuar →</button>
             </div>
           </div>
         </div>
@@ -4525,11 +4520,11 @@ export default function ClubProfilePage() {
                 style={{
                   width: '100%', padding: '12px 16px',
                   borderRadius: 12,
-                  background: 'linear-gradient(135deg, #FE5000, #BD4BF8)',
+                  background: '#7131E1',
                   border: 'none', color: '#fff',
                   fontFamily: FN, fontSize: 13.5, fontWeight: 700,
                   cursor: 'pointer',
-                  boxShadow: '0 10px 24px rgba(189,75,248,0.40)',
+                  boxShadow: '0 10px 24px rgba(113,49,225,0.40)',
                 }}
               >
                 Entendido

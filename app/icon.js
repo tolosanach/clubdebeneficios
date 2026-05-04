@@ -1,5 +1,11 @@
 import { ImageResponse } from 'next/og'
 
+// Icon dinámico de Next.js — runtime edge.
+// Rebrand mayo 2026: violeta sólido #7131E1 + letra "B" blanca grande
+// centrada (espejo del icon.svg estático). Sin gradient orange-fucsia.
+// Para los PNGs de manifest se usa public/icons/icon-*.png generados
+// con scripts/generate-icons.js — esto es el fallback dinámico que
+// Next.js sirve cuando algún consumidor pide /icon directamente.
 export const runtime = 'edge'
 export const size = { width: 512, height: 512 }
 export const contentType = 'image/png'
@@ -7,12 +13,18 @@ export const contentType = 'image/png'
 export default function Icon() {
   return new ImageResponse(
     (
-      <div style={{ width:'100%', height:'100%', display:'flex', alignItems:'center', justifyContent:'center', background:'linear-gradient(135deg, #FE5000, #BD4BF8)', borderRadius:115 }}>
-        <svg width="280" height="280" viewBox="0 0 28 28" fill="none">
-          <path d="M14 4C8.477 4 4 8.477 4 14s4.477 10 10 10" stroke="white" strokeWidth="3" strokeLinecap="round"/>
-          <rect x="16" y="5.5" width="8" height="5" rx="2.5" fill="white" opacity=".9"/>
-          <rect x="16" y="12" width="9" height="5.5" rx="2.75" fill="white"/>
-        </svg>
+      <div style={{
+        width: '100%', height: '100%',
+        display: 'flex', alignItems: 'center', justifyContent: 'center',
+        background: '#7131E1',
+        borderRadius: 115,
+        fontFamily: 'system-ui, -apple-system, sans-serif',
+        fontSize: 380,
+        fontWeight: 800,
+        color: '#ffffff',
+        letterSpacing: '-0.04em',
+      }}>
+        B
       </div>
     ),
     { ...size }

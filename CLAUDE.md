@@ -488,4 +488,22 @@ Schedule: todos los días a las 14:00 UTC (11:00 ART). Vercel garantiza ejecuci�
 ### Env vars y deploy
 - Setear `CRON_SECRET` en Vercel (production). Sin ella el endpoint devuelve 401 y el cron no ejecuta nada.
 - Después del primer deploy, Vercel registra el cron automáticamente. Verificación: `vercel.com/dashboard` → proyecto → Cron Jobs.
-- Para correr manualmente: `curl -X POST https://benefix.com.ar/a
+- Para correr manualmente: `curl -X POST https://benefix.com.ar/api/admin/check-empty-prize-clubs -H "Authorization: Bearer $CRON_SECRET"`.
+
+### Lo que NO hace (intencional)
+- No envía push del navegador (solo notif in-app). El push se dispara desde el componente `NotificationsBell` cuando renderea — el cron NO llama `web-push` directamente. Si querés push, hay que agregarlo al final del insert.
+- No insiste todos los días: throttle de 7 días por owner. Si el dueño ignora la primera notif, espera una semana antes de la próxima.
+- No bloquea la operación del comercio. El sistema sigue activo y los clientes siguen acumulando — la notif es un nudge.
+
+## Cómo trabaja el dueño (Nacho)
+
+- Itera mucho sobre UX, le gusta debatir antes de codear cuando el cambio es estructural
+- Estilo conversacional, en castellano rioplatense, sin emojis salvo que él los use primero
+- Prefiere coherencia visual a través de la app (mismo lenguaje en titulares, mismos patrones)
+- Se mueve entre dueño-comercio y cliente-socio según contexto
+
+# userEmail
+sitiospampa@gmail.com (también tiene cuenta admin: arquitectotolosa@gmail.com)
+
+# currentDate
+Tomar fecha real del sistema vía `bash` si es relevante.

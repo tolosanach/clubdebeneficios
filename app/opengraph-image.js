@@ -1,5 +1,9 @@
 import { ImageResponse } from 'next/og'
 
+// Open Graph image (1200x630). Se sirve cuando alguien comparte
+// benefix.com.ar en WhatsApp, Twitter, Facebook, etc.
+// Rebrand mayo 2026: violeta sólido + wordmark "Benefix" grande blanco
+// + tagline. Sin gradient orange-fucsia, sin blobs rosa.
 export const runtime = 'edge'
 export const alt = 'Benefix — Tus beneficios. Un solo QR.'
 export const size = { width: 1200, height: 630 }
@@ -13,38 +17,32 @@ export default function OgImage() {
           width: '100%', height: '100%',
           display: 'flex', flexDirection: 'column',
           alignItems: 'center', justifyContent: 'center',
-          background: 'linear-gradient(135deg, #0D0818 0%, #1a0d2e 40%, #2d0a4e 70%, #1a0530 100%)',
+          background: '#7131E1',
           fontFamily: 'system-ui, sans-serif',
           position: 'relative',
           overflow: 'hidden',
         }}>
-        {/* Purple blob */}
-        <div style={{ position:'absolute', top:'-15%', left:'-8%', width:600, height:600, borderRadius:'50%', background:'radial-gradient(circle, rgba(139,92,246,0.55) 0%, transparent 70%)', filter:'blur(60px)', display:'flex' }} />
-        {/* Pink blob */}
-        <div style={{ position:'absolute', bottom:'-15%', right:'-8%', width:500, height:500, borderRadius:'50%', background:'radial-gradient(circle, rgba(236,72,153,0.45) 0%, transparent 70%)', filter:'blur(60px)', display:'flex' }} />
+        {/* Acentos sutiles del mismo violeta para darle profundidad sin
+            romper la identidad sólida — el deep en la esquina superior
+            izquierda y un highlight casi blanco en la inferior derecha
+            para evitar que se sienta plano en redes sociales. */}
+        <div style={{ position:'absolute', top:'-20%', left:'-10%', width:700, height:700, borderRadius:'50%', background:'radial-gradient(circle, rgba(105,53,189,0.85) 0%, transparent 70%)', filter:'blur(60px)', display:'flex' }} />
+        <div style={{ position:'absolute', bottom:'-20%', right:'-10%', width:600, height:600, borderRadius:'50%', background:'radial-gradient(circle, rgba(255,255,255,0.10) 0%, transparent 70%)', filter:'blur(60px)', display:'flex' }} />
 
-        {/* Logo */}
-        <div style={{ display:'flex', alignItems:'center', justifyContent:'center', width:96, height:96, borderRadius:24, background:'linear-gradient(135deg, #FE5000, #BD4BF8)', marginBottom:32, boxShadow:'0 16px 48px rgba(189,75,248,0.50)' }}>
-          <svg width="52" height="52" viewBox="0 0 28 28" fill="none">
-            <path d="M14 4C8.477 4 4 8.477 4 14s4.477 10 10 10" stroke="white" strokeWidth="3" strokeLinecap="round"/>
-            <rect x="16" y="5.5" width="8" height="5" rx="2.5" fill="white" opacity=".9"/>
-            <rect x="16" y="12" width="9" height="5.5" rx="2.75" fill="white"/>
-          </svg>
-        </div>
-
-        {/* Heading */}
-        <div style={{ fontSize:64, fontWeight:800, color:'#fff', letterSpacing:'-2px', lineHeight:1.1, textAlign:'center', marginBottom:16 }}>
+        {/* Wordmark gigante. La "B" en bold reemplaza al cuadrado-icon
+            del rebrand viejo — el wordmark mismo es el branding. */}
+        <div style={{ fontSize:120, fontWeight:800, color:'#fff', letterSpacing:'-4px', lineHeight:1, textAlign:'center', marginBottom:24 }}>
           Benefix
         </div>
 
         {/* Tagline */}
-        <div style={{ fontSize:28, color:'rgba(255,255,255,0.65)', textAlign:'center', letterSpacing:'-0.5px' }}>
+        <div style={{ fontSize:30, color:'rgba(255,255,255,0.78)', textAlign:'center', letterSpacing:'-0.4px', maxWidth:780, padding:'0 40px' }}>
           Tus beneficios. Un solo QR.
         </div>
 
-        {/* Badge */}
-        <div style={{ display:'flex', marginTop:36, padding:'10px 28px', borderRadius:9999, border:'1px solid rgba(189,75,248,0.50)', background:'rgba(189,75,248,0.15)', fontSize:18, color:'rgba(255,255,255,0.80)', letterSpacing:'0.05em' }}>
-          ✦ benefix.com.ar
+        {/* Badge URL */}
+        <div style={{ display:'flex', marginTop:44, padding:'10px 28px', borderRadius:9999, border:'1.5px solid rgba(255,255,255,0.40)', background:'rgba(255,255,255,0.10)', fontSize:18, color:'rgba(255,255,255,0.85)', letterSpacing:'0.06em' }}>
+          benefix.com.ar
         </div>
       </div>
     ),

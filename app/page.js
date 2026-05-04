@@ -109,15 +109,19 @@ const MENU = [
 const REVIEWS_ENABLED = false
 
 // ─── PALETTE ──────────────────────────────────────────────────────────────────
-const G  = 'linear-gradient(135deg, #FE5000, #BD4BF8)'
-const GV = 'linear-gradient(135deg, #3F0B78, #BD4BF8)'
-const GH = 'linear-gradient(160deg, #3F0B78 0%, #6B11C0 40%, #BD4BF8 75%, #FE5000 100%)'
+// Rebrand mayo 2026 fase 2: G, GV y GH dejan de ser gradients (orange→
+// fucsia, deep→brand, multi-stop) y pasan a ser violeta brand sólido.
+// Mantengo los nombres de constantes por compat con call sites en toda
+// la app — el contenido es el color brand único #7131E1.
+const G  = '#7131E1'
+const GV = '#7131E1'
+const GH = '#7131E1'
 const C = {
   bg:'transparent', bg2:'rgba(255,255,255,0.05)', bg3:'rgba(255,255,255,0.04)',
   card:'rgba(255,255,255,0.06)', cardH:'rgba(255,255,255,0.10)',
   rim:'rgba(255,255,255,0.10)', rimH:'rgba(255,255,255,0.20)',
   white:'#FFFFFF', pearl:'#F0EAFF', mist:'#9B85CC', dust:'#8370AD',
-  o:'#FE5000', v:'#BD4BF8', v1:'#3F0B78',
+  o:'#FE5000', v:'#7131E1', v1:'#6935BD',
   ok:'#22E698', okBg:'rgba(0,31,16,0.8)', info:'#40C8FF',
 }
 const FN = "'Space Grotesk', system-ui, sans-serif"
@@ -156,7 +160,7 @@ const PLANS = {
     label:           'STARTER',
     limit:           60,
     price:           25000,
-    color:           '#BD4BF8',
+    color:           '#7131E1',
     badge:           '#1F0935',
     // Link de pago recurrente de Mercado Pago. Al abrirse, le agregamos
     // `?external_reference={commerce.id}` para que cuando MP nos notifique
@@ -236,7 +240,7 @@ function ConfirmModal() {
   const confirm = () => { setModal(null); resolve(true)  }
   const cancel  = () => { setModal(null); resolve(false) }
   // Acento del icon: violeta de marca por defecto, naranja-rojo cuando es danger
-  const accentColor = danger ? '#FE5000' : '#BD4BF8'
+  const accentColor = danger ? '#FE5000' : '#7131E1'
   const accentGlow  = danger ? 'rgba(254,80,0,0.55)' : 'rgba(189,75,248,0.55)'
   return createPortal(
     <div style={{ position:'fixed', inset:0, zIndex:9998, display:'flex', alignItems:'center', justifyContent:'center', padding:20 }}>
@@ -359,13 +363,13 @@ function LoginPromptModal() {
         </button>
         <div style={{
           width:64, height:64, borderRadius:'50%',
-          border: '2px solid #BD4BF8',
+          border: '2px solid #7131E1',
           background: 'transparent',
           display:'flex', alignItems:'center', justifyContent:'center',
           margin:'0 auto 18px',
           boxShadow: '0 0 22px rgba(189,75,248,0.55), inset 0 0 12px rgba(189,75,248,0.55)',
         }}>
-          <span style={{ fontFamily:FN, fontSize:24, fontWeight:900, color:'#BD4BF8' }}>G</span>
+          <span style={{ fontFamily:FN, fontSize:24, fontWeight:900, color:'#7131E1' }}>G</span>
         </div>
         <div style={{ fontFamily:FN, fontSize:20, fontWeight:800, color:'#fff', textAlign:'center', marginBottom:8, letterSpacing:'-0.01em' }}>Iniciar sesión con Google</div>
         <div style={{ fontSize:13, color:'rgba(255,255,255,0.65)', textAlign:'center', lineHeight:1.6, marginBottom:24 }}>Te vamos a redirigir a Google para iniciar sesión. Después volvés a Benefix automáticamente.</div>
@@ -585,14 +589,13 @@ function InstallPrompt() {
 
   return (
     <>
-      {/* El banner flota a `right:86` (no a 16) para que su borde derecho NO
-          se cruce con los botones flotantes (chat + campana, ambos a right:18
-          con width:52, ocupan hasta right:70). Así la X de cerrar nunca queda
-          tapada por nada. En desktop (donde sobra ancho) queda igual de
-          legible; en mobile el banner se ve un poco más angosto pero entero. */}
-      <div className="modal-in" style={{ position:'fixed', bottom:88, left:16, right:86, zIndex:190, background:'rgba(18,10,32,0.97)', backdropFilter:'blur(24px)', WebkitBackdropFilter:'blur(24px)', border:'1px solid rgba(189,75,248,0.35)', borderRadius:18, padding:'14px 16px', boxShadow:'0 8px 40px rgba(0,0,0,0.5)', display:'flex', alignItems:'center', gap:12 }}>
-        {/* X de cerrar — esquina superior izquierda, fuera de la trayectoria
-            de los botones flotantes que están a la derecha. */}
+      {/* El banner ocupa el ancho de pantalla con margen lateral simétrico
+          (left:16 / right:16). Visualmente queda detrás de los botones
+          flotantes (chat + campana a right:18) — está bien porque el banner
+          es transitorio y se cierra con la X arriba-izquierda. */}
+      <div className="modal-in" style={{ position:'fixed', bottom:88, left:16, right:16, zIndex:190, background:'rgba(18,10,32,0.97)', backdropFilter:'blur(24px)', WebkitBackdropFilter:'blur(24px)', border:'1px solid rgba(189,75,248,0.35)', borderRadius:18, padding:'14px 16px', boxShadow:'0 8px 40px rgba(0,0,0,0.5)', display:'flex', alignItems:'center', gap:12 }}>
+        {/* X de cerrar — esquina superior izquierda, lejos de los botones
+            flotantes que están a la derecha. */}
         <button onClick={dismiss} aria-label="Cerrar"
           style={{ position:'absolute', top:6, left:6, width:24, height:24, borderRadius:'50%', background:'rgba(255,255,255,0.08)', border:'none', display:'flex', alignItems:'center', justifyContent:'center', cursor:'pointer', padding:0, zIndex:1 }}>
           <X size={11} color={C.mist} strokeWidth={2.4} />
@@ -1014,7 +1017,7 @@ function InfoBanner({ type = 'info', icon: CustomIcon, children, action, subtle 
   const cfgMap = {
     info:    { bg:'rgba(189,75,248,0.08)',  bd:`1px solid rgba(189,75,248,0.25)`, iconBg:'rgba(189,75,248,0.18)', iconCol:C.v,   tc:C.pearl },
     warning: { bg:`${C.o}0d`,              bd:`1px solid ${C.o}44`,              iconBg:`${C.o}20`,             iconCol:C.o,   tc:C.pearl },
-    limit:   { bg:'linear-gradient(135deg,rgba(139,92,246,0.10),rgba(236,72,153,0.10))', bd:'1px solid rgba(139,92,246,0.30)', iconBg:'linear-gradient(135deg,#8B5CF6,#EC4899)', iconCol:'#fff', tc:C.pearl },
+    limit:   { bg:'linear-gradient(135deg,rgba(139,92,246,0.10),rgba(236,72,153,0.10))', bd:'1px solid rgba(139,92,246,0.30)', iconBg:'#7131E1', iconCol:'#fff', tc:C.pearl },
     success: { bg:`${C.ok}0d`,             bd:`1px solid ${C.ok}44`,             iconBg:`${C.ok}20`,            iconCol:C.ok,  tc:C.pearl },
   }
   const cfg = cfgMap[type] || cfgMap.info
@@ -1320,7 +1323,7 @@ function InstagramStoryQR({ commerce, qrDataUrl }) {
   return (
     <div style={{
       width:1080, height:1920,
-      background:'linear-gradient(180deg, #7c3aed 0%, #a855f7 40%, #ec4899 100%)',
+      background:'#7131E1',
       display:'flex', flexDirection:'column', alignItems:'center',
       justifyContent:'center',
       fontFamily:'system-ui, -apple-system, sans-serif',
@@ -1412,7 +1415,7 @@ function QrFullscreen({ open, onClose, qrValue, audience = 'client', shareUrl = 
   // Color de fondo según el rol: violeta para el dueño (acción primaria del
   // panel), fucsia para el cliente (mismo color de "Mi billetera"). Así
   // visualmente se distingue qué QR estás mirando aunque no leas el título.
-  const bgColor  = audience === 'merchant' ? '#BD4BF8' : '#EC4899'
+  const bgColor  = audience === 'merchant' ? '#7131E1' : '#EC4899'
 
   // ── Hooks ──
   const [copied, setCopied] = useState(false)
@@ -1515,7 +1518,7 @@ function QrFullscreen({ open, onClose, qrValue, audience = 'client', shareUrl = 
     // Background: gradient de marca naranja → violeta (mismo del logo)
     const bg = ctx.createLinearGradient(0, 0, W, H)
     bg.addColorStop(0,   '#FE5000')
-    bg.addColorStop(1,   '#BD4BF8')
+    bg.addColorStop(1,   '#7131E1')
     ctx.fillStyle = bg
     ctx.fillRect(0, 0, W, H)
 
@@ -1732,8 +1735,8 @@ function QrFullscreen({ open, onClose, qrValue, audience = 'client', shareUrl = 
           flex:1,
           display:'flex', flexDirection:'column',
           // Gradient con 3 stops del mismo set para que el ciclo sea
-          // perfectamente cerrado (#FE5000 → #BD4BF8 → #FE5000).
-          background: 'linear-gradient(135deg, #FE5000 0%, #BD4BF8 50%, #FE5000 100%)',
+          // perfectamente cerrado (#FE5000 → #7131E1 → #FE5000).
+          background: '#7131E1',
           backgroundSize: '220% 220%',
           borderRadius:26,
           padding:'22px 22px 26px',
@@ -2006,7 +2009,7 @@ function CommerceQRCard({ commerce }) {
 
         {/* Gradient QR card */}
         <div style={{
-          background:'linear-gradient(135deg, #6d28d9 0%, #a855f7 45%, #ec4899 100%)',
+          background:'#7131E1',
           borderRadius:20, padding:'20px 20px 16px', marginBottom:14,
           position:'relative', overflow:'hidden',
         }}>
@@ -2053,7 +2056,7 @@ function CommerceQRCard({ commerce }) {
           </button>
           <button onClick={() => setShowDownload(true)} disabled={!qrDataUrl} style={{
             flex:1, padding:'10px 12px',
-            background:`linear-gradient(135deg, ${C.v}, #ec4899)`,
+            background: C.v,
             border:'none', borderRadius:10, color:'#fff',
             fontFamily:FN, fontSize:11, fontWeight:700,
             cursor:qrDataUrl ? 'pointer' : 'not-allowed', opacity:qrDataUrl ? 1 : 0.5,
@@ -2086,7 +2089,7 @@ function CommerceQRCard({ commerce }) {
                 display:'flex', alignItems:'center', gap:14, textAlign:'left',
                 opacity: downloading === 'digital' ? 0.6 : 1,
               }}>
-                <div style={{ width:48, height:48, borderRadius:12, background:'linear-gradient(135deg, #6d28d9, #ec4899)', display:'flex', alignItems:'center', justifyContent:'center', flexShrink:0 }}>
+                <div style={{ width:48, height:48, borderRadius:12, background:'#7131E1', display:'flex', alignItems:'center', justifyContent:'center', flexShrink:0 }}>
                   <Smartphone size={22} color="white" strokeWidth={1.5} />
                 </div>
                 <div>
@@ -2219,7 +2222,7 @@ function UpgradeResultModal({ result, onClose }) {
           style={{
             width:'100%', padding:'14px 18px', borderRadius:14,
             background: isSuccess
-              ? 'linear-gradient(135deg, #FE5000, #BD4BF8)'
+              ? '#7131E1'
               : 'rgba(255,255,255,0.08)',
             border: isSuccess ? 'none' : '1px solid rgba(255,255,255,0.16)',
             color:'#fff',
@@ -2589,7 +2592,7 @@ function PlanCards({ currentPlan=null, clientCount=0, planLimit=null, onUpgrade,
                   sobre él. */}
               <span style={{
                 width: 16, height: 16, borderRadius: '50%',
-                background: 'linear-gradient(135deg, #7C3AED, #BD4BF8)',
+                background: '#7131E1',
                 display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
                 flexShrink: 0, marginTop: 1,
                 boxShadow: `0 2px 6px ${C.v}55`,
@@ -2688,7 +2691,7 @@ function CoverImg({ src, height, children, style:s={} }) {
     <div style={{ position:'relative', height, overflow:'hidden', ...s }}
       onMouseEnter={()=>setHov(true)} onMouseLeave={()=>setHov(false)}>
       <img src={src} alt="" style={{ width:'100%', height:'100%', objectFit:'cover', filter:'brightness(.65) saturate(1.3)', transform:hov?'scale(1.04)':'scale(1)', transition:'transform .6s' }} />
-      <div style={{ position:'absolute', inset:0, background:'linear-gradient(135deg,#FE500010,#BD4BF815)', mixBlendMode:'color', pointerEvents:'none' }} />
+      <div style={{ position:'absolute', inset:0, background:'rgba(113,49,225,0.08)', mixBlendMode:'color', pointerEvents:'none' }} />
       <div style={{ position:'absolute', inset:0, background:`linear-gradient(to bottom,rgba(13,8,24,.05) 0%,rgba(13,8,24,.85) 80%,${C.bg} 100%)`, pointerEvents:'none' }} />
       {children}
     </div>
@@ -2715,7 +2718,7 @@ function BenefixLoader({ size = 80 }) {
         <style>{`@keyframes bf-snake{to{stroke-dashoffset:-120.6}}.bf-p{stroke-dasharray:55 66;stroke-dashoffset:0;animation:bf-snake 3s linear infinite}`}</style>
         <defs>
           <linearGradient id="bfg" x1="0" y1="0" x2="1" y2="1">
-            <stop offset="0%" stopColor="#a855f7" />
+            <stop offset="0%" stopColor="#7131E1" />
             <stop offset="55%" stopColor="#c026d3" />
             <stop offset="100%" stopColor="#ec4899" />
           </linearGradient>
@@ -2771,7 +2774,7 @@ function LoadingScreen({ onComplete }) {
             <span key={word} style={{
               position:'absolute', inset:0, display:'flex', alignItems:'center', justifyContent:'center',
               fontFamily: FN, fontSize:'clamp(40px,8vw,72px)', fontWeight:900, letterSpacing:'-0.03em',
-              background:'linear-gradient(135deg,#a855f7,#ec4899)',
+              background:'#7131E1',
               WebkitBackgroundClip:'text', WebkitTextFillColor:'transparent',
               opacity:    i === wordIndex ? 1 : 0,
               transform:  i === wordIndex ? 'translateY(0)' : 'translateY(28px)',
@@ -2799,7 +2802,7 @@ function LoadingScreen({ onComplete }) {
         <div style={{ height:3, background:'rgba(255,255,255,0.10)', borderRadius:99, overflow:'hidden' }}>
           <div style={{
             height:'100%', borderRadius:99,
-            background:'linear-gradient(to right,#a855f7,#ec4899)',
+            background:'#7131E1',
             boxShadow:'0 0 20px rgba(168,85,247,0.55)',
             width:`${count}%`,
             transition:'width 80ms linear',
@@ -3027,7 +3030,7 @@ function Navbar({ setView, cityName, user, profile, onLogin, onLogout, currentVi
                 display:'flex', alignItems:'center', justifyContent:'center',
                 flexShrink:0,
               }}>
-                <Wallet size={18} color="#BD4BF8" strokeWidth={2} />
+                <Wallet size={18} color="#7131E1" strokeWidth={2} />
               </div>
               <div style={{ flex:1, minWidth:0 }}>
                 <div style={{ fontFamily:FN, fontSize:14, fontWeight:800, marginBottom:2 }}>
@@ -3276,7 +3279,7 @@ function ReviewCard({ review }) {
             <img src={review.avatarUrl} alt={review.name}
               style={{ width:38, height:38, borderRadius:'50%', objectFit:'cover', flexShrink:0, border:'1px solid rgba(255,255,255,0.12)' }} />
           ) : (
-            <div style={{ width:38, height:38, borderRadius:'50%', background:'linear-gradient(135deg,#a855f7,#ec4899)', display:'flex', alignItems:'center', justifyContent:'center', fontFamily:FN, fontSize:13, fontWeight:800, color:'#fff', flexShrink:0 }}>
+            <div style={{ width:38, height:38, borderRadius:'50%', background:'#7131E1', display:'flex', alignItems:'center', justifyContent:'center', fontFamily:FN, fontSize:13, fontWeight:800, color:'#fff', flexShrink:0 }}>
               {initials}
             </div>
           )}
@@ -3285,7 +3288,7 @@ function ReviewCard({ review }) {
             <div style={{ display:'flex', alignItems:'center', gap:5, minWidth:0 }}>
               <p style={{ fontFamily:FN, fontSize:13, fontWeight:700, color:'#fff', whiteSpace:'nowrap', overflow:'hidden', textOverflow:'ellipsis' }}>{review.name}</p>
               {review.verified && (
-                <CheckCircle size={13} color='#a855f7' strokeWidth={2.5} style={{ flexShrink:0 }} />
+                <CheckCircle size={13} color='#7131E1' strokeWidth={2.5} style={{ flexShrink:0 }} />
               )}
             </div>
             {/* Business name (owners) or location */}
@@ -3371,7 +3374,7 @@ function BeneficioWord({ delay = 0 }) {
       transform: show ? 'translateY(0)' : 'translateY(20px)',
       transition: `opacity 0.7s ease, filter 0.7s ease, transform 0.7s cubic-bezier(0.23,1,0.32,1)`,
       transitionDelay: `${delay}ms`,
-      background: 'linear-gradient(90deg, #ec4899, #BD4BF8, #f472b6, #BD4BF8, #ec4899)',
+      background: '#7131E1',
       backgroundSize: '300% 100%',
       WebkitBackgroundClip: 'text',
       WebkitTextFillColor: 'transparent',
@@ -3560,14 +3563,14 @@ function HeroSection({ setView, user, profile, onLogin }) {
             <div className="trust-marquee">
               {TRUST.map(({ Icon, label }) => (
                 <div key={label} className="trust-marquee-item">
-                  <Icon size={24} color="#BD4BF8" strokeWidth={1.5} />
+                  <Icon size={24} color="#7131E1" strokeWidth={1.5} />
                   <span>{label}</span>
                 </div>
               ))}
               {/* Duplicado para loop seamless — oculto a lectores de pantalla */}
               {TRUST.map(({ Icon, label }) => (
                 <div key={`d-${label}`} className="trust-marquee-item" aria-hidden="true">
-                  <Icon size={24} color="#BD4BF8" strokeWidth={1.5} />
+                  <Icon size={24} color="#7131E1" strokeWidth={1.5} />
                   <span>{label}</span>
                 </div>
               ))}
@@ -3586,7 +3589,7 @@ function HeroSection({ setView, user, profile, onLogin }) {
       }}>
         <span style={{ fontFamily:FN, fontSize:10, color:'rgba(255,255,255,0.35)', letterSpacing:'0.15em', textTransform:'uppercase' }}>Scroll</span>
         <div style={{ width:1, height:48, background:'rgba(255,255,255,0.15)', position:'relative', overflow:'hidden', borderRadius:1 }}>
-          <div className="scroll-light" style={{ position:'absolute', top:0, left:0, width:'100%', height:16, background:'linear-gradient(to bottom,#a855f7,#ec4899)', borderRadius:1 }} />
+          <div className="scroll-light" style={{ position:'absolute', top:0, left:0, width:'100%', height:16, background:'#7131E1', borderRadius:1 }} />
         </div>
       </div>
 
@@ -3650,7 +3653,7 @@ function FeaturesSection() {
       Icon: QrCode,
       title: 'QR único del negocio',
       desc: 'Cada local tiene su QR personalizado. El cliente escanea, queda dentro del club. Cero tarjetas de papel que se pierden.',
-      color: '#8B5CF6',
+      color: '#7131E1',
     },
     {
       Icon: Star,
@@ -4169,8 +4172,8 @@ function _HowItWorksSectionLegacy() {
       title:'Escaneá',
       desc:'Mostrá el QR del local y unite al club en segundos. Sin descargar nada, sin papelitos.',
       pills:['QR único por local', 'Sin app extra', 'Funciona offline'],
-      accent:'#8B5CF6',         // violeta — sistema "stars"
-      accentDark:'#7C3AED',
+      accent:'#7131E1',         // violeta — sistema "stars"
+      accentDark:'#7131E1',
       grad:'linear-gradient(135deg, #2A1140 0%, #1A0626 60%, #0d0218 100%)',
       visual:'qr',
     },
@@ -4600,7 +4603,7 @@ function _HeroSlider({ setView, profile }) {
       onCta: () => setView(isOwner ? 'commerce-settings' : 'client'),
       Icon:  QrCode,
       blob1: 'rgba(189,75,248,0.28)', blob2: 'rgba(254,80,0,0.18)',
-      bg:    'radial-gradient(ellipse at 28% 38%, #3F0B78 0%, #1a0040 50%, #09000e 100%)',
+      bg:    'radial-gradient(ellipse at 28% 38%, #6935BD 0%, #1a0040 50%, #09000e 100%)',
     },
     {
       id: 2,
@@ -4611,7 +4614,7 @@ function _HeroSlider({ setView, profile }) {
       onCta: () => setView('register-commerce'),
       Icon:  Users,
       blob1: 'rgba(254,80,0,0.22)', blob2: 'rgba(189,75,248,0.18)',
-      bg:    'radial-gradient(ellipse at 72% 30%, #6B11C0 0%, #1a0040 50%, #09000e 100%)',
+      bg:    'radial-gradient(ellipse at 72% 30%, #7131E1 0%, #1a0040 50%, #09000e 100%)',
     },
     {
       id: 3,
@@ -4633,7 +4636,7 @@ function _HeroSlider({ setView, profile }) {
       onCta: () => setView('register-commerce'),
       Icon:  Bot,
       blob1: 'rgba(64,200,255,0.14)', blob2: 'rgba(189,75,248,0.22)',
-      bg:    'radial-gradient(ellipse at 18% 70%, #3F0B78 0%, #1a0040 50%, #09000e 100%)',
+      bg:    'radial-gradient(ellipse at 18% 70%, #6935BD 0%, #1a0040 50%, #09000e 100%)',
     },
     {
       id: 5,
@@ -4644,7 +4647,7 @@ function _HeroSlider({ setView, profile }) {
       onCta: () => setView(isOwner ? 'commerce-settings' : 'client'),
       Icon:  Rocket,
       blob1: 'rgba(189,75,248,0.32)', blob2: 'rgba(254,80,0,0.22)',
-      bg:    'radial-gradient(ellipse at 62% 28%, #BD4BF8 0%, #1a0040 50%, #09000e 100%)',
+      bg:    'radial-gradient(ellipse at 62% 28%, #7131E1 0%, #1a0040 50%, #09000e 100%)',
     },
   ]
 
@@ -4843,7 +4846,7 @@ function TestimonialsSection() {
               </div>
               {/* Author */}
               <div style={{ display:'flex', alignItems:'center', gap:14 }}>
-                <div style={{ width:44, height:44, borderRadius:'50%', background:'linear-gradient(135deg,#a855f7,#ec4899)', display:'flex', alignItems:'center', justifyContent:'center', flexShrink:0 }}>
+                <div style={{ width:44, height:44, borderRadius:'50%', background:'#7131E1', display:'flex', alignItems:'center', justifyContent:'center', flexShrink:0 }}>
                   <span style={{ fontFamily:FN, fontSize:14, fontWeight:900, color:'#fff' }}>
                     {t.name.split(' ').map(n=>n[0]).join('')}
                   </span>
@@ -5220,13 +5223,13 @@ function CinematicSplashSection({ setView, user, profile, onLogin }) {
           <div className="trust-marquee trust-marquee--splash">
             {TRUST.map(({ Icon, label }) => (
               <div key={label} className="trust-marquee-item">
-                <Icon size={18} color="#BD4BF8" strokeWidth={1.6} />
+                <Icon size={18} color="#7131E1" strokeWidth={1.6} />
                 <span>{label}</span>
               </div>
             ))}
             {TRUST.map(({ Icon, label }) => (
               <div key={`d-${label}`} className="trust-marquee-item" aria-hidden="true">
-                <Icon size={18} color="#BD4BF8" strokeWidth={1.6} />
+                <Icon size={18} color="#7131E1" strokeWidth={1.6} />
                 <span>{label}</span>
               </div>
             ))}
@@ -5300,7 +5303,7 @@ function CinematicSplashSection({ setView, user, profile, onLogin }) {
             lineHeight:0.88,
             textTransform:'uppercase',
             color:'transparent',
-            backgroundImage:'linear-gradient(135deg, #FE5000 0%, #BD4BF8 50%, #7C3AED 100%)',
+            backgroundImage:'#7131E1',
             WebkitBackgroundClip:'text',
             backgroundClip:'text',
             WebkitTextFillColor:'transparent',
@@ -5327,7 +5330,7 @@ function CinematicSplashSection({ setView, user, profile, onLogin }) {
             letterSpacing:'-0.04em',
             lineHeight:0.88,
             textTransform:'uppercase',
-            backgroundImage:'linear-gradient(110deg, #FE5000 0%, #FF7A00 18%, #EC4899 45%, #BD4BF8 72%, #7C3AED 100%)',
+            backgroundImage:'#7131E1',
             WebkitBackgroundClip:'text',
             backgroundClip:'text',
             WebkitTextFillColor:'transparent',
@@ -5423,22 +5426,22 @@ function CinematicSplashSection({ setView, user, profile, onLogin }) {
             edificios sólidos. */}
         {[
           { l:'5%',  b:'24%', c:'#FE5000' },
-          { l:'9%',  b:'31%', c:'#BD4BF8' },
+          { l:'9%',  b:'31%', c:'#7131E1' },
           { l:'14%', b:'40%', c:'#FE5000' },
           { l:'17%', b:'27%', c:'#EC4899' },
-          { l:'22%', b:'21%', c:'#7C3AED' },
+          { l:'22%', b:'21%', c:'#7131E1' },
           { l:'26%', b:'45%', c:'#FE5000' },
-          { l:'34%', b:'58%', c:'#BD4BF8' },
+          { l:'34%', b:'58%', c:'#7131E1' },
           { l:'40%', b:'30%', c:'#EC4899' },
           { l:'45%', b:'39%', c:'#FE5000' },
-          { l:'50%', b:'48%', c:'#BD4BF8' },
+          { l:'50%', b:'48%', c:'#7131E1' },
           { l:'56%', b:'25%', c:'#EC4899' },
           { l:'64%', b:'62%', c:'#FE5000' },
-          { l:'69%', b:'37%', c:'#BD4BF8' },
+          { l:'69%', b:'37%', c:'#7131E1' },
           { l:'75%', b:'27%', c:'#EC4899' },
-          { l:'81%', b:'45%', c:'#7C3AED' },
+          { l:'81%', b:'45%', c:'#7131E1' },
           { l:'86%', b:'30%', c:'#FE5000' },
-          { l:'92%', b:'40%', c:'#BD4BF8' },
+          { l:'92%', b:'40%', c:'#7131E1' },
           { l:'95%', b:'24%', c:'#EC4899' },
         ].map((w, i) => (
           <div key={i} style={{
@@ -5597,7 +5600,7 @@ function BigBoldRowsSection({ setView }) {
       title: 'Sumar',
       desc: 'Cada cliente que entra al local escanea tu QR y queda dentro del club. Cero tarjetas de papel, cero fricción.',
       bg: 'linear-gradient(110deg, #1a0d2e 0%, #2a1340 50%, #4c1d95 100%)',
-      accent: '#BD4BF8',
+      accent: '#7131E1',
     },
     {
       key: 'fidelizar',
@@ -5643,7 +5646,7 @@ function BigBoldRowsSection({ setView }) {
               transition: 'opacity 800ms ease 200ms, transform 800ms cubic-bezier(0.22,1,0.36,1) 200ms',
             }}>
               Fidelización,<br />
-              <span className="font-display" style={{ color:'#BD4BF8', fontWeight:400, letterSpacing:'-.005em' }}>reinventada:</span>
+              <span className="font-display" style={{ color:'#7131E1', fontWeight:400, letterSpacing:'-.005em' }}>reinventada:</span>
             </h2>
           </div>
         </div>
@@ -6198,7 +6201,7 @@ function CommerceView({ commerce:c, setView, user, onLoginRequired, onCommerceUp
           violeta/fucsia de marca (definido inline cuando coverSrc es null).
           El logo (img_url) se muestra al lado del nombre como avatar circular,
           NO se estira como cover. */}
-      <div style={{ position:'relative', width:'100%', height:260, overflow:'hidden', background: coverSrc ? '#000' : 'linear-gradient(135deg, #8B5CF6 0%, #EC4899 100%)' }}>
+      <div style={{ position:'relative', width:'100%', height:260, overflow:'hidden', background: coverSrc ? '#000' : '#7131E1' }}>
         {coverSrc && (
           <img src={coverSrc} alt="" style={{ position:'absolute', inset:0, width:'100%', height:'100%', objectFit:'cover' }} />
         )}
@@ -6392,7 +6395,7 @@ function CommerceView({ commerce:c, setView, user, onLoginRequired, onCommerceUp
                 </button>
               )}
               <a href={mapsUrl} target="_blank" rel="noopener noreferrer"
-                style={{ background:'transparent', color:'#BD4BF8', border:'1.5px solid #BD4BF8', borderRadius:8, padding:'6px 12px', fontSize:11, fontWeight:700, fontFamily:FN, cursor:'pointer', textDecoration:'none', whiteSpace:'nowrap', display:'inline-flex', alignItems:'center', gap:4, transition:'background .15s' }}>
+                style={{ background:'transparent', color:'#7131E1', border:'1.5px solid #7131E1', borderRadius:8, padding:'6px 12px', fontSize:11, fontWeight:700, fontFamily:FN, cursor:'pointer', textDecoration:'none', whiteSpace:'nowrap', display:'inline-flex', alignItems:'center', gap:4, transition:'background .15s' }}>
                 Cómo llegar →
               </a>
             </div>
@@ -6420,13 +6423,13 @@ function CommerceView({ commerce:c, setView, user, onLoginRequired, onCommerceUp
           return (
             <div style={{ marginBottom:13, padding:'14px 16px', background:'linear-gradient(135deg, rgba(124,58,237,0.20), rgba(189,75,248,0.18))', border:'1px solid rgba(189,75,248,0.45)', borderRadius:14, display:'flex', alignItems:'center', gap:14, position:'relative', overflow:'hidden' }}>
               <div style={{ position:'absolute', top:-30, right:-20, width:120, height:120, borderRadius:'50%', background:'radial-gradient(circle, rgba(168,85,247,0.30) 0%, transparent 70%)', filter:'blur(20px)', pointerEvents:'none' }} />
-              <div style={{ width:54, height:54, borderRadius:14, background:'linear-gradient(135deg, #7C3AED, #BD4BF8)', display:'flex', alignItems:'center', justifyContent:'center', flexShrink:0, position:'relative', zIndex:1, boxShadow:'0 4px 14px rgba(168,85,247,0.40)' }}>
+              <div style={{ width:54, height:54, borderRadius:14, background:'#7131E1', display:'flex', alignItems:'center', justifyContent:'center', flexShrink:0, position:'relative', zIndex:1, boxShadow:'0 4px 14px rgba(168,85,247,0.40)' }}>
                 <Flame size={26} color="#fff" strokeWidth={2} />
               </div>
               <div style={{ flex:1, minWidth:0, position:'relative', zIndex:1 }}>
                 <div style={{ fontFamily:FN, fontSize:9, fontWeight:800, color:'#D8B4FE', letterSpacing:'.12em', textTransform:'uppercase', marginBottom:3 }}>Descuento activo</div>
                 <div style={{ display:'flex', alignItems:'baseline', gap:6, flexWrap:'wrap' }}>
-                  <span style={{ fontFamily:FN, fontSize:24, fontWeight:900, background:'linear-gradient(135deg, #BD4BF8, #A855F7)', WebkitBackgroundClip:'text', WebkitTextFillColor:'transparent', backgroundClip:'text', lineHeight:1 }}>{discount.value}% OFF</span>
+                  <span style={{ fontFamily:FN, fontSize:24, fontWeight:900, background:'#7131E1', WebkitBackgroundClip:'text', WebkitTextFillColor:'transparent', backgroundClip:'text', lineHeight:1 }}>{discount.value}% OFF</span>
                   <span style={{ fontSize:12, color:C.mist }}>en tu próxima compra</span>
                 </div>
                 {(discount.description || expDate) && (
@@ -6457,19 +6460,19 @@ function CommerceView({ commerce:c, setView, user, onLoginRequired, onCommerceUp
           const isStars = c.prog_type === 'stars'
           const unitLabel = isStars ? 'estrellas' : 'puntos'
           const unitIcon  = isStars ? '★' : '◆'
-          const unitColor = isStars ? '#8B5CF6' : '#EC4899'  // violeta / fucsia (paleta de sistemas)
+          const unitColor = isStars ? '#7131E1' : '#EC4899'  // violeta / fucsia (paleta de sistemas)
           return (
             <PCard style={{ padding:18, marginBottom:13 }}>
               <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', marginBottom:13, gap:8 }}>
-                <div style={{ fontFamily:FN, fontSize:10, color:'#BD4BF8', fontWeight:800, letterSpacing:'.14em', textTransform:'uppercase', display:'flex', alignItems:'center', gap:7 }}>
-                  <Gift size={12} strokeWidth={2.5} color="#BD4BF8" /> Catálogo de premios
+                <div style={{ fontFamily:FN, fontSize:10, color:'#7131E1', fontWeight:800, letterSpacing:'.14em', textTransform:'uppercase', display:'flex', alignItems:'center', gap:7 }}>
+                  <Gift size={12} strokeWidth={2.5} color="#7131E1" /> Catálogo de premios
                 </div>
                 {isOwner && (
                   <button onClick={() => {
                     try { localStorage.setItem('benefix:cameFromPreview', '1') } catch {}
                     window.dispatchEvent(new CustomEvent('benefix:navigate', { detail: { view: 'commerce-settings', tab: 'premios' } }))
                   }}
-                    style={{ background:'transparent', border:'none', color:'#BD4BF8', fontSize:11, fontFamily:FN, fontWeight:700, cursor:'pointer', display:'inline-flex', alignItems:'center', gap:4, padding:0, flexShrink:0 }}>
+                    style={{ background:'transparent', border:'none', color:'#7131E1', fontSize:11, fontFamily:FN, fontWeight:700, cursor:'pointer', display:'inline-flex', alignItems:'center', gap:4, padding:0, flexShrink:0 }}>
                     Ver catálogo <ArrowRight size={11} strokeWidth={2.5} />
                   </button>
                 )}
@@ -6485,9 +6488,9 @@ function CommerceView({ commerce:c, setView, user, onLoginRequired, onCommerceUp
                     // Premio creado en los últimos 7 días → badge "NUEVO" violeta
                     const isNew = p.created_at && (Date.now() - new Date(p.created_at).getTime()) < 7 * 24 * 60 * 60 * 1000
                     return (
-                      <div key={p.id} style={{ position:'relative', display:'flex', alignItems:'center', gap:11, padding:'10px 12px', background:C.bg3, borderRadius:10, border:`1px solid ${isNew ? '#8B5CF6' : C.rim}`, opacity: out ? 0.55 : 1 }}>
+                      <div key={p.id} style={{ position:'relative', display:'flex', alignItems:'center', gap:11, padding:'10px 12px', background:C.bg3, borderRadius:10, border:`1px solid ${isNew ? '#7131E1' : C.rim}`, opacity: out ? 0.55 : 1 }}>
                         {isNew && (
-                          <span style={{ position:'absolute', top:-6, right:8, background:'linear-gradient(135deg, #8B5CF6, #A855F7)', color:'#fff', fontFamily:FN, fontSize:9, fontWeight:800, letterSpacing:'.1em', padding:'2px 8px', borderRadius:99, boxShadow:'0 2px 8px rgba(139,92,246,0.45)' }}>NUEVO</span>
+                          <span style={{ position:'absolute', top:-6, right:8, background:'#7131E1', color:'#fff', fontFamily:FN, fontSize:9, fontWeight:800, letterSpacing:'.1em', padding:'2px 8px', borderRadius:99, boxShadow:'0 2px 8px rgba(139,92,246,0.45)' }}>NUEVO</span>
                         )}
                         {p.img_url
                           ? <img src={p.img_url} alt="" style={{ width:46, height:46, borderRadius:8, objectFit:'cover', flexShrink:0 }} />
@@ -6559,7 +6562,7 @@ function CommerceView({ commerce:c, setView, user, onLoginRequired, onCommerceUp
             Si está en preview viendo su propio comercio, ya tiene el banner
             arriba "Así ven tu club los clientes" con link a editar. */}
         {user?.id !== c?.owner_id && (
-        <div style={{ background:joined?C.okBg:'linear-gradient(135deg,#FE50000D,#BD4BF80D)', border:`1px solid ${joined?C.ok:C.v}44`, borderRadius:15, padding:24, textAlign:'center', transition:'background 400ms ease, border-color 400ms ease' }}>
+        <div style={{ background:joined?C.okBg:'rgba(113,49,225,0.05)', border:`1px solid ${joined?C.ok:C.v}44`, borderRadius:15, padding:24, textAlign:'center', transition:'background 400ms ease, border-color 400ms ease' }}>
           {joined ? (
             <>
               <div style={{ display:'flex', justifyContent:'center', marginBottom:9 }}>
@@ -7135,7 +7138,7 @@ function ClientBottomNav({ tab, setTab, profile, setView }) {
                 <span style={{
                   position:'absolute', bottom:-1, left:'25%', right:'25%',
                   height: 2, borderRadius: 2,
-                  background:'linear-gradient(135deg, #FE5000, #BD4BF8)',
+                  background:'#7131E1',
                 }} />
               )}
             </button>
@@ -8111,9 +8114,9 @@ function FilterPills({ pills, selected, onSelect, label, size, multi = false }) 
                 fontFamily:   FN,
                 fontWeight:   active ? 700 : 500,
                 // Activo: outline violeta + relleno violeta tenue. Inactivo: outline gris.
-                color:        active ? '#A855F7' : 'rgba(255,255,255,0.50)',
+                color:        active ? '#7131E1' : 'rgba(255,255,255,0.50)',
                 background:   active ? 'rgba(168,85,247,0.10)' : 'transparent',
-                border:       `1.5px solid ${active ? '#A855F7' : 'rgba(255,255,255,0.30)'}`,
+                border:       `1.5px solid ${active ? '#7131E1' : 'rgba(255,255,255,0.30)'}`,
                 cursor:       'pointer',
                 transition:   'all 150ms ease',
                 whiteSpace:   'nowrap',
@@ -8142,7 +8145,7 @@ function FilterPills({ pills, selected, onSelect, label, size, multi = false }) 
                   style={{
                     display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
                     width: isLarge ? 16 : 14, height: isLarge ? 16 : 14, borderRadius: '50%',
-                    background: 'rgba(168,85,247,0.20)', color: '#A855F7',
+                    background: 'rgba(168,85,247,0.20)', color: '#7131E1',
                     fontSize: isLarge ? 11 : 9, fontWeight: 800, cursor: 'pointer', lineHeight: 1,
                   }}
                 >×</span>
@@ -8580,7 +8583,7 @@ function ClientView({ setView, user, profile, onLogout, initialTab }) {
         <div style={{ display:'flex', gap:12, alignItems:'center' }}>
           {profile?.avatar_url
             ? <img src={profile.avatar_url} alt="" style={{ width:44, height:44, borderRadius:'50%', objectFit:'cover', flexShrink:0 }} />
-            : <div style={{ width:44, height:44, borderRadius:'50%', background:'linear-gradient(135deg,#a855f7,#ec4899)', display:'flex', alignItems:'center', justifyContent:'center', fontFamily:FN, fontSize:14, fontWeight:900, color:'#fff', flexShrink:0 }}>{initials}</div>
+            : <div style={{ width:44, height:44, borderRadius:'50%', background:'#7131E1', display:'flex', alignItems:'center', justifyContent:'center', fontFamily:FN, fontSize:14, fontWeight:900, color:'#fff', flexShrink:0 }}>{initials}</div>
           }
           <div style={{ flex:1, minWidth:0 }}>
             <div style={{ fontFamily:FN, fontSize:15, fontWeight:700, color:'#fff', marginBottom:2, overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>{profile?.name || user.email}</div>
@@ -8633,7 +8636,7 @@ function ClientView({ setView, user, profile, onLogout, initialTab }) {
                   try { sessionStorage.setItem('benefix:scanIntent', 'join-club') } catch {}
                   setView('scanner')
                 }}
-                style={{ padding:'11px 26px', borderRadius:99, background:'linear-gradient(135deg,#8B5CF6,#EC4899)', border:'none', cursor:'pointer', fontFamily:FN, fontSize:13, fontWeight:700, color:'#fff', boxShadow:'0 4px 20px rgba(139,92,246,0.40)' }}
+                style={{ padding:'11px 26px', borderRadius:99, background:'#7131E1', border:'none', cursor:'pointer', fontFamily:FN, fontSize:13, fontWeight:700, color:'#fff', boxShadow:'0 4px 20px rgba(139,92,246,0.40)' }}
               >
                 Escanear QR
               </button>
@@ -8826,10 +8829,10 @@ function ClientView({ setView, user, profile, onLogout, initialTab }) {
                     title         = data.name
                     subtitle      = commerce.name
                     LeftIcon      = data.img_url ? null : Gift
-                    leftIconColor = '#BD4BF8'
+                    leftIconColor = '#7131E1'
                     const UI      = isStars ? Star : Gem
                     costDisplay   = (
-                      <span style={{ display:'inline-flex', alignItems:'center', gap:4, fontFamily:FN, fontSize:13, fontWeight:800, color:'#BD4BF8' }}>
+                      <span style={{ display:'inline-flex', alignItems:'center', gap:4, fontFamily:FN, fontSize:13, fontWeight:800, color:'#7131E1' }}>
                         <UI size={11} {...(isStars ? { strokeWidth:0, fill:'currentColor' } : { strokeWidth:2 })} />
                         {data.cost}
                       </span>
@@ -8840,9 +8843,9 @@ function ClientView({ setView, user, profile, onLogout, initialTab }) {
                     title         = `${data.value || 10}% OFF en próxima compra`
                     subtitle      = commerce.name
                     LeftIcon      = Percent
-                    leftIconColor = '#BD4BF8'
+                    leftIconColor = '#7131E1'
                     costDisplay   = (
-                      <span style={{ fontFamily:FN, fontSize:13, fontWeight:800, color:'#BD4BF8' }}>
+                      <span style={{ fontFamily:FN, fontSize:13, fontWeight:800, color:'#7131E1' }}>
                         {data.value || 10}%
                       </span>
                     )
@@ -8853,9 +8856,9 @@ function ClientView({ setView, user, profile, onLogout, initialTab }) {
                     title         = `Doble ${isStars ? 'estrellas' : 'puntos'}${days ? ` los ${days.toLowerCase()}` : ''}`
                     subtitle      = commerce.name
                     LeftIcon      = Sparkles
-                    leftIconColor = '#BD4BF8'
+                    leftIconColor = '#7131E1'
                     costDisplay   = (
-                      <span style={{ fontFamily:FN, fontSize:13, fontWeight:800, color:'#BD4BF8' }}>
+                      <span style={{ fontFamily:FN, fontSize:13, fontWeight:800, color:'#7131E1' }}>
                         ×2
                       </span>
                     )
@@ -8895,8 +8898,8 @@ function ClientView({ setView, user, profile, onLogout, initialTab }) {
                             width:`${pct}%`, height:'100%',
                             borderRadius:99,
                             background: canRedeem
-                              ? 'linear-gradient(90deg, #FE5000 0%, #BD4BF8 50%, #FE5000 100%)'
-                              : '#BD4BF8',
+                              ? '#7131E1'
+                              : '#7131E1',
                             backgroundSize: canRedeem ? '200% 100%' : 'auto',
                             boxShadow: canRedeem
                               ? '0 0 8px rgba(254,80,0,0.55), 0 0 16px rgba(189,75,248,0.45), inset 0 0 6px rgba(255,255,255,0.25)'
@@ -8911,7 +8914,7 @@ function ClientView({ setView, user, profile, onLogout, initialTab }) {
                       {/* Costo + status — todo en violeta */}
                       <div style={{ flexShrink:0, textAlign:'right' }}>
                         {costDisplay}
-                        <div style={{ fontSize:10, color: canRedeem ? '#BD4BF8' : 'rgba(255,255,255,0.45)', fontWeight: canRedeem ? 700 : 400, marginTop:2, whiteSpace:'nowrap' }}>
+                        <div style={{ fontSize:10, color: canRedeem ? '#7131E1' : 'rgba(255,255,255,0.45)', fontWeight: canRedeem ? 700 : 400, marginTop:2, whiteSpace:'nowrap' }}>
                           {statusText}
                         </div>
                       </div>
@@ -8948,7 +8951,7 @@ function ClientView({ setView, user, profile, onLogout, initialTab }) {
                   <div style={{ fontSize:10, color:'rgba(255,255,255,0.4)', marginTop:2 }}>visitas</div>
                 </div>
                 <div style={{ ...glass, padding:'14px 8px', textAlign:'center' }}>
-                  <div style={{ fontFamily:FN, fontSize:24, fontWeight:900, color:'#BD4BF8' }}>{totalRedeems}</div>
+                  <div style={{ fontFamily:FN, fontSize:24, fontWeight:900, color:'#7131E1' }}>{totalRedeems}</div>
                   <div style={{ fontSize:10, color:'rgba(255,255,255,0.4)', marginTop:2 }}>canjes</div>
                 </div>
                 <div style={{ ...glass, padding:'14px 8px', textAlign:'center' }}>
@@ -9016,7 +9019,7 @@ function ClientView({ setView, user, profile, onLogout, initialTab }) {
 
             // Helpers para el render
             const ICONS = {
-              'visit':           { Icon: Star,    color: '#A855F7', bg: 'rgba(168,85,247,0.16)', border: 'rgba(168,85,247,0.36)' },
+              'visit':           { Icon: Star,    color: '#7131E1', bg: 'rgba(168,85,247,0.16)', border: 'rgba(168,85,247,0.36)' },
               'redeem-prize':    { Icon: Gift,    color: '#22E698', bg: 'rgba(34,230,152,0.14)', border: 'rgba(34,230,152,0.34)' },
               'redeem-discount': { Icon: Percent, color: '#FE5000', bg: 'rgba(254,80,0,0.14)',   border: 'rgba(254,80,0,0.34)' },
               'join':            { Icon: UserPlus,color: '#EC4899', bg: 'rgba(236,72,153,0.14)', border: 'rgba(236,72,153,0.34)' },
@@ -9039,7 +9042,7 @@ function ClientView({ setView, user, profile, onLogout, initialTab }) {
                         marginLeft: 2,
                         padding: '1px 5px',
                         borderRadius: 4,
-                        background: 'linear-gradient(135deg, #FE5000, #BD4BF8)',
+                        background: '#7131E1',
                         color: '#fff',
                         fontSize: 9, fontWeight: 900,
                         letterSpacing: '.02em',
@@ -9125,7 +9128,7 @@ function ClientView({ setView, user, profile, onLogout, initialTab }) {
           <div style={{ width:'100%', maxWidth:340, borderRadius:28, overflow:'hidden', boxShadow:'0 24px 64px rgba(189,75,248,0.30), 0 8px 24px rgba(0,0,0,0.50)' }}>
 
             {/* Cuerpo del pase */}
-            <div style={{ background:'linear-gradient(145deg, #7c3aed 0%, #a855f7 45%, #ec4899 100%)', padding:'24px 24px 28px', position:'relative', overflow:'hidden' }}>
+            <div style={{ background:'#7131E1', padding:'24px 24px 28px', position:'relative', overflow:'hidden' }}>
 
               {/* Blobs decorativos */}
               <div style={{ position:'absolute', top:-32, right:-32, width:120, height:120, borderRadius:'50%', background:'rgba(255,255,255,0.10)', filter:'blur(24px)', pointerEvents:'none' }} />
@@ -9175,7 +9178,7 @@ function ClientView({ setView, user, profile, onLogout, initialTab }) {
             </div>
 
             {/* Separador tipo ticket */}
-            <div style={{ position:'relative', background:'linear-gradient(to right, #5b21b6, #7c3aed)' }}>
+            <div style={{ position:'relative', background:'#7131E1' }}>
               {/* Muescas */}
               <div style={{ position:'absolute', left:-1, top:'50%', transform:'translateY(-50%)', width:18, height:18, borderRadius:'50%', background:'#000', zIndex:2 }} />
               <div style={{ position:'absolute', right:-1, top:'50%', transform:'translateY(-50%)', width:18, height:18, borderRadius:'50%', background:'#000', zIndex:2 }} />
@@ -9217,7 +9220,7 @@ function ClientView({ setView, user, profile, onLogout, initialTab }) {
           <div style={{ ...glass, padding:'18px', marginBottom:12, display:'flex', alignItems:'center', gap:14 }}>
             {profile?.avatar_url
               ? <img src={profile.avatar_url} alt="" style={{ width:56, height:56, borderRadius:'50%', objectFit:'cover', flexShrink:0 }} />
-              : <div style={{ width:56, height:56, borderRadius:'50%', background:'linear-gradient(135deg,#a855f7,#ec4899)', display:'flex', alignItems:'center', justifyContent:'center', fontFamily:FN, fontSize:18, fontWeight:900, color:'#fff', flexShrink:0 }}>{initials}</div>
+              : <div style={{ width:56, height:56, borderRadius:'50%', background:'#7131E1', display:'flex', alignItems:'center', justifyContent:'center', fontFamily:FN, fontSize:18, fontWeight:900, color:'#fff', flexShrink:0 }}>{initials}</div>
             }
             <div style={{ flex:1, minWidth:0 }}>
               <div style={{ fontFamily:FN, fontSize:15, fontWeight:700, color:'#fff', overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>{profile?.name || 'Sin nombre'}</div>
@@ -9386,7 +9389,7 @@ function ClientView({ setView, user, profile, onLogout, initialTab }) {
             >
               <div style={{
                 width: 36, height: 36, borderRadius: 10,
-                background: 'linear-gradient(135deg, #7C3AED, #BD4BF8)',
+                background: '#7131E1',
                 display: 'flex', alignItems: 'center', justifyContent: 'center',
                 flexShrink: 0,
                 boxShadow: '0 6px 18px -4px rgba(189,75,248,0.55)',
@@ -9560,7 +9563,7 @@ function ClientView({ setView, user, profile, onLogout, initialTab }) {
                     }}>
                       <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:8 }}>
                         <span style={{ fontSize:12, color:'rgba(255,255,255,0.65)', fontWeight:600 }}>Tu progreso</span>
-                        <span style={{ fontSize:12, color:'#BD4BF8', fontWeight:700 }}>
+                        <span style={{ fontSize:12, color:'#7131E1', fontWeight:700 }}>
                           {bal} / {data.cost} {unitLabel}
                         </span>
                       </div>
@@ -9570,8 +9573,8 @@ function ClientView({ setView, user, profile, onLogout, initialTab }) {
                           minWidth: pct > 0 ? 10 : 0,
                           borderRadius:99,
                           background: canRedeem
-                            ? 'linear-gradient(90deg, #FE5000 0%, #BD4BF8 50%, #FE5000 100%)'
-                            : '#BD4BF8',
+                            ? '#7131E1'
+                            : '#7131E1',
                           backgroundSize: canRedeem ? '200% 100%' : 'auto',
                           boxShadow: canRedeem
                             ? '0 0 14px rgba(254,80,0,0.70), 0 0 26px rgba(189,75,248,0.60), inset 0 0 12px rgba(255,255,255,0.35)'
@@ -9672,7 +9675,7 @@ function ClientView({ setView, user, profile, onLogout, initialTab }) {
                   style={{
                     width:'100%', padding:'14px 0',
                     background: canRedeem
-                      ? 'linear-gradient(135deg, #7C3AED, #BD4BF8)'
+                      ? '#7131E1'
                       : 'rgba(189,75,248,0.18)',
                     border: canRedeem ? 'none' : '1px solid rgba(189,75,248,0.40)',
                     borderRadius:14,
@@ -10187,7 +10190,7 @@ function RegisterCommerceView({ setView, user, onProfileRefresh, onLoginRequired
                   border: '1px solid rgba(189,75,248,0.32)',
                   display: 'flex', alignItems: 'flex-start', gap: 10,
                 }}>
-                  <CheckCircle size={15} color="#BD4BF8" strokeWidth={2.4} style={{ flexShrink: 0, marginTop: 2 }} />
+                  <CheckCircle size={15} color="#7131E1" strokeWidth={2.4} style={{ flexShrink: 0, marginTop: 2 }} />
                   <div style={{ flex: 1, minWidth: 0 }}>
                     <div style={{ fontFamily: FN, fontSize: 12.5, fontWeight: 700, color: '#fff', marginBottom: 3 }}>
                       Datos importados de Google Maps
@@ -10735,7 +10738,7 @@ function OnboardingView({ commerce, onComplete }) {
 
   const unitLabel = progType === 'stars' ? 'estrellas' : 'puntos'
   const unitIcon  = progType === 'stars' ? '★' : '◆'
-  const unitColor = progType === 'stars' ? '#8B5CF6' : '#EC4899'
+  const unitColor = progType === 'stars' ? '#7131E1' : '#EC4899'
 
   function next() { setStep(s => Math.min(s + 1, TOTAL)) }
   function skip() { if (step < TOTAL) next() }
@@ -10923,12 +10926,12 @@ function OnboardingView({ commerce, onComplete }) {
           { id:'points', Icon:Gem,   label:'Puntos',   desc:'1 punto por cada peso gastado. Flexible para ticket variable.' },
         ].map(opt => (
           <button key={opt.id} onClick={() => setProgType(opt.id)}
-            style={{ display:'flex', alignItems:'flex-start', gap:14, padding:18, background: progType===opt.id ? `${opt.id==='stars'?'#8B5CF6':'#EC4899'}18` : C.card, border:`2px solid ${progType===opt.id ? (opt.id==='stars'?'#8B5CF6':'#EC4899') : C.rim}`, borderRadius:16, cursor:'pointer', textAlign:'left', position:'relative', transition:'background 130ms ease, border-color 130ms ease, color 130ms ease, transform 130ms cubic-bezier(0.23,1,0.32,1)' }}>
-            <div style={{ width:36, height:36, borderRadius:10, background:`${opt.id==='stars'?'#8B5CF6':'#EC4899'}22`, display:'flex', alignItems:'center', justifyContent:'center', flexShrink:0 }}>{(() => { const I = opt.Icon; return I ? <I size={20} color={opt.id==='stars'?'#8B5CF6':'#EC4899'} strokeWidth={1.5} /> : null })()}</div>
+            style={{ display:'flex', alignItems:'flex-start', gap:14, padding:18, background: progType===opt.id ? `${opt.id==='stars'?'#7131E1':'#EC4899'}18` : C.card, border:`2px solid ${progType===opt.id ? (opt.id==='stars'?'#7131E1':'#EC4899') : C.rim}`, borderRadius:16, cursor:'pointer', textAlign:'left', position:'relative', transition:'background 130ms ease, border-color 130ms ease, color 130ms ease, transform 130ms cubic-bezier(0.23,1,0.32,1)' }}>
+            <div style={{ width:36, height:36, borderRadius:10, background:`${opt.id==='stars'?'#7131E1':'#EC4899'}22`, display:'flex', alignItems:'center', justifyContent:'center', flexShrink:0 }}>{(() => { const I = opt.Icon; return I ? <I size={20} color={opt.id==='stars'?'#7131E1':'#EC4899'} strokeWidth={1.5} /> : null })()}</div>
             <div style={{ flex:1 }}>
               <div style={{ display:'flex', alignItems:'center', gap:8, marginBottom:4 }}>
                 <span style={{ fontFamily:FN, fontSize:15, fontWeight:700, color:C.white }}>{opt.label}</span>
-                {opt.badge && <span style={{ fontSize:9, fontWeight:700, color:'#8B5CF6', background:'#8B5CF622', padding:'2px 7px', borderRadius:10, letterSpacing:'.07em' }}>{opt.badge}</span>}
+                {opt.badge && <span style={{ fontSize:9, fontWeight:700, color:'#7131E1', background:'#7131E122', padding:'2px 7px', borderRadius:10, letterSpacing:'.07em' }}>{opt.badge}</span>}
               </div>
               <div style={{ fontSize:12, color:C.mist, lineHeight:1.5 }}>{opt.desc}</div>
             </div>
@@ -11318,7 +11321,7 @@ function PromoWizard({ progType = 'points', onClose, onComplete, activePromos = 
               <div style={{ fontFamily:FN, fontSize:16, fontWeight:800, color:C.white }}>
                 {step === 1 ? 'Nueva promoción' : (
                   <div style={{ display:'flex', alignItems:'center', gap:8 }}>
-                    <div aria-hidden="true" style={{ width:24, height:24, borderRadius:8, background: promoType==='discount_next' ? '#7C3AED' : '#DB2777', display:'flex', alignItems:'center', justifyContent:'center', flexShrink:0 }}>
+                    <div aria-hidden="true" style={{ width:24, height:24, borderRadius:8, background: promoType==='discount_next' ? '#7131E1' : '#DB2777', display:'flex', alignItems:'center', justifyContent:'center', flexShrink:0 }}>
                       <span style={{ fontFamily:FN, fontWeight:900, fontSize:9, color:'#fff', letterSpacing:'-0.02em', lineHeight:1 }}>
                         {promoType==='discount_next' ? '−%' : '×2'}
                       </span>
@@ -11335,7 +11338,7 @@ function PromoWizard({ progType = 'points', onClose, onComplete, activePromos = 
           {showProgress && (
             <>
               <div style={{ height:3, background:'rgba(255,255,255,0.10)', borderRadius:99, overflow:'hidden', marginBottom:6 }}>
-                <div style={{ height:'100%', borderRadius:99, background: promoType === 'discount_next' ? GV : promoType === 'double_points' ? 'linear-gradient(135deg,#BE185D,#ec4899)' : G, width:`${progressPct}%`, transition:'width 350ms cubic-bezier(0.23,1,0.32,1)' }} />
+                <div style={{ height:'100%', borderRadius:99, background: promoType === 'discount_next' ? GV : promoType === 'double_points' ? '#EC4899' : G, width:`${progressPct}%`, transition:'width 350ms cubic-bezier(0.23,1,0.32,1)' }} />
               </div>
               <div style={{ fontSize:10, color:'rgba(255,255,255,0.35)', fontFamily:FI }}>Paso {step} de {totalSteps}</div>
             </>
@@ -11353,8 +11356,8 @@ function PromoWizard({ progType = 'points', onClose, onComplete, activePromos = 
                 <div style={{ fontSize:13, color:C.mist, marginBottom:20 }}>Elegí una opción para continuar</div>
                 <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:12, marginBottom: activePromos.length > 0 ? 14 : 0 }}>
                   {[
-                    { id:'discount_next', symbol:'−%', label:'Descuento en visita', desc:'% OFF automático en la próxima visita',    bg:'linear-gradient(135deg,#8B5CF6,#7C3AED)', shadow:'0 12px 32px -8px rgba(139,92,246,0.45)', shadowHov:'0 12px 32px -8px rgba(139,92,246,0.65)' },
-                    { id:'double_points', symbol:'×2', label:'Suma doble',          desc:`Doble de ${unitLabel} por período o días`, bg:'linear-gradient(135deg,#EC4899,#DB2777)', shadow:'0 12px 32px -8px rgba(236,72,153,0.45)', shadowHov:'0 12px 32px -8px rgba(236,72,153,0.65)' },
+                    { id:'discount_next', symbol:'−%', label:'Descuento en visita', desc:'% OFF automático en la próxima visita',    bg:'#7131E1', shadow:'0 12px 32px -8px rgba(139,92,246,0.45)', shadowHov:'0 12px 32px -8px rgba(139,92,246,0.65)' },
+                    { id:'double_points', symbol:'×2', label:'Suma doble',          desc:`Doble de ${unitLabel} por período o días`, bg:'#EC4899', shadow:'0 12px 32px -8px rgba(236,72,153,0.45)', shadowHov:'0 12px 32px -8px rgba(236,72,153,0.65)' },
                   ].map(t => {
                     const blocked = activePromos.some(p => p.type === t.id)
                     return (
@@ -11606,7 +11609,7 @@ function PromoWizard({ progType = 'points', onClose, onComplete, activePromos = 
                 <div style={{ display:'flex', gap:10 }}>
                   <button onClick={prev} style={{ flex:1, padding:'13px', background:'rgba(255,255,255,0.07)', border:`1px solid ${C.rim}`, borderRadius:13, color:C.mist, fontFamily:FN, fontSize:13, fontWeight:600, cursor:'pointer' }}>Atrás</button>
                   <button onClick={submit} disabled={saving}
-                    style={{ flex:2, padding:'13px', background: promoType==='discount_next' ? GV : 'linear-gradient(135deg,#BE185D,#ec4899)', border:'none', borderRadius:13, color:'#fff', fontFamily:FN, fontSize:14, fontWeight:700, cursor:saving?'not-allowed':'pointer', opacity:saving?0.6:1, boxShadow: promoType==='discount_next' ? '0 4px 16px rgba(139,92,246,0.40)' : '0 4px 16px rgba(236,72,153,0.40)', display:'flex', alignItems:'center', justifyContent:'center', gap:7 }}>
+                    style={{ flex:2, padding:'13px', background: promoType==='discount_next' ? GV : '#EC4899', border:'none', borderRadius:13, color:'#fff', fontFamily:FN, fontSize:14, fontWeight:700, cursor:saving?'not-allowed':'pointer', opacity:saving?0.6:1, boxShadow: promoType==='discount_next' ? '0 4px 16px rgba(139,92,246,0.40)' : '0 4px 16px rgba(236,72,153,0.40)', display:'flex', alignItems:'center', justifyContent:'center', gap:7 }}>
                     {saving ? 'Activando...' : 'Activar promoción'}
                   </button>
                 </div>
@@ -12514,7 +12517,7 @@ function CommerceSettingsView({ user, profile, setView, onLogout, onOwnerProfile
           setSegments({
             nuevos: { label: 'Nuevos', icon: '🌟', color: '#40C8FF', count: 5, percent: 25, description: 'Clientes que acaban de unirse' },
             frecuentes: { label: 'Frecuentes', icon: '🔥', color: '#FE5000', count: 8, percent: 40, description: 'Clientes que visitan regularmente' },
-            vip: { label: 'VIP', icon: '👑', color: '#BD4BF8', count: 4, percent: 20, description: 'Clientes más leales y comprometidos' },
+            vip: { label: 'VIP', icon: '👑', color: '#7131E1', count: 4, percent: 20, description: 'Clientes más leales y comprometidos' },
             inactivos: { label: 'Inactivos', icon: '😴', color: '#9B85CC', count: 3, percent: 15, description: 'Clientes sin visitas recientes' },
           })
         }
@@ -12524,7 +12527,7 @@ function CommerceSettingsView({ user, profile, setView, onLogout, onOwnerProfile
         setSegments({
           nuevos: { label: 'Nuevos', icon: '🌟', color: '#40C8FF', count: 5, percent: 25, description: 'Clientes que acaban de unirse' },
           frecuentes: { label: 'Frecuentes', icon: '🔥', color: '#FE5000', count: 8, percent: 40, description: 'Clientes que visitan regularmente' },
-          vip: { label: 'VIP', icon: '👑', color: '#BD4BF8', count: 4, percent: 20, description: 'Clientes más leales y comprometidos' },
+          vip: { label: 'VIP', icon: '👑', color: '#7131E1', count: 4, percent: 20, description: 'Clientes más leales y comprometidos' },
           inactivos: { label: 'Inactivos', icon: '😴', color: '#9B85CC', count: 3, percent: 15, description: 'Clientes sin visitas recientes' },
         })
         setLoadingSegments(false)
@@ -13462,7 +13465,7 @@ function CommerceSettingsView({ user, profile, setView, onLogout, onOwnerProfile
 
   const unitLabel = form?.prog_type === 'stars' ? 'estrellas' : 'puntos'
   const unitIcon  = form?.prog_type === 'stars' ? '★' : '◆'
-  const unitColor = form?.prog_type === 'stars' ? '#8B5CF6' : '#EC4899'
+  const unitColor = form?.prog_type === 'stars' ? '#7131E1' : '#EC4899'
   const activePrizes   = prizes.filter(p => p.active)
   const minPrizeCost   = activePrizes.length ? Math.min(...activePrizes.map(p => p.cost)) : 10
 
@@ -13650,7 +13653,7 @@ function CommerceSettingsView({ user, profile, setView, onLogout, onOwnerProfile
                 zIndex: 200,
                 width: 52, height: 52, borderRadius: '50%',
                 background: (active || isHovered)
-                  ? 'linear-gradient(135deg, #BD4BF8 0%, #EC4899 100%)'
+                  ? '#7131E1'
                   : 'rgba(40,18,62,0.55)',
                 backdropFilter: 'blur(22px) saturate(180%)',
                 WebkitBackdropFilter: 'blur(22px) saturate(180%)',
@@ -13718,7 +13721,7 @@ function CommerceSettingsView({ user, profile, setView, onLogout, onOwnerProfile
             borderLeft:   '1px solid rgba(255,255,255,0.85)',
             borderRight:  '1px solid rgba(255,255,255,0.85)',
             borderBottom: 'none',
-            color: '#BD4BF8',
+            color: '#7131E1',
             cursor: 'pointer',
             display: 'flex', alignItems: 'center', justifyContent: 'center',
             padding: 0,
@@ -13742,8 +13745,8 @@ function CommerceSettingsView({ user, profile, setView, onLogout, onOwnerProfile
           }}
         >
           {radialOpen
-            ? <X size={22} strokeWidth={2.8} color="#BD4BF8" />
-            : <Settings size={22} strokeWidth={2.4} color="#BD4BF8" />
+            ? <X size={22} strokeWidth={2.8} color="#7131E1" />
+            : <Settings size={22} strokeWidth={2.4} color="#7131E1" />
           }
         </button>
 
@@ -13803,7 +13806,7 @@ function CommerceSettingsView({ user, profile, setView, onLogout, onOwnerProfile
         padding: 0,
         border: 'none',
         borderRadius: '0 16px 16px 0',
-        background: 'linear-gradient(135deg, #7C3AED 0%, #BD4BF8 50%, #EC4899 100%)',
+        background: '#7131E1',
         boxShadow: '4px 0 22px rgba(189,75,248,0.65), inset -1px 0 0 rgba(255,255,255,0.20)',
         color: '#fff',
         cursor: 'pointer',
@@ -14071,7 +14074,7 @@ function CommerceSettingsView({ user, profile, setView, onLogout, onOwnerProfile
                 <span style={{
                   position: 'absolute', bottom: 0, left: '15%', right: '15%',
                   height: 2, borderRadius: 2,
-                  background: 'linear-gradient(135deg, #FE5000, #BD4BF8)',
+                  background: '#7131E1',
                 }} />
               )}
             </button>
@@ -14104,7 +14107,7 @@ function CommerceSettingsView({ user, profile, setView, onLogout, onOwnerProfile
     const VIOLET_THEME = {
       bg:         'linear-gradient(135deg, rgba(124,58,237,0.18), rgba(168,85,247,0.10), rgba(189,75,248,0.14))',
       border:     'rgba(168,85,247,0.42)',
-      iconBg:     'linear-gradient(135deg, #7C3AED 0%, #A855F7 50%, #BD4BF8 100%)',
+      iconBg:     '#7131E1',
       shadow:     '0 6px 22px rgba(168,85,247,0.40)',
       descColor:  'rgba(229,221,255,0.78)',
       arrowColor: 'rgba(196,181,253,0.88)',
@@ -14324,7 +14327,7 @@ function CommerceSettingsView({ user, profile, setView, onLogout, onOwnerProfile
         padding:'0 4px 10px',
         marginBottom:2,
       }}>
-        <div style={{ width:3, height:14, borderRadius:99, background:'linear-gradient(135deg, #FE5000, #BD4BF8)' }} />
+        <div style={{ width:3, height:14, borderRadius:99, background:'#7131E1' }} />
         <div style={{
           fontFamily:FN, fontSize:11.5, fontWeight:800,
           color:'rgba(255,255,255,0.85)',
@@ -15428,9 +15431,9 @@ function CommerceSettingsView({ user, profile, setView, onLogout, onOwnerProfile
             border: '1px solid rgba(189,75,248,0.20)',
             display: 'flex', alignItems: 'flex-start', gap: 10,
           }}>
-            <Sparkles size={14} color="#BD4BF8" strokeWidth={2.2} style={{ flexShrink: 0, marginTop: 1 }} />
+            <Sparkles size={14} color="#7131E1" strokeWidth={2.2} style={{ flexShrink: 0, marginTop: 1 }} />
             <div style={{ fontSize: 11.5, color: 'rgba(255,255,255,0.72)', lineHeight: 1.5 }}>
-              Las tarjetas con chip <strong style={{ color: '#BD4BF8' }}>STARTER</strong> o <strong style={{ color: '#EC4899' }}>PRO</strong> son funciones premium. Aparecen acá para que las conozcas, pero no afectan tu progreso — son las que se desbloquean si actualizás tu plan.
+              Las tarjetas con chip <strong style={{ color: '#7131E1' }}>STARTER</strong> o <strong style={{ color: '#EC4899' }}>PRO</strong> son funciones premium. Aparecen acá para que las conozcas, pero no afectan tu progreso — son las que se desbloquean si actualizás tu plan.
             </div>
           </div>
         )}
@@ -15488,7 +15491,7 @@ function CommerceSettingsView({ user, profile, setView, onLogout, onOwnerProfile
                 style={{
                   marginTop: 16,
                   padding: '10px 18px', borderRadius: 12,
-                  background: 'linear-gradient(135deg, #FE5000, #BD4BF8)',
+                  background: '#7131E1',
                   border: 'none', color: '#fff',
                   fontFamily: FN, fontSize: 13, fontWeight: 800,
                   cursor: 'pointer',
@@ -15717,7 +15720,7 @@ function CommerceSettingsView({ user, profile, setView, onLogout, onOwnerProfile
               // chip del plan que las desbloquea + CTA "Actualizar plan".
               const isLocked = !!item.lockedByPlan
               const lockPlan = item.lockedByPlan && PLANS[item.lockedByPlan]
-              const lockColor = lockPlan?.color || '#BD4BF8'
+              const lockColor = lockPlan?.color || '#7131E1'
               // ── Tema de la tab actual ──
               // Pendientes (intentFilter='pendientes') → amarillo (#F5A623,
               // mismo color que la solapa Pendientes).
@@ -16154,7 +16157,7 @@ function CommerceSettingsView({ user, profile, setView, onLogout, onOwnerProfile
                 aria-label={`Ir a la tarjeta ${i + 1}`}
                 style={{
                   width: active ? 28 : 7, height: 7, borderRadius: 99,
-                  background: active ? 'linear-gradient(135deg, #BD4BF8, #EC4899)' : 'rgba(255,255,255,0.18)',
+                  background: active ? '#7131E1' : 'rgba(255,255,255,0.18)',
                   border: 'none', padding: 0, cursor: 'pointer',
                   transition: 'width 320ms cubic-bezier(0.22,1,0.36,1), background 320ms ease',
                 }}
@@ -16532,7 +16535,7 @@ function CommerceSettingsView({ user, profile, setView, onLogout, onOwnerProfile
 
       {showAutoPopup && (
         <div onClick={() => setShowAutoPopup(false)} style={{ position:'fixed', inset:0, background:'rgba(0,0,0,0.80)', backdropFilter:'blur(4px)', WebkitBackdropFilter:'blur(4px)', zIndex:9000, display:'flex', alignItems:'center', justifyContent:'center', padding:20 }}>
-          <div onClick={e => e.stopPropagation()} className="modal-in" style={{ background:'linear-gradient(135deg, #7c3aed 0%, #a855f7 50%, #ec4899 100%)', borderRadius:28, padding:'36px 28px 28px', maxWidth:320, width:'100%', textAlign:'center', boxShadow:'0 32px 80px rgba(0,0,0,0.6), 0 0 60px rgba(168,85,247,0.30)' }}>
+          <div onClick={e => e.stopPropagation()} className="modal-in" style={{ background:'#7131E1', borderRadius:28, padding:'36px 28px 28px', maxWidth:320, width:'100%', textAlign:'center', boxShadow:'0 32px 80px rgba(0,0,0,0.6), 0 0 60px rgba(168,85,247,0.30)' }}>
             {/* Icon */}
             <div style={{ width:64, height:64, borderRadius:'50%', background:'rgba(255,255,255,0.20)', display:'flex', alignItems:'center', justifyContent:'center', margin:'0 auto 20px' }}>
               <Users size={30} color='#fff' strokeWidth={2} />
@@ -16552,7 +16555,7 @@ function CommerceSettingsView({ user, profile, setView, onLogout, onOwnerProfile
             {/* Primary CTA */}
             <button
               onClick={() => { setShowAutoPopup(false); setTab('mensajes') }}
-              style={{ width:'100%', padding:'14px 0', borderRadius:16, background:'#fff', border:'none', color:'#7c3aed', fontFamily:FN, fontSize:14, fontWeight:700, cursor:'pointer', marginBottom:10, transition:'opacity 160ms ease' }}
+              style={{ width:'100%', padding:'14px 0', borderRadius:16, background:'#fff', border:'none', color:'#7131E1', fontFamily:FN, fontSize:14, fontWeight:700, cursor:'pointer', marginBottom:10, transition:'opacity 160ms ease' }}
               onMouseEnter={e => e.currentTarget.style.opacity = '0.92'}
               onMouseLeave={e => e.currentTarget.style.opacity = '1'}>
               Ver automatizaciones →
@@ -16999,7 +17002,7 @@ function CommerceSettingsView({ user, profile, setView, onLogout, onOwnerProfile
               </>}
             />
           )
-          const sysColor = form?.prog_type === 'stars' ? '#8B5CF6' : '#EC4899'
+          const sysColor = form?.prog_type === 'stars' ? '#7131E1' : '#EC4899'
           const isStars  = form?.prog_type === 'stars'
           const norm     = s => (s||'').toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g,'')
           const q        = norm(memberSearch.trim())
@@ -17343,7 +17346,7 @@ function CommerceSettingsView({ user, profile, setView, onLogout, onOwnerProfile
             try { localStorage.removeItem('benefix:cameFromPreview') } catch {}
             onOwnerProfile?.()
           }}
-            style={{ display:'inline-flex', alignItems:'center', gap:6, marginBottom:14, padding:'6px 12px 6px 8px', background:'rgba(189,75,248,0.10)', border:'1px solid rgba(189,75,248,0.30)', borderRadius:99, color:'#BD4BF8', fontFamily:FN, fontSize:11.5, fontWeight:700, cursor:'pointer' }}>
+            style={{ display:'inline-flex', alignItems:'center', gap:6, marginBottom:14, padding:'6px 12px 6px 8px', background:'rgba(189,75,248,0.10)', border:'1px solid rgba(189,75,248,0.30)', borderRadius:99, color:'#7131E1', fontFamily:FN, fontSize:11.5, fontWeight:700, cursor:'pointer' }}>
             <ArrowLeft size={13} strokeWidth={2.5} /> Volver a previsualización
           </button>
         )}
@@ -17462,7 +17465,7 @@ function CommerceSettingsView({ user, profile, setView, onLogout, onOwnerProfile
           }}>
         {(() => {
           const headerType = pendingSystemType ?? commerce?.prog_type ?? 'stars'
-          const headerCol  = headerType === 'points' ? '#EC4899' : '#8B5CF6'
+          const headerCol  = headerType === 'points' ? '#EC4899' : '#7131E1'
           // headerUnit ya no se usa: el título dejó de ser
           // "¿Cómo suman {unit}?" y pasó a ser fijo "Sistema de
           // acumulación". headerCol sigue tinteando el ícono Gift.
@@ -17491,7 +17494,7 @@ function CommerceSettingsView({ user, profile, setView, onLogout, onOwnerProfile
 
         {(() => {
           const SYSTEMS = [
-            { id:'stars',  Icon:Star, label:'Estrellas', color:'#8B5CF6', colorDark:'#7C3AED',
+            { id:'stars',  Icon:Star, label:'Estrellas', color:'#7131E1', colorDark:'#7131E1',
               desc:'1 estrella por compra. Simple y visual.' },
             { id:'points', Icon:Gem,  label:'Puntos',    color:'#EC4899', colorDark:'#DB2777',
               // "Flexible para ticket variable." quitado a pedido del
@@ -17528,56 +17531,64 @@ function CommerceSettingsView({ user, profile, setView, onLogout, onOwnerProfile
                   para visualmente decir "esto es un solo sistema". ── */}
               {(() => {
                 const inactiveSys = SYSTEMS.find(s => s.id !== currentType)
-                const renderCard = (sys, isActive) => (
+                // RGB para rgba() — Stars violeta brand / Points fucsia identidad
+                const sysRgb = (sys) => sys.id === 'stars' ? '113,49,225' : '236,72,153'
+                const renderCard = (sys, isActive) => {
+                  const rgb = sysRgb(sys)
+                  return (
                   <div
                     onClick={() => { if (!isActive) setPendingSystemType(sys.id) }}
                     role={!isActive ? 'button' : undefined}
                     tabIndex={!isActive ? 0 : undefined}
                     onKeyDown={!isActive ? (e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); setPendingSystemType(sys.id) } } : undefined}
                     style={{
+                      // Lenguaje nuevo: bg neutro para inactiva, tinte sutil del
+                      // color para la activa (sin gradient saturado). El border
+                      // de la activa marca identidad con el color del sistema.
                       background: isActive
-                        ? `linear-gradient(135deg, ${sys.color}CC, ${sys.colorDark}EE)`
-                        : `linear-gradient(145deg, ${sys.color}10, ${sys.color}05)`,
-                      border:`1px solid ${isActive ? `${sys.color}60` : `${sys.color}26`}`,
-                      borderRadius:14, padding:'14px',
+                        ? `rgba(${rgb}, 0.10)`
+                        : 'rgba(255,255,255,0.04)',
+                      border: isActive
+                        ? `1px solid rgba(${rgb}, 0.40)`
+                        : '1px solid transparent',
+                      borderRadius:20, padding:16,
                       textAlign:'left', position:'relative',
-                      boxShadow: isActive
-                        ? `0 8px 24px -6px ${sys.color}55, inset 0 1px 0 rgba(255,255,255,0.20)`
-                        : 'none',
-                      transition: prefersReduced ? 'none' : 'border-color .15s ease, opacity .15s ease',
-                      display:'flex', alignItems:'center', gap:12, fontFamily:'inherit',
+                      boxShadow: 'none',
+                      transition: prefersReduced ? 'none' : 'border-color .15s ease, opacity .15s ease, background .15s ease',
+                      display:'flex', alignItems:'center', gap:14, fontFamily:'inherit',
                       width:'100%',
                       // Inactiva: clickeable como segundo disparador (además
                       // del ⇅). La activa no hace nada al clickear.
                       cursor: isActive ? 'default' : 'pointer',
-                      opacity: isActive ? 1 : 0.92,
+                      opacity: isActive ? 1 : 0.85,
                     }}
-                    onMouseEnter={!isActive ? (e) => { e.currentTarget.style.opacity = '1'; e.currentTarget.style.borderColor = `${sys.color}55` } : undefined}
-                    onMouseLeave={!isActive ? (e) => { e.currentTarget.style.opacity = '0.92'; e.currentTarget.style.borderColor = `${sys.color}26` } : undefined}
+                    onMouseEnter={!isActive ? (e) => { e.currentTarget.style.opacity = '1'; e.currentTarget.style.background = `rgba(${rgb}, 0.06)` } : undefined}
+                    onMouseLeave={!isActive ? (e) => { e.currentTarget.style.opacity = '0.85'; e.currentTarget.style.background = 'rgba(255,255,255,0.04)' } : undefined}
                   >
-                    {/* Ícono cuadrado */}
-                    <div style={{ width:40, height:40, borderRadius:10, background: isActive ? 'rgba(255,255,255,0.22)' : `${sys.color}1F`, display:'flex', alignItems:'center', justifyContent:'center', flexShrink:0 }}>
-                      {(() => { const I = sys.Icon; return <I size={18} color={isActive ? '#fff' : sys.color} strokeWidth={1.8} /> })()}
+                    {/* Ícono cuadrado 60x60 — tinte del color del sistema */}
+                    <div style={{ width:60, height:60, borderRadius:14, background: isActive ? `rgba(${rgb}, 0.18)` : `rgba(${rgb}, 0.08)`, display:'flex', alignItems:'center', justifyContent:'center', flexShrink:0 }}>
+                      {(() => { const I = sys.Icon; return <I size={26} color={isActive ? sys.color : `rgba(${rgb}, 0.55)`} strokeWidth={1.8} /> })()}
                     </div>
                     {/* Nombre + descripción */}
                     <div style={{ flex:1, minWidth:0 }}>
-                      <div style={{ fontFamily:FN, fontSize:14, fontWeight:800, color: isActive ? '#fff' : 'rgba(255,255,255,0.70)', marginBottom:2 }}>
+                      <div style={{ fontFamily:FN, fontSize:14.5, fontWeight:700, color: isActive ? C.white : C.dust, marginBottom:4, lineHeight:1.25 }}>
                         {sys.label}
                       </div>
-                      <div style={{ fontSize:11, color: isActive ? 'rgba(255,255,255,0.78)' : 'rgba(255,255,255,0.40)', lineHeight:1.4 }}>
+                      <div style={{ fontSize:11.5, color: isActive ? C.mist : 'rgba(255,255,255,0.45)', lineHeight:1.4 }}>
                         {sys.desc}
                       </div>
                     </div>
-                    {/* Estado a la derecha — solo chip ACTIVO en la activa.
+                    {/* Estado a la derecha — pill ACTIVO verde solo en la activa.
                         La inactiva no muestra CTA; el swap se hace con ⇅. */}
                     {isActive && (
-                      <div style={{ flexShrink:0, display:'flex', alignItems:'center', gap:4, background:'rgba(255,255,255,0.22)', borderRadius:20, padding:'4px 9px' }}>
-                        <Check size={10} strokeWidth={3} color="#fff" />
-                        <span style={{ fontSize:9, fontWeight:700, color:'#fff', letterSpacing:'.08em', fontFamily:FN }}>ACTIVO</span>
+                      <div style={{ flexShrink:0, display:'flex', alignItems:'center', gap:4, background:'rgba(34,197,94,0.15)', borderRadius:99, padding:'4px 10px' }}>
+                        <Check size={10} strokeWidth={3} color="#4ade80" />
+                        <span style={{ fontSize:9.5, fontWeight:800, color:'#4ade80', letterSpacing:'.08em', fontFamily:FN }}>ACTIVO</span>
                       </div>
                     )}
                   </div>
-                )
+                  )
+                }
                 return (
                   <div style={{ marginBottom:14, position:'relative' }}>
                     {/* Card inactiva (arriba, sola) */}
@@ -17786,8 +17797,8 @@ function CommerceSettingsView({ user, profile, setView, onLogout, onOwnerProfile
                 para estrellas, fucsia para puntos). */}
             {(() => {
               const sysType = pendingSystemType ?? commerce?.prog_type ?? 'stars'
-              const sysCol  = sysType === 'points' ? '#EC4899' : '#8B5CF6'
-              const sysColD = sysType === 'points' ? '#DB2777' : '#7C3AED'
+              const sysCol  = sysType === 'points' ? '#EC4899' : '#7131E1'
+              const sysColD = sysType === 'points' ? '#DB2777' : '#7131E1'
               const sysUnit = sysType === 'points' ? 'puntos' : 'estrellas'
               const activeDouble = (Array.isArray(promos) ? promos : []).find(p =>
                 p.type === 'double_points' && p.active && (!p.expires_at || new Date(p.expires_at) > new Date())
@@ -18180,99 +18191,138 @@ function CommerceSettingsView({ user, profile, setView, onLogout, onOwnerProfile
               </div>
             )}
 
-            {/* Lista de premios — efecto glass tintado con el color del sistema
-                (violeta para stars / fucsia para points). */}
+            {/* Lista de premios — Sprint 3 (mayo 2026): rediseño "estilo
+                referencia simplificado". Card aireada sin border ni tinte
+                del sistema. Bg neutral elevado, padding generoso, costo
+                como pill sutil violeta brand, stats horizontales con " · "
+                separator, acciones con label. Inactivos = opacity 0.55 en
+                toda la card. */}
             {prizes.map(p => {
-              const sysRgb   = commerce?.prog_type === 'stars' ? '139,92,246' : '236,72,153'
-              const sysColor = commerce?.prog_type === 'stars' ? '#8B5CF6' : '#EC4899'
+              const unitShort = commerce?.prog_type === 'stars' ? 'est.' : 'pts.'
               return (
               <div key={p.id} style={{
-                position:'relative',
-                marginBottom:10,
+                position: 'relative',
+                marginBottom: 12,
                 opacity: p.active ? 1 : 0.55,
-                background: `linear-gradient(135deg, rgba(${sysRgb},0.08), rgba(${sysRgb},0.03))`,
-                backdropFilter: 'blur(20px)', WebkitBackdropFilter: 'blur(20px)',
-                border: `1px solid rgba(${sysRgb}, ${p.active ? 0.32 : 0.16})`,
-                borderRadius: 14, overflow:'hidden',
-                boxShadow: p.active ? `0 4px 18px -6px rgba(${sysRgb},0.25), inset 0 1px 0 rgba(255,255,255,0.06)` : 'inset 0 1px 0 rgba(255,255,255,0.04)',
+                background: 'rgba(255,255,255,0.04)',
+                borderRadius: 20,
+                padding: 16,
+                transition: 'opacity 220ms ease',
               }}>
-                {/* Badge de estado en esquina superior derecha — reemplaza el
-                    botón con luz verde. Click toggles activo/inactivo. */}
-                <button onClick={() => togglePrize(p)}
-                  title={p.active ? 'Tap para desactivar' : 'Tap para activar'}
-                  style={{ position:'absolute', top:8, right:8, zIndex:2, display:'inline-flex', alignItems:'center', gap:4, padding:'3px 8px', borderRadius:99, fontSize:9, fontWeight:700, fontFamily:FN, letterSpacing:'.08em', cursor:'pointer',
-                    background: p.active ? `${C.ok}22` : 'rgba(255,255,255,0.06)',
-                    border: `1px solid ${p.active ? `${C.ok}66` : 'rgba(255,255,255,0.14)'}`,
-                    color: p.active ? C.ok : C.dust,
-                  }}>
-                  <span style={{ width:6, height:6, borderRadius:'50%', background: p.active ? C.ok : 'rgba(255,255,255,0.32)', boxShadow: p.active ? `0 0 6px ${C.ok}` : 'none' }} />
-                  {p.active ? 'ACTIVO' : 'INACTIVO'}
-                </button>
-
-                {/* Zona principal — botones anclados al final (bottom) y el
-                    contenido del medio respeta espacio para el badge top-right
-                    para que nunca se superpongan. */}
-                <div style={{ display:'flex', alignItems:'flex-end', gap:12, padding:'10px 14px' }}>
+                {/* Header: imagen 60x60 + bloque texto + columna derecha
+                    con pill ACTIVO + iconos pen/trash. La columna derecha
+                    aprovecha el espacio que antes quedaba vacío al lado del
+                    título; los iconos circulares chicos reemplazan a las
+                    pills "Editar/Eliminar" que iban al pie. */}
+                <div style={{ display: 'flex', alignItems: 'flex-start', gap: 14 }}>
                   {p.img_url
-                    ? <img src={p.img_url} alt="" style={{ width:52, height:52, borderRadius:10, objectFit:'cover', flexShrink:0, alignSelf:'center' }} />
-                    : <div style={{ width:52, height:52, borderRadius:10, background:C.bg3, display:'flex', alignItems:'center', justifyContent:'center', flexShrink:0, alignSelf:'center' }}><Gift size={24} color={C.mist} strokeWidth={1.5} /></div>
+                    ? <img src={p.img_url} alt="" style={{ width: 60, height: 60, borderRadius: 14, objectFit: 'cover', flexShrink: 0 }} />
+                    : <div style={{ width: 60, height: 60, borderRadius: 14, background: 'rgba(113,49,225,0.10)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                        <Gift size={26} color="#7131E1" strokeWidth={1.6} />
+                      </div>
                   }
-                  <div style={{ flex:1, minWidth:0, paddingRight:6, paddingTop:22 /* hueco para el badge */ }}>
-                    <div style={{ fontFamily:FN, fontSize:13, fontWeight:700, color:C.white, overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>{p.name}</div>
+                  <div style={{ flex: 1, minWidth: 0 }}>
+                    <div style={{ fontFamily: FN, fontSize: 14.5, fontWeight: 700, color: C.white, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', letterSpacing: '-.005em' }}>
+                      {p.name}
+                    </div>
                     {p.description && (
-                      <div style={{ fontSize:11, color:C.mist, marginTop:2, lineHeight:1.4, overflow:'hidden', textOverflow:'ellipsis', display:'-webkit-box', WebkitLineClamp:1, WebkitBoxOrient:'vertical' }}>{p.description}</div>
+                      <div style={{ fontSize: 11.5, color: 'rgba(255,255,255,0.55)', marginTop: 3, lineHeight: 1.4, overflow: 'hidden', textOverflow: 'ellipsis', display: '-webkit-box', WebkitLineClamp: 1, WebkitBoxOrient: 'vertical' }}>
+                        {p.description}
+                      </div>
                     )}
-                    <div style={{ display:'flex', alignItems:'center', gap:6, marginTop:3, flexWrap:'wrap' }}>
-                      <span style={{ fontSize:11, color:unitColor }}>{unitIcon} {p.cost} {unitLabel}</span>
+                    {/* Pill de costo: número primero + unidad abreviada.
+                        Lectura como "precio" del premio, no como rating. */}
+                    <div style={{
+                      display: 'inline-flex', alignItems: 'center',
+                      marginTop: 8,
+                      padding: '4px 10px',
+                      borderRadius: 99,
+                      background: 'rgba(113,49,225,0.15)',
+                      fontFamily: FN, fontSize: 11, fontWeight: 700,
+                      color: '#B59CFF',
+                      letterSpacing: '.01em',
+                    }}>
+                      {p.cost} {unitShort}
                     </div>
                   </div>
-                  {/* 2 botoncitos: lápiz + bote — anclados al bottom para no
-                      chocar con el badge ACTIVO/INACTIVO de arriba a la derecha. */}
-                  <div style={{ display:'flex', alignItems:'center', gap:6, flexShrink:0 }}>
-                    <button onClick={() => startEditPrize(p)} title="Editar premio"
-                      style={{ width:32, height:32, borderRadius:'50%', background:'rgba(255,255,255,0.04)', border:`1px solid ${C.rim}`, cursor:'pointer', display:'flex', alignItems:'center', justifyContent:'center', color:C.mist, padding:0 }}>
-                      <Pen size={13} strokeWidth={2} />
+
+                  {/* Columna derecha — pill ACTIVO arriba + 2 iconos
+                      circulares (pen + trash) abajo. Aprovecha el aire
+                      lateral que antes desperdiciaba el layout. */}
+                  <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: 8, flexShrink: 0 }}>
+                    <button onClick={() => togglePrize(p)}
+                      title={p.active ? 'Tap para desactivar' : 'Tap para activar'}
+                      style={{
+                        display: 'inline-flex', alignItems: 'center', gap: 5,
+                        padding: '4px 10px', borderRadius: 99,
+                        fontSize: 9, fontWeight: 700, fontFamily: FN,
+                        letterSpacing: '.08em', cursor: 'pointer',
+                        background: p.active ? 'rgba(34,230,152,0.14)' : 'rgba(255,255,255,0.06)',
+                        border: `1px solid ${p.active ? 'rgba(34,230,152,0.45)' : 'rgba(255,255,255,0.14)'}`,
+                        color: p.active ? C.ok : C.dust,
+                      }}>
+                      <span style={{
+                        width: 5, height: 5, borderRadius: '50%',
+                        background: p.active ? C.ok : 'rgba(255,255,255,0.32)',
+                        boxShadow: p.active ? `0 0 5px ${C.ok}` : 'none',
+                      }} />
+                      {p.active ? 'ACTIVO' : 'INACTIVO'}
                     </button>
-                    <button onClick={() => deletePrize(p.id)} title="Eliminar premio"
-                      style={{ width:32, height:32, borderRadius:'50%', background:'rgba(248,116,68,0.08)', border:'1px solid rgba(248,116,68,0.25)', cursor:'pointer', display:'flex', alignItems:'center', justifyContent:'center', color:'#f87444', padding:0 }}>
-                      <Trash2 size={13} strokeWidth={2} />
-                    </button>
+                    <div style={{ display: 'flex', gap: 6 }}>
+                      <button onClick={() => startEditPrize(p)} title="Editar premio"
+                        style={{
+                          width: 30, height: 30, borderRadius: '50%',
+                          background: 'rgba(113,49,225,0.15)',
+                          border: 'none', cursor: 'pointer',
+                          display: 'flex', alignItems: 'center', justifyContent: 'center',
+                          padding: 0,
+                          transition: 'background 160ms ease, transform 120ms ease',
+                        }}
+                        onMouseEnter={e => { e.currentTarget.style.background = 'rgba(113,49,225,0.25)' }}
+                        onMouseLeave={e => { e.currentTarget.style.background = 'rgba(113,49,225,0.15)' }}
+                        onMouseDown={e => { e.currentTarget.style.transform = 'scale(0.92)' }}
+                        onMouseUp={e   => { e.currentTarget.style.transform = 'scale(1)' }}>
+                        <Pen size={13} strokeWidth={2.2} color="#B59CFF" />
+                      </button>
+                      <button onClick={() => deletePrize(p.id)} title="Eliminar premio"
+                        style={{
+                          width: 30, height: 30, borderRadius: '50%',
+                          background: 'rgba(248,116,68,0.10)',
+                          border: 'none', cursor: 'pointer',
+                          display: 'flex', alignItems: 'center', justifyContent: 'center',
+                          padding: 0,
+                          transition: 'background 160ms ease, transform 120ms ease',
+                        }}
+                        onMouseEnter={e => { e.currentTarget.style.background = 'rgba(248,116,68,0.20)' }}
+                        onMouseLeave={e => { e.currentTarget.style.background = 'rgba(248,116,68,0.10)' }}
+                        onMouseDown={e => { e.currentTarget.style.transform = 'scale(0.92)' }}
+                        onMouseUp={e   => { e.currentTarget.style.transform = 'scale(1)' }}>
+                        <Trash2 size={13} strokeWidth={2} color="#f87444" />
+                      </button>
+                    </div>
                   </div>
                 </div>
-                {/* ── Zócalo inferior — stock + canjeados + creado ── */}
+
+                {/* Stats horizontales: stock · canjeados · creado.
+                    Sin labels uppercase, sin divisores verticales —
+                    solo " · " separator y aire. */}
                 {(() => {
                   const canjes = prizeCanjes[p.id] || 0
                   const hasStock = p.stock !== null && p.stock !== undefined
-                  const stockColor = hasStock
-                    ? (p.stock === 0 ? '#f87444' : p.stock === 1 ? C.o : C.mist)
-                    : C.dust
-                  const createdDate = p.created_at ? new Date(p.created_at).toLocaleDateString('es-AR', { day:'2-digit', month:'2-digit', year:'2-digit' }) : null
+                  const stockText = hasStock
+                    ? (p.stock === 0 ? 'Sin stock' : p.stock === 1 ? 'Último' : String(p.stock))
+                    : '∞'
+                  const stockColor = hasStock && p.stock === 0 ? '#f87444' : C.white
+                  const createdDate = p.created_at ? new Date(p.created_at).toLocaleDateString('es-AR', { day: '2-digit', month: '2-digit', year: '2-digit' }) : null
                   return (
-                    <div style={{ display:'flex', alignItems:'center', gap:12, padding:'7px 14px', background:`rgba(${sysRgb},0.06)`, borderTop:`1px solid rgba(${sysRgb}, ${p.active ? 0.18 : 0.10})`, fontSize:11, color:C.mist, flexWrap:'wrap' }}>
-                      {/* Stock */}
-                      <div style={{ display:'flex', alignItems:'center', gap:4 }}>
-                        <Package size={11} color={stockColor} strokeWidth={2} />
-                        <span style={{ color:C.dust }}>Stock:</span>
-                        <span style={{ color:stockColor, fontWeight:700, fontFamily:FN }}>
-                          {hasStock ? (p.stock === 0 ? 'Sin stock' : p.stock === 1 ? 'Último' : p.stock) : '∞'}
-                        </span>
-                      </div>
-                      <div style={{ width:1, height:11, background:'rgba(255,255,255,0.10)' }} />
-                      {/* Canjeados */}
-                      <div style={{ display:'flex', alignItems:'center', gap:4 }}>
-                        <Check size={11} color={canjes > 0 ? C.ok : C.dust} strokeWidth={2.5} />
-                        <span style={{ color:C.dust }}>Canjeados:</span>
-                        <span style={{ color: canjes > 0 ? C.white : C.dust, fontWeight:700, fontFamily:FN }}>{canjes}</span>
-                      </div>
-                      {/* Creado */}
+                    <div style={{ marginTop: 14, fontSize: 10.5, color: 'rgba(255,255,255,0.50)', lineHeight: 1.5 }}>
+                      Stock:&nbsp;<span style={{ color: stockColor, fontWeight: 600, fontFamily: FN }}>{stockText}</span>
+                      <span style={{ margin: '0 8px', opacity: 0.6 }}>·</span>
+                      Canjeados:&nbsp;<span style={{ color: canjes > 0 ? C.white : 'rgba(255,255,255,0.55)', fontWeight: 600, fontFamily: FN }}>{canjes}</span>
                       {createdDate && (
                         <>
-                          <div style={{ width:1, height:11, background:'rgba(255,255,255,0.10)' }} />
-                          <div style={{ display:'flex', alignItems:'center', gap:4 }}>
-                            <Calendar size={10} color={C.dust} strokeWidth={2} />
-                            <span style={{ color:C.dust }}>Creado:</span>
-                            <span style={{ color:C.mist, fontWeight:600, fontFamily:FN }}>{createdDate}</span>
-                          </div>
+                          <span style={{ margin: '0 8px', opacity: 0.6 }}>·</span>
+                          Creado:&nbsp;<span style={{ color: 'rgba(255,255,255,0.70)', fontWeight: 500, fontFamily: FN }}>{createdDate}</span>
                         </>
                       )}
                     </div>
@@ -18290,8 +18340,8 @@ function CommerceSettingsView({ user, profile, setView, onLogout, onOwnerProfile
             {(() => {
               const sysCurrent  = commerce?.prog_type || 'stars'
               const sysUnit     = sysCurrent === 'points' ? 'puntos' : 'estrellas'
-              const sysColor    = sysCurrent === 'points' ? '#EC4899' : '#8B5CF6'
-              const sysColorD   = sysCurrent === 'points' ? '#DB2777' : '#7C3AED'
+              const sysColor    = sysCurrent === 'points' ? '#EC4899' : '#7131E1'
+              const sysColorD   = sysCurrent === 'points' ? '#DB2777' : '#7131E1'
               const activeForCurrentSys = prizes.filter(p =>
                 p.active && (p.system_type || sysCurrent) === sysCurrent
               )
@@ -18862,89 +18912,197 @@ function CommerceSettingsView({ user, profile, setView, onLogout, onOwnerProfile
                   <div style={{ width:5, height:5, borderRadius:'50%', background:C.ok }} /> Activas ahora
                 </div>
                 {displayActivePromos.map(p => {
-                  const typeCol = p.type === 'discount_next' ? C.v : '#ec4899'
-                  const typeBg  = p.type === 'discount_next' ? 'linear-gradient(135deg,#8B5CF6,#7C3AED)' : 'linear-gradient(135deg,#EC4899,#DB2777)'
-                  const typeSym = p.type === 'discount_next' ? '−%' : '×2'
+                  // Sprint 3 (mayo 2026): card de promo activa — mismo
+                  // lenguaje visual que la card de premio. Bg neutral, sin
+                  // border, ícono cuadrado 60x60, columna derecha con pill
+                  // ACTIVA + iconos pen/trash chicos. Para double_points
+                  // mantengo fucsia como identidad de la promo (no es brand
+                  // viejo, es color semántico del tipo "suma doble").
+                  const isDouble  = p.type === 'double_points'
+                  const accentRgb = isDouble ? '236,72,153' : '113,49,225'
+                  const accentColor = isDouble ? '#EC4899' : '#7131E1'
+                  const accentLight = isDouble ? '#F8A4C8' : '#B59CFF'
+                  const typeSym   = isDouble ? '×2' : '−%'
+                  const valueText = isDouble ? '×2' : `${p.value}% OFF`
                   const isMock = p.id.startsWith('mock')
                   return (
-                    <div key={p.id} style={{ display:'flex', marginBottom:10, borderRadius:14, overflow:'hidden', border:`1px solid ${typeCol}33`, background:`${typeCol}08` }}>
-                      <div style={{ width:4, background:typeCol, flexShrink:0 }} />
-                      <div style={{ flex:1, padding:'14px 14px 12px' }}>
-                        <div style={{ display:'flex', alignItems:'flex-start', gap:10, marginBottom:12 }}>
-                          <div aria-hidden="true" style={{ width:36, height:36, borderRadius:10, background:typeBg, display:'flex', alignItems:'center', justifyContent:'center', flexShrink:0, boxShadow:`0 4px 10px -2px ${typeCol}55` }}>
-                            <span style={{ fontFamily:FN, fontWeight:900, fontSize:12, color:'#fff', letterSpacing:'-0.02em', lineHeight:1 }}>{typeSym}</span>
+                    <div key={p.id} style={{
+                      position: 'relative',
+                      marginBottom: 12,
+                      background: 'rgba(255,255,255,0.04)',
+                      borderRadius: 20,
+                      padding: 16,
+                      transition: 'opacity 220ms ease',
+                    }}>
+                      <div style={{ display: 'flex', alignItems: 'flex-start', gap: 14 }}>
+                        {/* Icono cuadrado 60x60 con símbolo de la promo */}
+                        <div aria-hidden="true" style={{
+                          width: 60, height: 60, borderRadius: 14,
+                          background: `rgba(${accentRgb}, 0.10)`,
+                          display: 'flex', alignItems: 'center', justifyContent: 'center',
+                          flexShrink: 0,
+                        }}>
+                          <span style={{
+                            fontFamily: FN, fontWeight: 900, fontSize: 22,
+                            color: accentColor,
+                            letterSpacing: '-0.02em', lineHeight: 1,
+                          }}>{typeSym}</span>
+                        </div>
+
+                        {/* Bloque texto: descripción + vencimiento + pill valor */}
+                        <div style={{ flex: 1, minWidth: 0 }}>
+                          <div style={{ fontFamily: FN, fontSize: 14.5, fontWeight: 700, color: C.white, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', letterSpacing: '-.005em' }}>
+                            {p.description}
                           </div>
-                          <div style={{ flex:1, minWidth:0 }}>
-                            <div style={{ display:'flex', alignItems:'flex-start', justifyContent:'space-between', gap:8, marginBottom:3 }}>
-                              <div style={{ fontFamily:FN, fontSize:13, fontWeight:700, color:C.white }}>{p.description}</div>
-                              <StatusLED active={true} />
-                            </div>
-                            <div style={{ fontSize:11, color:C.mist }}>{expiresLabel(p)}</div>
-                            {p.type === 'double_points' && (
-                              <div style={{ fontSize:11, color:typeCol, marginTop:3, fontWeight:600, display:'inline-flex', alignItems:'center', gap:4 }}>
-                                <Zap size={10} strokeWidth={2.4} />
-                                {formatDays(p.days)}
-                              </div>
-                            )}
+                          <div style={{ fontSize: 11.5, color: 'rgba(255,255,255,0.55)', marginTop: 3, lineHeight: 1.4 }}>
+                            {expiresLabel(p)}
+                          </div>
+                          {/* Pill valor — "30% OFF" o "×2" — número primero
+                              + unidad. Usa el color del tipo (violeta para
+                              discount_next, fucsia para double_points). */}
+                          <div style={{
+                            display: 'inline-flex', alignItems: 'center',
+                            marginTop: 8,
+                            padding: '4px 10px',
+                            borderRadius: 99,
+                            background: `rgba(${accentRgb}, 0.15)`,
+                            fontFamily: FN, fontSize: 11, fontWeight: 700,
+                            color: accentLight,
+                            letterSpacing: '.01em',
+                          }}>
+                            {valueText}
                           </div>
                         </div>
-                        <div style={{ display:'flex', gap:8, alignItems:'stretch' }}>
-                          {/* Desactivar (texto, ocupa el espacio) */}
+
+                        {/* Columna derecha — pill ACTIVA + 2 iconos
+                            circulares (pen + trash) */}
+                        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: 8, flexShrink: 0 }}>
                           <button onClick={() => isMock ? null : togglePromo(p)}
-                            style={{ flex:1, padding:'7px', background:'rgba(255,255,255,0.06)', border:`1px solid ${C.rim}`, borderRadius:8, color:C.mist, fontSize:11, cursor:isMock?'default':'pointer', fontFamily:FN, fontWeight:600, opacity:isMock?0.5:1 }}>
-                            {isMock ? 'Demo' : 'Desactivar'}
+                            title={isMock ? 'Demo' : 'Tap para desactivar'}
+                            style={{
+                              display: 'inline-flex', alignItems: 'center', gap: 5,
+                              padding: '4px 10px', borderRadius: 99,
+                              fontSize: 9, fontWeight: 700, fontFamily: FN,
+                              letterSpacing: '.08em',
+                              cursor: isMock ? 'default' : 'pointer',
+                              background: 'rgba(34,230,152,0.14)',
+                              border: '1px solid rgba(34,230,152,0.45)',
+                              color: C.ok,
+                              opacity: isMock ? 0.5 : 1,
+                            }}>
+                            <span style={{ width: 5, height: 5, borderRadius: '50%', background: C.ok, boxShadow: `0 0 5px ${C.ok}` }} />
+                            ACTIVA
                           </button>
-                          {/* Lápiz para editar (descripción + vencimiento) */}
-                          <button onClick={() => isMock ? null : setEditingPromo(p)} title="Editar promo"
-                            style={{ width:34, padding:0, background:'rgba(255,255,255,0.04)', border:`1px solid ${C.rim}`, borderRadius:8, color:C.mist, cursor:isMock?'default':'pointer', display:'flex', alignItems:'center', justifyContent:'center', opacity:isMock?0.5:1 }}>
-                            <Pen size={13} strokeWidth={2} />
-                          </button>
-                          {/* Tacho para eliminar */}
-                          <button onClick={() => isMock ? null : setConfirmDelete(p)} title="Eliminar promo"
-                            style={{ width:34, padding:0, background:'rgba(248,116,68,0.08)', border:`1px solid rgba(248,116,68,0.28)`, borderRadius:8, color:'#f87444', cursor:isMock?'default':'pointer', display:'flex', alignItems:'center', justifyContent:'center', opacity:isMock?0.5:1 }}>
-                            <Trash2 size={13} strokeWidth={2} />
-                          </button>
+                          <div style={{ display: 'flex', gap: 6 }}>
+                            <button onClick={() => isMock ? null : setEditingPromo(p)} title="Editar promo"
+                              style={{
+                                width: 30, height: 30, borderRadius: '50%',
+                                background: 'rgba(113,49,225,0.15)',
+                                border: 'none',
+                                cursor: isMock ? 'default' : 'pointer',
+                                display: 'flex', alignItems: 'center', justifyContent: 'center',
+                                padding: 0,
+                                opacity: isMock ? 0.5 : 1,
+                                transition: 'background 160ms ease, transform 120ms ease',
+                              }}
+                              onMouseEnter={e => { if (!isMock) e.currentTarget.style.background = 'rgba(113,49,225,0.25)' }}
+                              onMouseLeave={e => { if (!isMock) e.currentTarget.style.background = 'rgba(113,49,225,0.15)' }}
+                              onMouseDown={e => { if (!isMock) e.currentTarget.style.transform = 'scale(0.92)' }}
+                              onMouseUp={e   => { if (!isMock) e.currentTarget.style.transform = 'scale(1)' }}>
+                              <Pen size={13} strokeWidth={2.2} color="#B59CFF" />
+                            </button>
+                            <button onClick={() => isMock ? null : setConfirmDelete(p)} title="Eliminar promo"
+                              style={{
+                                width: 30, height: 30, borderRadius: '50%',
+                                background: 'rgba(248,116,68,0.10)',
+                                border: 'none',
+                                cursor: isMock ? 'default' : 'pointer',
+                                display: 'flex', alignItems: 'center', justifyContent: 'center',
+                                padding: 0,
+                                opacity: isMock ? 0.5 : 1,
+                                transition: 'background 160ms ease, transform 120ms ease',
+                              }}
+                              onMouseEnter={e => { if (!isMock) e.currentTarget.style.background = 'rgba(248,116,68,0.20)' }}
+                              onMouseLeave={e => { if (!isMock) e.currentTarget.style.background = 'rgba(248,116,68,0.10)' }}
+                              onMouseDown={e => { if (!isMock) e.currentTarget.style.transform = 'scale(0.92)' }}
+                              onMouseUp={e   => { if (!isMock) e.currentTarget.style.transform = 'scale(1)' }}>
+                              <Trash2 size={13} strokeWidth={2} color="#f87444" />
+                            </button>
+                          </div>
                         </div>
                       </div>
+
+                      {/* Stats horizontal: solo aparece si hay info adicional
+                          (días para double_points). discount_next ya tiene el
+                          vencimiento en el bloque del medio. */}
+                      {isDouble && (
+                        <div style={{ marginTop: 14, fontSize: 10.5, color: 'rgba(255,255,255,0.50)', lineHeight: 1.5, display: 'inline-flex', alignItems: 'center', gap: 5 }}>
+                          <Zap size={11} strokeWidth={2.4} color={accentColor} />
+                          Días: <span style={{ color: C.white, fontWeight: 600, fontFamily: FN }}>{formatDays(p.days)}</span>
+                        </div>
+                      )}
                     </div>
                   )
                 })}
               </>
             )}
 
-            {/* Promos pausadas / vencidas */}
+            {/* Promos pausadas / vencidas — mismo lenguaje visual que las activas
+                pero con opacity reducida y pill PAUSADA/VENCIDA en gris.
+                Iconos circulares 30x30 a la derecha: RefreshCw (reactivar) + Trash. */}
             {displayInactivePromos.length > 0 && (
               <>
                 <div style={{ fontSize:10, color:C.dust, fontWeight:700, marginBottom:10, marginTop:18, textTransform:'uppercase', letterSpacing:'.1em' }}>Pausadas</div>
                 {displayInactivePromos.map(p => {
-                  const typeCol = p.type === 'discount_next' ? C.v : '#ec4899'
-                  const typeSym = p.type === 'discount_next' ? '−%' : '×2'
+                  const isDisc = p.type === 'discount_next'
+                  const accentRgb  = isDisc ? '113,49,225' : '236,72,153'
+                  const accentColor = isDisc ? '#7131E1' : '#EC4899'
+                  const accentLight = isDisc ? '#B59CFF' : '#F8A4C8'
+                  const typeSym = isDisc ? '−%' : '×2'
+                  const valueText = isDisc ? `${p.discount_pct || 0}% OFF` : '×2'
+                  const expired = isExpired(p)
+                  const stateLabel = expired ? 'VENCIDA' : 'PAUSADA'
                   const isMock = p.id.startsWith('mock')
                   return (
-                    <div key={p.id} style={{ display:'flex', marginBottom:8, borderRadius:14, overflow:'hidden', border:'1px solid rgba(255,255,255,0.07)', background:'rgba(255,255,255,0.02)', opacity:0.6 }}>
-                      <div style={{ width:4, background:`${typeCol}55`, flexShrink:0 }} />
-                      <div style={{ flex:1, padding:'12px 14px 10px' }}>
-                        <div style={{ display:'flex', alignItems:'flex-start', gap:10, marginBottom:8 }}>
-                          <div aria-hidden="true" style={{ width:30, height:30, borderRadius:8, background:`${typeCol}22`, display:'flex', alignItems:'center', justifyContent:'center', flexShrink:0 }}>
-                            <span style={{ fontFamily:FN, fontWeight:900, fontSize:10, color:`${typeCol}aa`, letterSpacing:'-0.02em', lineHeight:1 }}>{typeSym}</span>
-                          </div>
-                          <div style={{ flex:1, minWidth:0 }}>
-                            <div style={{ display:'flex', alignItems:'flex-start', justifyContent:'space-between', gap:8, marginBottom:2 }}>
-                              <div style={{ fontFamily:FN, fontSize:12, fontWeight:600, color:C.dust }}>{p.description}</div>
-                              <StatusLED active={false} />
-                            </div>
-                            <div style={{ fontSize:10, color:C.dust }}>{isExpired(p) ? 'Vencida' : 'Desactivada'}</div>
-                          </div>
+                    <div key={p.id} style={{ position:'relative', background:'rgba(255,255,255,0.03)', borderRadius:20, padding:16, marginBottom:12, opacity:0.55 }}>
+                      <div style={{ display:'flex', alignItems:'flex-start', gap:14 }}>
+                        {/* Icono cuadrado 60x60 con símbolo del tipo de promo */}
+                        <div aria-hidden="true" style={{ width:60, height:60, borderRadius:14, background:`rgba(${accentRgb}, 0.08)`, display:'flex', alignItems:'center', justifyContent:'center', flexShrink:0, filter:'grayscale(0.4)' }}>
+                          <span style={{ fontFamily:FN, fontWeight:900, fontSize:22, color:`rgba(${accentRgb}, 0.55)`, letterSpacing:'-0.02em', lineHeight:1 }}>{typeSym}</span>
                         </div>
-                        <div style={{ display:'flex', gap:8 }}>
-                          <button onClick={() => isMock ? null : togglePromo(p)}
-                            style={{ flex:1, padding:'6px', background:C.bg3, border:`1px solid ${C.rim}`, borderRadius:8, color:C.mist, fontSize:11, cursor:isMock?'default':'pointer', fontFamily:FN, fontWeight:600 }}>
-                            {isMock ? 'Demo' : 'Reactivar'}
-                          </button>
-                          <button onClick={() => isMock ? null : setConfirmDelete(p)}
-                            style={{ flex:1, padding:'6px', background:'transparent', border:`1px solid rgba(255,255,255,0.08)`, borderRadius:8, color:C.dust, fontSize:11, cursor:isMock?'default':'pointer', fontFamily:FN, fontWeight:600 }}>
-                            Eliminar
-                          </button>
+
+                        {/* Bloque de texto */}
+                        <div style={{ flex:1, minWidth:0, paddingTop:2 }}>
+                          <div style={{ fontFamily:FN, fontSize:14.5, fontWeight:700, color:C.mist, marginBottom:4, lineHeight:1.25, overflow:'hidden', textOverflow:'ellipsis', display:'-webkit-box', WebkitLineClamp:2, WebkitBoxOrient:'vertical' }}>
+                            {p.description || (isDisc ? 'Descuento próxima compra' : 'Días con bonus ×2')}
+                          </div>
+                          <div style={{ fontSize:11.5, color:C.dust, marginBottom:8 }}>
+                            {expiresLabel(p)}
+                          </div>
+                          <span style={{ display:'inline-block', fontFamily:FN, fontSize:11, fontWeight:700, color:accentLight, background:`rgba(${accentRgb}, 0.10)`, borderRadius:99, padding:'3px 10px', letterSpacing:'.02em' }}>
+                            {valueText}
+                          </span>
+                        </div>
+
+                        {/* Columna derecha: pill de estado + botones circulares */}
+                        <div style={{ display:'flex', flexDirection:'column', alignItems:'flex-end', gap:8, flexShrink:0 }}>
+                          <span style={{ fontSize:9.5, fontWeight:800, color:'rgba(255,255,255,0.55)', background:'rgba(255,255,255,0.06)', borderRadius:99, padding:'3px 9px', fontFamily:FN, letterSpacing:'.08em' }}>
+                            {stateLabel}
+                          </span>
+                          <div style={{ display:'flex', gap:6 }}>
+                            <button onClick={() => isMock ? null : togglePromo(p)}
+                              title={isMock ? 'Demo' : 'Reactivar'}
+                              disabled={isMock}
+                              style={{ width:30, height:30, borderRadius:'50%', background:'rgba(34,197,94,0.10)', border:'none', display:'flex', alignItems:'center', justifyContent:'center', cursor:isMock?'default':'pointer', padding:0 }}>
+                              <RefreshCw size={14} color="#4ade80" strokeWidth={2.2} />
+                            </button>
+                            <button onClick={() => isMock ? null : setConfirmDelete(p)}
+                              title={isMock ? 'Demo' : 'Eliminar'}
+                              disabled={isMock}
+                              style={{ width:30, height:30, borderRadius:'50%', background:'rgba(248,116,68,0.10)', border:'none', display:'flex', alignItems:'center', justifyContent:'center', cursor:isMock?'default':'pointer', padding:0 }}>
+                              <Trash2 size={14} color="#f87444" strokeWidth={2.2} />
+                            </button>
+                          </div>
                         </div>
                       </div>
                     </div>
@@ -20861,7 +21019,7 @@ function ClientQRView({ user, profile, setView, headerExtra }) {
       <div style={{ width:'100%', maxWidth:340, borderRadius:28, overflow:'hidden', boxShadow:'0 24px 64px rgba(189,75,248,0.30), 0 8px 24px rgba(0,0,0,0.50)' }}>
 
         {/* Cuerpo del pase */}
-        <div style={{ background:'linear-gradient(145deg, #7c3aed 0%, #a855f7 45%, #ec4899 100%)', padding:'24px 24px 28px', position:'relative', overflow:'hidden' }}>
+        <div style={{ background:'#7131E1', padding:'24px 24px 28px', position:'relative', overflow:'hidden' }}>
 
           {/* Blobs decorativos */}
           <div style={{ position:'absolute', top:-32, right:-32, width:120, height:120, borderRadius:'50%', background:'rgba(255,255,255,0.10)', filter:'blur(24px)', pointerEvents:'none' }} />
@@ -20910,7 +21068,7 @@ function ClientQRView({ user, profile, setView, headerExtra }) {
         </div>
 
         {/* Separador tipo ticket */}
-        <div style={{ position:'relative', background:'linear-gradient(to right, #5b21b6, #7c3aed)' }}>
+        <div style={{ position:'relative', background:'#7131E1' }}>
           <div style={{ position:'absolute', left:-1, top:'50%', transform:'translateY(-50%)', width:18, height:18, borderRadius:'50%', background:'#000', zIndex:2 }} />
           <div style={{ position:'absolute', right:-1, top:'50%', transform:'translateY(-50%)', width:18, height:18, borderRadius:'50%', background:'#000', zIndex:2 }} />
           <div style={{ borderTop:'1.5px dashed rgba(255,255,255,0.20)', margin:'0 22px' }} />
@@ -21406,7 +21564,7 @@ function ScannerView({ user, profile, setView }) {
 
   const unitIcon = result?.prog_type === 'stars' ? '★' : '◆'
   const unitLabel = result?.prog_type === 'stars' ? 'estrellas' : 'puntos'
-  const unitColor = result?.prog_type === 'stars' ? '#8B5CF6' : '#EC4899'
+  const unitColor = result?.prog_type === 'stars' ? '#7131E1' : '#EC4899'
 
   // Pantalla inicial — opciones agrupadas en dos secciones según la acción
   // que requieren del usuario:
@@ -21425,7 +21583,7 @@ function ScannerView({ user, profile, setView }) {
         Icon: ScanLine,
         bg:         'linear-gradient(135deg, rgba(124,58,237,0.16), rgba(139,92,246,0.10))',
         border:     'rgba(139,92,246,0.40)',
-        iconBg:     'linear-gradient(135deg, #7C3AED, #8B5CF6)',
+        iconBg:     '#7131E1',
         shadow:     '0 4px 18px rgba(139,92,246,0.40)',
         descColor:  'rgba(229,221,255,0.75)',
         arrowColor: 'rgba(196,181,253,0.85)',
@@ -21437,7 +21595,7 @@ function ScannerView({ user, profile, setView }) {
         Icon: ScanLine,
         bg:         'linear-gradient(135deg, rgba(219,39,119,0.16), rgba(236,72,153,0.10))',
         border:     'rgba(236,72,153,0.40)',
-        iconBg:     'linear-gradient(135deg, #DB2777, #EC4899)',
+        iconBg:     '#EC4899',
         shadow:     '0 4px 18px rgba(236,72,153,0.40)',
         descColor:  'rgba(255,221,236,0.75)',
         arrowColor: 'rgba(251,182,206,0.85)',
@@ -21452,7 +21610,7 @@ function ScannerView({ user, profile, setView }) {
         // Violeta — el QR del local lleva ese color en toda la app.
         bg:         'linear-gradient(135deg, rgba(124,58,237,0.16), rgba(139,92,246,0.10))',
         border:     'rgba(139,92,246,0.40)',
-        iconBg:     'linear-gradient(135deg, #7C3AED, #A855F7)',
+        iconBg:     '#7131E1',
         shadow:     '0 4px 18px rgba(139,92,246,0.40)',
         descColor:  'rgba(229,221,255,0.78)',
         arrowColor: 'rgba(196,181,253,0.85)',
@@ -21464,7 +21622,7 @@ function ScannerView({ user, profile, setView }) {
         Icon: User,
         bg:         'linear-gradient(135deg, rgba(254,80,0,0.16), rgba(251,113,133,0.10))',
         border:     'rgba(251,113,133,0.40)',
-        iconBg:     'linear-gradient(135deg, #FE5000, #FB7185)',
+        iconBg:     '#FE5000',
         shadow:     '0 4px 18px rgba(254,80,0,0.40)',
         descColor:  'rgba(255,228,222,0.78)',
         arrowColor: 'rgba(252,165,165,0.85)',
@@ -21480,7 +21638,7 @@ function ScannerView({ user, profile, setView }) {
         padding:'0 4px 10px',
         marginBottom:2,
       }}>
-        <div style={{ width:3, height:14, borderRadius:99, background:'linear-gradient(135deg, #FE5000, #BD4BF8)' }} />
+        <div style={{ width:3, height:14, borderRadius:99, background:'#7131E1' }} />
         <div style={{
           fontFamily:FN, fontSize:11.5, fontWeight:800,
           color:'rgba(255,255,255,0.85)',
@@ -21606,7 +21764,7 @@ function ScannerView({ user, profile, setView }) {
           const VIOLET = {
             bg:         'linear-gradient(135deg, rgba(124,58,237,0.18), rgba(168,85,247,0.10), rgba(189,75,248,0.14))',
             border:     'rgba(168,85,247,0.42)',
-            iconBg:     'linear-gradient(135deg, #7C3AED 0%, #A855F7 50%, #BD4BF8 100%)',
+            iconBg:     '#7131E1',
             shadow:     '0 6px 22px rgba(168,85,247,0.40)',
             arrowColor: 'rgba(196,181,253,0.88)',
           }
@@ -22096,7 +22254,7 @@ function ScannerView({ user, profile, setView }) {
               if (isStars) {
                 narrativeLines.push({
                   icon: Star,
-                  color: '#8B5CF6',
+                  color: '#7131E1',
                   text: <><strong>{firstName}</strong> ganó <strong>{earned} estrella{earned !== 1 ? 's' : ''}</strong> por su compra.</>,
                 })
               } else {
@@ -23732,7 +23890,7 @@ export default function App() {
 
   return (
     <>
-      <style>{`input:focus { outline: none; border-color: #BD4BF8 !important; box-shadow: 0 0 0 3px #BD4BF818; }`}</style>
+      <style>{`input:focus { outline: none; border-color: #7131E1 !important; box-shadow: 0 0 0 3px #7131E118; }`}</style>
       <ToastContainer />
       <ConfirmModal />
       <LoginPromptModal />

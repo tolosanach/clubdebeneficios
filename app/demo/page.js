@@ -18,14 +18,17 @@ import {
 } from 'lucide-react'
 
 // ─── PALETTE (idéntica a app/page.js) ────────────────────────────────────────
-const G  = 'linear-gradient(135deg, #FE5000, #BD4BF8)'
-const GV = 'linear-gradient(135deg, #3F0B78, #BD4BF8)'
+// Rebrand mayo 2026 fase 2: G y GV pasaron de gradient orange→fucsia y
+// violeta-deep→violeta a violeta brand sólido (#7131E1). v y v1 también
+// migran al brand. o (#FE5000) queda solo como acento semántico naranja.
+const G  = '#7131E1'
+const GV = '#7131E1'
 const C  = {
   bg:'#000', bg2:'rgba(255,255,255,0.05)', bg3:'rgba(255,255,255,0.04)',
   card:'rgba(255,255,255,0.06)', cardH:'rgba(255,255,255,0.10)',
   rim:'rgba(255,255,255,0.10)', rimH:'rgba(255,255,255,0.20)',
   white:'#FFFFFF', pearl:'#F0EAFF', mist:'#9B85CC', dust:'#8370AD',
-  o:'#FE5000', v:'#BD4BF8', v1:'#3F0B78',
+  o:'#FE5000', v:'#7131E1', v1:'#6935BD',
   ok:'#22E698', warn:'#F59E0B', info:'#40C8FF',
 }
 const FN = "'Space Grotesk', system-ui, sans-serif"
@@ -33,7 +36,7 @@ const FI = "'Inter', system-ui, sans-serif"
 
 const PLANS = {
   free:    { label:'FREE',    color:'#9CA3AF' },
-  starter: { label:'STARTER', color:'#BD4BF8' },
+  starter: { label:'STARTER', color:'#7131E1' },
   pro:     { label:'PRO',     color:'#EC4899' },
 }
 
@@ -116,7 +119,7 @@ const DEMO_CLIENT_MEMBERSHIPS = [
     nextPrize:{ name:'Café gratis', cost:15, missing:3 },
     activeCoupon:{ promo_id:'pr1', value:20, label:'20% OFF próxima visita', expires_at:daysFromNow(5) },
     Icon: Coffee,
-    color:'#BD4BF8',
+    color:'#7131E1',
   },
   {
     id:'cm2',
@@ -131,7 +134,7 @@ const DEMO_CLIENT_MEMBERSHIPS = [
     nextPrize:{ name:'Corte de pelo gratis', cost:8, missing:4 },
     activeCoupon:null,
     Icon: Scissors,
-    color:'#8B5CF6',
+    color:'#7131E1',
   },
   {
     id:'cm3',
@@ -151,10 +154,10 @@ const DEMO_CLIENT_MEMBERSHIPS = [
 ]
 
 const DEMO_CLIENT_PRIZES = [
-  { id:'cp1', commerce:'Aurora · Café & Brunch', name:'Café gratis',          cost:15, isStars:false, balance:12, color:'#BD4BF8', Icon: Gift },
-  { id:'cp2', commerce:'Aurora · Café & Brunch', name:'Medialunas x4',        cost:8,  isStars:false, balance:12, color:'#BD4BF8', Icon: Gift },
-  { id:'cp3', commerce:'Aurora · Café & Brunch', name:'20% OFF en tu visita', cost:25, isStars:false, balance:12, color:'#BD4BF8', Icon: Percent },
-  { id:'cp4', commerce:'Estética Ottavia',       name:'Corte de pelo gratis', cost:8,  isStars:true,  balance:4,  color:'#8B5CF6', Icon: Gift },
+  { id:'cp1', commerce:'Aurora · Café & Brunch', name:'Café gratis',          cost:15, isStars:false, balance:12, color:'#7131E1', Icon: Gift },
+  { id:'cp2', commerce:'Aurora · Café & Brunch', name:'Medialunas x4',        cost:8,  isStars:false, balance:12, color:'#7131E1', Icon: Gift },
+  { id:'cp3', commerce:'Aurora · Café & Brunch', name:'20% OFF en tu visita', cost:25, isStars:false, balance:12, color:'#7131E1', Icon: Percent },
+  { id:'cp4', commerce:'Estética Ottavia',       name:'Corte de pelo gratis', cost:8,  isStars:true,  balance:4,  color:'#7131E1', Icon: Gift },
   { id:'cp5', commerce:'Pizzería Don Vito',      name:'Pizza muzzarella',     cost:25, isStars:false, balance:8,  color:'#EC4899', Icon: Gift },
 ]
 
@@ -276,7 +279,7 @@ function DemoBanner({ onCta }) {
           padding: '8px 16px', color: '#fff',
           fontFamily: FN, fontSize: 12, fontWeight: 700,
           cursor: 'pointer', whiteSpace: 'nowrap',
-          boxShadow: '0 4px 18px rgba(254,80,0,.35)',
+          boxShadow: '0 4px 18px rgba(113,49,225,.35)',
           display: 'inline-flex', alignItems: 'center', gap: 6,
         }}
       >
@@ -334,17 +337,17 @@ function RolePickerModal({ onPick }) {
             width: '100%', textAlign: 'left',
             display: 'flex', alignItems: 'center', gap: 12,
             padding: '14px 16px', borderRadius: 14,
-            background: 'rgba(254,80,0,0.10)',
-            border: '1.5px solid rgba(254,80,0,0.32)',
+            background: 'rgba(113,49,225,0.10)',
+            border: '1.5px solid rgba(113,49,225,0.32)',
             color: C.white, cursor: 'pointer', marginBottom: 10,
             transition: 'background 180ms ease, border 180ms ease',
           }}
-          onMouseEnter={e => { e.currentTarget.style.background = 'rgba(254,80,0,0.18)' }}
-          onMouseLeave={e => { e.currentTarget.style.background = 'rgba(254,80,0,0.10)' }}
+          onMouseEnter={e => { e.currentTarget.style.background = 'rgba(113,49,225,0.18)' }}
+          onMouseLeave={e => { e.currentTarget.style.background = 'rgba(113,49,225,0.10)' }}
         >
           <div style={{
             width: 42, height: 42, borderRadius: 12,
-            background: 'rgba(254,80,0,0.22)',
+            background: 'rgba(113,49,225,0.22)',
             display: 'flex', alignItems: 'center', justifyContent: 'center',
             flexShrink: 0,
           }}>
@@ -485,7 +488,7 @@ function CtaModal({ onClose }) {
           width: 60, height: 60, borderRadius: 18,
           background: G, margin: '0 auto 18px',
           display: 'flex', alignItems: 'center', justifyContent: 'center',
-          boxShadow: '0 12px 32px rgba(254,80,0,.4)',
+          boxShadow: '0 12px 32px rgba(113,49,225,.4)',
         }}>
           <Sparkles size={28} color="#fff" strokeWidth={2} />
         </div>
@@ -532,7 +535,7 @@ function CtaModal({ onClose }) {
             background: G, color: '#fff',
             fontFamily: FN, fontSize: 14, fontWeight: 800,
             textDecoration: 'none', cursor: 'pointer',
-            boxShadow: '0 8px 28px rgba(254,80,0,.4), inset 0 1px 0 rgba(255,255,255,.18)',
+            boxShadow: '0 8px 28px rgba(113,49,225,.4), inset 0 1px 0 rgba(255,255,255,.18)',
           }}
         >
           Empezar ahora <ArrowRight size={16} strokeWidth={2.5} />
@@ -929,7 +932,7 @@ function CommerceDemo() {
                       display: 'inline-flex', alignItems: 'center', gap: 4,
                     }}>
                       {m.points}
-                      <span style={{ fontSize: 11, color: 'rgba(189,75,248,0.65)', fontWeight: 600 }}>pts</span>
+                      <span style={{ fontSize: 11, color: 'rgba(113,49,225,0.65)', fontWeight: 600 }}>pts</span>
                     </div>
                     {canRedeem && (
                       <div style={{
@@ -1013,7 +1016,7 @@ function CommerceDemo() {
                 color: '#fff', fontFamily: FN, fontSize: 13, fontWeight: 700,
                 cursor: 'pointer',
                 display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: 8,
-                boxShadow: '0 8px 24px rgba(254,80,0,.3)',
+                boxShadow: '0 8px 24px rgba(113,49,225,.3)',
               }}
             >
               <Plus size={15} strokeWidth={2.5} /> Crear premio
@@ -1326,7 +1329,7 @@ function CommerceDemo() {
                 background: G, border: 'none', borderRadius: 12,
                 color: '#fff', fontFamily: FN, fontSize: 13, fontWeight: 700,
                 cursor: 'pointer',
-                boxShadow: '0 8px 24px rgba(254,80,0,.3)',
+                boxShadow: '0 8px 24px rgba(113,49,225,.3)',
               }}
             >
               {savedFlash ? '✓ Cambios guardados (demo)' : 'Guardar cambios'}
@@ -1437,7 +1440,7 @@ function ClientDemo() {
                     fontFamily: FN, fontSize: 10, fontWeight: 800,
                     padding: '4px 9px', borderRadius: 99,
                     letterSpacing: '.06em', textTransform: 'uppercase',
-                    boxShadow: `0 4px 14px rgba(254,80,0,.4)`,
+                    boxShadow: `0 4px 14px rgba(113,49,225,.4)`,
                   }}>
                     {m.activeCoupon.value}% OFF
                   </div>
@@ -1497,8 +1500,8 @@ function ClientDemo() {
                 {m.activeCoupon && (
                   <div style={{
                     marginTop: 12, padding: '9px 11px',
-                    background: 'rgba(254,80,0,0.12)',
-                    border: '1px solid rgba(254,80,0,0.32)',
+                    background: 'rgba(113,49,225,0.12)',
+                    border: '1px solid rgba(113,49,225,0.32)',
                     borderRadius: 10,
                     display: 'flex', alignItems: 'center', gap: 8,
                   }}>
@@ -1506,7 +1509,7 @@ function ClientDemo() {
                     <span style={{ fontFamily: FI, fontSize: 11, color: C.pearl, flex: 1 }}>
                       {m.activeCoupon.label}
                     </span>
-                    <span style={{ fontFamily: FN, fontSize: 10, color: 'rgba(254,80,0,0.85)', fontWeight: 700 }}>
+                    <span style={{ fontFamily: FN, fontSize: 10, color: 'rgba(113,49,225,0.85)', fontWeight: 700 }}>
                       vence {fmtDate(m.activeCoupon.expires_at)}
                     </span>
                   </div>

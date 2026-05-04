@@ -34,7 +34,7 @@ export const viewport = {
   initialScale: 1,
   maximumScale: 1,
   userScalable: false,
-  themeColor: '#BD4BF8',
+  themeColor: '#7131E1',
 }
 
 export default function RootLayout({ children }) {
@@ -58,12 +58,17 @@ export default function RootLayout({ children }) {
           Grammarly agrega `data-gr-c-s-loaded`, etc.). NO afecta a
           mismatches reales del código nuestro — esos siguen apareciendo. */}
       <body suppressHydrationWarning style={{ margin: 0, padding: 0, background: '#000' }}>
-        {/* Blob púrpura – arriba izquierda */}
-        <div style={{ position:'fixed', top:'-20%', left:'-10%', width:'60vw', height:'60vw', borderRadius:'50%', background:'radial-gradient(circle, rgba(139,92,246,0.40) 0%, rgba(139,92,246,0) 70%)', filter:'blur(80px)', zIndex:-1, pointerEvents:'none' }} />
-        {/* Blob rosa – abajo derecha */}
-        <div style={{ position:'fixed', bottom:'-20%', right:'-10%', width:'50vw', height:'50vw', borderRadius:'50%', background:'radial-gradient(circle, rgba(236,72,153,0.35) 0%, rgba(236,72,153,0) 70%)', filter:'blur(80px)', zIndex:-1, pointerEvents:'none' }} />
-        {/* Blob púrpura secundario – centro derecha */}
-        <div style={{ position:'fixed', top:'40%', right:'-5%', width:'40vw', height:'40vw', borderRadius:'50%', background:'radial-gradient(circle, rgba(168,85,247,0.22) 0%, rgba(168,85,247,0) 70%)', filter:'blur(60px)', zIndex:-1, pointerEvents:'none' }} />
+        {/* Blobs ambientales — rebrand mayo 2026: los 3 ahora usan
+            el violeta marca #7131E1 (rgba 113,49,225). Antes eran
+            mezclados violeta-rosa (139,92,246 / 236,72,153 / 168,85,247).
+            Mismas opacidades para preservar profundidad sin desviarse
+            de la nueva identidad sólida. */}
+        {/* Blob arriba izquierda */}
+        <div style={{ position:'fixed', top:'-20%', left:'-10%', width:'60vw', height:'60vw', borderRadius:'50%', background:'radial-gradient(circle, rgba(113,49,225,0.40) 0%, rgba(113,49,225,0) 70%)', filter:'blur(80px)', zIndex:-1, pointerEvents:'none' }} />
+        {/* Blob abajo derecha */}
+        <div style={{ position:'fixed', bottom:'-20%', right:'-10%', width:'50vw', height:'50vw', borderRadius:'50%', background:'radial-gradient(circle, rgba(113,49,225,0.35) 0%, rgba(113,49,225,0) 70%)', filter:'blur(80px)', zIndex:-1, pointerEvents:'none' }} />
+        {/* Blob secundario centro derecha */}
+        <div style={{ position:'fixed', top:'40%', right:'-5%', width:'40vw', height:'40vw', borderRadius:'50%', background:'radial-gradient(circle, rgba(113,49,225,0.22) 0%, rgba(113,49,225,0) 70%)', filter:'blur(60px)', zIndex:-1, pointerEvents:'none' }} />
         {children}
       </body>
     </html>
