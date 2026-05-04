@@ -8563,7 +8563,7 @@ function ClientView({ setView, user, profile, onLogout, initialTab }) {
   // BottomNavV2 vive abajo, así que solo queda un padding chico para
   // que el contenido respire sobre el spacer 80px del Navbar global.
   return (
-    <div style={{ maxWidth:520, margin:'0 auto', padding:'4px 15px 90px' }}>
+    <div className="with-bottom-nav-v2" style={{ maxWidth:520, margin:'0 auto', padding:'4px 15px 90px' }}>
 
       {/* Banner top "¿Tenés un negocio?" — renderizado adentro de ClientView
           en lugar de en App.js. Se sincroniza vía localStorage con el resto
@@ -14740,7 +14740,7 @@ function CommerceSettingsView({ user, profile, setView, onLogout, onOwnerProfile
     // etc. desde el menú sin tener que pasar por las tarjetas. En mobile
     // sigue el flujo viejo (cards full-width + radial menu).
     return (
-      <div style={{ display:'flex', minHeight:'100vh', maxWidth:'100vw', overflowX:'hidden' }}>
+      <div className="with-bottom-nav-v2" style={{ display:'flex', minHeight:'100vh', maxWidth:'100vw', overflowX:'hidden' }}>
         {/* Sidebar desktop — DESHABILITADO. Antes acá iba la lista vertical
             de pestañas en una columna fija a la izquierda. Ahora la
             navegación entre tabs vive arriba, en el MerchantTopTabs

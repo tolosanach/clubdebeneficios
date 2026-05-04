@@ -4,6 +4,19 @@
 @import url('https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&display=swap');
 
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+/* Layout responsive del BottomNavV2 — en desktop el nav vive como
+   side-rail vertical de 220px de ancho a la izquierda, asi que el
+   contenido principal necesita correrse para no quedar tapado.
+   Las views que llevan bottom-nav usan la clase .with-bottom-nav-v2.
+   Mobile-first: en mobile no hace nada (el nav ya esta abajo y los
+   views ya tienen su paddingBottom propio). */
+@media (min-width: 768px) {
+  .with-bottom-nav-v2 {
+    padding-left: 220px !important;
+    padding-bottom: 24px !important;
+  }
+}
 html {
   scroll-behavior: smooth;
   overscroll-behavior-y: none;
@@ -729,4 +742,5 @@ input[type="week"]::-webkit-calendar-picker-indicator:hover {
 @keyframes bell-cartel-in {
   0%   { opacity: 0; transform: translateX(8px) scale(0.96); }
   100% { opacity: 1; transform: translateX(0)    scale(1);    }
+
 }
