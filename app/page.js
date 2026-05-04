@@ -14801,23 +14801,24 @@ function CommerceSettingsView({ user, profile, setView, onLogout, onOwnerProfile
             Configurá tu negocio
           </h1>
 
-          {/* ── Banner "Negocio activo" ──
-              Identifica de un vistazo cuál es el comercio que el dueño
-              está editando ahora. Útil sobre todo si maneja varios. Va
-              entre el H1 y el container de Estado actual + Casi listo.
-              Visual: pill verde con LED + label "NEGOCIO ACTIVO" + nombre
-              del comercio. Si hay logo, se muestra como avatar a la izq. */}
+          {/* ── Banner "Negocio activo" + acceso al ojo ──
+              Identifica el comercio activo y ofrece atajo al preview
+              publico (Eye) que se habia perdido al ocultar los iconos
+              del navbar global. Version compacta para que el banner
+              ocupe menos vertical: avatar 28, padding 6/10, label 8.5,
+              nombre 13. El boton del ojo va a la derecha como pill
+              violeta — al tap navega a /club/[slug]?edit=1. */}
           {commerce?.name && (
             <div style={{
-              display: 'flex', alignItems: 'center', gap: 12,
-              padding: '10px 14px',
+              display: 'flex', alignItems: 'center', gap: 10,
+              padding: '6px 8px 6px 10px',
               marginBottom: 12,
               background: 'linear-gradient(135deg, rgba(34,230,152,0.10), rgba(21,128,61,0.06))',
               border: '1px solid rgba(34,230,152,0.32)',
-              borderRadius: 14,
+              borderRadius: 12,
             }}>
               <div style={{
-                width: 36, height: 36, borderRadius: 10,
+                width: 28, height: 28, borderRadius: 8,
                 background: commerce.img_url ? 'transparent' : 'rgba(34,230,152,0.18)',
                 border: commerce.img_url ? '1px solid rgba(255,255,255,0.16)' : '1px solid rgba(34,230,152,0.45)',
                 display: 'flex', alignItems: 'center', justifyContent: 'center',
@@ -14827,32 +14828,65 @@ function CommerceSettingsView({ user, profile, setView, onLogout, onOwnerProfile
                 {commerce.img_url ? (
                   <img src={commerce.img_url} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }} />
                 ) : (
-                  <Store size={17} color="#22E698" strokeWidth={2.2} />
+                  <Store size={14} color="#22E698" strokeWidth={2.2} />
                 )}
               </div>
               <div style={{ flex: 1, minWidth: 0 }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 2 }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 5, marginBottom: 1 }}>
                   <span style={{
-                    width: 6, height: 6, borderRadius: '50%',
+                    width: 5, height: 5, borderRadius: '50%',
                     background: '#22E698',
-                    boxShadow: '0 0 6px rgba(34,230,152,0.85)',
+                    boxShadow: '0 0 5px rgba(34,230,152,0.85)',
                     flexShrink: 0,
                   }} />
                   <span style={{
-                    fontFamily: FN, fontSize: 9.5, fontWeight: 800,
+                    fontFamily: FN, fontSize: 8.5, fontWeight: 800,
                     color: '#22E698', letterSpacing: '.10em', textTransform: 'uppercase',
                   }}>
                     Negocio activo
                   </span>
                 </div>
                 <div style={{
-                  fontFamily: FN, fontSize: 14, fontWeight: 700, color: '#fff',
+                  fontFamily: FN, fontSize: 13, fontWeight: 700, color: '#fff',
                   whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis',
                   letterSpacing: '-.005em', lineHeight: 1.2,
                 }}>
                   {commerce.name}
                 </div>
               </div>
+              {/* Boton del ojo — preview publico del negocio. Reemplaza al
+                  Eye del navbar global que se oculto al pasar a BottomNavV2. */}
+              {commerce.slug && (
+                <button
+                  type="button"
+                  onClick={() => {
+                    if (typeof window !== 'undefined') {
+                      window.location.href = `/club/${commerce.slug}?edit=1`
+                    }
+                  }}
+                  aria-label="Ver el negocio como cliente"
+                  title="Ver el negocio como cliente"
+                  style={{
+                    flexShrink: 0,
+                    display: 'inline-flex', alignItems: 'center', gap: 6,
+                    padding: '6px 10px 6px 9px',
+                    borderRadius: 99,
+                    background: 'rgba(189,75,248,0.16)',
+                    border: '1px solid rgba(189,75,248,0.45)',
+                    color: '#fff',
+                    cursor: 'pointer',
+                    fontFamily: FN, fontSize: 11, fontWeight: 700,
+                    letterSpacing: '.02em',
+                    transition: 'background 160ms ease, border-color 160ms ease, transform 120ms ease',
+                  }}
+                  onMouseDown={e => { e.currentTarget.style.transform = 'scale(0.96)' }}
+                  onMouseUp={e   => { e.currentTarget.style.transform = 'scale(1)' }}
+                  onMouseLeave={e => { e.currentTarget.style.transform = 'scale(1)' }}
+                >
+                  <Eye size={13} strokeWidth={2.2} color="#BD4BF8" />
+                  <span>Ver</span>
+                </button>
+              )}
             </div>
           )}
 
