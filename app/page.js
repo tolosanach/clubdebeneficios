@@ -14958,83 +14958,63 @@ function CommerceSettingsView({ user, profile, setView, onLogout, onOwnerProfile
               const sorted = [...days].sort((a, b) => ORDER.indexOf(a) - ORDER.indexOf(b))
               return sorted.map(d => SHORT[d]).join(', ')
             }
-            // Chip con FRANJA DE LUZ lateral izquierda como indicador
-            // de estado (en lugar de un LED puntiagudo, que se confundía
-            // con el lenguaje visual de la barra de progreso del header).
-            // - Activo: franja vertical verde con glow lateral (chip
-            //   encendido), todo el contenido en verde.
-            // - Inactivo: franja amarilla apagada (sin glow), todo el
-            //   contenido en amarillo apagado.
-            // El parámetro `color` se conserva en la firma por compat
-            // pero ya no se usa — la paleta sale del flag `dimmed`.
+            // Chip estilo MP — pastel violeta (mismo lenguaje que las
+            // cards de Sistema para sumar / Descuento prox compra). Activo
+            // = lavanda saturada, inactivo = lavanda palida. Texto, icono
+            // y boton de editar en violeta brand. La distincion activo/
+            // inactivo se mantiene via saturacion (no via verde/amarillo)
+            // — los labels ya cuentan el estado con el value ("10% OFF" vs
+            // "No activo").
             const Chip = ({ Icon, label, value, hint, color, onEdit, dimmed }) => {
-              const ON_COLOR  = '#22E698'  // verde activo
-              const ON_DARK   = '#15803D'  // verde profundo (base del gradient)
-              const OFF_COLOR = '#F5A623'  // amarillo apagado
-              const c = dimmed ? OFF_COLOR : ON_COLOR
+              const ACTIVE_BG   = '#D8C4FF'   // pastel violeta saturado
+              const INACTIVE_BG = '#EFE4FF'   // pastel violeta palido
+              const FG_ACTIVE   = '#4C1D95'   // violeta brand muy oscuro
+              const FG_INACTIVE = '#6D28D9'   // violeta brand medio
+              const bg = dimmed ? INACTIVE_BG : ACTIVE_BG
+              const fg = dimmed ? FG_INACTIVE : FG_ACTIVE
+              // Disposicion VERTICAL (icono arriba, texto centrado abajo)
+              // — replica el lenguaje de las cards de Beneficios. El pen
+              // de editar va anclado en la esquina top-right como overlay
+              // pequeno, asi no compite con el contenido principal.
               return (
                 <div style={{
                   flex: '0 0 auto',
                   position: 'relative',
-                  display: 'flex', alignItems: 'center', gap: 9,
-                  // Padding-left más amplio que antes para dejar lugar
-                  // a la franja de luz vertical (4px de ancho).
-                  padding: '8px 10px 8px 16px',
-                  borderRadius: 12,
-                  background: dimmed ? `${OFF_COLOR}10` : `${ON_COLOR}1A`,
-                  border: `1px solid ${dimmed ? `${OFF_COLOR}40` : `${ON_COLOR}55`}`,
-                  whiteSpace: 'nowrap',
-                  // Hide overflow para que la franja de luz se recorte
-                  // contra el borderRadius de la izquierda (sin esto se
-                  // veía como un cuadrado pegado al borde).
-                  overflow: 'hidden',
+                  display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'flex-start',
+                  gap: 2,
+                  padding: '14px 12px 12px',
+                  borderRadius: 16,
+                  background: bg,
+                  border: 'none',
+                  minWidth: 116,
+                  textAlign: 'center',
                   boxShadow: dimmed
-                    ? 'none'
-                    : `0 4px 14px -4px ${ON_COLOR}66`,
-                  transition: 'background 200ms ease, border-color 200ms ease, box-shadow 200ms ease',
+                    ? '0 2px 10px -4px rgba(124,58,237,0.18)'
+                    : '0 6px 18px -6px rgba(124,58,237,0.45)',
+                  transition: 'background 200ms ease, box-shadow 200ms ease',
                 }}>
-                  {/* Franja de luz lateral izquierda — barra vertical de
-                      4px que cubre toda la altura del chip. En activo
-                      es un gradient verde con glow hacia la derecha
-                      (sensación "tira de luz LED encendida"). En inactivo
-                      es amarillo plano sin glow (apagado).
-                      box-shadow horizontal se irradia hacia la derecha
-                      sumando luz al borde interno del chip. */}
-                  <span style={{
-                    position: 'absolute',
-                    top: 0, bottom: 0, left: 0,
-                    width: 4,
-                    background: dimmed
-                      ? `linear-gradient(180deg, ${OFF_COLOR}88, ${OFF_COLOR}55)`
-                      : `linear-gradient(180deg, #4ade80, ${ON_COLOR}, ${ON_DARK})`,
-                    boxShadow: dimmed
-                      ? 'none'
-                      : `0 0 8px ${ON_COLOR}AA, 4px 0 12px ${ON_COLOR}55`,
-                    pointerEvents: 'none',
-                  }} />
-                  <Icon size={13} color={c} strokeWidth={2.2} />
-                  <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-start' }}>
-                    <span style={{ fontFamily: FN, fontSize: 9, fontWeight: 700, color: `${c}DD`, letterSpacing: '.06em', textTransform: 'uppercase', lineHeight: 1 }}>{label}</span>
-                    <span style={{ fontFamily: FN, fontSize: 13, fontWeight: 800, color: '#fff', lineHeight: 1.2, marginTop: 2 }}>{value}</span>
-                    {hint && (
-                      <span style={{ fontFamily: FN, fontSize: 9.5, fontWeight: 500, color: `${c}AA`, lineHeight: 1.15, marginTop: 2, letterSpacing: '.01em' }}>{hint}</span>
-                    )}
-                  </div>
+                  <Icon size={22} color={fg} strokeWidth={2.4} />
+                  <span style={{ fontFamily: FN, fontSize: 9, fontWeight: 800, color: fg, letterSpacing: '.06em', textTransform: 'uppercase', lineHeight: 1, opacity: 0.78, marginTop: 6 }}>{label}</span>
+                  <span style={{ fontFamily: FN, fontSize: 14, fontWeight: 800, color: fg, lineHeight: 1.2, marginTop: 3, letterSpacing: '-.01em' }}>{value}</span>
+                  {hint && (
+                    <span style={{ fontFamily: FN, fontSize: 9.5, fontWeight: 600, color: fg, lineHeight: 1.2, marginTop: 2, letterSpacing: '.01em', opacity: 0.65 }}>{hint}</span>
+                  )}
                   <button onClick={onEdit}
                     style={{
-                      width: 26, height: 26, borderRadius: 7,
-                      background: 'rgba(255,255,255,0.06)',
-                      border: `1px solid ${c}44`,
-                      color: c,
+                      position: 'absolute', top: 6, right: 6,
+                      width: 22, height: 22, borderRadius: 6,
+                      background: 'rgba(124,58,237,0.14)',
+                      border: '1px solid rgba(124,58,237,0.32)',
+                      color: fg,
                       cursor: 'pointer',
                       display: 'flex', alignItems: 'center', justifyContent: 'center',
-                      padding: 0, marginLeft: 2,
-                      transition: 'background 180ms ease, border-color 180ms ease',
+                      padding: 0,
+                      transition: 'background 160ms ease, border-color 160ms ease',
                     }}
                     aria-label={`Editar ${label}`}
                     title={`Editar ${label}`}
                   >
-                    <Pen size={11} strokeWidth={2.2} />
+                    <Pen size={10} strokeWidth={2.2} />
                   </button>
                 </div>
               )

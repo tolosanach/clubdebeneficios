@@ -2709,7 +2709,12 @@ export default function ClubProfilePage() {
       {/* Banner "Modo edición" — render INLINE (no fixed) inmediatamente
           después del spacer del navbar. Toma su propio espacio vertical y
           empuja la portada para abajo, sin overlap. Solo aparece cuando
-          el dueño está previsualizando con el ojo. */}
+          el dueño está previsualizando con el ojo.
+          El boton de la derecha lleva al PANEL del comercio (no a la
+          version publica del mismo club), porque el dueño llego al ojo
+          desde el panel y la salida natural es volver alli. Antes iba a
+          /club/${slug} (mismo club sin edit) — eso confundia: parecia que
+          "Salir" no hacia nada. */}
       {editMode && (
         <div style={{
           background:'linear-gradient(135deg, rgba(124,58,237,0.96), rgba(189,75,248,0.96))',
@@ -2725,9 +2730,15 @@ export default function ClubProfilePage() {
               Modo edición — los <strong style={{ fontWeight:800 }}>lápices violetas</strong> te llevan a editar
             </div>
           </div>
-          <a href={`/club/${commerce.slug}`}
-            style={{ fontFamily:FN, fontSize:11, fontWeight:800, color:'#fff', background:'rgba(0,0,0,0.30)', padding:'6px 12px', borderRadius:99, textDecoration:'none', whiteSpace:'nowrap', flexShrink:0 }}>
-            Salir
+          <a href="/?view=commerce-settings"
+            onClick={(e) => {
+              // Forzamos full reload — App Router puede tragarse el click
+              // del <a> en transiciones entre Next.js pages distintas.
+              e.preventDefault()
+              if (typeof window !== 'undefined') window.location.href = '/?view=commerce-settings'
+            }}
+            style={{ display:'inline-flex', alignItems:'center', gap:4, fontFamily:FN, fontSize:11, fontWeight:800, color:'#fff', background:'rgba(0,0,0,0.30)', padding:'6px 12px', borderRadius:99, textDecoration:'none', whiteSpace:'nowrap', flexShrink:0 }}>
+            ← Volver al panel
           </a>
         </div>
       )}
