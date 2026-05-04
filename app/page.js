@@ -23875,16 +23875,22 @@ export default function App() {
               el role-aware kit del navbar viejo. El boton QR central abre
               ClientQRSheet (modo cliente) o MerchantQRSheet (modo merchant).
               El slot Mas (solo merchant) abre MoreSheet con todos los
-              accesos secundarios. */}
-          <BottomNavV2
-            activeContext={activeContext}
-            currentView={view}
-            currentTab={view === 'commerce-settings' ? merchantTab : (view === 'client' ? clientTab : '')}
-            onNavigate={handleNavGo}
-            unreadCount={unreadNotifsCount}
-            onQRTap={handleQRTap}
-            onMoreTap={() => setMoreSheetOpen(true)}
-          />
+              accesos secundarios.
+              En la vista 'admin' lo escondemos: el panel admin tiene su
+              propio sub-nav (Overview / Comercios / Usuarios / Ciudades /
+              Actividad / Config) y el contexto cliente/merchant no aplica
+              ahí — mostrar el bottom-nav genera ruido. */}
+          {view !== 'admin' && (
+            <BottomNavV2
+              activeContext={activeContext}
+              currentView={view}
+              currentTab={view === 'commerce-settings' ? merchantTab : (view === 'client' ? clientTab : '')}
+              onNavigate={handleNavGo}
+              unreadCount={unreadNotifsCount}
+              onQRTap={handleQRTap}
+              onMoreTap={() => setMoreSheetOpen(true)}
+            />
+          )}
           <ClientQRSheet
             open={clientQRSheetOpen}
             onClose={() => setClientQRSheetOpen(false)}
