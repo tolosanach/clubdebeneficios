@@ -23850,6 +23850,11 @@ export default function App() {
       {view === 'admin'              && <AdminView cities={cities} profile={profile} />}
       {view === 'register-commerce'  && <RegisterCommerceView setView={navigate} cities={cities} user={user} onLoginRequired={() => handleLogin({ nextView: 'register-commerce' })} onProfileRefresh={() => loadProfile(user.id)} />}
       {view === 'commerce-settings'  && <CommerceSettingsView user={user} profile={profile} setView={navigate} onLogout={handleLogout} onOwnerProfile={handleOwnerProfile} initialTab={deepLink.tab} initialMember={deepLink.member} />}
+      {view === 'notifications' && (
+        <div className="with-bottom-nav-v2" style={{ width: '100%' }}>
+          <NotificationsBell mode="view" role={activeContext === 'merchant' ? 'merchant' : 'client'} hideButton />
+        </div>
+      )}
       {/* Chat de soporte con IA — visible cuando hay sesión. Pasa role según
           la vista activa: comerciante en commerce-settings, cliente en el resto.
           El buzón de sugerencias va apilado encima del botón del chat. */}
