@@ -8563,7 +8563,7 @@ function ClientView({ setView, user, profile, onLogout, initialTab }) {
   // BottomNavV2 vive abajo, así que solo queda un padding chico para
   // que el contenido respire sobre el spacer 80px del Navbar global.
   return (
-    <div className="with-bottom-nav-v2" style={{ maxWidth:520, margin:'0 auto', padding:'4px 15px 90px' }}>
+    <div className="with-bottom-nav-v2 client-view-root" style={{ margin:'0 auto', padding:'4px 15px 90px' }}>
 
       {/* Banner top "¿Tenés un negocio?" — renderizado adentro de ClientView
           en lugar de en App.js. Se sincroniza vía localStorage con el resto
@@ -8657,7 +8657,7 @@ function ClientView({ setView, user, profile, onLogout, initialTab }) {
                   scroll hacia abajo, el saludo y header se ocultan naturalmente
                   y este bloque queda anclado en el tope del viewport.
                   Para volver a verlos, scroll hacia arriba. */}
-              <div style={{ position:'sticky', top:0, zIndex:5, paddingTop:8, marginTop:-8, background:'linear-gradient(to bottom, #000 0%, #000 80%, transparent 100%)' }}>
+              <div className="wallet-sticky-bg" style={{ position:'sticky', top:0, zIndex:5, paddingTop:8, marginTop:-8, background:'linear-gradient(to bottom, #000 0%, #000 80%, transparent 100%)' }}>
               {(cityPills || categoryPills) && (
                 <div style={{ marginBottom:16, display:'flex', flexDirection:'column', gap:8 }}>
                   {cityPills && (
@@ -8697,12 +8697,14 @@ function ClientView({ setView, user, profile, onLogout, initialTab }) {
                   </button>
                 </div>
               ) : (
-                <WalletView
-                  key={filteredMemberships.map(m => m.id).join(',')}
-                  clubs={filteredMemberships}
-                  isMock={isMockClient}
-                  userId={user?.id}
-                />
+                <div className="wallet-view-desktop-cap">
+                  <WalletView
+                    key={filteredMemberships.map(m => m.id).join(',')}
+                    clubs={filteredMemberships}
+                    isMock={isMockClient}
+                    userId={user?.id}
+                  />
+                </div>
               )}
               </div>
               {/* Spacer para que haya espacio scrolleable y el sticky pueda activarse */}
@@ -16334,6 +16336,23 @@ function CommerceSettingsView({ user, profile, setView, onLogout, onOwnerProfile
             ))}
           </div>
         </PCard>
+
+        {/* QR del cliente — para que el comerciante pueda escanearlo
+            si el cliente no tiene el teléfono a mano */}
+        {(m.profiles?.id || m.user_id) && (
+          <PCard style={{ padding:16, marginBottom:12 }}>
+            <div style={{ fontSize:10, color:C.dust, fontWeight:700, letterSpacing:'.08em', textTransform:'uppercase', marginBottom:12 }}>QR del cliente</div>
+            <div style={{ display:'flex', alignItems:'center', gap:16 }}>
+              <div style={{ background:'#fff', padding:10, borderRadius:12, flexShrink:0 }}>
+                <QRCodeSVG value={`CLUB-${m.profiles?.id || m.user_id}`} size={90} bgColor="#ffffff" fgColor="#0a0a0a" level="M" />
+              </div>
+              <div>
+                <div style={{ fontFamily:FN, fontSize:13, fontWeight:700, color:C.white, marginBottom:4 }}>Código personal</div>
+                <div style={{ fontSize:11, color:C.mist, lineHeight:1.5 }}>Escanealo con tu cámara para registrar una visita si el cliente no tiene su teléfono a mano.</div>
+              </div>
+            </div>
+          </PCard>
+        )}
 
         {/* Sección de canje */}
         {canRedeem && eligiblePrizes.length > 0 && (
