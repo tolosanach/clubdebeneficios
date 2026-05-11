@@ -693,7 +693,6 @@ function OnboardingFlow({ user, onComplete }) {
   const [step, setStep] = useState(1)
   const [form, setForm] = useState({
     name:     user?.user_metadata?.full_name || '',
-    phone:    '',
     // Argentina pre-seleccionada — único país soportado por ahora.
     // Cuando se sumen más, volver a string vacío y obligar a elegir.
     country:  'argentina',
@@ -708,12 +707,11 @@ function OnboardingFlow({ user, onComplete }) {
   const next = () => go(step + 1)
   const prev = () => go(Math.max(1, step - 1))
 
-  const showHeader  = step >= 2 && step <= 5
-  // step 5 (ubicación) ya no es skippable — necesitamos saber dónde está el cliente
+  const showHeader  = step >= 2 && step <= 3
+  // step 3 (ubicación) ya no es skippable — necesitamos saber dónde está el cliente
   // para mostrarle comercios cerca. Sin esto el directorio queda vacío.
   const canSkip     = step === 2
-  const progressPct = step >= 2 && step <= 5 ? ((step - 1) / 4) * 100 : 0
-  const phoneValid      = form.phone.replace(/\D/g, '').length >= 8
+  const progressPct = step >= 2 && step <= 3 ? ((step - 1) / 2) * 100 : 0
   const locProvinces    = form.country ? Object.entries(LOCATIONS[form.country]?.provinces || {}) : []
   const locCities       = form.country && form.province ? LOCATIONS[form.country]?.provinces[form.province]?.cities || [] : []
   const canFinishLoc    = !!(form.country && form.province && form.city)
@@ -729,10 +727,10 @@ function OnboardingFlow({ user, onComplete }) {
       const res = await fetch('/api/user/onboarding', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ name: form.name.trim(), phone: form.phone.trim(), country: form.country, province: form.province, city: form.city }),
+        body: JSON.stringify({ name: form.name.trim(), country: form.country, province: form.province, city: form.city }),
       })
       if (res.ok) {
-        go(6)
+        go(4)
       } else {
         const json = await res.json().catch(() => ({}))
         setSaveError(json.error || 'Error al guardar. Intentá de nuevo.')
@@ -759,7 +757,7 @@ function OnboardingFlow({ user, onComplete }) {
               Atrás
             </button>
             {canSkip && (
-              <button onClick={step === 5 ? save : next} style={{ background:'none', border:'none', color:'rgba(255,255,255,0.40)', fontFamily:FN, fontSize:13, fontWeight:600, cursor:'pointer', padding:'4px 0' }}>
+              <button onClick={step === 3 ? save : next} style={{ background:'none', border:'none', color:'rgba(255,255,255,0.40)', fontFamily:FN, fontSize:13, fontWeight:600, cursor:'pointer', padding:'4px 0' }}>
                 Saltar
               </button>
             )}
@@ -811,50 +809,8 @@ function OnboardingFlow({ user, onComplete }) {
             </div>
           )}
 
-          {/* ── Paso 3: Teléfono (obligatorio) ── */}
+          {/* ── Paso 3: Ubicación ── */}
           {step === 3 && (
-            <div>
-              <div style={{ fontFamily:FN, fontSize:26, fontWeight:900, color:C.white, marginBottom:6, letterSpacing:'-.02em' }}>Tu teléfono</div>
-              <div style={{ fontSize:14, color:C.mist, marginBottom:24, lineHeight:1.5 }}>Para que los comercios puedan contactarte</div>
-              <PhoneInput
-                value={form.phone}
-                onChange={v => setForm(f => ({ ...f, phone: v }))}
-                autoFocus
-                size="lg"
-              />
-              <div style={{ fontSize:11, color:'rgba(255,255,255,0.32)', margin:'8px 0 20px' }}>* Campo obligatorio — mínimo 8 dígitos</div>
-              <button onClick={next} disabled={!phoneValid}
-                style={{ width:'100%', padding:'16px', borderRadius:16, background:G, border:'none', color:'#fff', fontFamily:FN, fontSize:15, fontWeight:700, cursor: phoneValid ? 'pointer' : 'not-allowed', opacity: phoneValid ? 1 : 0.40, boxShadow: phoneValid ? '0 8px 32px rgba(254,80,0,0.35)' : 'none', transition:'opacity 200ms ease' }}>
-                Continuar
-              </button>
-            </div>
-          )}
-
-          {/* ── Paso 4: Confirmar teléfono ── */}
-          {step === 4 && (
-            <div>
-              <div style={{ fontFamily:FN, fontSize:26, fontWeight:900, color:C.white, marginBottom:6, letterSpacing:'-.02em' }}>¿Es correcto?</div>
-              <div style={{ fontSize:14, color:C.mist, marginBottom:24, lineHeight:1.5 }}>Confirmá que tu número esté bien escrito</div>
-              <div style={{ background:'rgba(255,255,255,0.06)', border:'1px solid rgba(255,255,255,0.10)', borderRadius:18, padding:'24px', textAlign:'center', marginBottom:20 }}>
-                <div style={{ fontSize:11, color:C.dust, textTransform:'uppercase', letterSpacing:'.07em', marginBottom:8, fontFamily:FN, fontWeight:700 }}>Tu número de teléfono</div>
-                <div style={{ fontFamily:FN, fontSize:26, fontWeight:900, color:C.white, letterSpacing:'-.01em', wordBreak:'break-all' }}>{form.phone}</div>
-              </div>
-              <div style={{ display:'flex', flexDirection:'column', gap:10 }}>
-                <button onClick={next}
-                  style={{ width:'100%', padding:'16px', borderRadius:16, background:G, border:'none', color:'#fff', fontFamily:FN, fontSize:15, fontWeight:700, cursor:'pointer', boxShadow:'0 8px 32px rgba(254,80,0,0.35)', display:'flex', alignItems:'center', justifyContent:'center', gap:8 }}>
-                  <Check size={18} strokeWidth={2.5} />
-                  Sí, es correcto
-                </button>
-                <button onClick={prev}
-                  style={{ width:'100%', padding:'16px', borderRadius:16, background:'rgba(255,255,255,0.07)', border:'1px solid rgba(255,255,255,0.12)', color:C.pearl, fontFamily:FN, fontSize:15, fontWeight:600, cursor:'pointer' }}>
-                  No, quiero corregirlo
-                </button>
-              </div>
-            </div>
-          )}
-
-          {/* ── Paso 5: Ubicación ── */}
-          {step === 5 && (
             <div>
               <div style={{ fontFamily:FN, fontSize:26, fontWeight:900, color:C.white, marginBottom:6, letterSpacing:'-.02em' }}>¿De dónde sos?</div>
               <div style={{ fontSize:14, color:C.mist, marginBottom:24, lineHeight:1.5 }}>Te mostraremos comercios cerca tuyo</div>
@@ -923,8 +879,8 @@ function OnboardingFlow({ user, onComplete }) {
             </div>
           )}
 
-          {/* ── Paso 6: ¿Tenés un negocio? ── */}
-          {step === 6 && (
+          {/* ── Paso 4: ¿Tenés un negocio? ── */}
+          {step === 4 && (
             <div style={{ textAlign:'center' }}>
               <div style={{ width:88, height:88, borderRadius:'50%', background:'rgba(189,75,248,0.14)', border:`2px solid rgba(189,75,248,0.40)`, display:'flex', alignItems:'center', justifyContent:'center', margin:'0 auto 22px', boxShadow:'0 8px 28px rgba(189,75,248,0.28)' }}>
                 <Check size={44} color={C.v} strokeWidth={2} />
@@ -5968,8 +5924,9 @@ function DirCard({ commerce:c, delay, onOpen }) {
 
 // ─── COMMERCE PROFILE ─────────────────────────────────────────────────────────
 function CommerceView({ commerce:c, setView, user, onLoginRequired, onCommerceUpdate }) {
-  const [joined,  setJoined]  = useState(false)
-  const [joining, setJoining] = useState(false)
+  const [joined,       setJoined]       = useState(false)
+  const [joining,      setJoining]      = useState(false)
+  const [joinBenefits, setJoinBenefits] = useState(null)
   const [progress, setProgress] = useState(null)
   const [bal, setBal] = useState(0)  // saldo actual del cliente (stars o points)
   const [prizes,  setPrizes]  = useState([])
@@ -6160,6 +6117,13 @@ function CommerceView({ commerce:c, setView, user, onLoginRequired, onCommerceUp
       const data = await res.json()
       if (data.ok) {
         setJoined(true)
+        if (!data.already_member) {
+          setJoinBenefits({
+            prog_type:         data.prog_type || c.prog_type,
+            granted_discounts: data.granted_discounts || [],
+            has_double_today:  data.has_double_today  || false,
+          })
+        }
       } else if (data.error === 'plan_limit_reached') {
         showToast('error', 'Este comercio alcanzó el límite de su plan. No podés unirte por ahora.')
       } else {
@@ -6570,8 +6534,43 @@ function CommerceView({ commerce:c, setView, user, onLoginRequired, onCommerceUp
                   <CheckCircle size={26} color={C.ok} strokeWidth={2} />
                 </div>
               </div>
-              <div style={{ fontFamily:FN, fontSize:20, fontWeight:900, color:C.ok, marginBottom:6 }}>Bienvenido al club.</div>
-              <div style={{ fontSize:13, color:C.mist, marginBottom:18, lineHeight:1.7 }}>Sos socio de <strong style={{ color:C.white }}>{c.name}</strong>.</div>
+              <div style={{ fontFamily:FN, fontSize:20, fontWeight:900, color:C.ok, marginBottom:4 }}>Bienvenido al club.</div>
+              <div style={{ fontSize:13, color:C.mist, marginBottom: joinBenefits ? 14 : 18, lineHeight:1.7 }}>
+                Sos socio de <strong style={{ color:C.white }}>{c.name}</strong>.
+              </div>
+              {joinBenefits && (
+                <div style={{ display:'flex', flexDirection:'column', gap:8, marginBottom:18, textAlign:'left' }}>
+                  {/* Sistema de fidelización */}
+                  <div style={{ display:'flex', alignItems:'center', gap:10, background:'rgba(255,255,255,0.05)', border:'1px solid rgba(255,255,255,0.09)', borderRadius:11, padding:'10px 13px' }}>
+                    {joinBenefits.prog_type === 'stars'
+                      ? <Star size={15} color={C.v} fill={C.v} strokeWidth={0} style={{ flexShrink:0 }} />
+                      : <Gem  size={15} color='#EC4899' strokeWidth={1.5} style={{ flexShrink:0 }} />
+                    }
+                    <span style={{ fontSize:13, color:C.pearl }}>
+                      {joinBenefits.prog_type === 'stars'
+                        ? 'Sumás 1 estrella por cada compra'
+                        : 'Sumás puntos con cada compra'
+                      }
+                    </span>
+                  </div>
+                  {/* Doble puntos hoy */}
+                  {joinBenefits.has_double_today && (
+                    <div style={{ display:'flex', alignItems:'center', gap:10, background:'rgba(245,166,35,0.10)', border:'1px solid rgba(245,166,35,0.30)', borderRadius:11, padding:'10px 13px' }}>
+                      <Zap size={15} color='#F5A623' strokeWidth={2} style={{ flexShrink:0 }} />
+                      <span style={{ fontSize:13, color:'#F5A623', fontWeight:600 }}>¡Hoy sumás el doble!</span>
+                    </div>
+                  )}
+                  {/* Cupones de descuento otorgados */}
+                  {joinBenefits.granted_discounts.map((d, i) => (
+                    <div key={i} style={{ display:'flex', alignItems:'center', gap:10, background:'rgba(254,80,0,0.08)', border:'1px solid rgba(254,80,0,0.22)', borderRadius:11, padding:'10px 13px' }}>
+                      <Percent size={15} color={C.o} strokeWidth={2} style={{ flexShrink:0 }} />
+                      <span style={{ fontSize:13, color:C.pearl }}>
+                        <strong style={{ color:C.white }}>{d.value}% OFF</strong> en tu próxima visita
+                      </span>
+                    </div>
+                  ))}
+                </div>
+              )}
               <GBtn onClick={()=>setView('client')} style={{ background:C.ok, boxShadow:`0 4px 16px ${C.ok}44`, color:'#000' }}>Ver mi QR y beneficios →</GBtn>
             </>
           ) : (

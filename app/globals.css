@@ -17,6 +17,49 @@
     padding-bottom: 24px !important;
   }
 }
+
+/* ClientView root wrapper — en mobile tiene un maxWidth chico (520px) para
+   que el contenido no se estire en pantallas anchas sin sidebar. En desktop
+   el .with-bottom-nav-v2 agrega padding-left:220px para el sidebar, así que
+   el maxWidth total tiene que ser mucho más grande (220px sidebar + ~700px
+   contenido + 15px padding-right). Sin esta media query el contenido queda
+   en ~270px efectivos en desktop (tamaño celular). */
+.client-view-root {
+  max-width: 520px;
+}
+@media (min-width: 768px) {
+  .client-view-root {
+    max-width: 980px; /* 220px sidebar + ~730px contenido + 30px padding */
+  }
+}
+
+/* Sticky wrapper del wallet — en mobile tiene fondo negro para enmascarar
+   el scroll. En desktop se saca porque los costados de la tarjeta quedan
+   con el negro visible (la tarjeta es más angosta que el contenedor). */
+@media (min-width: 768px) {
+  .wallet-sticky-bg {
+    background: transparent !important;
+  }
+}
+
+/* WalletView — en desktop las tarjetas se limitan a 420px y se centran
+   para que no queden enormes en pantallas anchas. El resto del contenido
+   del ClientView (header, filtros, stats) sigue usando el ancho completo. */
+@media (min-width: 768px) {
+  .wallet-view-desktop-cap {
+    max-width: 420px;
+    margin: 0 auto;
+  }
+}
+
+/* Banner "Modo edición" — en desktop el side-rail ocupa 220px a la
+   izquierda, asi que el banner necesita paddingLeft extra para que
+   el texto no quede tapado por el nav. */
+@media (min-width: 768px) {
+  .edit-mode-banner {
+    padding-left: 236px !important; /* 220px sidebar + 16px contenido */
+  }
+}
 html {
   scroll-behavior: smooth;
   overscroll-behavior-y: none;

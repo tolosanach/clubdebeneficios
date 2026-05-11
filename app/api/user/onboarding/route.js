@@ -12,17 +12,12 @@ export async function POST(request) {
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) return NextResponse.json({ error: 'No autenticado' }, { status: 401 })
 
-  const { name, phone, country, province, city } = await request.json()
-
-  if (!phone?.trim()) {
-    return NextResponse.json({ error: 'El teléfono es obligatorio' }, { status: 400 })
-  }
+  const { name, country, province, city } = await request.json()
 
   const { error } = await supabaseAdmin
     .from('profiles')
     .update({
       name:                 name?.trim()    || null,
-      phone:                phone.trim(),
       country:              country?.trim() || null,
       province:             province?.trim()|| null,
       city:                 city?.trim()    || null,

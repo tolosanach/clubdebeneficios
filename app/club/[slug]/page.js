@@ -162,6 +162,9 @@ const GLOBAL_CSS = `
   .btn-pulse:active { transform: scale(0.97) !important; opacity:0.9 !important; }
   .nav-tab { transition: all 0.2s ease; }
   .nav-tab:hover { color: rgba(255,255,255,0.8) !important; }
+  @media (min-width: 768px) {
+    .edit-mode-banner { padding-left: 236px !important; }
+  }
 `
 
 // ── Skeleton loader ────────────────────────────────────────────────────────────
@@ -2755,7 +2758,7 @@ export default function ClubProfilePage() {
           /club/${slug} (mismo club sin edit) — eso confundia: parecia que
           "Salir" no hacia nada. */}
       {editMode && (
-        <div style={{
+        <div className="edit-mode-banner" style={{
           background:'rgba(113,49,225,0.96)',
           borderTop:'1px solid rgba(255,255,255,0.10)',
           borderBottom:'1px solid rgba(255,255,255,0.18)',

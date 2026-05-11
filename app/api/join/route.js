@@ -23,7 +23,7 @@ export async function POST(request) {
     // Verificar que el comercio existe
     const { data: commerce } = await supabaseAdmin
       .from('commerces')
-      .select('id, name, plan, owner_id, slug')
+      .select('id, name, plan, owner_id, slug, prog_type')
       .eq('id', commerce_id)
       .eq('active', true)
       .single()
@@ -89,24 +89,33 @@ export async function POST(request) {
       }
     }
 
-    // ── Otorgar al nuevo cliente todas las promos discount_next activas ──
-    // El cupón "descuento próxima compra" es el beneficio inicial que el
-    // comercio ofrece a quien se suma al club. Se otorga UNA SOLA vez al
-    // momento del join. Después, la renovación queda 100% en manos del
-    // dueño cuando lo escanea (modal "¿Renovar?" → /api/discount-decision).
+    // ── Otorgar al nuevo cliente todas las promos activas del comercio ──
+    // discount_next: cupón "descuento próxima compra" — se otorga UNA SOLA vez.
+    //   Después, la renovación queda 100% en manos del dueño (modal "¿Renovar?").
+    // double_points: no se otorga per-cliente, pero se detecta si hoy aplica
+    //   para mostrárselo al cliente en la pantalla de bienvenida.
     let grantedDiscounts = []
+    let hasDoubleToday   = false
     if (newMem?.id) {
       try {
-        const nowIso = new Date().toISOString()
+        const nowIso   = new Date().toISOString()
+        const todayDow = new Date().getDay()  // 0=domingo … 6=sábado
         const { data: promos } = await supabaseAdmin
           .from('promotions')
-          .select('id, value, expiration_type, expiration_date, expiration_days, expires_at')
+          .select('id, type, value, days, expiration_type, expiration_date, expiration_days, expires_at')
           .eq('commerce_id', commerce_id)
           .eq('active', true)
-          .eq('type', 'discount_next')
         const validPromos = (promos || []).filter(p => !p.expires_at || p.expires_at > nowIso)
 
-        for (const promo of validPromos) {
+        // ¿Hay double_points activa hoy?
+        hasDoubleToday = validPromos.some(p => {
+          if (p.type !== 'double_points') return false
+          if (!Array.isArray(p.days) || p.days.length === 0) return true
+          return p.days.some(d => Number(d) === todayDow)
+        })
+
+        // Otorgar discount_next activas
+        for (const promo of validPromos.filter(p => p.type === 'discount_next')) {
           let expiresAt
           if (promo.expiration_type === 'relative') {
             const d = new Date()
@@ -128,7 +137,7 @@ export async function POST(request) {
           grantedDiscounts.push({ promotion_id: promo.id, value: promo.value, expires_at: expiresAt })
         }
       } catch (e) {
-        console.error('[join] error otorgando discount_next:', e)
+        console.error('[join] error otorgando promos:', e)
       }
     }
 
@@ -162,11 +171,14 @@ export async function POST(request) {
     }
 
     return NextResponse.json({
-      ok:             true,
-      already_member: false,
-      commerce_name:  commerce.name,
-      membership_id:  newMem?.id,
-      grant_applied:  grantApplied,  // { grant_id, points_applied, promo_applied } o null
+      ok:                true,
+      already_member:    false,
+      commerce_name:     commerce.name,
+      membership_id:     newMem?.id,
+      grant_applied:     grantApplied,      // { grant_id, points_applied, promo_applied } o null
+      prog_type:         commerce.prog_type, // 'stars' | 'points'
+      granted_discounts: grantedDiscounts,   // [{ promotion_id, value, expires_at }]
+      has_double_today:  hasDoubleToday,     // boolean
     })
   } catch (err) {
     console.error('join error:', err)
