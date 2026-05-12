@@ -28,6 +28,7 @@ import SupportChat from '../../../lib/SupportChat'
 // chrome inferior cuando se mete a editar la vista publica.
 import BottomNavV2 from '../../../lib/BottomNavV2'
 import Logo from '../../../lib/Logo'
+import ContextSwitchPill from '../../../lib/ContextSwitchPill'
 import EnablePushPrompt from '../../../lib/EnablePushPrompt'
 import SwRegister from '../../../lib/sw-register'
 
@@ -1870,6 +1871,7 @@ export default function ClubProfilePage() {
   const [user, setUser]               = useState(undefined)
   const [membership, setMembership]   = useState(null)
   const [userProfile, setUserProfile] = useState(null)
+  const [activeContext, setActiveContext] = useState('client')
 
   const [showModal, setShowModal]     = useState(false)
   const [showLoginPrompt, setShowLoginPrompt] = useState(false)
@@ -2288,7 +2290,7 @@ export default function ClubProfilePage() {
   const activePrizes = prizes || []
   // Spotlight cuando el cliente entra escaneando el QR del negocio.
   const fromQr       = searchParams.get('from_qr') === '1'
-  // Vino desde "Mi billetera" — mostrar botón "← Mi billetera" en el navbar.
+  // Vino desde "Mi billetera" — mostrar switch de contexto en navbar y back pill en contenido.
   const fromWallet   = searchParams.get('from') === 'wallet'
   // Modo edición: el dueño llegó acá vía el ojo del navbar (?edit=1).
   // Combina ownership real (user.id === commerce.owner_id) + flag URL —
@@ -2482,61 +2484,45 @@ export default function ClubProfilePage() {
             queda oculto — lo reemplazamos por el navbar minimo de arriba. */}
       <div style={{ position:'fixed', top:0, left:0, right:0, zIndex:200, display: editMode ? 'none' : 'block' }}>
         <nav style={{ background:'rgba(0,0,0,0.75)', backdropFilter:'blur(24px)', WebkitBackdropFilter:'blur(24px)', borderBottom:`1px solid ${C.rim}`, padding:'0 16px', display:'flex', alignItems:'center', justifyContent:'space-between', height:58 }}>
-          {fromWallet ? (
-            <a
-              href="/?view=client"
-              onClick={(e) => { e.preventDefault(); if (typeof window !== 'undefined') window.location.href = '/?view=client' }}
-              style={{ display:'inline-flex', alignItems:'center', gap:6, textDecoration:'none', background:'rgba(255,255,255,0.07)', border:`1px solid ${C.rim}`, borderRadius:99, padding:'6px 12px 6px 8px', color:'rgba(255,255,255,0.85)' }}
-              aria-label="Volver a Mi billetera"
-            >
-              <ArrowLeft size={14} strokeWidth={2.5} color="rgba(255,255,255,0.85)" />
-              <span style={{ fontFamily:FN, fontSize:12, fontWeight:600 }}>Mi billetera</span>
-            </a>
-          ) : (
-            <a href="/" style={{ display:'inline-flex', alignItems:'center', textDecoration:'none' }} aria-label="Volver al inicio">
-              <Logo />
-            </a>
-          )}
+          {/* Izquierda: siempre el logo */}
+          <a href="/" style={{ display:'inline-flex', alignItems:'center', textDecoration:'none' }} aria-label="Inicio"
+            onClick={(e) => { e.preventDefault(); if (typeof window !== 'undefined') window.location.href = '/' }}>
+            <Logo />
+          </a>
           <div style={{ display:'flex', gap:6, alignItems:'center' }}>
             {(() => {
-              // Estilos locales: NEUTRAL (default), ACTIVE (gradient G como en
-              // el navbar principal de app/page.js cuando un botón coincide
-              // con la vista actual), TRANSP (logout, sin fondo).
               const NEUTRAL = { display:'flex', alignItems:'center', justifyContent:'center', width:34, height:34, borderRadius:9, background:'rgba(255,255,255,0.06)', border:`1px solid ${C.rim}`, cursor:'pointer', color:'rgba(255,255,255,0.78)', textDecoration:'none' }
               const ACTIVE  = { display:'flex', alignItems:'center', justifyContent:'center', width:34, height:34, borderRadius:9, background:G, border:'none', cursor:'default', color:'#fff', boxShadow:'0 2px 10px rgba(113,49,225,0.42)', textDecoration:'none' }
-              // PRIMARY: idéntico al ACTIVE de gradient pero clickeable. Lo
-              // usamos para el botón del User en esta vista — el cliente está
-              // navegando en el "área de billetera" (los clubes a los que se
-              // sumó), así que el ícono User queda iluminado siempre.
               const PRIMARY = { display:'flex', alignItems:'center', justifyContent:'center', width:34, height:34, borderRadius:9, background:G, border:'none', cursor:'pointer', color:'#fff', boxShadow:'0 2px 10px rgba(113,49,225,0.42)', textDecoration:'none' }
               const TRANSP  = { display:'flex', alignItems:'center', justifyContent:'center', width:34, height:34, borderRadius:9, background:'transparent', border:'none', cursor:'pointer', color:'rgba(255,255,255,0.70)', padding:0 }
+              const goHref  = (href) => (e) => { e.preventDefault(); if (typeof window !== 'undefined') window.location.href = href }
 
-              // Cuando el usuario viene desde "Mi billetera" está en modo
-              // cliente — mostrar solo avatar/user, sin kit del comerciante.
+              // Viniendo desde "Mi billetera": mostrar switch de contexto +
+              // icono de negocio para commerce_owner (igual que app/page.js),
+              // o solo User para clientes puros.
               if (fromWallet) {
-                const goHref = (href) => (e) => {
-                  e.preventDefault()
-                  if (typeof window !== 'undefined') window.location.href = href
+                const role = userProfile?.role
+                if (role === 'commerce_owner') {
+                  return (
+                    <>
+                      <ContextSwitchPill
+                        activeContext={activeContext}
+                        onChange={(next) => {
+                          setActiveContext(next)
+                          window.location.href = next === 'merchant'
+                            ? '/?view=commerce-settings'
+                            : '/?view=client'
+                        }}
+                      />
+                      <a href="/?view=commerce-settings" title="Mi Negocio" style={NEUTRAL} onClick={goHref('/?view=commerce-settings')}>
+                        <Store size={15} strokeWidth={2} />
+                      </a>
+                    </>
+                  )
                 }
-                const name = userProfile?.full_name || userProfile?.name || user?.email || ''
-                const initial = name[0]?.toUpperCase() || '?'
                 return (
-                  <a
-                    href="/?view=client"
-                    onClick={goHref('/?view=client')}
-                    title="Mi billetera"
-                    style={{ display:'flex', alignItems:'center', gap:7, background:'rgba(255,255,255,0.08)', border:`1px solid ${C.rim}`, borderRadius:99, padding:'4px 10px 4px 4px', cursor:'pointer', textDecoration:'none' }}
-                  >
-                    {userProfile?.avatar_url ? (
-                      <img src={userProfile.avatar_url} alt="" style={{ width:26, height:26, borderRadius:'50%', objectFit:'cover', flexShrink:0 }} />
-                    ) : (
-                      <div style={{ width:26, height:26, borderRadius:'50%', background:G, display:'flex', alignItems:'center', justifyContent:'center', flexShrink:0 }}>
-                        <span style={{ fontFamily:FN, fontSize:12, fontWeight:700, color:'#fff' }}>{initial}</span>
-                      </div>
-                    )}
-                    <span style={{ fontFamily:FN, fontSize:12, fontWeight:600, color:'rgba(255,255,255,0.85)', maxWidth:80, overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>
-                      {name.split(' ')[0] || 'Mi cuenta'}
-                    </span>
+                  <a href="/?view=client" title="Mi billetera" style={PRIMARY} onClick={goHref('/?view=client')}>
+                    <User size={15} strokeWidth={2} />
                   </a>
                 )
               }
@@ -2556,10 +2542,6 @@ export default function ClubProfilePage() {
               }
 
               if (role === 'admin') {
-                const goHref = (href) => (e) => {
-                  e.preventDefault()
-                  if (typeof window !== 'undefined') window.location.href = href
-                }
                 return (
                   <>
                     <a href="/?view=admin" title="Panel admin" style={NEUTRAL} onClick={goHref('/?view=admin')}>
@@ -2582,14 +2564,6 @@ export default function ClubProfilePage() {
                 // ojo queda iluminado, evitando confundir al usuario con dos
                 // íconos activos a la vez.
                 const userStyleOwner = isOwnerOfThisClub ? NEUTRAL : PRIMARY
-                // Forzamos navegación full-reload con window.location.href en
-                // los onClick además del href — algunos casos raros (Service
-                // Worker, prefetch agresivo) pueden tragarse el click del <a>
-                // en App Router, así que reforzamos.
-                const goHref = (href) => (e) => {
-                  e.preventDefault()
-                  if (typeof window !== 'undefined') window.location.href = href
-                }
                 return (
                   <>
                     <a href="/?view=scanner" title="Escanear QR" style={NEUTRAL} onClick={goHref('/?view=scanner')}>
@@ -2617,12 +2591,7 @@ export default function ClubProfilePage() {
                 )
               }
 
-              // Cliente regular (con o sin sesión). Sin user no mostramos
-              // logout; el resto se mantiene como atajos.
-              const goHref = (href) => (e) => {
-                e.preventDefault()
-                if (typeof window !== 'undefined') window.location.href = href
-              }
+              // Cliente regular (con o sin sesión).
               return (
                 <>
                   <a href="/?view=scanner" title="Escanear QR" style={NEUTRAL} onClick={goHref('/?view=scanner')}>
@@ -2717,6 +2686,23 @@ export default function ClubProfilePage() {
           — sin el sub-nav cliente (~44px) que oculta editMode — asi que
           el spacer queda en 58px (o 92px si el banner demo se suma). */}
       <div style={{ height: isDemo ? (editMode ? 92 : 136) : (editMode ? 58 : 102) }} />
+
+      {/* Botón "← Mi billetera" — solo cuando el usuario viene desde la billetera.
+          Vive en el contenido (no en el navbar fijo) para que el nav completo
+          quede libre para logo + switch + icono de negocio. */}
+      {fromWallet && !editMode && (
+        <div style={{ padding:'10px 16px 0' }}>
+          <a
+            href="/?view=client"
+            onClick={(e) => { e.preventDefault(); if (typeof window !== 'undefined') window.location.href = '/?view=client' }}
+            style={{ display:'inline-flex', alignItems:'center', gap:6, textDecoration:'none', background:'rgba(255,255,255,0.07)', border:'1px solid rgba(255,255,255,0.10)', borderRadius:99, padding:'6px 12px 6px 8px', color:'rgba(255,255,255,0.80)' }}
+            aria-label="Volver a Mi billetera"
+          >
+            <ArrowLeft size={13} strokeWidth={2.5} color="rgba(255,255,255,0.80)" />
+            <span style={{ fontFamily:FN, fontSize:12, fontWeight:600 }}>Mi billetera</span>
+          </a>
+        </div>
+      )}
 
       {/* Banner "Modo edición" — render INLINE (no fixed) inmediatamente
           después del spacer del navbar. Toma su propio espacio vertical y
