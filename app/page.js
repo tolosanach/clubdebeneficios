@@ -9367,8 +9367,8 @@ function ClientView({ setView, user, profile, onLogout, initialTab }) {
             <button
               onClick={async () => {
                 const ok = await showConfirm({
-                  title: '¿Eliminar tu cuenta?',
-                  message: 'Se borrarán todos tus datos, membresías y puntos. Esta acción no se puede deshacer.',
+                  title: '¿Eliminar tu cuenta de cliente?',
+                  message: 'Tu cuenta de comercio y todos sus datos se mantienen intactos.',
                   confirmText: 'Sí, eliminar',
                   cancelText:  'Cancelar',
                   danger: true,
@@ -24107,7 +24107,7 @@ export default function App() {
           {/* Nudges cross-rol temporizados:
               • 10s — si es cliente sin respuesta, sugerir registrar negocio.
               • 15s —si es dueño, recordar que tiene QR personal de cliente. */}
-          <CrossRoleNudges profile={profile} setView={navigate} />
+          <CrossRoleNudges profile={profile} />
           {/* BottomNavV2 — nav contextual estilo Mercado Pago. Reemplaza
               el role-aware kit del navbar viejo. El boton QR central abre
               ClientQRSheet (modo cliente) o MerchantQRSheet (modo merchant).
@@ -24156,23 +24156,17 @@ export default function App() {
             onNavigate={handleNavGo}
             onLogout={handleLogout}
             profile={profile}
-            onActivateClientMode={async () => {
-              // Cross-role: el merchant decide tambien usar Benefix como
-              // cliente. Persistimos user_intent='both' (sigue siendo
-              // merchant pero tambien activado para cliente), refrescamos
-              // profile, cambiamos activeContext y navegamos a la vista
-              // cliente.
-              try {
-                if (user?.id) {
-                  await supabase.from('profiles').update({ user_intent: 'both' }).eq('id', user.id)
-                  await loadProfile(user.id)
-                }
+            onDeleteBusiness={async () => {
+              setMoreSheetOpen(false)
+              const res = await fetch('/api/user/delete-commerce', { method: 'DELETE' })
+              if (res.ok) {
+                await loadProfile(user.id)
                 setActiveContext('client')
                 try { localStorage.setItem('benefix:active-context', 'client') } catch {}
-                try { window.dispatchEvent(new CustomEvent('benefix:context-changed', { detail: { context: 'client' } })) } catch {}
                 navigate('client')
-              } catch (err) {
-                console.warn('[onActivateClientMode] error:', err)
+              } else {
+                const body = await res.json().catch(() => ({}))
+                alert(body.error || 'No se pudo eliminar el comercio')
               }
             }}
           />
