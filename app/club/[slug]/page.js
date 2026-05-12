@@ -1921,9 +1921,15 @@ export default function ClubProfilePage() {
   // (descripción, horarios, ubicación, redes) vive adentro y se
   // despliega cuando el cliente toca la flecha del fondo de la card.
   const [cardOpen, setCardOpen]       = useState(false)
-  const [showSplash, setShowSplash]       = useState(false)
-  const [splashDismissed, setSplashDismissed] = useState(false)
-  const [isDemo, setIsDemo]               = useState(false)
+  const [showSplash, setShowSplash]           = useState(false)
+  // splashPhaseComplete: true cuando el usuario ya vio y cerró el splash,
+  // O cuando ya lo había visto en una visita anterior de la misma sesión
+  // (sessionStorage key existe). Se inicializa sincrónico desde sessionStorage
+  // para que en visitas de retorno el sticky CTA aparezca de inmediato.
+  const [splashPhaseComplete, setSplashPhaseComplete] = useState(() => {
+    try { return !!sessionStorage.getItem(`splash_${slug}`) } catch { return false }
+  })
+  const [isDemo, setIsDemo]                   = useState(false)
   const autoJoinDone                  = useRef(false)
 
   // Canjes
@@ -2414,14 +2420,14 @@ export default function ClubProfilePage() {
 
       {showSplash && (
         <Splash commerce={commerce} UnitIcon={UnitIcon} unitIconProps={unitIconProps} unitLabel={unitLabel}
-          onClose={() => { setShowSplash(false); setSplashDismissed(true) }}
+          onClose={() => { setShowSplash(false); setSplashPhaseComplete(true) }}
           onJoin={handleSplashJoin}
         />
       )}
 
       {/* Sticky CTA — aparece solo cuando el usuario cerró el Splash sin unirse
           y todavía no es miembro. Desaparece al completar el join. */}
-      {splashDismissed && !isMember && (
+      {splashPhaseComplete && !isMember && (
         <div style={{ position:'fixed', bottom:0, left:0, right:0, zIndex:300, padding:'12px 16px 24px', background:'linear-gradient(to top, rgba(0,0,0,0.92) 0%, transparent 100%)', pointerEvents:'none' }}>
           <button
             onClick={handleSplashJoin}
