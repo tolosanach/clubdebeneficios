@@ -200,7 +200,7 @@ function PageSkeleton() {
 
 // ── Level badge ────────────────────────────────────────────────────────────────
 // ── Splash ─────────────────────────────────────────────────────────────────────
-function Splash({ commerce, UnitIcon, unitIconProps, unitLabel, onClose }) {
+function Splash({ commerce, UnitIcon, unitIconProps, unitLabel, onClose, onJoin }) {
   const [vis, setVis] = useState(false)
   useEffect(() => { setTimeout(() => setVis(true), 40) }, [])
   function close() { setVis(false); setTimeout(onClose, 340) }
@@ -271,13 +271,13 @@ function Splash({ commerce, UnitIcon, unitIconProps, unitLabel, onClose }) {
         {/* Socios escondidos en perfiles de club — no aporta valor exponer la
             cantidad y mostrar 0 desincentiva al primer cliente. */}
 
-        <button onClick={close} className="btn-pulse" style={{
+        <button onClick={() => { close(); onJoin && onJoin() }} className="btn-pulse" style={{
           width:'100%', padding:'15px', background:GA, border:'none', borderRadius:16,
           color:'#fff', fontFamily:FN, fontSize:15, fontWeight:700, cursor:'pointer',
           boxShadow:'0 8px 28px rgba(113,49,225,0.45)', transition:'all .2s ease',
           position:'relative', zIndex:1,
         }}>
-          Ver el club →
+          Unirme a este club →
         </button>
       </div>
     </div>
@@ -2508,7 +2508,33 @@ export default function ClubProfilePage() {
       )}
 
       {showSplash && (
-        <Splash commerce={commerce} UnitIcon={UnitIcon} unitIconProps={unitIconProps} unitLabel={unitLabel} onClose={() => setShowSplash(false)} />
+        <Splash commerce={commerce} UnitIcon={UnitIcon} unitIconProps={unitIconProps} unitLabel={unitLabel} onClose={() => setShowSplash(false)}
+          onJoin={async () => {
+            let currentUser = user
+            let currentPhone = (userProfile?.phone || phone || '').trim()
+            const sb = getSupabase()
+            if (!currentUser) {
+              try {
+                const { data: sess } = await sb.auth.getSession()
+                currentUser = sess?.session?.user || null
+                if (!currentUser) { const { data } = await sb.auth.getUser(); currentUser = data.user || null }
+                if (currentUser) setUser(currentUser)
+              } catch {}
+            }
+            if (currentUser && !currentPhone) {
+              try {
+                const { data: prof } = await sb.from('profiles').select('phone').eq('id', currentUser.id).maybeSingle()
+                if (prof?.phone) { currentPhone = prof.phone.trim(); setUserProfile(p => ({ ...(p || {}), phone: prof.phone })) }
+              } catch {}
+            }
+            if (currentUser) {
+              handleJoin(currentPhone || undefined)
+            } else {
+              try { sessionStorage.setItem('benefix:pendingJoinSlug', slug) } catch {}
+              sb.auth.signInWithOAuth({ provider:'google', options:{ redirectTo:`${window.location.origin}/auth/callback`, queryParams:{ prompt:'select_account' } } })
+            }
+          }}
+        />
       )}
 
       {/* ── NAVBAR MINIMO (solo editMode) ──
@@ -3287,67 +3313,7 @@ export default function ClubProfilePage() {
                 <MemberBadge createdAt={membership?.joined_at} />
               )}
             </>
-          ) : (
-            <>
-              {fromQr && !spotlightSeen && (
-                <div style={{ textAlign:'center', marginBottom:16 }}>
-                  <div style={{ fontFamily:FN, fontSize:18, fontWeight:800, color:'#fff', marginBottom:6, textShadow:'0 2px 12px rgba(0,0,0,0.6)' }}>
-                    Estás a un paso
-                  </div>
-                  <div style={{ fontSize:13, color:'rgba(255,255,255,0.85)', textShadow:'0 2px 8px rgba(0,0,0,0.6)' }}>
-                    Deslizá para unirte al club de {commerce.name}
-                  </div>
-                </div>
-              )}
-              <SlideToJoinButton
-                onJoin={async () => {
-                  // Si ya tenemos user + teléfono → unir directo. Si no, hacer
-                  // re-fetch (la sesión puede no estar hidratada en el state local
-                  // tras un full reload, pero sí estar viva en cookies).
-                  let currentUser = user
-                  let currentPhone = (userProfile?.phone || phone || '').trim()
-                  const sb = getSupabase()
-
-                  if (!currentUser) {
-                    try {
-                      const { data: sess } = await sb.auth.getSession()
-                      currentUser = sess?.session?.user || null
-                      if (!currentUser) {
-                        const { data } = await sb.auth.getUser()
-                        currentUser = data.user || null
-                      }
-                      if (currentUser) setUser(currentUser)
-                    } catch {}
-                  }
-
-                  if (currentUser && !currentPhone) {
-                    try {
-                      const { data: prof } = await sb.from('profiles').select('phone').eq('id', currentUser.id).maybeSingle()
-                      if (prof?.phone) {
-                        currentPhone = prof.phone.trim()
-                        setUserProfile(p => ({ ...(p || {}), phone: prof.phone }))
-                      }
-                    } catch {}
-                  }
-
-                  if (currentUser) {
-                    handleJoin(currentPhone || undefined)
-                  } else {
-                    // Sin sesión: guardar slug y redirigir al SPA para login + CasiListo + auto-join
-                    try { sessionStorage.setItem('benefix:pendingJoinSlug', slug) } catch {}
-                    const sb2 = getSupabase()
-                    sb2.auth.signInWithOAuth({
-                      provider: 'google',
-                      options: {
-                        redirectTo: `${window.location.origin}/auth/callback`,
-                        queryParams: { prompt: 'select_account' },
-                      },
-                    })
-                  }
-                }}
-                isDemoClub={false} />
-            </>
-          )}
+          ) : null}
         </div>
 
         {/* ━━━ TAB: INICIO ━━━ */}
