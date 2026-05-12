@@ -763,7 +763,7 @@ function OnboardingFlow({ user, onComplete }) {
             )}
           </div>
           <div style={{ height:3, background:'rgba(255,255,255,0.10)', borderRadius:99, overflow:'hidden' }}>
-            <div style={{ height:'100%', borderRadius:99, background:G, width:`${progressPct}%`, transition:'width 400ms cubic-bezier(0.23,1,0.32,1)' }} />
+            <div style={{ height:'100%', borderRadius:99, background:G, width:`${progressPct}%`, transition:'width 150ms ease' }} />
           </div>
         </div>
       )}
@@ -1948,14 +1948,7 @@ function QrFullscreen({ open, onClose, qrValue, audience = 'client', shareUrl = 
            alternar suavemente cuál esquina está naranja vs cuál violeta.
            Como el gradient tiene 3 stops (orange-violet-orange) con
            backgroundSize 220%, mover la posición da un flujo continuo. */
-        .qr-fs-card {
-          animation: qr-card-flow 14s ease-in-out infinite;
-        }
-        @keyframes qr-card-flow {
-          0%   { background-position:   0%   0%; }
-          50%  { background-position: 100% 100%; }
-          100% { background-position:   0%   0%; }
-        }
+        .qr-fs-card {}
         /* Signal-fade del QR durante la "generación": una zona del QR baja
            suavemente su opacidad y esa zona se mueve por el código en loop
            lento, como si la señal se fuera y volviera. Sin shake, sin scan-
@@ -1971,7 +1964,6 @@ function QrFullscreen({ open, onClose, qrValue, audience = 'client', shareUrl = 
                   mask-size: 240% 240%;
           -webkit-mask-repeat: no-repeat;
                   mask-repeat: no-repeat;
-          animation: qr-signal-roam 6s ease-in-out infinite, qr-signal-breath 2.4s ease-in-out infinite;
           will-change: mask-position, opacity;
         }
         /* Roam: el "agujero suave" cambia de zona — esquinas y centros
@@ -2773,7 +2765,7 @@ function CoverImg({ src, height, children, style:s={} }) {
   return (
     <div style={{ position:'relative', height, overflow:'hidden', ...s }}
       onMouseEnter={()=>setHov(true)} onMouseLeave={()=>setHov(false)}>
-      <img src={src} alt="" style={{ width:'100%', height:'100%', objectFit:'cover', filter:'brightness(.65) saturate(1.3)', transform:hov?'scale(1.04)':'scale(1)', transition:'transform .6s' }} />
+      <img src={src} alt="" style={{ width:'100%', height:'100%', objectFit:'cover', filter:'brightness(.65) saturate(1.3)', transform:hov?'scale(1.04)':'scale(1)', transition:'transform 150ms ease' }} />
       <div style={{ position:'absolute', inset:0, background:'rgba(113,49,225,0.08)', mixBlendMode:'color', pointerEvents:'none' }} />
       <div style={{ position:'absolute', inset:0, background:`linear-gradient(to bottom,rgba(13,8,24,.05) 0%,rgba(13,8,24,.85) 80%,${C.bg} 100%)`, pointerEvents:'none' }} />
       {children}
@@ -3331,7 +3323,6 @@ function BeneficioWord({ delay = 0 }) {
       WebkitBackgroundClip: 'text',
       WebkitTextFillColor: 'transparent',
       backgroundClip: 'text',
-      animation: 'beneficio-flow 3s ease-in-out infinite',
       textShadow: 'none',
     }}>
       beneficio.
@@ -4283,7 +4274,6 @@ function _HowItWorksSectionLegacy() {
           {sparks.map((sp, idx) => (
             <div key={idx} style={{
               position:'absolute', left:sp.left, top:sp.top,
-              animation:`step-spark-pulse 2.4s ease-in-out ${sp.delay}ms infinite`,
             }}>
               <Star size={Math.round(sp.size * scale)} color={accent} fill={accent} strokeWidth={0} style={{ filter:`drop-shadow(0 0 12px ${accent}88)` }} />
             </div>
@@ -4313,7 +4303,6 @@ function _HowItWorksSectionLegacy() {
           {sparkles.map((sp, idx) => (
             <div key={idx} style={{
               position:'absolute', left:sp.x, top:sp.y,
-              animation:`step-spark-pulse 2s ease-in-out ${idx * 200}ms infinite`,
             }}>
               <Sparkles size={sparkleSz} color={accent} strokeWidth={1.8} style={{ filter:`drop-shadow(0 0 10px ${accent}99)` }} />
             </div>
@@ -6272,7 +6261,7 @@ function CommerceView({ commerce:c, setView, user, onLoginRequired, onCommerceUp
               })
               return (
                 <span style={{ display:'flex', alignItems:'center', gap:5, background:'rgba(0,0,0,0.35)', borderRadius:99, padding:'3px 10px' }}>
-                  <span style={{ width:7, height:7, borderRadius:'50%', background: openNow ? '#22c55e' : '#888', animation: openNow ? 'pulse 2s ease-in-out infinite' : 'none' }} />
+                  <span style={{ width:7, height:7, borderRadius:'50%', background: openNow ? '#22c55e' : '#888' }} />
                   <span style={{ color: openNow ? '#4ade80' : '#bbb', fontWeight:600 }}>{openNow ? 'Abierto ahora' : 'Cerrado'}</span>
                 </span>
               )
@@ -6522,7 +6511,7 @@ function CommerceView({ commerce:c, setView, user, onLoginRequired, onCommerceUp
             Si está en preview viendo su propio comercio, ya tiene el banner
             arriba "Así ven tu club los clientes" con link a editar. */}
         {user?.id !== c?.owner_id && (
-        <div style={{ background:joined?C.okBg:'rgba(113,49,225,0.05)', border:`1px solid ${joined?C.ok:C.v}44`, borderRadius:15, padding:24, textAlign:'center', transition:'background 400ms ease, border-color 400ms ease' }}>
+        <div style={{ background:joined?C.okBg:'rgba(113,49,225,0.05)', border:`1px solid ${joined?C.ok:C.v}44`, borderRadius:15, padding:24, textAlign:'center' }}>
           {joined ? (
             <>
               <div style={{ display:'flex', justifyContent:'center', marginBottom:9 }}>
@@ -7338,33 +7327,6 @@ function WalletCardFront({ club, colors, onFlip, visible }) {
           mas limpia y el CommerceLogo del comercio (top-left) domina
           visualmente como protagonista de la tarjeta. */}
 
-      {/* ── Shine overlay ──
-          Una banda de luz diagonal a 45° (135deg en CSS) que recorre la
-          tarjeta de izquierda a derecha cada 2 segundos. Da el efecto de
-          "reflejo de luz pasando" típico de las tarjetas premium. La capa
-          tiene pointer-events:none para no bloquear el click del flip y
-          va por encima del contenido (zIndex 5) pero clipeada al
-          borderRadius del padre vía overflow:hidden ya existente. */}
-      <div style={{
-        position: 'absolute', inset: 0,
-        pointerEvents: 'none',
-        zIndex: 5,
-        overflow: 'hidden',
-      }}>
-        <div style={{
-          position: 'absolute',
-          top: '-50%', bottom: '-50%',
-          left: 0, right: 0,
-          background: 'linear-gradient(135deg, transparent 35%, rgba(255,255,255,0.18) 48%, rgba(255,255,255,0.28) 50%, rgba(255,255,255,0.18) 52%, transparent 65%)',
-          animation: 'wallet-card-shine 2s linear infinite',
-        }} />
-        <style>{`
-          @keyframes wallet-card-shine {
-            0%   { transform: translateX(-110%); }
-            100% { transform: translateX(110%); }
-          }
-        `}</style>
-      </div>
 
       {/* Content layer.
           Padding-bottom 14 (era 18) — necesitamos un poco más de espacio
@@ -7810,7 +7772,6 @@ function WalletCard({ club, variant, isActive, onScrollTo, isMock, userId }) {
               strokeWidth={1.8}
               color="#fff"
               style={{
-                animation: 'wallet-flip-hint-tap 1.4s ease-in-out infinite',
                 filter: 'drop-shadow(0 2px 8px rgba(0,0,0,0.50))',
               }}
             />
@@ -8901,9 +8862,6 @@ function ClientView({ setView, user, profile, onLogout, initialTab }) {
                             boxShadow: canRedeem
                               ? '0 0 8px rgba(254,80,0,0.55), 0 0 16px rgba(189,75,248,0.45), inset 0 0 6px rgba(255,255,255,0.25)'
                               : '0 0 6px rgba(189,75,248,0.40), inset 0 0 4px rgba(255,255,255,0.15)',
-                            animation: canRedeem
-                              ? 'brand-bar-flow 4.5s ease-in-out infinite'
-                              : 'brand-bar-pulse 2.8s ease-in-out infinite',
                             transition:'width .35s ease',
                           }} />
                         </div>
@@ -9528,9 +9486,6 @@ function ClientView({ setView, user, profile, onLogout, initialTab }) {
                           boxShadow: canRedeem
                             ? '0 0 14px rgba(254,80,0,0.70), 0 0 26px rgba(189,75,248,0.60), inset 0 0 12px rgba(255,255,255,0.35)'
                             : '0 0 8px rgba(189,75,248,0.45), inset 0 0 6px rgba(255,255,255,0.20)',
-                          animation: canRedeem
-                            ? 'brand-bar-flow 4.5s ease-in-out infinite'
-                            : 'brand-bar-pulse 2.8s ease-in-out infinite',
                         }} />
                       </div>
                     </div>
@@ -10069,7 +10024,7 @@ function RegisterCommerceView({ setView, user, onProfileRefresh, onLoginRequired
             )}
           </div>
           <div style={{ height:3, background:'rgba(255,255,255,0.10)', borderRadius:99, overflow:'hidden' }}>
-            <div style={{ height:'100%', borderRadius:99, background:G, width:`${progressPct}%`, transition:'width 400ms cubic-bezier(0.23,1,0.32,1)' }} />
+            <div style={{ height:'100%', borderRadius:99, background:G, width:`${progressPct}%`, transition:'width 150ms ease' }} />
           </div>
         </div>
       ) : (
@@ -11287,7 +11242,7 @@ function PromoWizard({ progType = 'points', onClose, onComplete, activePromos = 
           {showProgress && (
             <>
               <div style={{ height:3, background:'rgba(255,255,255,0.10)', borderRadius:99, overflow:'hidden', marginBottom:6 }}>
-                <div style={{ height:'100%', borderRadius:99, background: promoType === 'discount_next' ? GV : promoType === 'double_points' ? '#EC4899' : G, width:`${progressPct}%`, transition:'width 350ms cubic-bezier(0.23,1,0.32,1)' }} />
+                <div style={{ height:'100%', borderRadius:99, background: promoType === 'discount_next' ? GV : promoType === 'double_points' ? '#EC4899' : G, width:`${progressPct}%`, transition:'width 150ms ease' }} />
               </div>
               <div style={{ fontSize:10, color:'rgba(255,255,255,0.35)', fontFamily:FI }}>Paso {step} de {totalSteps}</div>
             </>
@@ -13678,7 +13633,7 @@ function CommerceSettingsView({ user, profile, setView, onLogout, onOwnerProfile
             boxShadow: radialOpen
               ? '0 -6px 24px rgba(189,75,248,0.45), inset 0 1px 0 rgba(255,255,255,0.95)'
               : '0 -4px 18px rgba(189,75,248,0.30), inset 0 1px 0 rgba(255,255,255,0.95)',
-            transition: 'transform 320ms cubic-bezier(0.34,1.56,0.64,1), background 220ms ease, box-shadow 220ms ease',
+            transition: 'transform 150ms ease, background 120ms ease, box-shadow 120ms ease',
             // Animación combinada:
             //  • Antes de la primera interacción → pulso violeta más fuerte
             //    como hint para que el dueño descubra el menú.
@@ -13686,11 +13641,7 @@ function CommerceSettingsView({ user, profile, setView, onLogout, onOwnerProfile
             //    seguidos de un descanso largo. Es lo suficientemente
             //    discreto para no marear, pero recuerda al user que ahí
             //    hay un control vivo.
-            animation: radialOpen
-              ? 'none'
-              : (railTabHandSeen
-                  ? 'radial-cog-heartbeat 6s ease-in-out infinite'
-                  : 'radial-cog-pulse 2.4s ease-in-out infinite'),
+            animation: 'none',
           }}
         >
           {radialOpen
@@ -13761,7 +13712,6 @@ function CommerceSettingsView({ user, profile, setView, onLogout, onOwnerProfile
         cursor: 'pointer',
         display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
         gap: 6,
-        animation: 'rail-summon-pulse 2.4s ease-in-out infinite',
       }}
     >
       {/* Texto "MENÚ" rotado vertical para que el user descubra que la
@@ -13778,7 +13728,7 @@ function CommerceSettingsView({ user, profile, setView, onLogout, onOwnerProfile
       }}>
         MENÚ
       </span>
-      <ChevronRight size={14} strokeWidth={2.8} style={{ animation: 'rail-summon-arrow 1.6s ease-in-out infinite' }} />
+      <ChevronRight size={14} strokeWidth={2.8} />
       <style>{`
         @keyframes rail-summon-pulse {
           0%, 100% {
@@ -13829,7 +13779,7 @@ function CommerceSettingsView({ user, profile, setView, onLogout, onOwnerProfile
           padding: '10px 6px',
           gap: 6,
           boxShadow: '4px 0 28px rgba(0,0,0,0.45), inset 0 1px 0 rgba(255,255,255,0.10), inset 0 0 0 1px rgba(255,255,255,0.04)',
-          transition: 'left 360ms cubic-bezier(0.22, 1, 0.36, 1), opacity 280ms ease',
+          transition: 'left 200ms ease, opacity 150ms ease',
           opacity: railHidden ? 0 : 1,
           pointerEvents: railHidden ? 'none' : 'auto',
         }}
@@ -14062,51 +14012,8 @@ function CommerceSettingsView({ user, profile, setView, onLogout, onOwnerProfile
       arrowColor: 'rgba(196,181,253,0.88)',
     }
 
-    // Ícono "Recompensas" con flip horizontal: alterna entre una estrella
-    // (cara delantera) y un símbolo "%" (cara trasera) usando rotateY 3D.
-    // El backface-visibility:hidden hace que solo se vea una cara a la vez.
     const AnimatedRewardIcon = ({ size = 22, color = '#fff', strokeWidth = 2.2 }) => (
-      <span style={{
-        display: 'inline-flex',
-        width: size, height: size,
-        perspective: 100,
-      }}>
-        <span style={{
-          position: 'relative',
-          width: '100%', height: '100%',
-          transformStyle: 'preserve-3d',
-          animation: 'reward-flip 2.6s ease-in-out infinite',
-        }}>
-          <span style={{
-            position:'absolute', inset:0,
-            display:'flex', alignItems:'center', justifyContent:'center',
-            backfaceVisibility:'hidden', WebkitBackfaceVisibility:'hidden',
-          }}>
-            <Star size={size} color={color} strokeWidth={strokeWidth} fill={color} />
-          </span>
-          <span style={{
-            position:'absolute', inset:0,
-            display:'flex', alignItems:'center', justifyContent:'center',
-            backfaceVisibility:'hidden', WebkitBackfaceVisibility:'hidden',
-            transform: 'rotateY(180deg)',
-            color,
-            fontFamily: FN,
-            fontSize: size,
-            fontWeight: 900,
-            lineHeight: 1,
-            letterSpacing: '-.04em',
-          }}>
-            %
-          </span>
-        </span>
-        <style>{`
-          @keyframes reward-flip {
-            0%, 38%   { transform: rotateY(0); }
-            50%, 88%  { transform: rotateY(180deg); }
-            100%      { transform: rotateY(360deg); }
-          }
-        `}</style>
-      </span>
+      <Star size={size} color={color} strokeWidth={strokeWidth} fill={color} />
     )
 
     // Metadata por id de pestaña — title, ícono y descripción que se muestran
@@ -14410,7 +14317,6 @@ function CommerceSettingsView({ user, profile, setView, onLogout, onOwnerProfile
                   size={14}
                   color="#D8B4FE"
                   strokeWidth={2.4}
-                  style={{ animation: 'ir-arrow-nudge 1.4s ease-in-out infinite' }}
                 />
               </button>
             </div>
@@ -15049,7 +14955,6 @@ function CommerceSettingsView({ user, profile, setView, onLogout, onOwnerProfile
                     WebkitBackdropFilter: 'blur(4px)',
                     display: 'flex', alignItems: 'center', justifyContent: 'center',
                     boxShadow: '0 2px 8px rgba(0,0,0,0.45)',
-                    animation: 'chip-scroll-hint-l 1.4s ease-in-out infinite',
                   }}>
                     <ChevronLeft size={16} color="rgba(255,255,255,0.95)" strokeWidth={2.6} />
                   </div>
@@ -15071,7 +14976,6 @@ function CommerceSettingsView({ user, profile, setView, onLogout, onOwnerProfile
                     WebkitBackdropFilter: 'blur(4px)',
                     display: 'flex', alignItems: 'center', justifyContent: 'center',
                     boxShadow: '0 2px 8px rgba(0,0,0,0.45)',
-                    animation: 'chip-scroll-hint-r 1.4s ease-in-out infinite',
                   }}>
                     <ChevronRight size={16} color="rgba(255,255,255,0.95)" strokeWidth={2.6} />
                   </div>
@@ -15144,7 +15048,6 @@ function CommerceSettingsView({ user, profile, setView, onLogout, onOwnerProfile
                 backgroundClip: 'text',
                 WebkitTextFillColor: 'transparent',
                 filter: 'drop-shadow(0 0 10px rgba(34,230,152,0.55))',
-                animation: 'cfg-pct-shimmer 3.2s linear infinite',
               }}>
                 {cfgPct}%
                 <style>{`
@@ -15191,7 +15094,7 @@ function CommerceSettingsView({ user, profile, setView, onLogout, onOwnerProfile
                       boxShadow: done
                         ? '0 0 6px rgba(34,230,152,0.85), 0 0 14px rgba(34,230,152,0.45)'
                         : 'inset 0 0 0 1px rgba(245,166,35,0.40)',
-                      transition: 'background 400ms ease, box-shadow 400ms ease',
+                      transition: 'background 120ms ease, box-shadow 120ms ease',
                     }} />
                   )
                 })}
@@ -15299,7 +15202,6 @@ function CommerceSettingsView({ user, profile, setView, onLogout, onOwnerProfile
                   // Highlight superior fuerte solo en la activa — luz neón
                   // que dice "esta es la que estás mirando".
                   boxShadow: active ? `inset 0 3px 0 0 ${t.color}` : 'none',
-                  transition: 'background 200ms ease, color 200ms ease, border-color 200ms ease',
                 }}>
                 {/* Símbolo (! o ✓) en círculo del color de la tab.
                     Activa: bg sólido + texto negro. Inactiva: bg tenue +
@@ -16108,7 +16010,7 @@ function CommerceSettingsView({ user, profile, setView, onLogout, onOwnerProfile
                   width: active ? 28 : 7, height: 7, borderRadius: 99,
                   background: active ? '#7131E1' : 'rgba(255,255,255,0.18)',
                   border: 'none', padding: 0, cursor: 'pointer',
-                  transition: 'width 320ms cubic-bezier(0.22,1,0.36,1), background 320ms ease',
+                  transition: 'width 150ms ease, background 150ms ease',
                 }}
               />
             )
@@ -17574,8 +17476,7 @@ function CommerceSettingsView({ user, profile, setView, onLogout, onOwnerProfile
                         style={{ width:36, height:36, borderRadius:'50%', background:`linear-gradient(135deg, ${inactiveSys.color}, ${inactiveSys.colorDark})`, border:'2px solid rgba(20,20,28,0.95)', display:'flex', alignItems:'center', justifyContent:'center', flexShrink:0, cursor:'pointer', padding:0, pointerEvents:'auto', boxShadow:`0 6px 16px -4px ${inactiveSys.color}88`, transition:'transform .15s ease' }}
                         onMouseEnter={e => { e.currentTarget.style.transform = 'scale(1.10)' }}
                         onMouseLeave={e => { e.currentTarget.style.transform = 'scale(1)' }}>
-                        <ArrowUpDown size={15} color="#fff" strokeWidth={2.5}
-                          style={{ animation: prefersReduced ? 'none' : 'sysSwapFlip 2.6s ease-in-out infinite' }} />
+                        <ArrowUpDown size={15} color="#fff" strokeWidth={2.5} />
                       </button>
                       <style>{`
                         @keyframes sysSwapFlip {
@@ -21699,7 +21600,7 @@ function ScannerView({ user, profile, setView }) {
               <path d="M21 17v2a2 2 0 0 1-2 2h-2"/>
               <path d="M7 21H5a2 2 0 0 1-2-2v-2"/>
               {/* Línea de scan — animada con translateY infinito */}
-              <line x1="7" y1="12" x2="17" y2="12" style={{ animation:'scan-line-bounce 1.6s ease-in-out infinite' }} />
+              <line x1="7" y1="12" x2="17" y2="12" />
               <style>{`
                 @keyframes scan-line-bounce {
                   0%, 100% { transform: translateY(-3px); }
@@ -21716,7 +21617,6 @@ function ScannerView({ user, profile, setView }) {
             <span style={{
               display:'inline-flex',
               transformOrigin:'center',
-              animation:'qr-zoom-pulse 1.8s ease-in-out infinite',
             }}>
               <QrCode size={size} color={color} strokeWidth={strokeWidth} />
               <style>{`
@@ -22864,7 +22764,7 @@ function AdminView({ cities: initialCities, profile }) {
                     <div style={{ fontFamily:FN, fontSize:20, fontWeight:900, color:planColor(p) }}>{count}</div>
                     <div style={{ fontSize:11, color:C.mist, marginBottom:4 }}>{p.toUpperCase()}</div>
                     <div style={{ height:4, borderRadius:99, background:'rgba(255,255,255,0.08)' }}>
-                      <div style={{ height:'100%', width:`${pct}%`, borderRadius:99, background:planColor(p), transition:'width 600ms ease' }} />
+                      <div style={{ height:'100%', width:`${pct}%`, borderRadius:99, background:planColor(p) }} />
                     </div>
                   </div>
                 )
