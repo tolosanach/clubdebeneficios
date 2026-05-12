@@ -2511,9 +2511,35 @@ export default function ClubProfilePage() {
               const PRIMARY = { display:'flex', alignItems:'center', justifyContent:'center', width:34, height:34, borderRadius:9, background:G, border:'none', cursor:'pointer', color:'#fff', boxShadow:'0 2px 10px rgba(113,49,225,0.42)', textDecoration:'none' }
               const TRANSP  = { display:'flex', alignItems:'center', justifyContent:'center', width:34, height:34, borderRadius:9, background:'transparent', border:'none', cursor:'pointer', color:'rgba(255,255,255,0.70)', padding:0 }
 
-              // Cuando el usuario viene desde "Mi billetera" está navegando
-              // como cliente — no mostrar el kit de botones del comerciante.
-              if (fromWallet) return null
+              // Cuando el usuario viene desde "Mi billetera" está en modo
+              // cliente — mostrar solo avatar/user, sin kit del comerciante.
+              if (fromWallet) {
+                const goHref = (href) => (e) => {
+                  e.preventDefault()
+                  if (typeof window !== 'undefined') window.location.href = href
+                }
+                const name = userProfile?.full_name || userProfile?.name || user?.email || ''
+                const initial = name[0]?.toUpperCase() || '?'
+                return (
+                  <a
+                    href="/?view=client"
+                    onClick={goHref('/?view=client')}
+                    title="Mi billetera"
+                    style={{ display:'flex', alignItems:'center', gap:7, background:'rgba(255,255,255,0.08)', border:`1px solid ${C.rim}`, borderRadius:99, padding:'4px 10px 4px 4px', cursor:'pointer', textDecoration:'none' }}
+                  >
+                    {userProfile?.avatar_url ? (
+                      <img src={userProfile.avatar_url} alt="" style={{ width:26, height:26, borderRadius:'50%', objectFit:'cover', flexShrink:0 }} />
+                    ) : (
+                      <div style={{ width:26, height:26, borderRadius:'50%', background:G, display:'flex', alignItems:'center', justifyContent:'center', flexShrink:0 }}>
+                        <span style={{ fontFamily:FN, fontSize:12, fontWeight:700, color:'#fff' }}>{initial}</span>
+                      </div>
+                    )}
+                    <span style={{ fontFamily:FN, fontSize:12, fontWeight:600, color:'rgba(255,255,255,0.85)', maxWidth:80, overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>
+                      {name.split(' ')[0] || 'Mi cuenta'}
+                    </span>
+                  </a>
+                )
+              }
 
               const role = userProfile?.role
               // ¿El club que se está viendo es el del propio dueño? Si sí,
