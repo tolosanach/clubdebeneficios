@@ -271,7 +271,7 @@ function Splash({ commerce, UnitIcon, unitIconProps, unitLabel, onClose, onJoin 
         {/* Socios escondidos en perfiles de club — no aporta valor exponer la
             cantidad y mostrar 0 desincentiva al primer cliente. */}
 
-        <button onClick={() => { close(); onJoin && onJoin() }} className="btn-pulse" style={{
+        <button onClick={() => { onJoin && onJoin() }} className="btn-pulse" style={{
           width:'100%', padding:'15px', background:GA, border:'none', borderRadius:16,
           color:'#fff', fontFamily:FN, fontSize:15, fontWeight:700, cursor:'pointer',
           boxShadow:'0 8px 28px rgba(113,49,225,0.45)', transition:'all .2s ease',
@@ -2227,11 +2227,11 @@ export default function ClubProfilePage() {
   useEffect(() => {
     if (autoJoinDone.current) return
     if (!user || !data || membership) return
-    if (searchParams.get('auto_join') !== '1') return
+    const pending = sessionStorage.getItem('benefix:pendingJoinSlug')
+    if (pending !== slug) return
     autoJoinDone.current = true
-    const savedPhone = sessionStorage.getItem('club_join_phone') || ''
-    sessionStorage.removeItem('club_join_phone')
-    handleJoin(savedPhone)
+    sessionStorage.removeItem('benefix:pendingJoinSlug')
+    handleJoin()
   }, [user, data, membership])
 
   useEffect(() => {
@@ -2511,7 +2511,6 @@ export default function ClubProfilePage() {
         <Splash commerce={commerce} UnitIcon={UnitIcon} unitIconProps={unitIconProps} unitLabel={unitLabel} onClose={() => setShowSplash(false)}
           onJoin={async () => {
             let currentUser = user
-            let currentPhone = (userProfile?.phone || phone || '').trim()
             const sb = getSupabase()
             if (!currentUser) {
               try {
@@ -2521,14 +2520,9 @@ export default function ClubProfilePage() {
                 if (currentUser) setUser(currentUser)
               } catch {}
             }
-            if (currentUser && !currentPhone) {
-              try {
-                const { data: prof } = await sb.from('profiles').select('phone').eq('id', currentUser.id).maybeSingle()
-                if (prof?.phone) { currentPhone = prof.phone.trim(); setUserProfile(p => ({ ...(p || {}), phone: prof.phone })) }
-              } catch {}
-            }
             if (currentUser) {
-              handleJoin(currentPhone || undefined)
+              await handleJoin()
+              setShowSplash(false)
             } else {
               try { sessionStorage.setItem('benefix:pendingJoinSlug', slug) } catch {}
               sb.auth.signInWithOAuth({ provider:'google', options:{ redirectTo:`${window.location.origin}/auth/callback`, queryParams:{ prompt:'select_account' } } })
