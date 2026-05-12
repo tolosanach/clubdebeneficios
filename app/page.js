@@ -999,7 +999,7 @@ function CasiListoView({ user, onComplete }) {
             <div style={{ fontSize:11, color:C.dust, fontWeight:600, textTransform:'uppercase', letterSpacing:'.07em', marginBottom:7 }}>
               Teléfono <span style={{ color:'rgba(255,255,255,0.28)', fontWeight:400, textTransform:'none', fontSize:11 }}>(opcional)</span>
             </div>
-            <PhoneInput value={phone} onChange={setPhone} placeholder="+54 9 11 1234-5678" />
+            <PhoneInput value={phone} onChange={setPhone} />
           </div>
 
           <label style={{ display:'flex', alignItems:'flex-start', gap:12, cursor:'pointer', marginBottom:24 }}
@@ -3002,10 +3002,19 @@ function Navbar({ setView, cityName, user, profile, onLogin, onLogout, currentVi
 
   const NAV = { position:'fixed', top:10, left:10, right:10, zIndex:200, borderRadius:14, height:52, display:'flex', alignItems:'center', justifyContent:'space-between' }
 
+  // Para usuarios no autenticados el navbar es siempre opaco — el botón
+  // "Entrar" tiene que ser legible en cualquier scroll y cualquier sección.
+  const NAV_OPAQUE = {
+    background: 'rgba(0, 0, 0, 0.72)',
+    backdropFilter: 'blur(14px)',
+    WebkitBackdropFilter: 'blur(14px)',
+    borderBottom: '1px solid rgba(255,255,255,0.06)',
+  }
+
   // ── No logged-in user ─────────────────────────────────────────────────────
   if (!user) return (
     <>
-      <nav className="navbar-glass" style={{ ...NAV, ...NAV_TRANSITION, ...NAV_SCROLL_STATE, padding:'0 20px' }}>
+      <nav className="navbar-glass" style={{ ...NAV, ...NAV_TRANSITION, ...NAV_OPAQUE, padding:'0 20px' }}>
         <div style={{ cursor:'pointer' }} onClick={() => setView('home')}><Logo /></div>
         <div style={{ display:'flex', gap:8, alignItems:'center' }}>
           {cityName && <span style={{ fontSize:11, color:C.mist, padding:'4px 10px', borderRadius:99, background:C.bg3, border:`1px solid ${C.rim}`, display:'inline-flex', alignItems:'center', gap:4 }}><MapPin size={10} color={C.mist} strokeWidth={2} />{cityName}</span>}
@@ -3046,18 +3055,35 @@ function Navbar({ setView, cityName, user, profile, onLogin, onLogout, currentVi
           archivo en un comentario JSX si hace falta volver. Por ahora
           dejamos solo la ContextSwitchPill aca; el resto de la chrome
           de cuenta vive en el MoreSheet del BottomNavV2. */}
-      {showContextSwitch ? (
-        <ContextSwitchPill
-          activeContext={activeContext}
-          onChange={onContextChange}
-          visible={true}
-        />
-      ) : (
-        <button title="Salir" onClick={onLogout}
-          style={{ display: user ? 'inline-flex' : 'none', alignItems:'center', justifyContent:'center', width:34, height:34, borderRadius:9, background:'transparent', border:'none', cursor:'pointer' }}>
-          <LogOut size={16} color="rgba(255,255,255,0.70)" strokeWidth={2} />
+      <div style={{ display:'flex', gap:8, alignItems:'center' }}>
+        {showContextSwitch && (
+          <ContextSwitchPill
+            activeContext={activeContext}
+            onChange={onContextChange}
+            visible={true}
+          />
+        )}
+        {/* Avatar chip — muestra foto de Google o inicial del nombre.
+            Click lleva a la billetera del cliente (su vista principal). */}
+        <button
+          title={profile?.name || profile?.full_name || 'Mi perfil'}
+          onClick={goToAccount}
+          style={{ display:'flex', alignItems:'center', gap:7, background:'rgba(255,255,255,0.08)', border:'1px solid rgba(255,255,255,0.12)', borderRadius:99, padding:'4px 10px 4px 4px', cursor:'pointer' }}
+        >
+          {profile?.avatar_url ? (
+            <img src={profile.avatar_url} alt="" style={{ width:26, height:26, borderRadius:'50%', objectFit:'cover', flexShrink:0 }} />
+          ) : (
+            <div style={{ width:26, height:26, borderRadius:'50%', background:'#7131E1', display:'flex', alignItems:'center', justifyContent:'center', flexShrink:0 }}>
+              <span style={{ fontFamily:FN, fontSize:12, fontWeight:700, color:'#fff' }}>
+                {(profile?.name || profile?.full_name || user?.email || '?')[0].toUpperCase()}
+              </span>
+            </div>
+          )}
+          <span style={{ fontFamily:FN, fontSize:12, fontWeight:600, color:'rgba(255,255,255,0.85)', maxWidth:80, overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>
+            {(profile?.name || profile?.full_name || user?.email || '').split(' ')[0]}
+          </span>
         </button>
-      )}
+      </div>
       {false && (
       <div className="liquid-glass-strong" style={{ position:'relative', display:'flex', gap:3, alignItems:'center', borderRadius:12, padding:4, overflow:'hidden' }}>
 
