@@ -2428,7 +2428,7 @@ export default function ClubProfilePage() {
       {/* Sticky CTA — aparece solo cuando el usuario cerró el Splash sin unirse
           y todavía no es miembro. Desaparece al completar el join. */}
       {splashPhaseComplete && !isMember && (
-        <div style={{ position:'fixed', bottom:0, left:0, right:0, zIndex:300, padding:'12px 16px 24px', background:'linear-gradient(to top, rgba(0,0,0,0.92) 0%, transparent 100%)', pointerEvents:'none' }}>
+        <div style={{ position:'fixed', bottom:'calc(80px + env(safe-area-inset-bottom, 0px))', left:0, right:0, zIndex:300, padding:'0 16px', pointerEvents:'none' }}>
           <button
             onClick={handleSplashJoin}
             className="btn-pulse"
