@@ -3203,20 +3203,7 @@ export default function ClubProfilePage() {
         {fromQr && !isMember && !spotlightSeen && (
           <div style={{ position:'fixed', inset:0, zIndex:150, background:'rgba(0,0,0,0.78)', backdropFilter:'blur(4px)', WebkitBackdropFilter:'blur(4px)', pointerEvents:'none' }} />
         )}
-        <div style={{ padding:'20px 16px 0', position: fromQr && !isMember && !spotlightSeen ? 'relative' : 'static', zIndex: fromQr && !isMember && !spotlightSeen ? 200 : 'auto' }}>
-          {isMember ? (
-            <>
-              {/* "Sos parte de este club" solo aparece en la pestaña Inicio
-                  — en Catálogo e Historial el cliente quiere foco en el
-                  contenido específico, no en la confirmación de pertenencia.
-                  La campanita ya vive sobre la portada (visible en las 3
-                  pestañas), así que no se duplica acá. */}
-              {tab === 'inicio' && (
-                <MemberBadge createdAt={membership?.joined_at} />
-              )}
-            </>
-          ) : null}
-        </div>
+        <div style={{ position: fromQr && !isMember && !spotlightSeen ? 'relative' : 'static', zIndex: fromQr && !isMember && !spotlightSeen ? 200 : 'auto' }} />
 
         {/* ━━━ TAB: INICIO ━━━ */}
         {tab === 'inicio' && (
@@ -3398,31 +3385,52 @@ export default function ClubProfilePage() {
         {tab === 'inicio' && (
           <div style={{ margin:'16px 16px 0', animation:'fadeUp .3s ease', display:'flex', flexDirection:'column', gap:16 }}>
 
-            {/* ── TU SALDO ── (solo miembros) */}
+            {/* ── MEMBERSHIP CARD ── (solo miembros) */}
             {isMember && (
-              <div style={{ background:'rgba(255,255,255,0.05)', backdropFilter:'blur(16px)', WebkitBackdropFilter:'blur(16px)', border:'1px solid rgba(255,255,255,0.10)', borderRadius:20, padding:'20px', position:'relative', overflow:'hidden' }}>
-                <div style={{ position:'absolute', top:0, left:0, right:0, height:3, background:GA }} />
-                <div style={{ position:'absolute', top:-40, right:-30, width:140, height:140, borderRadius:'50%', background:'rgba(113,49,225,0.1)', filter:'blur(40px)', pointerEvents:'none' }} />
-                <div style={{ display:'flex', justifyContent:'space-between', alignItems:'flex-start' }}>
-                  <div>
-                    <div style={{ fontSize:11, color:C.mist, marginBottom:6, fontWeight:500 }}>Tu saldo</div>
-                    <div style={{ fontFamily:FN, fontSize:36, fontWeight:900, color:unitColor, lineHeight:1, display:'flex', alignItems:'center', gap:8 }}>
-                      <UnitIcon size={28} {...unitIconProps} /> {bal}
-                    </div>
-                    <div style={{ fontSize:12, color:C.mist, marginTop:4 }}>{unitLabel}</div>
+              <div style={{
+                background: 'linear-gradient(135deg, rgba(113,49,225,0.15) 0%, rgba(113,49,225,0.05) 100%)',
+                border: '1px solid rgba(113,49,225,0.35)',
+                borderRadius: 20,
+                padding: '20px',
+                position: 'relative',
+                overflow: 'hidden',
+              }}>
+                {/* Glow blobs decorativos */}
+                <div style={{ position:'absolute', top:-40, right:-30, width:160, height:160, borderRadius:'50%', background:'rgba(113,49,225,0.22)', filter:'blur(50px)', pointerEvents:'none' }} />
+                <div style={{ position:'absolute', bottom:-20, left:-20, width:110, height:110, borderRadius:'50%', background:'rgba(113,49,225,0.12)', filter:'blur(35px)', pointerEvents:'none' }} />
+
+                {/* Header: checkmark + "Ya sos parte de este club" */}
+                <div style={{ display:'flex', alignItems:'center', gap:8, marginBottom:18, position:'relative', zIndex:1 }}>
+                  <div style={{ width:22, height:22, borderRadius:'50%', background:'rgba(113,49,225,0.35)', border:'1px solid rgba(167,139,250,0.55)', display:'flex', alignItems:'center', justifyContent:'center', flexShrink:0 }}>
+                    <Check size={13} color="#A78BFA" strokeWidth={2.8} />
                   </div>
-                  <div style={{ textAlign:'right' }}>
-                    <div style={{ fontSize:12, color:C.mist }}>{visits} visita{visits!==1?'s':''}</div>
+                  <div style={{ fontFamily:FN, fontSize:14, fontWeight:700, color:'#fff', letterSpacing:'-0.01em' }}>
+                    Ya sos parte de este club
+                    {membership?.joined_at && (
+                      <span style={{ fontWeight:400, fontSize:11, color:'rgba(255,255,255,0.40)', marginLeft:6 }}>
+                        desde {new Date(membership.joined_at).toLocaleDateString('es-AR', { month:'long', year:'numeric' })}
+                      </span>
+                    )}
                   </div>
                 </div>
-                {/* La barra de "progreso hacia la recompensa" se removió:
-                    asumía que el cliente apunta al premio más barato, lo cual
-                    no siempre es así. Cada premio tiene su propia barra de
-                    progreso en su card del catálogo (más abajo) — eso le da
-                    al cliente control total sobre qué meta perseguir. */}
-                {/* Compra mínima visible al cliente (solo en stars). */}
+
+                {/* Balance + visitas */}
+                <div style={{ display:'flex', justifyContent:'space-between', alignItems:'flex-end', position:'relative', zIndex:1 }}>
+                  <div>
+                    <div style={{ fontFamily:FN, fontSize:42, fontWeight:900, color:'#fff', lineHeight:1, display:'flex', alignItems:'center', gap:8, filter:'drop-shadow(0 0 16px rgba(113,49,225,0.60))' }}>
+                      <UnitIcon size={30} {...unitIconProps} color="#A78BFA" /> {bal}
+                    </div>
+                    <div style={{ fontSize:12, color:'rgba(255,255,255,0.50)', marginTop:5, fontWeight:500 }}>{unitLabel}</div>
+                  </div>
+                  <div style={{ textAlign:'right' }}>
+                    <div style={{ fontFamily:FN, fontSize:22, fontWeight:800, color:'#fff', lineHeight:1 }}>{visits}</div>
+                    <div style={{ fontSize:11, color:'rgba(255,255,255,0.45)', marginTop:3 }}>visita{visits!==1?'s':''}</div>
+                  </div>
+                </div>
+
+                {/* Compra mínima (solo stars) */}
                 {isStars && commerce.prog_min_purchase > 0 && (
-                  <div style={{ fontSize:11, color:'rgba(251,191,36,0.85)', marginTop:14, display:'flex', alignItems:'center', gap:5 }}>
+                  <div style={{ fontSize:11, color:'rgba(167,139,250,0.75)', marginTop:14, display:'flex', alignItems:'center', gap:5, position:'relative', zIndex:1 }}>
                     <Star size={11} strokeWidth={0} fill="currentColor" />
                     Compra mínima para sumar estrella: <strong>${commerce.prog_min_purchase.toLocaleString('es-AR')}</strong>
                   </div>
