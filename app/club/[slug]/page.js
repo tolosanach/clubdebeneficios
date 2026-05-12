@@ -8,7 +8,7 @@ import {
   MapPin, Clock, Camera,
   Flame, Star, Gem, Sparkles,
   Coffee, Scissors, Utensils, ShoppingBag, Wrench, Building2,
-  Shield, MessageCircle, ArrowRight, Check, Smartphone,
+  Shield, MessageCircle, ArrowLeft, ArrowRight, Check, Smartphone,
   ScanLine, LogOut, Percent,
   Eye, Store, LayoutDashboard, DoorOpen,
   Bell, BellOff, Pen, X, Calendar,
@@ -2288,6 +2288,8 @@ export default function ClubProfilePage() {
   const activePrizes = prizes || []
   // Spotlight cuando el cliente entra escaneando el QR del negocio.
   const fromQr       = searchParams.get('from_qr') === '1'
+  // Vino desde "Mi billetera" — mostrar botón "← Mi billetera" en el navbar.
+  const fromWallet   = searchParams.get('from') === 'wallet'
   // Modo edición: el dueño llegó acá vía el ojo del navbar (?edit=1).
   // Combina ownership real (user.id === commerce.owner_id) + flag URL —
   // si solo está la flag pero no es dueño, NO se renderizan los pencils.
@@ -2480,9 +2482,21 @@ export default function ClubProfilePage() {
             queda oculto — lo reemplazamos por el navbar minimo de arriba. */}
       <div style={{ position:'fixed', top:0, left:0, right:0, zIndex:200, display: editMode ? 'none' : 'block' }}>
         <nav style={{ background:'rgba(0,0,0,0.75)', backdropFilter:'blur(24px)', WebkitBackdropFilter:'blur(24px)', borderBottom:`1px solid ${C.rim}`, padding:'0 16px', display:'flex', alignItems:'center', justifyContent:'space-between', height:58 }}>
-          <a href="/" style={{ display:'inline-flex', alignItems:'center', textDecoration:'none' }} aria-label="Volver al inicio">
-            <Logo />
-          </a>
+          {fromWallet ? (
+            <a
+              href="/?view=client"
+              onClick={(e) => { e.preventDefault(); if (typeof window !== 'undefined') window.location.href = '/?view=client' }}
+              style={{ display:'inline-flex', alignItems:'center', gap:6, textDecoration:'none', background:'rgba(255,255,255,0.07)', border:`1px solid ${C.rim}`, borderRadius:99, padding:'6px 12px 6px 8px', color:'rgba(255,255,255,0.85)' }}
+              aria-label="Volver a Mi billetera"
+            >
+              <ArrowLeft size={14} strokeWidth={2.5} color="rgba(255,255,255,0.85)" />
+              <span style={{ fontFamily:FN, fontSize:12, fontWeight:600 }}>Mi billetera</span>
+            </a>
+          ) : (
+            <a href="/" style={{ display:'inline-flex', alignItems:'center', textDecoration:'none' }} aria-label="Volver al inicio">
+              <Logo />
+            </a>
+          )}
           <div style={{ display:'flex', gap:6, alignItems:'center' }}>
             {(() => {
               // Estilos locales: NEUTRAL (default), ACTIVE (gradient G como en

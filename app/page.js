@@ -7466,7 +7466,7 @@ function WalletCardFront({ club, colors, onFlip, visible }) {
           el click dispare el flip; el resto de la card sigue clickeable. */}
       {commerce?.slug && (
         <a
-          href={`/club/${commerce.slug}`}
+          href={`/club/${commerce.slug}?from=wallet`}
           onClick={e => {
             e.stopPropagation()
             if (typeof window !== 'undefined') {
@@ -7647,7 +7647,7 @@ function WalletCardBack({ club, colors, onFlip, userId }) {
           </button>
           {commerce?.slug
             ? <a
-                href={`/club/${commerce.slug}`}
+                href={`/club/${commerce.slug}?from=wallet`}
                 onClick={e => {
                   e.stopPropagation()
                   // Loader overlay para que el cliente vea respuesta inmediata
@@ -9286,54 +9286,6 @@ function ClientView({ setView, user, profile, onLogout, initialTab }) {
             })()}
           </div>
 
-          {/* Cartel "¿Tenés un negocio?" — versión BOTTOM (compacta, persistente
-              después de la primera respuesta o tras el cooldown de 1h del "No").
-              Solo flecha desplegable, sin Sí/No. Ver bizState para la lógica. */}
-          {profile?.role !== 'commerce_owner' && bizAnswered && (
-            <div style={{
-              position:'relative', overflow:'hidden',
-              background:'linear-gradient(135deg, rgba(254,80,0,0.18) 0%, rgba(189,75,248,0.22) 100%)',
-              border:'1px solid rgba(189,75,248,0.32)',
-              borderRadius:16, marginBottom:12,
-            }}>
-              <button
-                onClick={bizToggleBottom}
-                style={{
-                  width:'100%', background:'transparent', border:'none', cursor:'pointer',
-                  padding:'14px 18px',
-                  display:'flex', alignItems:'center', gap:14, textAlign:'left',
-                  fontFamily:'inherit',
-                }}>
-                <div style={{ width:46, height:46, borderRadius:12, background:G, display:'flex', alignItems:'center', justifyContent:'center', flexShrink:0, boxShadow:'0 4px 18px rgba(168,85,247,0.42)' }}>
-                  <Store size={22} color='#fff' strokeWidth={2} />
-                </div>
-                <div style={{ flex:1, minWidth:0, fontFamily:FN, fontSize:14, fontWeight:700, color:'#fff' }}>
-                  ¿Tenés un negocio?
-                </div>
-                <ChevronDown size={18} color='rgba(255,255,255,0.65)' strokeWidth={2.4}
-                  style={{ flexShrink:0, transform: bizState === 'bottom-expanded' ? 'rotate(180deg)' : 'rotate(0)', transition:'transform 220ms ease' }} />
-              </button>
-              {bizState === 'bottom-expanded' && (
-                <div style={{ padding:'0 18px 16px 78px' }}>
-                  <div style={{ fontSize:12, color:'rgba(255,255,255,0.65)', lineHeight:1.5, marginBottom:12 }}>
-                    Registralo y empezá a fidelizar tus clientes. Es la misma cuenta — seguís siendo cliente también.
-                  </div>
-                  <button onClick={() => window.dispatchEvent(new CustomEvent('benefix:open-signup', { detail: { mode: 'merchant' } }))}
-                    style={{
-                      display:'inline-flex', alignItems:'center', gap:6,
-                      background:G, border:'none', borderRadius:10,
-                      padding:'9px 14px', color:'#fff', fontSize:13, fontWeight:700,
-                      cursor:'pointer', fontFamily:FN,
-                      boxShadow:'0 4px 14px rgba(168,85,247,0.35)',
-                    }}>
-                    Registrar mi negocio
-                    <ArrowRight size={14} strokeWidth={2.4} />
-                  </button>
-                </div>
-              )}
-            </div>
-          )}
-
           {/* Volver a ver carteles de ayuda — resetea todos los flags
               `benefix:help:*` del localStorage. Útil si descartó los carteles
               y quiere volver a verlos. */}
@@ -9665,7 +9617,7 @@ function ClientView({ setView, user, profile, onLogout, initialTab }) {
                     // Resto de casos (premios sin saldo, promos): redirige al
                     // club como antes (informativo, no genera canje).
                     setSelectedBenefit(null)
-                    if (commerce?.slug) window.location.href = `/club/${commerce.slug}`
+                    if (commerce?.slug) window.location.href = `/club/${commerce.slug}?from=wallet`
                   }}
                   style={{
                     width:'100%', padding:'14px 0',
