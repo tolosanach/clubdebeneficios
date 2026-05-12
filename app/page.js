@@ -3057,11 +3057,13 @@ function Navbar({ setView, cityName, user, profile, onLogin, onLogout, currentVi
           de cuenta vive en el MoreSheet del BottomNavV2. */}
       <div style={{ display:'flex', gap:8, alignItems:'center' }}>
         {showContextSwitch && (
-          <ContextSwitchPill
-            activeContext={activeContext}
-            onChange={onContextChange}
-            visible={true}
-          />
+          <div id="benefix-context-switch">
+            <ContextSwitchPill
+              activeContext={activeContext}
+              onChange={onContextChange}
+              visible={true}
+            />
+          </div>
         )}
         {/* Avatar chip — muestra foto de Google o inicial del nombre.
             Click lleva a la billetera del cliente (su vista principal). */}
@@ -23285,6 +23287,116 @@ function readFreshDeepLink() {
   } catch { return _DEEP_LINK }
 }
 
+// ── SwitchTooltip ─────────────────────────────────────────────────────────────
+// Overlay de onboarding que explica el switch cliente/comercio. Se muestra
+// una sola vez, la primera vez que el switch aparece en el navbar (post-registro
+// de negocio). Usa getBoundingClientRect para posicionar el glow ring y la card
+// exactamente sobre el elemento real del DOM.
+function SwitchTooltip({ onDismiss }) {
+  const [rect, setRect] = useState(null)
+  const [visible, setVisible] = useState(false)
+
+  useEffect(() => {
+    const el = document.getElementById('benefix-context-switch')
+    if (el) setRect(el.getBoundingClientRect())
+    const t = setTimeout(() => setVisible(true), 30)
+    return () => clearTimeout(t)
+  }, [])
+
+  const cardTop   = rect ? rect.bottom + 12 : 70
+  const cardRight = 16
+
+  // La flecha apunta desde el card hacia arriba, cerca del switch.
+  // Calculamos cuántos px desde la derecha del card está el centro del switch.
+  const arrowRightOffset = (() => {
+    if (!rect) return 48
+    const cardLeft = (typeof window !== 'undefined' ? window.innerWidth : 390) - cardRight - 260
+    const switchCenter = rect.left + rect.width / 2
+    const offset = (typeof window !== 'undefined' ? window.innerWidth : 390) - cardRight - (switchCenter - cardLeft)
+    return Math.max(12, Math.min(offset, 240))
+  })()
+
+  return (
+    <div style={{
+      position: 'fixed', inset: 0, zIndex: 9000,
+      opacity: visible ? 1 : 0,
+      transition: 'opacity 280ms ease',
+      pointerEvents: visible ? 'auto' : 'none',
+    }}>
+      {/* Backdrop */}
+      <div
+        onClick={onDismiss}
+        style={{
+          position: 'absolute', inset: 0,
+          background: 'rgba(0,0,0,0.75)',
+          backdropFilter: 'blur(6px)',
+          WebkitBackdropFilter: 'blur(6px)',
+        }}
+      />
+      {/* Glow ring sobre el switch */}
+      {rect && (
+        <div style={{
+          position: 'fixed',
+          top: rect.top - 4,
+          left: rect.left - 4,
+          width: rect.width + 8,
+          height: rect.height + 8,
+          borderRadius: 999,
+          boxShadow: '0 0 0 4px rgba(113,49,225,0.6)',
+          background: 'transparent',
+          pointerEvents: 'none',
+          zIndex: 9001,
+        }} />
+      )}
+      {/* Card flotante */}
+      <div style={{
+        position: 'fixed',
+        top: cardTop,
+        right: cardRight,
+        width: 260,
+        background: '#150B26',
+        border: '1px solid rgba(113,49,225,0.45)',
+        borderRadius: 16,
+        padding: '18px 16px 14px',
+        zIndex: 9002,
+        boxShadow: '0 12px 40px rgba(0,0,0,0.60)',
+        transform: visible ? 'translateY(0)' : 'translateY(14px)',
+        transition: 'transform 340ms cubic-bezier(0.22,1,0.36,1)',
+      }}>
+        {/* Flecha apuntando al switch */}
+        <div style={{
+          position: 'absolute',
+          top: -7,
+          right: arrowRightOffset,
+          width: 13, height: 13,
+          background: '#150B26',
+          border: '1px solid rgba(113,49,225,0.45)',
+          borderRight: 'none', borderBottom: 'none',
+          transform: 'rotate(45deg)',
+        }} />
+        <div style={{ fontFamily:FN, fontSize:14, fontWeight:700, color:'#fff', marginBottom:7 }}>
+          ¿Cómo funciona el switch?
+        </div>
+        <div style={{ fontFamily:FI, fontSize:13, color:'rgba(255,255,255,0.68)', lineHeight:1.55, marginBottom:14 }}>
+          Desde acá podés cambiar entre tu perfil de cliente y el panel de tu negocio. En cualquier momento.
+        </div>
+        <button
+          onClick={onDismiss}
+          style={{
+            width: '100%', padding:'10px',
+            background: '#7131E1', border:'none',
+            borderRadius: 10,
+            color: '#fff', fontFamily:FN, fontSize:13, fontWeight:700,
+            cursor: 'pointer',
+          }}
+        >
+          Entendido →
+        </button>
+      </div>
+    </div>
+  )
+}
+
 export default function App() {
   // El deep-link se aplica DESPUÉS del primer render via useEffect (ver
   // más abajo). Si lo aplicáramos en el lazy initializer de useState,
@@ -23337,6 +23449,9 @@ export default function App() {
   // hasMemberships: para decidir si mostrar el ContextSwitchPill cuando el
   // user es merchant pero ademas es cliente de otros clubes.
   const [hasMemberships, setHasMemberships] = useState(false)
+  // Tooltip de onboarding del switch cliente/comercio — aparece una sola vez
+  // después del primer registro de negocio.
+  const [showSwitchTooltip, setShowSwitchTooltip] = useState(false)
   // unreadNotifsCount: lo dispatcha NotificationsBell via 'benefix:notifications-count'.
   // Lo usa BottomNavV2 para mostrar el dot rojo en el slot de Notificaciones.
   const [unreadNotifsCount, setUnreadNotifsCount] = useState(0)
@@ -23740,6 +23855,20 @@ export default function App() {
     }
   }, [])
 
+  // Tooltip onboarding del switch — dispara cuando el switch se hace visible
+  // (el user acaba de registrar su primer negocio). Sólo una vez por usuario.
+  useEffect(() => {
+    if (!shouldShowContextSwitch) return
+    try {
+      if (localStorage.getItem('benefix:switch-tooltip-seen')) return
+      if (!sessionStorage.getItem('benefix:show-switch-tooltip')) return
+    } catch { return }
+    // Pequeño delay para que el switch ya esté montado en el DOM antes de
+    // medir su posición con getBoundingClientRect().
+    const t = setTimeout(() => setShowSwitchTooltip(true), 400)
+    return () => clearTimeout(t)
+  }, [shouldShowContextSwitch])
+
   async function handleOwnerProfile() {
     if (!user) return
     // Encender el loading INMEDIATAMENTE — sin esto el botón ojo se sentía
@@ -23889,6 +24018,7 @@ export default function App() {
               // (premios, beneficios, mensajes) hay que ir a Mi Negocio.
               try {
                 sessionStorage.setItem('benefix:welcome-merchant', '1')
+                sessionStorage.setItem('benefix:show-switch-tooltip', '1')
               } catch {}
               if (slug && typeof window !== 'undefined') {
                 window.location.href = `/club/${slug}?edit=1`
@@ -23916,6 +24046,15 @@ export default function App() {
         onContextChange={handleContextChange}
         showContextSwitch={shouldShowContextSwitch}
       />
+      {showSwitchTooltip && (
+        <SwitchTooltip onDismiss={() => {
+          try {
+            localStorage.setItem('benefix:switch-tooltip-seen', '1')
+            sessionStorage.removeItem('benefix:show-switch-tooltip')
+          } catch {}
+          setShowSwitchTooltip(false)
+        }} />
+      )}
       {/* Spacer del navbar — solo cuando NO es home. En home el splash
           arranca pegado al navbar para que se sienta full-bleed (la
           sección tiene su propio padding-top interno para que el
