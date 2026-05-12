@@ -2511,6 +2511,10 @@ export default function ClubProfilePage() {
               const PRIMARY = { display:'flex', alignItems:'center', justifyContent:'center', width:34, height:34, borderRadius:9, background:G, border:'none', cursor:'pointer', color:'#fff', boxShadow:'0 2px 10px rgba(113,49,225,0.42)', textDecoration:'none' }
               const TRANSP  = { display:'flex', alignItems:'center', justifyContent:'center', width:34, height:34, borderRadius:9, background:'transparent', border:'none', cursor:'pointer', color:'rgba(255,255,255,0.70)', padding:0 }
 
+              // Cuando el usuario viene desde "Mi billetera" está navegando
+              // como cliente — no mostrar el kit de botones del comerciante.
+              if (fromWallet) return null
+
               const role = userProfile?.role
               // ¿El club que se está viendo es el del propio dueño? Si sí,
               // iluminamos el botón "Vista pública" porque esta página ES
