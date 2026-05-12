@@ -924,6 +924,133 @@ function OnboardingFlow({ user, onComplete }) {
   )
 }
 
+// ─── CASI LISTO ───────────────────────────────────────────────────────────────
+// Pantalla única post-OAuth para usuarios nuevos.
+// Reemplaza: TermsAcceptance + OnboardingFlow + MinimalSignupModal en modo client.
+// Objetivo: máxima velocidad — nombre + teléfono (opcional) + checkbox T&C → adentro.
+function CasiListoView({ user, onComplete }) {
+  const supabase = getSupabase()
+  const [name,    setName]    = useState(
+    user?.user_metadata?.full_name || user?.user_metadata?.name || ''
+  )
+  const [phone,   setPhone]   = useState('')
+  const [agreed,  setAgreed]  = useState(false)
+  const [saving,  setSaving]  = useState(false)
+  const [error,   setError]   = useState('')
+
+  async function handleSubmit() {
+    if (!agreed || saving) return
+    setSaving(true)
+    setError('')
+    try {
+      const res = await fetch('/api/signup/minimal', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          mode:           'client',
+          name:           name.trim() || null,
+          phone:          phone.trim() || null,
+          terms_accepted: true,
+        }),
+      })
+      if (res.ok) {
+        onComplete()
+      } else {
+        const json = await res.json().catch(() => ({}))
+        setError(json.error || 'Error al guardar. Intentá de nuevo.')
+      }
+    } catch {
+      setError('Sin conexión. Revisá tu internet.')
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  return (
+    <div style={{ position:'fixed', inset:0, zIndex:9990, background:'#000', display:'flex', flexDirection:'column' }}>
+      <div style={{ position:'fixed', top:'-20%', left:'-10%', width:'60vw', height:'60vw', borderRadius:'50%', background:'radial-gradient(circle, rgba(139,92,246,0.40) 0%, rgba(139,92,246,0) 70%)', filter:'blur(80px)', zIndex:-1, pointerEvents:'none' }} />
+      <div style={{ position:'fixed', bottom:'-20%', right:'-10%', width:'50vw', height:'50vw', borderRadius:'50%', background:'radial-gradient(circle, rgba(236,72,153,0.35) 0%, rgba(236,72,153,0) 70%)', filter:'blur(80px)', zIndex:-1, pointerEvents:'none' }} />
+
+      <div style={{ padding:'20px 24px', display:'flex', alignItems:'center', justifyContent:'center', flexShrink:0 }}>
+        <Logo />
+      </div>
+
+      <div style={{ flex:1, display:'flex', flexDirection:'column', justifyContent:'center', padding:'0 24px 40px', maxWidth:420, width:'100%', margin:'0 auto' }}>
+        <div className="fu">
+          <div style={{ width:72, height:72, borderRadius:'50%', background:'rgba(113,49,225,0.15)', border:'2px solid rgba(113,49,225,0.40)', display:'flex', alignItems:'center', justifyContent:'center', margin:'0 auto 24px', boxShadow:'0 8px 28px rgba(113,49,225,0.25)' }}>
+            <Sparkles size={34} color="#7131E1" strokeWidth={1.8} />
+          </div>
+
+          <div style={{ fontFamily:FN, fontSize:28, fontWeight:800, color:C.white, textAlign:'center', marginBottom:8, letterSpacing:'-0.02em' }}>¡Casi listo!</div>
+          <div style={{ fontSize:14, color:C.mist, textAlign:'center', lineHeight:1.6, marginBottom:32 }}>Completá estos datos para empezar a acumular beneficios.</div>
+
+          <div style={{ marginBottom:14 }}>
+            <div style={{ fontSize:11, color:C.dust, fontWeight:600, textTransform:'uppercase', letterSpacing:'.07em', marginBottom:7 }}>Tu nombre</div>
+            <input
+              type="text" autoFocus
+              value={name}
+              onChange={e => setName(e.target.value)}
+              placeholder="¿Cómo te llamás?"
+              style={{ width:'100%', padding:'14px 16px', background:'rgba(255,255,255,0.06)', border:'1px solid rgba(255,255,255,0.12)', borderRadius:14, color:C.white, fontSize:16, fontFamily:FI, boxSizing:'border-box', outline:'none' }}
+            />
+          </div>
+
+          <div style={{ marginBottom:24 }}>
+            <div style={{ fontSize:11, color:C.dust, fontWeight:600, textTransform:'uppercase', letterSpacing:'.07em', marginBottom:7 }}>
+              Teléfono <span style={{ color:'rgba(255,255,255,0.28)', fontWeight:400, textTransform:'none', fontSize:11 }}>(opcional)</span>
+            </div>
+            <PhoneInput value={phone} onChange={setPhone} placeholder="+54 9 11 1234-5678" />
+          </div>
+
+          <label style={{ display:'flex', alignItems:'flex-start', gap:12, cursor:'pointer', marginBottom:24 }}
+            onClick={() => setAgreed(v => !v)}>
+            <div style={{
+              width:24, height:24, borderRadius:8, flexShrink:0, marginTop:1,
+              display:'flex', alignItems:'center', justifyContent:'center',
+              background: agreed ? '#7131E1' : 'rgba(255,255,255,0.08)',
+              border: agreed ? 'none' : '1px solid rgba(255,255,255,0.20)',
+              transition:'background 160ms ease, border 160ms ease',
+            }}>
+              {agreed && <Check size={14} color="#fff" strokeWidth={3} />}
+            </div>
+            <span style={{ fontSize:13, color:'rgba(255,255,255,0.70)', fontFamily:FI, lineHeight:1.5 }}>
+              Leí y acepto los <span style={{ color:'#fff', fontWeight:600 }}>Términos y Condiciones</span> y la <span style={{ color:'#fff', fontWeight:600 }}>Política de Privacidad</span> de Benefix
+            </span>
+          </label>
+
+          {error && (
+            <div style={{ display:'flex', alignItems:'center', gap:8, padding:'11px 14px', background:'rgba(248,116,68,0.12)', border:'1px solid rgba(248,116,68,0.35)', borderRadius:12, marginBottom:16, fontSize:13, color:'#f87444', fontFamily:FI }}>
+              <AlertTriangle size={14} strokeWidth={2} style={{ flexShrink:0 }} />
+              {error}
+            </div>
+          )}
+
+          <button
+            onClick={handleSubmit}
+            disabled={!agreed || saving}
+            style={{
+              width:'100%', padding:'16px',
+              background: agreed ? '#7131E1' : 'rgba(255,255,255,0.08)',
+              border:'none', borderRadius:16, color:'#fff',
+              fontFamily:FN, fontSize:15, fontWeight:700,
+              cursor: agreed && !saving ? 'pointer' : 'not-allowed',
+              opacity: saving ? 0.7 : 1,
+              boxShadow: agreed && !saving ? '0 8px 28px rgba(113,49,225,0.35)' : 'none',
+              transition:'background 250ms ease, opacity 160ms ease',
+            }}>
+            {saving ? 'Guardando...' : 'Entrar a Benefix →'}
+          </button>
+
+          <button onClick={() => supabase.auth.signOut()}
+            style={{ width:'100%', padding:'10px', marginTop:8, background:'none', border:'none', color:'rgba(255,255,255,0.35)', fontFamily:FI, fontSize:13, cursor:'pointer' }}>
+            Usar otra cuenta
+          </button>
+        </div>
+      </div>
+    </div>
+  )
+}
+
 // ─── PRIMITIVES ───────────────────────────────────────────────────────────────
 // Logo — definicion local removida (mayo 2026, rebrand fase 1).
 // Ahora viene de lib/Logo.js: <img> al SVG wordmark del rebrand violeta
@@ -23400,8 +23527,9 @@ export default function App() {
   const [moreSheetOpen, setMoreSheetOpen]             = useState(false)
   const [cities,        setCities]        = useState([])
   const [citiesLoading, setCitiesLoading] = useState(true)
-  const [showOnboarding, setShowOnboarding] = useState(false)
-  const [showTerms,     setShowTerms]     = useState(false)
+  const [showOnboarding,  setShowOnboarding]  = useState(false)
+  const [showTerms,       setShowTerms]       = useState(false)
+  const [showCasiListo,   setShowCasiListo]   = useState(false)
   // signupModal: { mode: 'client' | 'merchant' } | null. Cuando está seteado,
   // se renderiza MinimalSignupModal por encima de todo. Lo seteamos:
   //   • Después de TermsAcceptance, si profile.onboarding_completed===false
@@ -23530,19 +23658,12 @@ export default function App() {
       bootComplete.current = true
     }
     if (triggerOnboarding) {
-      if (!data?.terms_accepted_at) { setShowTerms(true); return }
-      // Login redesign (abr 2026): si el usuario ya aceptó términos pero
-      // todavía no completó onboarding, mostramos el MinimalSignupModal
-      // en el modo que pidió en el landing (sessionStorage 'benefix:signupAs').
-      // Si no hay flag, asumimos cliente — caso típico de quien entró por
-      // el botón "Entrar" del navbar sin tocar los CTAs grandes.
+      // Flujo nuevo (may 2026): usuarios nuevos van directo a CasiListoView
+      // (nombre + teléfono + T&C en una pantalla). No más TermsAcceptance ni
+      // MinimalSignupModal para el onboarding inicial.
       if (data?.onboarding_completed === false) {
-        let signupMode = 'client'
-        try {
-          const wanted = sessionStorage.getItem('benefix:signupAs')
-          if (wanted === 'merchant' || wanted === 'client') signupMode = wanted
-        } catch {}
-        setSignupModal({ mode: signupMode })
+        setShowCasiListo(true)
+        return
       }
     }
   }
@@ -23591,29 +23712,13 @@ export default function App() {
   }, [])
 
   async function handleLogin(opts = {}) {
-    // Interstitial antes de redirigir a Google. Si el usuario tocó "Entrar"
-    // sin querer puede volver acá sin pasar por el picker de Google.
-    // skipPrompt: cuando el caller ya capturó intención explícita (ej: el
-    // user eligió "Registrarme como cliente/negocio" en el modal de roles),
-    // evitamos un segundo confirm redundante y vamos directo a Google.
-    if (!opts.skipPrompt) {
-      const ok = await showLoginPrompt()
-      if (!ok) return
-    }
-    // Si el caller indicó intención de ir a una vista específica post-login
-    // (ej: "Soy comercio" → register-commerce), la persistimos para que
-    // loadProfile la consuma después del OAuth callback.
-    if (opts && opts.nextView) {
+    if (opts?.nextView) {
       try { sessionStorage.setItem('benefix:loginNext', opts.nextView) } catch {}
     }
     await supabase.auth.signInWithOAuth({
       provider: 'google',
       options: {
         redirectTo: `${window.location.origin}/auth/callback`,
-        // queryParams.prompt='select_account' fuerza a Google a mostrar
-        // SIEMPRE el picker de cuentas, en lugar de auto-loguear con la
-        // última usada. Sin esto, después de un logout el user que quería
-        // entrar con otro mail volvía a caer automáticamente con el viejo.
         queryParams: { prompt: 'select_account' },
       },
     })
@@ -23870,48 +23975,11 @@ export default function App() {
   // Excepciones: si está en el wizard de registro de comercio, en
   // commerce-settings o ya se determinó un view explícito por OAuth
   // callback, dejamos que el flujo siga sin interrumpir.
-  const skipIntentForViews = ['register-commerce', 'commerce-settings']
-  if (
-    user && profile &&
-    !profile.user_intent &&
-    !profile.intent_prompt_shown &&
-    !skipIntentForViews.includes(view)
-  ) {
-    const handleIntentChoose = async (intent) => {
-      await supabase.from('profiles')
-        .update({ user_intent: intent, intent_prompt_shown: true })
-        .eq('id', user.id)
-      // Refresh profile para que el resto de la app vea el nuevo intent.
-      await loadProfile(user.id)
-      // Ruteo: merchant/both → wizard de creación de comercio.
-      // client → "Mi billetera" (vista cliente).
-      if (intent === 'merchant' || intent === 'both') {
-        navigate('register-commerce')
-      } else {
-        navigate('client')
-      }
-    }
-    const handleIntentSkip = async () => {
-      await supabase.from('profiles')
-        .update({ intent_prompt_shown: true })
-        .eq('id', user.id)
-      await loadProfile(user.id)
-    }
-    return (
-      <IntentPickerView
-        userName={profile?.full_name || profile?.name}
-        onChoose={handleIntentChoose}
-        onSkip={handleIntentSkip}
-      />
-    )
-  }
-
   return (
     <>
       <style>{`input:focus { outline: none; border-color: #7131E1 !important; box-shadow: 0 0 0 3px #7131E118; }`}</style>
       <ToastContainer />
       <ConfirmModal />
-      <LoginPromptModal />
       <SwRegister />
       <InstallPrompt />
       {/* Modal de resultado del checkout de Mercado Pago — se muestra cuando
@@ -23926,20 +23994,32 @@ export default function App() {
           onClose={() => setUpgradeResult(null)}
         />
       )}
-      {showTerms && user && (
-        <TermsAcceptance user={user} onAccept={handleTermsAccepted} />
-      )}
-      {showOnboarding && user && (
-        <OnboardingFlow
+      {showCasiListo && user && (
+        <CasiListoView
           user={user}
-          onComplete={async (opts) => {
-            setShowOnboarding(false)
+          onComplete={async () => {
+            setShowCasiListo(false)
             await loadProfile(user.id)
-            // Si el usuario eligió "Sí, tengo un negocio" en el último paso del
-            // onboarding, lo mandamos al wizard de registrar comercio.
-            if (opts?.goTo === 'register-commerce') {
-              navigate('register-commerce')
-            }
+            // Auto-join pendiente desde flujo QR (club page almacena el slug
+            // en sessionStorage antes de disparar el OAuth).
+            try {
+              const pendingSlug = sessionStorage.getItem('benefix:pendingJoinSlug')
+              if (pendingSlug) {
+                sessionStorage.removeItem('benefix:pendingJoinSlug')
+                const sb = getSupabase()
+                const { data: c } = await sb.from('commerces').select('id').eq('slug', pendingSlug).maybeSingle()
+                if (c?.id) {
+                  await fetch('/api/join', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ commerce_id: c.id }),
+                  })
+                  window.location.href = `/club/${pendingSlug}`
+                  return
+                }
+              }
+            } catch {}
+            navigate('client')
           }}
         />
       )}

@@ -97,22 +97,21 @@ export async function POST(request) {
     if (!name?.trim()) {
       return NextResponse.json({ error: 'Necesitamos tu nombre' }, { status: 400 })
     }
-    if (mode === 'client' && !phone?.trim()) {
-      return NextResponse.json({ error: 'El teléfono es obligatorio' }, { status: 400 })
-    }
 
     // ─── Modo cliente: solo profiles ─────────────────────────────────────
     if (mode === 'client') {
+      const updates = {
+        name:                 name.trim(),
+        phone:                phone?.trim() || null,
+        country:              country?.trim()  || 'argentina',
+        province:             province?.trim() || null,
+        city:                 city?.trim()     || null,
+        onboarding_completed: true,
+      }
+      if (body.terms_accepted) updates.terms_accepted_at = new Date().toISOString()
       const { error } = await supabaseAdmin
         .from('profiles')
-        .update({
-          name:                 name.trim(),
-          phone:                phone?.trim() || null,
-          country:              country?.trim()  || 'argentina',
-          province:             province?.trim() || null,
-          city:                 city?.trim()     || null,
-          onboarding_completed: true,
-        })
+        .update(updates)
         .eq('id', user.id)
       if (error) return NextResponse.json({ error: error.message }, { status: 500 })
       return NextResponse.json({ ok: true, mode: 'client' })
