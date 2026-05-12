@@ -1371,115 +1371,13 @@ function CoverLightboxGallery({ covers, startIdx, onClose, scrollRef }) {
   )
 }
 
-// LimitedTimeBenefitsSlider — slider auto-rotatorio que muestra las promos
-// activas del comercio en la pestaña Catálogo. Estilo marketinero, gradient
-// fuerte, ícono grande, contador de días con barra de progreso. Se cicla
-// automáticamente cada AUTOSCROLL_MS milisegundos. También permite scroll
-// horizontal manual (swipe en mobile, drag/scroll en desktop). Cuando el
-// user interactúa, pausamos la auto-rotación temporalmente.
+// LimitedTimeBenefitsSlider — carousel manual de promos activas del comercio.
+// Muestra una card a la vez con flechas izquierda/derecha para navegar.
+// Si hay una sola card, las flechas se ocultan.
 function LimitedTimeBenefitsSlider({ promos, unitLabel, editMode = false, onEdit }) {
-  // Slider con auto-scroll CONTINUO LENTO + drag manual con el dedo. El
-  // track avanza solo via rAF, pero si el user pone el dedo y arrastra,
-  // pausamos el auto-scroll y movemos el track segun el delta del finger.
-  // Al soltar, el auto-scroll vuelve desde la posicion actual sin saltos.
-  //
-  // El offset vive en un ref (no state) para evitar 60 re-renders por
-  // segundo — lo aplicamos al DOM directo via trackRef.style.transform.
-  // Las cards estan duplicadas ([...list, ...list]) para que cuando el
-  // offset llegue al 50% del track, podamos saltar a 0% sin que se vea
-  // (el contenido ahi es identico).
   const list  = promos || []
   const count = list.length
-  const dupList = count > 0 ? [...list, ...list] : []
-
-  const trackRef     = useRef(null)
-  const containerRef = useRef(null)
-  const offsetRef    = useRef(0)        // 0..50 (% del track duplicado)
-  const draggingRef  = useRef(false)
-  const dragStartXRef     = useRef(0)
-  const dragStartYRef     = useRef(0)
-  const dragStartOffRef   = useRef(0)
-  const dragHorizontalRef = useRef(false) // se activa cuando el delta horizontal supera al vertical
-
-  // Auto-scroll loop via rAF. Velocidad: 12s por card. Movimiento
-  // expresado como % por ms del track duplicado (50% = 1 ciclo de cards).
-  useEffect(() => {
-    if (count < 2) return
-    const PCT_PER_MS = 50 / (count * 12 * 1000)
-    let last = performance.now()
-    let rafId
-    const tick = (now) => {
-      const dt = now - last
-      last = now
-      if (!draggingRef.current) {
-        offsetRef.current += PCT_PER_MS * dt
-        if (offsetRef.current >= 50) offsetRef.current -= 50
-        if (offsetRef.current < 0)  offsetRef.current += 50
-      }
-      if (trackRef.current) {
-        trackRef.current.style.transform = `translateX(${-offsetRef.current}%)`
-      }
-      rafId = requestAnimationFrame(tick)
-    }
-    rafId = requestAnimationFrame(tick)
-    return () => cancelAnimationFrame(rafId)
-  }, [count])
-
-  // Drag handlers compartidos entre touch y mouse. dx en pixeles →
-  // delta de offset del track, escalado por el ancho del container:
-  // mover el dedo `containerWidth` pixeles equivale a 50% del track
-  // (= 1 set completo de cards originales).
-  const startDrag = (clientX, clientY) => {
-    draggingRef.current      = true
-    dragStartXRef.current    = clientX
-    dragStartYRef.current    = clientY
-    dragStartOffRef.current  = offsetRef.current
-    dragHorizontalRef.current = false
-  }
-  const moveDrag = (clientX, clientY) => {
-    if (!draggingRef.current) return
-    const dx = clientX - dragStartXRef.current
-    const dy = clientY - dragStartYRef.current
-    // Lock direccional: hasta no decidir, dejamos pasar el scroll vertical.
-    // Una vez que abs(dx) > abs(dy) + 4, lockeamos en horizontal y manejamos
-    // el drag. Si nunca lockeamos y el user soltar, no hicimos nada.
-    if (!dragHorizontalRef.current) {
-      if (Math.abs(dy) > Math.abs(dx) + 4) {
-        // Es scroll vertical → abortamos drag
-        draggingRef.current = false
-        return
-      }
-      if (Math.abs(dx) > Math.abs(dy) + 4) {
-        dragHorizontalRef.current = true
-      } else {
-        return
-      }
-    }
-    const containerW = containerRef.current?.offsetWidth || 1
-    // Track duplicado tiene 200% de ancho del container, asi que recorrer
-    // containerW pixeles = 50% del track (= 1 set de cards).
-    const dxPct = (dx / containerW) * 50
-    let next = dragStartOffRef.current - dxPct
-    while (next < 0)   next += 50
-    while (next >= 50) next -= 50
-    offsetRef.current = next
-    if (trackRef.current) {
-      trackRef.current.style.transform = `translateX(${-next}%)`
-    }
-  }
-  const endDrag = () => {
-    draggingRef.current = false
-    dragHorizontalRef.current = false
-  }
-
-  const onTouchStart = (e) => startDrag(e.touches[0].clientX, e.touches[0].clientY)
-  const onTouchMove  = (e) => moveDrag(e.touches[0].clientX, e.touches[0].clientY)
-  const onTouchEnd   = () => endDrag()
-
-  const onMouseDown  = (e) => startDrag(e.clientX, e.clientY)
-  const onMouseMove  = (e) => moveDrag(e.clientX, e.clientY)
-  const onMouseUp    = () => endDrag()
-  const onMouseLeave = () => endDrag()
+  const [idx, setIdx] = useState(0)
 
   // Sin promos activas: en modo público no se muestra nada. En editMode
   // sí mostramos un container placeholder con header + lápiz para que el
@@ -1579,13 +1477,24 @@ function LimitedTimeBenefitsSlider({ promos, unitLabel, editMode = false, onEdit
     return { mode: 'fixed', daysLeft, urgencyPct, bigText, bigUnit, subtext, expiryLabel: `Hasta el ${dd}/${mm}`, pulse }
   }
 
+  const promo      = list[Math.min(idx, count - 1)]
+  const i          = idx
+  const isDouble   = promo?.type === 'double_points'
+  const isDiscount = promo?.type === 'discount_next'
+  const bigDisplay = isDouble ? '×2' : (promo?.value != null ? `${promo.value}%` : '%')
+  const subBig     = isDouble ? `Doble ${unitLabel}` : 'OFF'
+  const subtitle   = promo?.description || (isDouble ? 'Acumulás el doble en cada compra' : 'En tu próxima visita')
+  const urgency    = promo ? calcUrgency(promo) : null
+
+  const ARROW = {
+    flexShrink: 0, width: 34, height: 34, borderRadius: '50%',
+    background: 'rgba(255,255,255,0.08)', border: '1px solid rgba(255,255,255,0.14)',
+    color: '#fff', cursor: 'pointer', display: 'flex', alignItems: 'center',
+    justifyContent: 'center', padding: 0, transition: 'background 150ms ease',
+  }
+
   return (
-    // Sin marginBottom propio — el padre (tab unificado) ya provee el
-    // gap:16 entre containers, así que cualquier margen extra rompe la
-    // grilla de spacing.
     <div>
-      {/* Keyframes globales del slider — el shimmer de la barra del
-          termómetro de urgencia se reusa entre todas las cards. */}
       <style>{`
         @keyframes urgency-shimmer {
           0%   { background-position: -120% 0; }
@@ -1621,59 +1530,19 @@ function LimitedTimeBenefitsSlider({ promos, unitLabel, editMode = false, onEdit
         </div>
       </div>
 
-      {/* Track con auto-scroll continuo + drag manual. rAF en el
-          parent de este div maneja la animacion via trackRef.style.
-          touch-action: pan-y deja al browser scrollear vertical, pero
-          el horizontal lo manejamos nosotros. */}
-      <div
-        ref={containerRef}
-        onTouchStart={onTouchStart}
-        onTouchMove={onTouchMove}
-        onTouchEnd={onTouchEnd}
-        onTouchCancel={onTouchEnd}
-        onMouseDown={onMouseDown}
-        onMouseMove={onMouseMove}
-        onMouseUp={onMouseUp}
-        onMouseLeave={onMouseLeave}
-        style={{
-          position: 'relative',
-          overflow: 'hidden',
-          borderRadius: 20,
-          touchAction: 'pan-y',
-          cursor: count > 1 ? 'grab' : 'default',
-          userSelect: 'none',
-        }}
-      >
-        <div
-          ref={trackRef}
-          style={{
-            display: 'flex',
-            flexWrap: 'nowrap',
-            width: `${count * 200}%`,
-            willChange: 'transform',
-          }}>
-        {dupList.map((promo, i) => {
-            const isDouble   = promo.type === 'double_points'
-            const isDiscount = promo.type === 'discount_next'
-            // Número grande estilo display: para % OFF mostramos el value
-            // (ej "10%"), para double_points mostramos "×2". El nombre
-            // descriptivo de la promo va como subtítulo abajo.
-            const bigDisplay = isDouble
-              ? '×2'
-              : (promo.value != null ? `${promo.value}%` : '%')
-            const subBig     = isDouble ? `Doble ${unitLabel}` : 'OFF'
-            const subtitle   = promo.description || (isDouble
-              ? 'Acumulás el doble en cada compra'
-              : 'En tu próxima visita')
-            const urgency    = calcUrgency(promo)
-
-            return (
-              <div key={`${promo.id}-${i}`} style={{
-                width: `${100 / (count * 2)}%`,
-                flexShrink: 0,
-                padding: '0 2px',
-                boxSizing: 'border-box',
-              }}>
+      {/* Carousel: flecha izquierda · card · flecha derecha */}
+      <div style={{ display: 'flex', alignItems: 'center', gap: count > 1 ? 10 : 0 }}>
+        {count > 1 && (
+          <button
+            onClick={() => setIdx((idx - 1 + count) % count)}
+            style={ARROW}
+            onMouseEnter={e => { e.currentTarget.style.background = 'rgba(255,255,255,0.16)' }}
+            onMouseLeave={e => { e.currentTarget.style.background = 'rgba(255,255,255,0.08)' }}
+          >
+            <ChevronLeft size={18} strokeWidth={2.4} />
+          </button>
+        )}
+        <div style={{ flex: 1 }}>
                 <div style={{
                   // Base muy oscura — el inner glow violeta hace todo el
                   // trabajo visual. Sin animaciones de gradiente: el glow
@@ -1856,13 +1725,27 @@ function LimitedTimeBenefitsSlider({ promos, unitLabel, editMode = false, onEdit
                       otorgado — ahí sí tiene sentido la fecha porque es
                       info útil que afecta al titular. */}
                 </div>
-              </div>
-            )
-          })}
-        </div>
-      </div>
+        </div>{/* flex:1 wrapper */}
+        {count > 1 && (
+          <button
+            onClick={() => setIdx((idx + 1) % count)}
+            style={ARROW}
+            onMouseEnter={e => { e.currentTarget.style.background = 'rgba(255,255,255,0.16)' }}
+            onMouseLeave={e => { e.currentTarget.style.background = 'rgba(255,255,255,0.08)' }}
+          >
+            <ChevronRight size={18} strokeWidth={2.4} />
+          </button>
+        )}
+      </div>{/* carousel row */}
 
-      {/* Dots eliminados: con marquee continuo no hay posicion discreta. */}
+      {/* Dots de posición */}
+      {count > 1 && (
+        <div style={{ display:'flex', justifyContent:'center', gap:6, marginTop:10 }}>
+          {list.map((_, d) => (
+            <div key={d} onClick={() => setIdx(d)} style={{ width:6, height:6, borderRadius:'50%', background: d === idx ? '#fff' : 'rgba(255,255,255,0.25)', transition:'background 200ms', cursor:'pointer' }} />
+          ))}
+        </div>
+      )}
     </div>
   )
 }
@@ -2038,8 +1921,9 @@ export default function ClubProfilePage() {
   // (descripción, horarios, ubicación, redes) vive adentro y se
   // despliega cuando el cliente toca la flecha del fondo de la card.
   const [cardOpen, setCardOpen]       = useState(false)
-  const [showSplash, setShowSplash]   = useState(false)
-  const [isDemo, setIsDemo]           = useState(false)
+  const [showSplash, setShowSplash]       = useState(false)
+  const [splashDismissed, setSplashDismissed] = useState(false)
+  const [isDemo, setIsDemo]               = useState(false)
   const autoJoinDone                  = useRef(false)
 
   // Canjes
@@ -2292,6 +2176,27 @@ export default function ClubProfilePage() {
   }
 
 
+  // Join flow compartido por el botón del Splash y el sticky CTA post-dismiss.
+  async function handleSplashJoin() {
+    let currentUser = user
+    const sb = getSupabase()
+    if (!currentUser) {
+      try {
+        const { data: sess } = await sb.auth.getSession()
+        currentUser = sess?.session?.user || null
+        if (!currentUser) { const { data } = await sb.auth.getUser(); currentUser = data.user || null }
+        if (currentUser) setUser(currentUser)
+      } catch {}
+    }
+    if (currentUser) {
+      await handleJoin()
+      setShowSplash(false)
+    } else {
+      try { sessionStorage.setItem('benefix:pendingJoinSlug', slug) } catch {}
+      sb.auth.signInWithOAuth({ provider:'google', options:{ redirectTo:`${window.location.origin}/auth/callback`, queryParams:{ prompt:'select_account' } } })
+    }
+  }
+
   async function handleJoin(phoneArg) {
     if (!user || !data) return
     const phoneVal = (phoneArg || phone || '').trim() || undefined
@@ -2508,27 +2413,24 @@ export default function ClubProfilePage() {
       )}
 
       {showSplash && (
-        <Splash commerce={commerce} UnitIcon={UnitIcon} unitIconProps={unitIconProps} unitLabel={unitLabel} onClose={() => setShowSplash(false)}
-          onJoin={async () => {
-            let currentUser = user
-            const sb = getSupabase()
-            if (!currentUser) {
-              try {
-                const { data: sess } = await sb.auth.getSession()
-                currentUser = sess?.session?.user || null
-                if (!currentUser) { const { data } = await sb.auth.getUser(); currentUser = data.user || null }
-                if (currentUser) setUser(currentUser)
-              } catch {}
-            }
-            if (currentUser) {
-              await handleJoin()
-              setShowSplash(false)
-            } else {
-              try { sessionStorage.setItem('benefix:pendingJoinSlug', slug) } catch {}
-              sb.auth.signInWithOAuth({ provider:'google', options:{ redirectTo:`${window.location.origin}/auth/callback`, queryParams:{ prompt:'select_account' } } })
-            }
-          }}
+        <Splash commerce={commerce} UnitIcon={UnitIcon} unitIconProps={unitIconProps} unitLabel={unitLabel}
+          onClose={() => { setShowSplash(false); setSplashDismissed(true) }}
+          onJoin={handleSplashJoin}
         />
+      )}
+
+      {/* Sticky CTA — aparece solo cuando el usuario cerró el Splash sin unirse
+          y todavía no es miembro. Desaparece al completar el join. */}
+      {splashDismissed && !isMember && (
+        <div style={{ position:'fixed', bottom:0, left:0, right:0, zIndex:300, padding:'12px 16px 24px', background:'linear-gradient(to top, rgba(0,0,0,0.92) 0%, transparent 100%)', pointerEvents:'none' }}>
+          <button
+            onClick={handleSplashJoin}
+            className="btn-pulse"
+            style={{ display:'block', width:'100%', maxWidth:420, margin:'0 auto', padding:'15px', background:GA, border:'none', borderRadius:16, color:'#fff', fontFamily:FN, fontSize:15, fontWeight:700, cursor:'pointer', boxShadow:'0 8px 28px rgba(113,49,225,0.55)', pointerEvents:'all' }}
+          >
+            Unirme a este club →
+          </button>
+        </div>
       )}
 
       {/* ── NAVBAR MINIMO (solo editMode) ──
