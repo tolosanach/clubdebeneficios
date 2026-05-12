@@ -2294,13 +2294,11 @@ export default function ClubProfilePage() {
 
   async function handleJoin(phoneArg) {
     if (!user || !data) return
-    const phoneVal = (phoneArg || phone || '').trim()
-    if (!phoneVal && !phoneArg) { setPhoneErr('Ingresá tu celular'); return }
-    if (!consent && !phoneArg) { setJoinError('Necesitás aceptar los términos'); return }
+    const phoneVal = (phoneArg || phone || '').trim() || undefined
     setJoining(true); setJoinError('')
     const res = await fetch('/api/join', {
       method:'POST', headers:{ 'Content-Type':'application/json' },
-      body: JSON.stringify({ commerce_id:data.commerce.id, phone:phoneVal }),
+      body: JSON.stringify({ commerce_id:data.commerce.id, ...(phoneVal && { phone: phoneVal }) }),
     })
     const result = await res.json()
     if (result.ok) {
@@ -3332,10 +3330,19 @@ export default function ClubProfilePage() {
                     } catch {}
                   }
 
-                  if (currentUser && currentPhone) {
-                    handleJoin(currentPhone)
+                  if (currentUser) {
+                    handleJoin(currentPhone || undefined)
                   } else {
-                    setShowModal(true)
+                    // Sin sesión: guardar slug y redirigir al SPA para login + CasiListo + auto-join
+                    try { sessionStorage.setItem('benefix:pendingJoinSlug', slug) } catch {}
+                    const sb2 = getSupabase()
+                    sb2.auth.signInWithOAuth({
+                      provider: 'google',
+                      options: {
+                        redirectTo: `${window.location.origin}/auth/callback`,
+                        queryParams: { prompt: 'select_account' },
+                      },
+                    })
                   }
                 }}
                 isDemoClub={false} />

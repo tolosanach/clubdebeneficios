@@ -2922,12 +2922,7 @@ function Navbar({ setView, cityName, user, profile, onLogin, onLogout, currentVi
   const userIntent     = profile?.user_intent || null
   const showOwnerKit   = role === 'commerce_owner' && userIntent !== 'client'
 
-  // Modal "¿Cómo querés entrar?" — aparece al tocar Entrar cuando no hay user.
-  // Pregunta si entra como cliente o como negocio. La elección se persiste en
-  // sessionStorage 'benefix:signupAs' para que después del OAuth callback el
-  // boot flow sepa qué modo del MinimalSignupModal abrir (si es nuevo). Si es
-  // un user existente, el flag se ignora y va a su panel real.
-  const [roleAskerOpen, setRoleAskerOpen] = useState(false)
+  const [roleAskerOpen, setRoleAskerOpen] = useState(false) // legacy, no se usa
 
   // ── Scroll-aware: navbar transparente al tope, opaco con blur al scrollear ─
   // Threshold 50px: arriba el navbar queda invisible (deja respirar al hero
@@ -2959,20 +2954,6 @@ function Navbar({ setView, cityName, user, profile, onLogin, onLogout, currentVi
         WebkitBackdropFilter: 'none',
         borderBottom: '1px solid transparent',
       }
-  function pickRole(r) {
-    try { sessionStorage.setItem('benefix:signupAs', r) } catch {}
-    setRoleAskerOpen(false)
-    // Cliente: directo al OAuth, después va a su panel de cliente.
-    // Negocio: directo al OAuth, post-callback va al wizard register-commerce
-    // para que termine de configurar el local. skipPrompt:true evita el
-    // segundo confirm (el user ya eligió su rol explícitamente).
-    if (!onLogin) return
-    if (r === 'merchant') {
-      onLogin({ nextView: 'register-commerce', skipPrompt: true })
-    } else {
-      onLogin({ skipPrompt: true })
-    }
-  }
 
   // ── Shared style helpers ──────────────────────────────────────────────────
   // Botones dentro del contenedor glass: transparentes por defecto,
@@ -3034,7 +3015,7 @@ function Navbar({ setView, cityName, user, profile, onLogin, onLogout, currentVi
               de copy/mental model: el user que viene a registrarse busca
               "Registrarse" antes que "Entrar". */}
           <button
-            onClick={() => setRoleAskerOpen(true)}
+            onClick={() => onLogin && onLogin()}
             style={{
               background: 'transparent',
               border: 'none',
@@ -3049,149 +3030,9 @@ function Navbar({ setView, cityName, user, profile, onLogin, onLogout, currentVi
           >
             Registrarse
           </button>
-          <GBtn sm onClick={() => setRoleAskerOpen(true)}>Entrar</GBtn>
+          <GBtn sm onClick={() => onLogin && onLogin()}>Entrar</GBtn>
         </div>
       </nav>
-      {roleAskerOpen && (
-        <div
-          onClick={() => setRoleAskerOpen(false)}
-          style={{
-            position:'fixed', inset:0, zIndex:9995,
-            background:'rgba(8,4,18,0.72)',
-            backdropFilter:'blur(10px)', WebkitBackdropFilter:'blur(10px)',
-            display:'flex', alignItems:'center', justifyContent:'center',
-            padding:20,
-          }}
-        >
-          <div
-            onClick={(e) => e.stopPropagation()}
-            className="modal-in"
-            style={{
-              width:'100%', maxWidth:380,
-              background:'linear-gradient(180deg, rgba(28,18,42,0.96), rgba(18,10,28,0.96))',
-              border:'1px solid rgba(255,255,255,0.10)',
-              borderRadius:22,
-              padding:'22px 22px 24px',
-              boxShadow:'0 24px 64px rgba(0,0,0,0.55)',
-              position:'relative',
-            }}
-          >
-            <button
-              onClick={() => setRoleAskerOpen(false)}
-              aria-label="Cerrar"
-              style={{ position:'absolute', top:12, right:12, width:30, height:30, borderRadius:'50%', background:'rgba(255,255,255,0.06)', border:'1px solid rgba(255,255,255,0.10)', color:C.mist, cursor:'pointer', display:'flex', alignItems:'center', justifyContent:'center', padding:0 }}
-            >
-              <X size={14} strokeWidth={2} />
-            </button>
-
-            <div style={{ textAlign:'center', marginBottom:18, marginTop:4 }}>
-              <div style={{ fontFamily:FN, fontSize:18, fontWeight:900, color:C.white, letterSpacing:'.02em', marginBottom:6 }}>
-                ¿Cómo querés entrar?
-              </div>
-              <div style={{ fontSize:12, color:C.mist, lineHeight:1.5, maxWidth:300, margin:'0 auto' }}>
-                Elegí el rol con el que vas a usar Benefix. Si ya tenés cuenta, te llevamos a tu panel.
-              </div>
-            </div>
-
-            {/* Registrarme como cliente */}
-            <button
-              onClick={() => pickRole('client')}
-              style={{
-                width:'100%', textAlign:'left',
-                display:'flex', alignItems:'center', gap:12,
-                padding:'14px 16px', borderRadius:14,
-                background:'rgba(139,92,246,0.10)',
-                border:'1.5px solid rgba(139,92,246,0.32)',
-                color:C.white, cursor:'pointer',
-                marginBottom:10,
-                transition:'background 180ms ease, border 180ms ease',
-              }}
-            >
-              <div style={{
-                width:38, height:38, borderRadius:11,
-                background:'rgba(139,92,246,0.22)',
-                display:'flex', alignItems:'center', justifyContent:'center',
-                flexShrink:0,
-              }}>
-                <Wallet size={18} color="#7131E1" strokeWidth={2} />
-              </div>
-              <div style={{ flex:1, minWidth:0 }}>
-                <div style={{ fontFamily:FN, fontSize:14, fontWeight:800, marginBottom:2 }}>
-                  Registrarme como cliente
-                </div>
-                <div style={{ fontSize:12, color:C.mist, lineHeight:1.4 }}>
-                  Sumar puntos en mis comercios favoritos.
-                </div>
-              </div>
-            </button>
-
-            {/* Registrarme como negocio */}
-            <button
-              onClick={() => pickRole('merchant')}
-              style={{
-                width:'100%', textAlign:'left',
-                display:'flex', alignItems:'center', gap:12,
-                padding:'14px 16px', borderRadius:14,
-                background:'rgba(254,80,0,0.10)',
-                border:'1.5px solid rgba(254,80,0,0.32)',
-                color:C.white, cursor:'pointer',
-                transition:'background 180ms ease, border 180ms ease',
-              }}
-            >
-              <div style={{
-                width:38, height:38, borderRadius:11,
-                background:'rgba(254,80,0,0.22)',
-                display:'flex', alignItems:'center', justifyContent:'center',
-                flexShrink:0,
-              }}>
-                <Store size={18} color="#FE5000" strokeWidth={2} />
-              </div>
-              <div style={{ flex:1, minWidth:0 }}>
-                <div style={{ fontFamily:FN, fontSize:14, fontWeight:800, marginBottom:2 }}>
-                  Registrarme como negocio
-                </div>
-                <div style={{ fontSize:12, color:C.mist, lineHeight:1.4 }}>
-                  Crear mi club y fidelizar clientes.
-                </div>
-              </div>
-            </button>
-
-            <div style={{ fontSize:11, color:'rgba(255,255,255,0.32)', textAlign:'center', marginTop:14, lineHeight:1.5 }}>
-              Después podés activar el otro rol desde tu cuenta.
-            </div>
-
-            {/* Link "Ya estoy registrado" — para usuarios que ya tienen cuenta
-                y no quieren pasar por el selector de rol. Llama onLogin()
-                directo (Google OAuth); si el user ya tiene rol asignado,
-                el callback lo lleva a su panel sin más preguntas. */}
-            <button
-              onClick={() => {
-                setRoleAskerOpen(false)
-                onLogin && onLogin()
-              }}
-              style={{
-                display: 'block',
-                width: '100%',
-                marginTop: 10,
-                padding: '8px 6px',
-                background: 'transparent',
-                border: 'none',
-                color: 'rgba(255,255,255,0.55)',
-                fontFamily: FI, fontSize: 12, fontWeight: 500,
-                cursor: 'pointer',
-                textAlign: 'center',
-                textDecoration: 'underline',
-                textUnderlineOffset: '3px',
-                transition: 'color 160ms ease',
-              }}
-              onMouseEnter={e => { e.currentTarget.style.color = '#fff' }}
-              onMouseLeave={e => { e.currentTarget.style.color = 'rgba(255,255,255,0.55)' }}
-            >
-              Ya estoy registrado
-            </button>
-          </div>
-        </div>
-      )}
     </>
   )
 
@@ -23665,6 +23506,27 @@ export default function App() {
         setShowCasiListo(true)
         return
       }
+    }
+
+    // Join pendiente desde flujo QR de la club page (usuarios ya onboarded).
+    // La club page guarda el slug antes del OAuth; acá lo consumimos y unimos.
+    if (data?.onboarding_completed === true) {
+      try {
+        const pendingSlug = sessionStorage.getItem('benefix:pendingJoinSlug')
+        if (pendingSlug) {
+          sessionStorage.removeItem('benefix:pendingJoinSlug')
+          const { data: c } = await supabase.from('commerces').select('id').eq('slug', pendingSlug).maybeSingle()
+          if (c?.id) {
+            await fetch('/api/join', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ commerce_id: c.id }),
+            })
+            window.location.href = `/club/${pendingSlug}`
+            return
+          }
+        }
+      } catch {}
     }
   }
 
