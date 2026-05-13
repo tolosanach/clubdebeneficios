@@ -16302,52 +16302,75 @@ function CommerceSettingsView({ user, profile, setView, onLogout, onOwnerProfile
           </div>
         </PCard>
 
-        {/* ── Sumar estrellas / puntos manualmente ── */}
+        {/* ── Otorgar beneficio (unificado: balance + % OFF) ── */}
         {(() => {
-          const isStars   = form?.prog_type === 'stars'
-          const unitWord  = isStars ? 'estrellas' : 'puntos'
-          const sysColor  = isStars ? '#7131E1' : '#EC4899'
-          return (
-            <PCard style={{ padding:16, marginBottom:12, background:`${sysColor}10`, border:`1px solid ${sysColor}33` }}>
-              <button onClick={() => setGrantBalanceOpen(o => !o)}
-                style={{ width:'100%', display:'flex', alignItems:'center', justifyContent:'space-between', background:'transparent', border:'none', padding:0, cursor:'pointer', fontFamily:'inherit' }}>
-                <div style={{ display:'flex', alignItems:'center', gap:10 }}>
-                  <div style={{ width:34, height:34, borderRadius:10, background:sysColor, display:'flex', alignItems:'center', justifyContent:'center', flexShrink:0, boxShadow:`0 4px 14px ${sysColor}55` }}>
-                    {isStars ? <Star size={16} color="#fff" strokeWidth={2.2} /> : <Gem size={16} color="#fff" strokeWidth={2.2} />}
-                  </div>
-                  <div style={{ textAlign:'left' }}>
-                    <div style={{ fontFamily:FN, fontSize:13, fontWeight:700, color:C.white }}>Sumar {unitWord}</div>
-                    <div style={{ fontSize:11, color:C.dust, marginTop:2 }}>Agregá {unitWord} al saldo del cliente</div>
-                  </div>
-                </div>
-                {grantBalanceOpen
-                  ? <ChevronUp size={16} color={C.mist} strokeWidth={2} />
-                  : <ChevronDown size={16} color={C.mist} strokeWidth={2} />}
-              </button>
+          const isStars  = form?.prog_type === 'stars'
+          const unitWord = isStars ? 'estrellas' : 'puntos'
+          const sysColor = isStars ? '#7131E1' : '#EC4899'
+          const step     = isStars ? 1 : (parseInt(form?.prog_min_purchase) > 0 ? parseInt(form.prog_min_purchase) : 100)
+          const cur      = parseInt(grantBalanceAmount) || 0
+          const dec      = () => { const n = Math.max(step, cur - step); setGrantBalanceAmount(String(n)); setGrantBalanceError('') }
+          const inc      = () => { const n = Math.min(9999, cur + step); setGrantBalanceAmount(String(n)); setGrantBalanceError('') }
+          if (grantPanelOpen && !grantBalanceAmount) setTimeout(() => setGrantBalanceAmount(String(step)), 0)
 
-              {grantBalanceOpen && (() => {
-                const step = isStars ? 1 : (parseInt(form?.prog_min_purchase) > 0 ? parseInt(form.prog_min_purchase) : 100)
-                const cur  = parseInt(grantBalanceAmount) || 0
-                const dec  = () => { const n = Math.max(step, cur - step); setGrantBalanceAmount(String(n)); setGrantBalanceError('') }
-                const inc  = () => { const n = Math.min(9999, cur + step); setGrantBalanceAmount(String(n)); setGrantBalanceError('') }
-                if (!grantBalanceAmount) setTimeout(() => setGrantBalanceAmount(String(step)), 0)
-                return (
-                  <div style={{ marginTop:14, paddingTop:14, borderTop:`1px solid ${C.rim}` }}>
+          const grantablePromos = (promos || []).filter(p =>
+            p.active && p.type === 'discount_next' && !(p.expires_at && new Date(p.expires_at) <= new Date())
+          )
+          const hasPromos = grantablePromos.length > 0
+
+          return (
+            <PCard style={{
+              padding:16, marginBottom:12,
+              background:'linear-gradient(135deg, rgba(254,80,0,0.12), rgba(189,75,248,0.16))',
+              border:'1px solid rgba(189,75,248,0.45)',
+              boxShadow:'0 6px 22px rgba(189,75,248,0.20)',
+            }}>
+              {/* Header del acordeón */}
+              <div style={{ display:'flex', alignItems:'center', gap:6 }}>
+                <button onClick={() => setGrantPanelOpen(o => !o)}
+                  style={{ flex:1, display:'flex', alignItems:'center', justifyContent:'space-between', background:'transparent', border:'none', padding:0, cursor:'pointer', fontFamily:'inherit' }}>
+                  <div style={{ display:'flex', alignItems:'center', gap:10 }}>
+                    <div style={{ width:34, height:34, borderRadius:10, background:G, display:'flex', alignItems:'center', justifyContent:'center', flexShrink:0, boxShadow:'0 4px 14px rgba(189,75,248,0.40)' }}>
+                      <Sparkles size={16} color="#fff" strokeWidth={2.2} />
+                    </div>
+                    <div style={{ textAlign:'left' }}>
+                      <div style={{ fontFamily:FN, fontSize:13, fontWeight:700, color:C.white }}>Otorgar beneficio</div>
+                      <div style={{ fontSize:11, color:C.dust, marginTop:2 }}>Sumá balance o regalá un cupón</div>
+                    </div>
+                  </div>
+                  {grantPanelOpen
+                    ? <ChevronUp size={16} color={C.mist} strokeWidth={2} />
+                    : <ChevronDown size={16} color={C.mist} strokeWidth={2} />}
+                </button>
+                <InfoHint align="right" text={
+                  'Desde acá podés otorgar beneficios a este cliente de forma manual.\n\n' +
+                  '• Sumar balance: añadí estrellas o puntos directamente a su saldo.\n' +
+                  '• Dar % OFF: regalale un cupón de descuento para su próxima compra.\n\n' +
+                  'El cliente recibe una notificación al instante.'
+                } />
+              </div>
+
+              {grantPanelOpen && (
+                <div style={{ marginTop:14, paddingTop:14, borderTop:`1px solid ${C.rim}`, display:'flex', flexDirection:'column', gap:16 }}>
+
+                  {/* Sub-sección 1: Sumar balance */}
+                  <div>
+                    <div style={{ fontSize:10, color:C.dust, fontWeight:700, letterSpacing:'.07em', textTransform:'uppercase', marginBottom:10, display:'flex', alignItems:'center', gap:6 }}>
+                      {isStars ? <Star size={11} color={sysColor} strokeWidth={2} /> : <Gem size={11} color={sysColor} strokeWidth={2} />}
+                      Sumar {unitWord}
+                    </div>
                     {grantBalanceError && (
                       <div style={{ fontSize:11, color:'#f87444', marginBottom:10, padding:'7px 10px', background:'rgba(248,116,68,0.10)', border:'1px solid rgba(248,116,68,0.30)', borderRadius:8 }}>
                         {grantBalanceError}
                       </div>
                     )}
-                    {/* Stepper */}
-                    <div style={{ display:'flex', alignItems:'center', gap:8, marginBottom:12 }}>
+                    <div style={{ display:'flex', alignItems:'center', gap:8, marginBottom:10 }}>
                       <button onClick={dec} disabled={cur <= step}
                         style={{ width:44, height:44, borderRadius:12, background:'rgba(255,255,255,0.08)', border:`1px solid ${C.rim}`, color:C.white, fontSize:22, fontWeight:300, cursor: cur <= step ? 'not-allowed' : 'pointer', opacity: cur <= step ? 0.4 : 1, display:'flex', alignItems:'center', justifyContent:'center', flexShrink:0 }}>
                         −
                       </button>
                       <div style={{ flex:1, textAlign:'center' }}>
-                        <div style={{ fontFamily:FN, fontSize:28, fontWeight:900, color:C.white, lineHeight:1 }}>
-                          {cur || step}
-                        </div>
+                        <div style={{ fontFamily:FN, fontSize:28, fontWeight:900, color:C.white, lineHeight:1 }}>{cur || step}</div>
                         <div style={{ fontSize:10, color:C.dust, marginTop:3 }}>
                           {unitWord}{!isStars && step > 1 && ` · paso $${step.toLocaleString('es-AR')}`}
                         </div>
@@ -16357,21 +16380,72 @@ function CommerceSettingsView({ user, profile, setView, onLogout, onOwnerProfile
                         +
                       </button>
                     </div>
-                    <button
-                      onClick={grantBalanceToMember}
-                      disabled={grantingBalance || !cur}
-                      style={{ width:'100%', padding:'11px', background: grantingBalance ? `${sysColor}55` : sysColor, border:'none', borderRadius:10, color:'#fff', fontFamily:FN, fontSize:13, fontWeight:700, cursor: grantingBalance ? 'wait' : 'pointer' }}>
+                    <button onClick={grantBalanceToMember} disabled={grantingBalance || !cur}
+                      style={{ width:'100%', padding:'10px', background: grantingBalance ? `${sysColor}55` : sysColor, border:'none', borderRadius:10, color:'#fff', fontFamily:FN, fontSize:13, fontWeight:700, cursor: grantingBalance ? 'wait' : 'pointer' }}>
                       {grantingBalance ? 'Sumando...' : `Sumar ${cur || step} ${unitWord}`}
                     </button>
                   </div>
-                )
-              })()}
+
+                  {/* Divisor */}
+                  <div style={{ height:1, background:`linear-gradient(90deg, transparent, ${C.rim}, transparent)` }} />
+
+                  {/* Sub-sección 2: % OFF */}
+                  <div>
+                    <div style={{ fontSize:10, color:C.dust, fontWeight:700, letterSpacing:'.07em', textTransform:'uppercase', marginBottom:10, display:'flex', alignItems:'center', gap:6 }}>
+                      <Percent size={11} color={C.v} strokeWidth={2.5} />
+                      Dar % OFF próxima compra
+                    </div>
+                    {grantError && (
+                      <div style={{ fontSize:11, color:'#f87444', marginBottom:10, padding:'7px 10px', background:'rgba(248,116,68,0.10)', border:'1px solid rgba(248,116,68,0.30)', borderRadius:8 }}>
+                        {grantError}
+                      </div>
+                    )}
+                    {!hasPromos ? (
+                      <div style={{ padding:'12px', background:C.bg3, border:`1px dashed ${C.rim}`, borderRadius:10, textAlign:'center' }}>
+                        <div style={{ fontSize:12, color:C.mist, marginBottom:10, lineHeight:1.5 }}>
+                          No tenés cupones de descuento activos. Configurá uno en <strong style={{ color:C.white }}>Recompensas</strong>.
+                        </div>
+                        <button onClick={() => { setSelectedMember(null); setTab('recompensas') }}
+                          style={{ background:'transparent', border:`1px solid ${C.v}`, color:C.v, fontFamily:FN, fontSize:12, fontWeight:700, padding:'7px 14px', borderRadius:8, cursor:'pointer', display:'inline-flex', alignItems:'center', gap:6 }}>
+                          Ir a Recompensas <ArrowRight size={12} strokeWidth={2.5} />
+                        </button>
+                      </div>
+                    ) : (
+                      <div style={{ display:'flex', flexDirection:'column', gap:8 }}>
+                        {grantablePromos.map(p => {
+                          const valueTxt   = p.value ? `${p.value}% OFF` : 'Descuento'
+                          const expiresTxt = p.expiration_type === 'relative'
+                            ? `Vale ${p.expiration_days || 7} día${(p.expiration_days||7) === 1 ? '' : 's'} desde que lo regales`
+                            : (p.expiration_date ? `Vence el ${new Date(p.expiration_date).toLocaleDateString('es-AR')}` : 'Sin vencimiento')
+                          const busy = grantingPromoId === p.id
+                          return (
+                            <div key={p.id} style={{ display:'flex', alignItems:'center', justifyContent:'space-between', background:C.bg3, borderRadius:10, padding:'10px 14px', gap:10 }}>
+                              <div style={{ minWidth:0, flex:1 }}>
+                                <div style={{ display:'flex', alignItems:'center', gap:6, marginBottom:2 }}>
+                                  <Percent size={11} color={C.v} strokeWidth={2.5} />
+                                  <span style={{ fontFamily:FN, fontSize:13, fontWeight:700, color:C.white }}>{valueTxt}</span>
+                                </div>
+                                {p.description && <div style={{ fontSize:11, color:C.mist, marginBottom:2, overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>{p.description}</div>}
+                                <div style={{ fontSize:10, color:C.dust }}>{expiresTxt}</div>
+                              </div>
+                              <button onClick={() => grantPromoToMember(p.id)} disabled={!!grantingPromoId}
+                                style={{ background:GV, border:'none', borderRadius:8, padding:'8px 14px', color:'#fff', fontFamily:FN, fontSize:11, fontWeight:700, cursor: grantingPromoId ? 'wait' : 'pointer', opacity: busy ? 0.7 : 1, flexShrink:0 }}>
+                                {busy ? '⟳' : 'Otorgar'}
+                              </button>
+                            </div>
+                          )
+                        })}
+                      </div>
+                    )}
+                  </div>
+
+                </div>
+              )}
             </PCard>
           )
         })()}
 
-        {/* QR del cliente — para que el comerciante pueda escanearlo
-            si el cliente no tiene el teléfono a mano */}
+        {/* QR del cliente */}
         {(m.profiles?.id || m.user_id) && (
           <PCard style={{ padding:16, marginBottom:12 }}>
             <div style={{ fontSize:10, color:C.dust, fontWeight:700, letterSpacing:'.08em', textTransform:'uppercase', marginBottom:12 }}>QR del cliente</div>
@@ -16391,9 +16465,7 @@ function CommerceSettingsView({ user, profile, setView, onLogout, onOwnerProfile
         {canRedeem && eligiblePrizes.length > 0 && (
           <PCard style={{ padding:16, marginBottom:12, border:`1px solid ${C.ok}44`, background:`${C.ok}08` }}>
             <div style={{ fontFamily:FN, fontSize:13, fontWeight:700, color:C.ok, marginBottom:12, display:'flex', alignItems:'center', gap:6 }}><Gift size={14} color={C.ok} strokeWidth={2} /> Canjear premio</div>
-            {redeemError && (
-              <div style={{ fontSize:11, color:'#f87', marginBottom:10 }}>{redeemError}</div>
-            )}
+            {redeemError && <div style={{ fontSize:11, color:'#f87', marginBottom:10 }}>{redeemError}</div>}
             <div style={{ display:'flex', flexDirection:'column', gap:8 }}>
               {eligiblePrizes.map(p => (
                 <div key={p.id} style={{ display:'flex', alignItems:'center', justifyContent:'space-between', background:C.bg3, borderRadius:10, padding:'10px 14px' }}>
@@ -16410,118 +16482,6 @@ function CommerceSettingsView({ user, profile, setView, onLogout, onOwnerProfile
             </div>
           </PCard>
         )}
-
-        {/* ── Otorgar beneficio manualmente ── */}
-        {/* Lista todas las promos discount_next ACTIVAS y NO vencidas del comercio.
-            El dueño elige una y se la regala al cliente con un click — el endpoint
-            hace upsert en client_promotions con status='active'. Útil para casos
-            especiales (cliente VIP, compensación por algo, etc.). */}
-        {(() => {
-          const grantablePromos = (promos || []).filter(p => {
-            if (!p.active) return false
-            if (p.type !== 'discount_next') return false
-            if (p.expires_at && new Date(p.expires_at) <= new Date()) return false
-            return true
-          })
-          const hasPromos = grantablePromos.length > 0
-          // La card SIEMPRE se muestra. Si no hay promos vigentes, se ve
-          // un estado "vacío" con CTA para configurar una. Antes la card
-          // simplemente desaparecía si no había promos, lo que confundía
-          // a usuarios que veían el botón en una cuenta y no en otra.
-          return (
-            <PCard style={{
-              padding:16, marginBottom:12,
-              // Fondo y borde con gradiente de marca naranja→violeta para que
-              // se distinga visualmente del resto de las cards de la ficha y
-              // se lea como una acción "destacada" del dueño.
-              background:'linear-gradient(135deg, rgba(254,80,0,0.12), rgba(189,75,248,0.16))',
-              border:'1px solid rgba(189,75,248,0.45)',
-              boxShadow:'0 6px 22px rgba(189,75,248,0.20)',
-            }}>
-              <div style={{ display:'flex', alignItems:'center', gap:6 }}>
-                <button onClick={() => setGrantPanelOpen(o => !o)}
-                  style={{ flex:1, display:'flex', alignItems:'center', justifyContent:'space-between', background:'transparent', border:'none', padding:0, cursor:'pointer', fontFamily:'inherit' }}>
-                  <div style={{ display:'flex', alignItems:'center', gap:10 }}>
-                    <div style={{ width:34, height:34, borderRadius:10, background:G, display:'flex', alignItems:'center', justifyContent:'center', flexShrink:0, boxShadow:'0 4px 14px rgba(189,75,248,0.40)' }}>
-                      <Sparkles size={16} color="#fff" strokeWidth={2.2} />
-                    </div>
-                    <div style={{ textAlign:'left' }}>
-                      <div style={{ fontFamily:FN, fontSize:13, fontWeight:700, color:C.white }}>Otorgar beneficio</div>
-                      <div style={{ fontSize:11, color:C.dust, marginTop:2 }}>
-                        Regalale un cupón de descuento desde tus promos vigentes
-                      </div>
-                    </div>
-                  </div>
-                  {grantPanelOpen
-                    ? <ChevronUp size={16} color={C.mist} strokeWidth={2} />
-                    : <ChevronDown size={16} color={C.mist} strokeWidth={2} />}
-                </button>
-                {/* InfoHint con el detalle de qué hace este panel — se apoya
-                    en el componente reusable que ya tiene popover al click. */}
-                <InfoHint align="right" text={
-                  'Desde acá podés agregar beneficios a este cliente de forma manual.\n\n' +
-                  'Por ejemplo: regalarle un cupón de descuento de los que tenés activos en el comercio sin que tenga que esperar a venir y escanear su QR.\n\n' +
-                  'El cliente recibe el cupón al instante en su tarjeta digital y le llega notificación. La promo sigue vigente con la fecha de vencimiento que vos configuraste.'
-                } />
-              </div>
-
-              {grantPanelOpen && (
-                <div style={{ marginTop:14, paddingTop:14, borderTop:`1px solid ${C.rim}` }}>
-                  {grantError && (
-                    <div style={{ fontSize:11, color:'#f87444', marginBottom:10, padding:'7px 10px', background:'rgba(248,116,68,0.10)', border:'1px solid rgba(248,116,68,0.30)', borderRadius:8 }}>
-                      {grantError}
-                    </div>
-                  )}
-                  {/* Estado vacío: no hay promos vigentes para otorgar.
-                      Le explicamos al user qué falta y le damos un atajo
-                      para configurar una promo desde Recompensas. */}
-                  {!hasPromos && (
-                    <div style={{ padding:'14px 12px', background:C.bg3, border:`1px dashed ${C.rim}`, borderRadius:10, textAlign:'center' }}>
-                      <div style={{ fontSize:12, color:C.mist, marginBottom:10, lineHeight:1.5 }}>
-                        Todavía no tenés promociones vigentes para otorgar manualmente. Configurá un cupón de descuento para próxima compra desde <strong style={{ color:C.white }}>Recompensas</strong> y después podés regalarlo desde acá.
-                      </div>
-                      <button onClick={() => { setSelectedMember(null); setTab('recompensas') }}
-                        style={{ background:'transparent', border:`1px solid ${C.v}`, color:C.v, fontFamily:FN, fontSize:12, fontWeight:700, padding:'7px 14px', borderRadius:8, cursor:'pointer', display:'inline-flex', alignItems:'center', gap:6 }}>
-                        Ir a Recompensas <ArrowRight size={12} strokeWidth={2.5} />
-                      </button>
-                    </div>
-                  )}
-                  {hasPromos && (
-                    <div style={{ display:'flex', flexDirection:'column', gap:8 }}>
-                      {grantablePromos.map(p => {
-                        const valueTxt = p.value ? `${p.value}% OFF` : 'Descuento'
-                        const expiresTxt = p.expiration_type === 'relative'
-                          ? `Vale ${p.expiration_days || 7} día${(p.expiration_days||7) === 1 ? '' : 's'} desde que lo regales`
-                          : (p.expiration_date ? `Vence el ${new Date(p.expiration_date).toLocaleDateString('es-AR')}` : 'Sin vencimiento configurado')
-                        const busy = grantingPromoId === p.id
-                        return (
-                          <div key={p.id} style={{ display:'flex', alignItems:'center', justifyContent:'space-between', background:C.bg3, borderRadius:10, padding:'10px 14px', gap:10 }}>
-                            <div style={{ minWidth:0, flex:1 }}>
-                              <div style={{ display:'flex', alignItems:'center', gap:6, marginBottom:2 }}>
-                                <Percent size={11} color={C.v} strokeWidth={2.5} />
-                                <span style={{ fontFamily:FN, fontSize:13, fontWeight:700, color:C.white }}>{valueTxt}</span>
-                              </div>
-                              {p.description && (
-                                <div style={{ fontSize:11, color:C.mist, marginBottom:2, overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>
-                                  {p.description}
-                                </div>
-                              )}
-                              <div style={{ fontSize:10, color:C.dust }}>{expiresTxt}</div>
-                            </div>
-                            <button onClick={() => grantPromoToMember(p.id)} disabled={!!grantingPromoId}
-                              style={{ background:GV, border:'none', borderRadius:8, padding:'8px 14px', color:'#fff', fontFamily:FN, fontSize:11, fontWeight:700, cursor: grantingPromoId ? 'wait' : 'pointer', opacity: busy ? 0.7 : 1, flexShrink:0 }}>
-                              {busy ? '⟳' : 'Otorgar'}
-                            </button>
-                          </div>
-                        )
-                      })}
-                    </div>
-                  )}
-                </div>
-              )}
-            </PCard>
-          )
-        })()}
 
         {/* Historial combinado: visitas + canjes */}
         <PCard style={{ padding:16 }}>
