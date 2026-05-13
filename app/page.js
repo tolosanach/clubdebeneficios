@@ -1483,98 +1483,21 @@ function InstagramStoryQR({ commerce, qrDataUrl }) {
 //     dentro de un set por audiencia para que se sienta vivo.
 //   - QR negro sobre fondo blanco, en una card grande centrada.
 //   - X cerrar arriba a la derecha, glass discreto.
-function QrFullscreen({ open, onClose, qrValue, audience = 'client', shareUrl = '', shareTitle = 'Benefix' }) {
-  // Títulos fijos por audiencia. Antes había arrays con frases rioplatenses
-  // aleatorias ("ESCANEAME, NO MUERDO", "TENGO EL PASE", etc.) y se elegían
-  // random al abrir. El dueño los pidió fuera — ahora son títulos planos y
-  // descriptivos que dicen exactamente qué QR es.
-  const title    = audience === 'merchant' ? 'QR NEGOCIO' : 'QR PERSONAL'
-  // Subtítulo descriptivo — explica concretamente qué pasa al escanear,
-  // sin tagline marketinero. El comerciante muestra el QR para que un
-  // cliente se sume; el cliente lo muestra para que le sumen en cada compra.
-  const subtitle = audience === 'merchant'
-    ? 'MOSTRALO PARA QUE SE SUMEN AL CLUB'
-    : 'MOSTRALO PARA SUMAR EN CADA COMPRA'
-  // Color de fondo según el rol: violeta para el dueño (acción primaria del
-  // panel), fucsia para el cliente (mismo color de "Mi billetera"). Así
-  // visualmente se distingue qué QR estás mirando aunque no leas el título.
-  const bgColor  = audience === 'merchant' ? '#7131E1' : '#EC4899'
-
-  // ── Hooks ──
+function QrFullscreen({ open, onClose, qrValue, audience = 'client', shareUrl = '', shareTitle = 'Benefix', displayName = '' }) {
   const [copied, setCopied] = useState(false)
-  // Antes había animación de "glitch" que generaba el QR durante 5s con data
-  // random + jitter. El dueño la pidió fuera. Ahora el QR aparece directamente
-  // con su valor real desde que abre el modal.
-  const generatingQr = false
-  const scrambledQr  = ''
-  // Auto-fit del título al ancho del contenedor: medimos el ancho natural
-  // del título sin wrap y calculamos el font-size que lo hace ocupar el
-  // 100% del ancho. Re-corre cuando el título cambia, en open, o en resize.
-  // (Antes había también un useEffect que randomizaba título/subtítulo/color
-  // al abrir; eliminado al hacer fijos esos valores.)
-  const titleRef = useRef(null)
-  const [titleFontSize, setTitleFontSize] = useState(48)
-  // Cálculo del font-size para que el título "estire" hasta ocupar el ancho
-  // de su contenedor. Estrategia: arrancamos con un tamaño base, medimos el
-  // ancho natural sin wrap, y escalamos linealmente hasta que matchee el
-  // contenedor. Lo re-medimos en cada cambio de título y ante resize.
-  //
-  // SAFETY = 0.94 → dejamos un 6% de margen al final del contenedor. Sin
-  // este factor, errores acumulados de sub-pixel rendering, kerning y
-  // hinting de fuente cortaban la última letra (especialmente con tildes
-  // como "Á" que el sub-pixel rasterizer rinde un toque más anchas que el
-  // measurement). Mejor un par de pixels libres a la derecha que un
-  // carácter cortado.
-  useEffect(() => {
-    if (!open) return
-    function fit() {
-      const el = titleRef.current
-      if (!el) return
-      const container = el.parentElement
-      if (!container) return
-      const containerWidth = container.getBoundingClientRect().width
-      if (containerWidth <= 0) return
-      const BASE = 60
-      // Para medir el ancho NATURAL del texto, dejamos que el elemento se
-      // expanda a width:auto temporalmente. Sin esto, el width:100% que ya
-      // tiene aplicado le impide expandirse y getBoundingClientRect/scrollWidth
-      // devolvían el ancho del contenedor (no del texto). El measurement
-      // anterior subestimaba enormemente la longitud y por eso el título
-      // se rendrizaba más grande de lo que cabía.
-      const prevSize  = el.style.fontSize
-      const prevWhite = el.style.whiteSpace
-      const prevWidth = el.style.width
-      const prevDisp  = el.style.display
-      const prevPos   = el.style.position
-      const prevVis   = el.style.visibility
-      el.style.position   = 'absolute'
-      el.style.visibility = 'hidden'
-      el.style.width      = 'auto'
-      el.style.display    = 'inline-block'
-      el.style.whiteSpace = 'nowrap'
-      el.style.fontSize   = `${BASE}px`
-      const naturalWidth = el.getBoundingClientRect().width
-      // Restaurar todo
-      el.style.fontSize   = prevSize
-      el.style.whiteSpace = prevWhite
-      el.style.width      = prevWidth
-      el.style.display    = prevDisp
-      el.style.position   = prevPos
-      el.style.visibility = prevVis
-      if (naturalWidth <= 0) return
-      // SAFETY = 0.94: 6% de margen al final para absorber errores de sub-
-      // pixel rendering / kerning / hinting de fuente. Mejor un par de px
-      // libres a la derecha que una letra cortada.
-      const SAFETY = 0.94
-      const ideal = (BASE * containerWidth * SAFETY) / naturalWidth
-      setTitleFontSize(Math.max(28, Math.min(88, ideal)))
-    }
-    fit()
-    window.addEventListener('resize', fit)
-    return () => window.removeEventListener('resize', fit)
-  }, [open, title])
-  if (!open) return null
 
+  const topLabel = audience === 'merchant'
+    ? `QR DE ${(shareTitle && shareTitle !== 'Benefix' ? shareTitle : 'MI NEGOCIO').toUpperCase()}`
+    : 'QR PERSONAL'
+  const ticketInstruction = audience === 'merchant'
+    ? 'ESCANEÁ PARA UNIRTE AL CLUB'
+    : 'ESCANEÁ ESTE QR EN EL NEGOCIO'
+  const bottomName = displayName || (shareTitle && shareTitle !== 'Benefix' ? shareTitle : '')
+
+  // kept for buildShareImage
+  const title    = audience === 'merchant' ? 'QR NEGOCIO' : 'QR PERSONAL'
+  const subtitle = ticketInstruction
+  if (!open) return null
   async function handleCopy() {
     if (!shareUrl) return
     try {
@@ -1727,266 +1650,112 @@ function QrFullscreen({ open, onClose, qrValue, audience = 'client', shareUrl = 
     handleCopy()
   }
 
-  // Tipografía display: Futura Condensed Extra Bold (Nike "JUST DO IT").
-  // Es condensada Y muy heavy, con letterforms geométricos. Stack ordenado:
-  //  1) Futura PT Condensed Extra Bold / Bold — Adobe (poco común local).
-  //  2) Futura Condensed Bold / Futura Condensed — macOS si tiene.
-  //  3) Helvetica Neue Condensed Black — macOS, alternativa muy fiel.
-  //  4) Impact — UNIVERSAL en Windows/Mac/Linux, condensada heavy nativa,
-  //     visualmente muy cerca de Futura Condensed Extra Bold para el ojo
-  //     no entrenado. Es el "rescate" para que la mayoría de usuarios vean
-  //     el mismo look sin tener Futura instalada.
-  //  5) Oswald / Anton / Bebas Neue — Google Fonts condensadas heavy.
-  //  6) Arial Narrow Bold como último recurso.
-  const FDISPLAY = "'Futura PT Condensed Extra Bold', 'Futura PT Condensed Bold', 'Futura Condensed ExtraBold', 'Futura Condensed Bold', 'Futura Condensed', 'Helvetica Neue Condensed Black', 'Helvetica Inserat', 'Impact', 'Oswald', 'Anton', 'Bebas Neue', 'Arial Narrow Bold', 'Arial Narrow', sans-serif"
-
-  // Estilo compartido de los botones glass (estética idéntica a la
-  // referencia: card alta con ícono arriba-izq y label abajo-izq, fondo
-  // blur tipo iOS, texto blanco). Misma forma para Compartir y Copiar URL.
-  const GLASS_BTN = {
-    display:'flex', flexDirection:'column',
-    alignItems:'flex-start', justifyContent:'space-between',
-    minHeight:96,
-    padding:'14px 16px',
-    background:'rgba(255,255,255,0.10)',
-    backdropFilter:'blur(28px) saturate(160%)',
-    WebkitBackdropFilter:'blur(28px) saturate(160%)',
-    border:'1px solid rgba(255,255,255,0.14)',
-    borderRadius:22,
-    color:'#fff',
-    fontFamily:FN, fontSize:14, fontWeight:700,
-    letterSpacing:'-.01em',
-    cursor:'pointer',
-    textAlign:'left',
-    boxShadow:'0 8px 32px rgba(0,0,0,0.30)',
-    transition:'background 160ms ease, transform 160ms ease',
-  }
-  const ICON_CIRCLE = {
-    width:34, height:34, borderRadius:'50%',
-    background:'rgba(255,255,255,0.16)',
-    border:'1px solid rgba(255,255,255,0.20)',
-    display:'flex', alignItems:'center', justifyContent:'center',
-  }
-
   return (
-    <div
-      role="dialog" aria-modal="true"
-      style={{
-        position:'fixed', inset:0, zIndex:99999,
-        // Fondo: plano de marca (violeta o fucsia random) + overlay negro
-        // del 50% encima para oscurecerlo (literalmente capa negra al 0.5).
-        // El primer gradient son dos paradas idénticas de negro 50% — sirve
-        // como overlay sólido. Detrás queda el color pleno de marca.
-        background: `linear-gradient(rgba(0,0,0,0.88), rgba(0,0,0,0.88)), ${bgColor}`,
-        display:'flex', flexDirection:'column',
-        animation: 'qr-fs-in 280ms cubic-bezier(0.16,1,0.3,1)',
-        overflow:'hidden',
-      }}
-    >
-      {/* Botón X cerrar */}
-      <button onClick={onClose}
-        aria-label="Cerrar"
-        style={{
-          position:'absolute', top:16, right:16, zIndex:5,
-          width:42, height:42, borderRadius:'50%',
-          background:'rgba(255,255,255,0.10)',
-          backdropFilter:'blur(20px)', WebkitBackdropFilter:'blur(20px)',
-          border:'1px solid rgba(255,255,255,0.18)',
-          color:'#fff',
-          cursor:'pointer', padding:0,
-          display:'flex', alignItems:'center', justifyContent:'center',
-        }}>
-        <X size={18} strokeWidth={2.4} />
+    <div role="dialog" aria-modal="true" style={{
+      position: 'fixed', inset: 0, zIndex: 99999,
+      background: '#7131E1',
+      display: 'flex', flexDirection: 'column',
+      alignItems: 'center', justifyContent: 'center',
+      padding: `64px 24px calc(32px + env(safe-area-inset-bottom, 0px))`,
+      overflow: 'hidden',
+    }}>
+      {/* X — sin fondo, esquina superior derecha */}
+      <button onClick={onClose} aria-label="Cerrar" style={{
+        position: 'absolute', top: 20, right: 20, zIndex: 5,
+        background: 'none', border: 'none',
+        color: 'rgba(255,255,255,0.85)', cursor: 'pointer',
+        padding: 8, lineHeight: 0,
+        display: 'flex', alignItems: 'center', justifyContent: 'center',
+      }}>
+        <X size={24} strokeWidth={2} />
       </button>
 
-      {/* Contenido principal */}
+      {/* Label superior */}
       <div style={{
-        position:'relative',
-        flex:1, display:'flex', flexDirection:'column',
-        padding:'56px 18px 24px',
-        maxWidth:520, margin:'0 auto', width:'100%',
-        zIndex:1,
-        gap:14,
+        fontFamily: FN, fontSize: 11, fontWeight: 700,
+        letterSpacing: '.14em', textTransform: 'uppercase',
+        color: 'rgba(255,255,255,0.55)', marginBottom: 24,
+        textAlign: 'center',
       }}>
-        {/* ── TICKET CARD: gradient de marca animado ──
-            Toma todo el alto disponible hasta los botones del fondo (flex:1).
-            El gradient va alternando lentamente la posición de los colores
-            (orange ↔ violet) vía background-position con size 200% — efecto
-            ease-in-out de 12s para que se sienta natural y vivo. */}
-        <div className="qr-fs-card" style={{
-          position:'relative',
-          flex:1,
-          display:'flex', flexDirection:'column',
-          // Gradient con 3 stops del mismo set para que el ciclo sea
-          // perfectamente cerrado (#FE5000 → #7131E1 → #FE5000).
-          background: '#7131E1',
-          backgroundSize: '220% 220%',
-          borderRadius:26,
-          padding:'22px 22px 26px',
-          boxShadow:'0 32px 80px rgba(254,80,0,0.25), 0 12px 32px rgba(189,75,248,0.20)',
-          overflow:'hidden',
-        }}>
-          {/* Pattern decorativo sutil de la card — manchas tipo poster */}
-          <div style={{
-            position:'absolute', inset:0,
-            backgroundImage: 'radial-gradient(circle at 14% 16%, rgba(255,255,255,0.10) 0%, transparent 28%), radial-gradient(circle at 86% 78%, rgba(0,0,0,0.10) 0%, transparent 32%)',
-            pointerEvents:'none',
-          }} />
-
-          {/* Header: título + subtítulo. El título se auto-ajusta para
-              ocupar el 100% del ancho del header (ver useEffect 'fit'). */}
-          <div style={{ position:'relative', marginBottom:16 }}>
-            <h1 ref={titleRef} style={{
-              fontFamily: FDISPLAY,
-              fontWeight: 900,
-              fontSize: `${titleFontSize}px`,
-              lineHeight: 0.88,
-              letterSpacing: '-0.01em',
-              color: '#0a0a0a',
-              textTransform: 'uppercase',
-              margin: '0 0 8px',
-              textShadow: '0 2px 0 rgba(255,255,255,0.10)',
-              whiteSpace: 'nowrap',
-              width: '100%',
-            }}>
-              {title}
-            </h1>
-            <div style={{
-              fontFamily: FN, fontSize: 10.5, fontWeight: 700,
-              color: 'rgba(0,0,0,0.62)',
-              letterSpacing: '.16em', textTransform: 'uppercase',
-            }}>
-              {subtitle}
-            </div>
-          </div>
-
-          {/* QR sin fondo — los módulos negros se imprimen directo sobre el
-              gradient de la card. Layout flex column con justify-center
-              para que el QR + label "GENERANDO" queden centrados juntos
-              y el label NO se superponga con el footer "ZAR CLUB PASS". */}
-          <div style={{
-            position:'relative',
-            flex:1,
-            display:'flex', flexDirection:'column',
-            alignItems:'center', justifyContent:'center',
-            gap:8,
-            margin:'4px 0',
-          }}>
-            <div className={generatingQr ? 'qr-signal-fade' : ''} style={{ width:'min(280px, 78%)', position:'relative' }}>
-              <QRCodeSVG
-                value={generatingQr ? scrambledQr : (qrValue || '')}
-                size={280}
-                bgColor="transparent"
-                fgColor="#0a0a0a"
-                level="M"
-                style={{ width:'100%', height:'auto', maxHeight:'100%', display:'block' }}
-              />
-            </div>
-            {generatingQr && (
-              <div style={{
-                fontFamily:FN, fontSize:11, fontWeight:800,
-                color:'rgba(0,0,0,0.75)',
-                letterSpacing:'.22em', textTransform:'uppercase',
-                animation:'qr-gen-blink 0.7s ease-in-out infinite',
-                marginTop:6,
-              }}>
-                ▮ Generando código…
-              </div>
-            )}
-          </div>
-
-          {/* Footer de la card: "[nombre de negocio] CLUB PASS · 2026"
-              Para merchant usa el nombre del comercio; para client cae al
-              "BENEFIX CLUB PASS" genérico. Debajo va el año del pase como
-              detalle tipo edición/temporada. */}
-          <div style={{ position:'relative', marginTop:14 }}>
-            <div style={{
-              fontFamily:FN, fontSize:13, fontWeight:800,
-              color:'#0a0a0a',
-              textTransform:'uppercase', letterSpacing:'.06em',
-            }}>
-              {(audience === 'merchant' && shareTitle && shareTitle !== 'Benefix' ? shareTitle : 'Benefix')} CLUB PASS
-            </div>
-            <div style={{
-              fontFamily:FN, fontSize:11, fontWeight:700,
-              color:'rgba(0,0,0,0.55)',
-              letterSpacing:'.18em',
-              marginTop:2,
-            }}>
-              2026
-            </div>
-          </div>
-        </div>
-
-        {/* ── BOTONES GLASS (solo merchant) ── */}
-        {audience === 'merchant' && shareUrl && (
-          <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:10 }}>
-            <button onClick={handleShare} style={GLASS_BTN}>
-              <div style={ICON_CIRCLE}>
-                <Share2 size={16} strokeWidth={2.4} color="#fff" />
-              </div>
-              <div style={{ marginTop:18, color:'#fff' }}>Compartir</div>
-            </button>
-            <button onClick={handleCopy} style={GLASS_BTN}>
-              <div style={ICON_CIRCLE}>
-                {copied
-                  ? <Check size={16} strokeWidth={2.6} color="#fff" />
-                  : <Copy size={16} strokeWidth={2.4} color="#fff" />}
-              </div>
-              <div style={{ marginTop:18, color:'#fff' }}>{copied ? '¡Copiado!' : 'Copiar URL'}</div>
-            </button>
-          </div>
-        )}
+        {topLabel}
       </div>
 
-      <style>{`
-        @keyframes qr-fs-in {
-          from { opacity: 0; transform: scale(0.96); }
-          to   { opacity: 1; transform: scale(1); }
-        }
-        /* Gradient de la ticket card — desplaza la background-position para
-           alternar suavemente cuál esquina está naranja vs cuál violeta.
-           Como el gradient tiene 3 stops (orange-violet-orange) con
-           backgroundSize 220%, mover la posición da un flujo continuo. */
-        .qr-fs-card {}
-        /* Signal-fade del QR durante la "generación": una zona del QR baja
-           suavemente su opacidad y esa zona se mueve por el código en loop
-           lento, como si la señal se fuera y volviera. Sin shake, sin scan-
-           line — todo suave y orgánico.
-           El truco: aplicamos un mask radial-gradient cuyo centro está
-           parcialmente transparente (rgba alpha bajo). El mask es 240% de
-           tamaño, así con mask-position podemos pasear el "agujero suave"
-           por distintas zonas del QR. */
-        .qr-signal-fade {
-          -webkit-mask-image: radial-gradient(circle at 30% 30%, rgba(0,0,0,0.35) 0%, rgba(0,0,0,0.55) 12%, rgba(0,0,0,0.85) 25%, black 40%);
-                  mask-image: radial-gradient(circle at 30% 30%, rgba(0,0,0,0.35) 0%, rgba(0,0,0,0.55) 12%, rgba(0,0,0,0.85) 25%, black 40%);
-          -webkit-mask-size: 240% 240%;
-                  mask-size: 240% 240%;
-          -webkit-mask-repeat: no-repeat;
-                  mask-repeat: no-repeat;
-          will-change: mask-position, opacity;
-        }
-        /* Roam: el "agujero suave" cambia de zona — esquinas y centros
-           distintos del QR pierden señal de manera asincrónica. */
-        @keyframes qr-signal-roam {
-          0%   { -webkit-mask-position:   0%    0%; mask-position:   0%    0%; }
-          20%  { -webkit-mask-position: 100%   30%; mask-position: 100%   30%; }
-          40%  { -webkit-mask-position:  60%  100%; mask-position:  60%  100%; }
-          60%  { -webkit-mask-position:   0%   80%; mask-position:   0%   80%; }
-          80%  { -webkit-mask-position:  80%   60%; mask-position:  80%   60%; }
-          100% { -webkit-mask-position:   0%    0%; mask-position:   0%    0%; }
-        }
-        /* Breath: leve pulso de opacidad global — refuerza la sensación
-           de "señal débil" sin hacer que tiemble el QR. */
-        @keyframes qr-signal-breath {
-          0%, 100% { opacity: 1; }
-          50%      { opacity: 0.78; }
-        }
-        @keyframes qr-gen-blink {
-          0%, 100% { opacity: 1; }
-          50%      { opacity: 0.30; }
-        }
-      `}</style>
+      {/* Ticket */}
+      <div style={{ width: '100%', maxWidth: 300, boxShadow: '0 8px 40px rgba(0,0,0,0.30)' }}>
+        {/* Cuerpo blanco del ticket */}
+        <div style={{
+          background: '#fff',
+          borderRadius: '16px 16px 0 0',
+          padding: '28px 24px 20px',
+          display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 16,
+        }}>
+          <QRCodeSVG
+            value={qrValue || ''}
+            size={210}
+            fgColor="#0a0a0a"
+            bgColor="#ffffff"
+            level="H"
+            style={{ display: 'block' }}
+          />
+          <div style={{
+            fontFamily: FN, fontSize: 10, fontWeight: 800,
+            color: '#1a1a1a', letterSpacing: '.12em',
+            textTransform: 'uppercase', textAlign: 'center',
+            lineHeight: 1.4,
+          }}>
+            {ticketInstruction}
+          </div>
+        </div>
+        {/* Borde dentado inferior — semicírculos violeta que muerden el blanco */}
+        <div style={{
+          width: '100%', height: 10,
+          backgroundImage: 'radial-gradient(circle at 50% 100%, #7131E1 6px, #fff 7px)',
+          backgroundSize: '16px 10px',
+          backgroundRepeat: 'repeat-x',
+        }} />
+      </div>
+
+      {/* Nombre debajo del ticket */}
+      {bottomName && (
+        <div style={{
+          marginTop: 28,
+          fontFamily: FN, fontSize: 16, fontWeight: 700,
+          color: 'rgba(255,255,255,0.90)', textAlign: 'center',
+          letterSpacing: '-.01em',
+        }}>
+          {bottomName}
+        </div>
+      )}
+
+      {/* Botones compartir — solo merchant */}
+      {audience === 'merchant' && shareUrl && (
+        <div style={{ display: 'flex', gap: 10, marginTop: 24 }}>
+          <button onClick={handleShare} style={{
+            display: 'flex', alignItems: 'center', gap: 7,
+            padding: '10px 18px',
+            background: 'rgba(255,255,255,0.14)',
+            border: '1px solid rgba(255,255,255,0.22)',
+            borderRadius: 99, color: '#fff',
+            fontFamily: FN, fontSize: 13, fontWeight: 600, cursor: 'pointer',
+            lineHeight: 1,
+          }}>
+            <Share2 size={14} strokeWidth={2.2} />
+            Compartir
+          </button>
+          <button onClick={handleCopy} style={{
+            display: 'flex', alignItems: 'center', gap: 7,
+            padding: '10px 18px',
+            background: 'rgba(255,255,255,0.14)',
+            border: '1px solid rgba(255,255,255,0.22)',
+            borderRadius: 99, color: '#fff',
+            fontFamily: FN, fontSize: 13, fontWeight: 600, cursor: 'pointer',
+            lineHeight: 1,
+          }}>
+            {copied ? <Check size={14} strokeWidth={2.4} /> : <Copy size={14} strokeWidth={2.2} />}
+            {copied ? '¡Copiado!' : 'Copiar URL'}
+          </button>
+        </div>
+      )}
     </div>
   )
 }
@@ -22034,6 +21803,7 @@ function ScannerView({ user, profile, setView }) {
         onClose={() => { setScanMode(null); setModeSelected(false); stopCamera() }}
         qrValue={passQrValue}
         audience="client"
+        displayName={profile?.full_name || profile?.name || ''}
       />
     )
   }
