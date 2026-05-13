@@ -3059,7 +3059,7 @@ function Navbar({ setView, cityName, user, profile, commerce, onLogin, onLogout,
   const isMerchantDD = activeContext === 'merchant'
   const ddHeaderLabel = isMerchantDD
     ? (commerce?.name || 'Mi negocio')
-    : (profile?.name || profile?.full_name || user?.email || '')
+    : (profile?.name || profile?.full_name || user?.email || 'Mi perfil')
   function DDItem({ icon: Icon, label, onClickItem, danger }) {
     return (
       <button
@@ -3214,10 +3214,13 @@ function Navbar({ setView, cityName, user, profile, commerce, onLogin, onLogout,
     </nav>
     {dropdownOpen && dropdownRect && typeof document !== 'undefined' && createPortal(
       <div style={{ position:'fixed', top: dropdownRect.top, right: dropdownRect.right, minWidth:192, background:'rgba(12,8,24,0.96)', backdropFilter:'blur(20px)', WebkitBackdropFilter:'blur(20px)', border:'1px solid rgba(255,255,255,0.12)', borderRadius:14, padding:6, zIndex:9999, boxShadow:'0 12px 40px rgba(0,0,0,0.60)' }}>
-        <div style={{ padding:'8px 14px 6px', borderBottom:'1px solid rgba(255,255,255,0.08)', marginBottom:4 }}>
-          <span style={{ fontFamily:FN, fontSize:11, fontWeight:600, color:'rgba(255,255,255,0.40)', textTransform:'uppercase', letterSpacing:'.06em' }}>
+        <div style={{ padding:'10px 14px 8px', borderBottom:'1px solid rgba(255,255,255,0.08)', marginBottom:4 }}>
+          <div style={{ fontFamily:FN, fontSize:13, fontWeight:600, color:'rgba(255,255,255,0.88)', overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>
             {ddHeaderLabel}
-          </span>
+          </div>
+          <div style={{ fontFamily:FI, fontSize:11, color:'rgba(255,255,255,0.35)', marginTop:2, overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>
+            {user?.email}
+          </div>
         </div>
         {isMerchantDD ? (<>
           <DDItem icon={Eye} label="Ver perfil público" onClickItem={() => onOwnerProfile?.()} />
