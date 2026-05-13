@@ -2900,7 +2900,7 @@ function FullscreenLoader({ message }) {
 }
 
 // ─── NAVBAR ───────────────────────────────────────────────────────────────────
-function Navbar({ setView, cityName, user, profile, onLogin, onLogout, currentView, clientTab, onOwnerProfile, activeContext, onContextChange, showContextSwitch }) {
+function Navbar({ setView, cityName, user, profile, commerce, onLogin, onLogout, currentView, clientTab, onOwnerProfile, activeContext, onContextChange, showContextSwitch }) {
   const role = profile?.role || 'client'
   // userIntent — capturado en el step de Intent post-OAuth. Si el user
   // explícitamente eligió 'client', escondemos los botones del kit dueño
@@ -2915,6 +2915,23 @@ function Navbar({ setView, cityName, user, profile, onLogin, onLogout, currentVi
   const showOwnerKit   = role === 'commerce_owner' && userIntent !== 'client'
 
   const [roleAskerOpen, setRoleAskerOpen] = useState(false) // legacy, no se usa
+  const [dropdownOpen, setDropdownOpen] = useState(false)
+  const dropdownWrapRef = useRef(null)
+
+  useEffect(() => {
+    if (!dropdownOpen) return
+    function handleOutside(e) {
+      if (dropdownWrapRef.current && !dropdownWrapRef.current.contains(e.target)) {
+        setDropdownOpen(false)
+      }
+    }
+    document.addEventListener('mousedown', handleOutside)
+    document.addEventListener('touchstart', handleOutside)
+    return () => {
+      document.removeEventListener('mousedown', handleOutside)
+      document.removeEventListener('touchstart', handleOutside)
+    }
+  }, [dropdownOpen])
 
   // ── Scroll-aware: navbar transparente al tope, opaco con blur al scrollear ─
   // Threshold 50px: arriba el navbar queda invisible (deja respirar al hero
@@ -3057,26 +3074,63 @@ function Navbar({ setView, cityName, user, profile, onLogin, onLogout, currentVi
             />
           </div>
         )}
-        {/* Avatar chip — muestra foto de Google o inicial del nombre.
-            Click lleva a la billetera del cliente (su vista principal). */}
-        <button
-          title={profile?.name || profile?.full_name || 'Mi perfil'}
-          onClick={goToAccount}
-          style={{ display:'flex', alignItems:'center', gap:7, background:'rgba(255,255,255,0.08)', border:'1px solid rgba(255,255,255,0.12)', borderRadius:99, padding:'4px 10px 4px 4px', cursor:'pointer' }}
-        >
-          {profile?.avatar_url ? (
-            <img src={profile.avatar_url} alt="" style={{ width:26, height:26, borderRadius:'50%', objectFit:'cover', flexShrink:0 }} />
-          ) : (
-            <div style={{ width:26, height:26, borderRadius:'50%', background:'#7131E1', display:'flex', alignItems:'center', justifyContent:'center', flexShrink:0 }}>
-              <span style={{ fontFamily:FN, fontSize:12, fontWeight:700, color:'#fff' }}>
-                {(profile?.name || profile?.full_name || user?.email || '?')[0].toUpperCase()}
-              </span>
-            </div>
-          )}
-          <span style={{ fontFamily:FN, fontSize:12, fontWeight:600, color:'rgba(255,255,255,0.85)', maxWidth:80, overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>
-            {(profile?.name || profile?.full_name || user?.email || '').split(' ')[0]}
-          </span>
-        </button>
+        {/* Avatar chip con dropdown */}
+        <div ref={dropdownWrapRef} style={{ position:'relative' }}>
+          <button
+            title={profile?.name || profile?.full_name || 'Mi perfil'}
+            onClick={() => setDropdownOpen(o => !o)}
+            style={{ display:'flex', alignItems:'center', gap:7, background:'rgba(255,255,255,0.08)', border:'1px solid rgba(255,255,255,0.12)', borderRadius:99, padding:'4px 10px 4px 4px', cursor:'pointer' }}
+          >
+            {profile?.avatar_url ? (
+              <img src={profile.avatar_url} alt="" style={{ width:26, height:26, borderRadius:'50%', objectFit:'cover', flexShrink:0 }} />
+            ) : (
+              <div style={{ width:26, height:26, borderRadius:'50%', background:'#7131E1', display:'flex', alignItems:'center', justifyContent:'center', flexShrink:0 }}>
+                <span style={{ fontFamily:FN, fontSize:12, fontWeight:700, color:'#fff' }}>
+                  {(profile?.name || profile?.full_name || user?.email || '?')[0].toUpperCase()}
+                </span>
+              </div>
+            )}
+            <span style={{ fontFamily:FN, fontSize:12, fontWeight:600, color:'rgba(255,255,255,0.85)', maxWidth:80, overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>
+              {(profile?.name || profile?.full_name || user?.email || '').split(' ')[0]}
+            </span>
+          </button>
+
+          {dropdownOpen && (() => {
+            const isMerchant = activeContext === 'merchant'
+            const headerLabel = isMerchant
+              ? (commerce?.name || 'Mi negocio')
+              : (profile?.name || profile?.full_name || user?.email || '')
+            const DDItem = ({ icon: Icon, label, onClick: onClickItem, danger }) => (
+              <button
+                onClick={() => { setDropdownOpen(false); onClickItem() }}
+                style={{ display:'flex', alignItems:'center', gap:10, width:'100%', background:'none', border:'none', cursor:'pointer', padding:'10px 14px', borderRadius:10, color: danger ? '#f87444' : 'rgba(255,255,255,0.88)', fontFamily:FN, fontSize:13, fontWeight:500, textAlign:'left' }}
+                onMouseEnter={e => { e.currentTarget.style.background = danger ? 'rgba(248,116,68,0.10)' : 'rgba(255,255,255,0.07)' }}
+                onMouseLeave={e => { e.currentTarget.style.background = 'none' }}
+              >
+                <Icon size={15} strokeWidth={2} color={danger ? '#f87444' : '#A78BFA'} />
+                {label}
+              </button>
+            )
+            return (
+              <div style={{ position:'absolute', top:'calc(100% + 8px)', right:0, minWidth:192, background:'rgba(12,8,24,0.96)', backdropFilter:'blur(20px)', WebkitBackdropFilter:'blur(20px)', border:'1px solid rgba(255,255,255,0.12)', borderRadius:14, padding:6, zIndex:9999, boxShadow:'0 12px 40px rgba(0,0,0,0.60)' }}>
+                <div style={{ padding:'8px 14px 6px', borderBottom:'1px solid rgba(255,255,255,0.08)', marginBottom:4 }}>
+                  <span style={{ fontFamily:FN, fontSize:11, fontWeight:600, color:'rgba(255,255,255,0.40)', textTransform:'uppercase', letterSpacing:'.06em' }}>
+                    {headerLabel}
+                  </span>
+                </div>
+                {isMerchant ? (<>
+                  <DDItem icon={Eye} label="Ver perfil público" onClickItem={() => onOwnerProfile?.()} />
+                  <DDItem icon={LogOut} label="Cerrar sesión" onClickItem={() => onLogout?.()} danger />
+                </>) : (<>
+                  <DDItem icon={Home} label="Mis clubes" onClickItem={() => {
+                    window.dispatchEvent(new CustomEvent('benefix:navigate', { detail: { view:'client', tab:'mis clubs' } }))
+                  }} />
+                  <DDItem icon={LogOut} label="Cerrar sesión" onClickItem={() => onLogout?.()} danger />
+                </>)}
+              </div>
+            )
+          })()}
+        </div>
       </div>
       {false && (
       <div className="liquid-glass-strong" style={{ position:'relative', display:'flex', gap:3, alignItems:'center', borderRadius:12, padding:4, overflow:'hidden' }}>
@@ -23928,6 +23982,7 @@ export default function App() {
         cityName={currentCity?.name}
         user={user}
         profile={profile}
+        commerce={commerce}
         onLogin={handleLogin}
         onLogout={handleLogout}
         currentView={view}
