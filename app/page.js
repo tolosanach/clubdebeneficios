@@ -1506,15 +1506,15 @@ function QrFullscreen({ open, onClose, qrValue, audience = 'client', shareUrl = 
       setTimeout(() => setCopied(false), 1800)
     } catch {}
   }
-  // Genera una imagen PNG del ticket con el mismo diseño visual que la pantalla:
-  // fondo violeta sólido, ticket blanco con esquinas superiores redondeadas,
-  // QR adentro, instrucción de texto, borde dentado inferior (semicírculos
-  // violetas) y nombre del negocio/usuario debajo en blanco.
+  // Genera un PNG idéntico a la pantalla fullscreen:
+  // logo Benefix arriba centrado, label pequeño, ticket blanco con QR,
+  // instrucción, borde dentado y nombre debajo — todo sobre fondo violeta.
   async function buildShareImage() {
     if (typeof document === 'undefined') return null
-    const W = 1080, H = 1620
+
+    const W = 1080, H = 1920  // taller para respirar como en pantalla
     const canvas = document.createElement('canvas')
-    canvas.width = W
+    canvas.width  = W
     canvas.height = H
     const ctx = canvas.getContext('2d')
     if (!ctx) return null
@@ -1522,36 +1522,47 @@ function QrFullscreen({ open, onClose, qrValue, audience = 'client', shareUrl = 
     const VIOLET = '#7131E1'
     const FONT   = "'Space Grotesk', system-ui, sans-serif"
 
-    // 1. Fondo violeta sólido
+    // ── 1. Fondo violeta ─────────────────────────────────────────────────
     ctx.fillStyle = VIOLET
     ctx.fillRect(0, 0, W, H)
 
-    // 2. Label superior centrado
-    ctx.font         = `700 30px ${FONT}`
+    // ── 2. Logo Benefix — cargado desde el SVG público ───────────────────
+    const LOGO_H  = 150   // alto del logo en canvas (≈ 60px × ratio de pantalla)
+    const LOGO_Y  = 130   // distancia desde el tope
+    try {
+      const logoImg = new Image()
+      logoImg.src = `${window.location.origin}/brand/logo-benefix-wordmark-white.svg`
+      await new Promise(r => { logoImg.onload = r; logoImg.onerror = r })
+      if (logoImg.naturalWidth > 0) {
+        const logoW = logoImg.naturalWidth * (LOGO_H / logoImg.naturalHeight)
+        ctx.drawImage(logoImg, (W - logoW) / 2, LOGO_Y, logoW, LOGO_H)
+      }
+    } catch {}
+
+    // ── 3. Label ("QR PERSONAL" / "QR DE MI NEGOCIO") ────────────────────
+    const LABEL_Y = LOGO_Y + LOGO_H + 80
+    ctx.font         = `700 34px ${FONT}`
     ctx.fillStyle    = 'rgba(255,255,255,0.55)'
     ctx.textAlign    = 'center'
-    ctx.textBaseline = 'middle'
-    ctx.fillText(topLabel, W / 2, 170)
+    ctx.textBaseline = 'top'
+    ctx.fillText(topLabel, W / 2, LABEL_Y)
 
-    // 3. Ticket: rect blanco con esquinas superiores redondeadas
-    const TX = 90          // margen horizontal
-    const TY = 240         // tope del ticket
-    const TW = W - TX * 2  // ancho = 900px
+    // ── 4. Ticket blanco ──────────────────────────────────────────────────
+    const TX     = 90           // margen horizontal
+    const TY     = LABEL_Y + 80 // tope del ticket
+    const TW     = W - TX * 2   // ancho = 900px
     const CORNER = 52
 
-    // QR de 640px con 70px de padding superior dentro del ticket
-    const QR_SIZE = 640
-    const QR_X = (W - QR_SIZE) / 2
-    const QR_Y = TY + 70
+    const QR_SIZE = 660
+    const QR_X   = (W - QR_SIZE) / 2
+    const QR_Y   = TY + 70
 
-    // Texto instrucción: 40px gap bajo el QR
-    const INSTR_Y    = QR_Y + QR_SIZE + 50
-    const INSTR_SIZE = 32
+    const INSTR_Y    = QR_Y + QR_SIZE + 52
+    const INSTR_SIZE = 34
 
-    // Ticket body termina 70px bajo el texto de instrucción
-    const T_BODY_BOTTOM = INSTR_Y + INSTR_SIZE + 70
+    const T_BODY_BOTTOM = INSTR_Y + INSTR_SIZE + 72
 
-    // Dibujar rect blanco (esquinas sup redondeadas, base flat)
+    // Rectángulo blanco con esquinas superiores redondeadas
     ctx.fillStyle = '#ffffff'
     ctx.beginPath()
     ctx.moveTo(TX + CORNER, TY)
@@ -1564,34 +1575,31 @@ function QrFullscreen({ open, onClose, qrValue, audience = 'client', shareUrl = 
     ctx.closePath()
     ctx.fill()
 
-    // 4. QR dentro del ticket
-    let qrDataUrl = null
+    // ── 5. QR dentro del ticket ───────────────────────────────────────────
     try {
-      const QRCode = (await import('qrcode')).default
-      qrDataUrl = await QRCode.toDataURL(qrValue || '', {
+      const QRCode  = (await import('qrcode')).default
+      const qrDataU = await QRCode.toDataURL(qrValue || '', {
         width: QR_SIZE,
         margin: 1,
         errorCorrectionLevel: 'H',
         color: { dark: '#0a0a0a', light: '#ffffff' },
       })
+      const qrImg = new Image()
+      qrImg.src   = qrDataU
+      await new Promise(r => { qrImg.onload = r; qrImg.onerror = r })
+      ctx.drawImage(qrImg, QR_X, QR_Y, QR_SIZE, QR_SIZE)
     } catch {}
-    if (qrDataUrl) {
-      const img = new Image()
-      img.src = qrDataUrl
-      await new Promise(r => { img.onload = r; img.onerror = r })
-      ctx.drawImage(img, QR_X, QR_Y, QR_SIZE, QR_SIZE)
-    }
 
-    // 5. Instrucción dentro del ticket
+    // ── 6. Instrucción dentro del ticket ──────────────────────────────────
     ctx.font         = `800 ${INSTR_SIZE}px ${FONT}`
     ctx.fillStyle    = '#1a1a1a'
     ctx.textAlign    = 'center'
     ctx.textBaseline = 'top'
     ctx.fillText(ticketInstruction, W / 2, INSTR_Y)
 
-    // 6. Borde dentado — semicírculos violetas a lo largo de la base del ticket
-    const SERR_R   = 30   // radio de cada semicírculo
-    const SERR_GAP = 60   // separación entre centros
+    // ── 7. Borde dentado (semicírculos violetas) ──────────────────────────
+    const SERR_R   = 30
+    const SERR_GAP = 60
     ctx.fillStyle  = VIOLET
     let sx = TX + SERR_GAP / 2
     while (sx < TX + TW) {
@@ -1601,26 +1609,23 @@ function QrFullscreen({ open, onClose, qrValue, audience = 'client', shareUrl = 
       sx += SERR_GAP
     }
 
-    // 7. Nombre debajo del ticket
-    const nameY = T_BODY_BOTTOM + SERR_R * 2 + 48
+    // ── 8. Nombre debajo del ticket ───────────────────────────────────────
     if (bottomName) {
-      ctx.font         = `700 58px ${FONT}`
+      ctx.font         = `700 62px ${FONT}`
       ctx.fillStyle    = 'rgba(255,255,255,0.92)'
       ctx.textAlign    = 'center'
       ctx.textBaseline = 'top'
-      ctx.fillText(bottomName, W / 2, nameY)
+      ctx.fillText(bottomName, W / 2, T_BODY_BOTTOM + SERR_R * 2 + 52)
     }
 
-    // 8. Watermark
-    ctx.font         = `500 26px ${FONT}`
-    ctx.fillStyle    = 'rgba(255,255,255,0.32)'
+    // ── 9. Watermark ──────────────────────────────────────────────────────
+    ctx.font         = `500 28px ${FONT}`
+    ctx.fillStyle    = 'rgba(255,255,255,0.30)'
     ctx.textAlign    = 'center'
     ctx.textBaseline = 'bottom'
-    ctx.fillText('benefix.com.ar', W / 2, H - 56)
+    ctx.fillText('benefix.com.ar', W / 2, H - 70)
 
-    return new Promise((resolve) => {
-      canvas.toBlob((blob) => resolve(blob), 'image/png', 1)
-    })
+    return new Promise(resolve => canvas.toBlob(b => resolve(b), 'image/png', 1))
   }
 
   async function handleShare() {
