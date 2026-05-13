@@ -2123,6 +2123,7 @@ export default function ClubProfilePage() {
     if (pending !== slug) return
     autoJoinDone.current = true
     sessionStorage.removeItem('benefix:pendingJoinSlug')
+    setShowSplash(false)
     handleJoin()
   }, [user, data, membership])
 
@@ -2201,7 +2202,8 @@ export default function ClubProfilePage() {
       setShowSplash(false)
     } else {
       try { sessionStorage.setItem('benefix:pendingJoinSlug', slug) } catch {}
-      sb.auth.signInWithOAuth({ provider:'google', options:{ redirectTo:`${window.location.origin}/auth/callback`, queryParams:{ prompt:'select_account' } } })
+      const returnTo = encodeURIComponent(`/club/${slug}`)
+      sb.auth.signInWithOAuth({ provider:'google', options:{ redirectTo:`${window.location.origin}/auth/callback?next=${returnTo}`, queryParams:{ prompt:'select_account' } } })
     }
   }
 
