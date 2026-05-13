@@ -11,7 +11,7 @@ import {
   Shield, MessageCircle, ArrowLeft, ArrowRight, Check, Smartphone,
   ScanLine, LogOut, Percent,
   Eye, Store, LayoutDashboard, DoorOpen,
-  Bell, BellOff, Pen, X, Calendar,
+  Bell, BellOff, Pen, X, Calendar, Menu,
 } from 'lucide-react'
 import PhoneInput from '../../../lib/PhoneInput'
 import HelpBanner from '../../../lib/HelpBanner'
@@ -27,6 +27,7 @@ import SupportChat from '../../../lib/SupportChat'
 // tambien en editMode del eye preview para que el dueño no pierda la
 // chrome inferior cuando se mete a editar la vista publica.
 import BottomNavV2 from '../../../lib/BottomNavV2'
+import MoreSheet from '../../../lib/MoreSheet'
 import Logo from '../../../lib/Logo'
 import ContextSwitchPill from '../../../lib/ContextSwitchPill'
 import EnablePushPrompt from '../../../lib/EnablePushPrompt'
@@ -1919,6 +1920,7 @@ export default function ClubProfilePage() {
   const [showHistory, setShowHistory] = useState(false)
   const [qrDataUrl, setQrDataUrl]     = useState(null)
   const [tab, setTab]                 = useState('inicio')
+  const [moreSheetOpen, setMoreSheetOpen] = useState(false)
   // Card del negocio arranca CERRADA. La info "Sobre el negocio"
   // (descripción, horarios, ubicación, redes) vive adentro y se
   // despliega cuando el cliente toca la flecha del fondo de la card.
@@ -2454,18 +2456,43 @@ export default function ClubProfilePage() {
             backdropFilter:'blur(24px)', WebkitBackdropFilter:'blur(24px)',
             borderBottom:`1px solid ${C.rim}`,
             padding:'0 16px',
-            display:'flex', alignItems:'center', justifyContent:'flex-start',
+            display:'flex', alignItems:'center', justifyContent:'space-between',
             height:58,
           }}>
             <a href="/" style={{ display:'inline-flex', alignItems:'center', textDecoration:'none' }}
               onClick={(e) => {
-                // Full reload para asegurar que App Router no se trague el click.
                 e.preventDefault()
                 if (typeof window !== 'undefined') window.location.href = '/'
               }}
               aria-label="Volver al inicio">
               <Logo />
             </a>
+            <div style={{ display:'flex', alignItems:'center', gap:8 }}>
+              <ContextSwitchPill
+                activeContext="merchant"
+                onChange={(next) => {
+                  if (typeof window !== 'undefined') {
+                    window.location.href = next === 'merchant'
+                      ? '/?view=commerce-settings'
+                      : '/?view=client'
+                  }
+                }}
+              />
+              <button
+                onClick={() => setMoreSheetOpen(true)}
+                aria-label="Más opciones"
+                style={{
+                  display:'flex', alignItems:'center', justifyContent:'center',
+                  width:34, height:34, borderRadius:9,
+                  background:'rgba(255,255,255,0.06)',
+                  border:`1px solid ${C.rim}`,
+                  color:'rgba(255,255,255,0.78)',
+                  cursor:'pointer', padding:0,
+                }}
+              >
+                <Menu size={15} strokeWidth={2} />
+              </button>
+            </div>
           </nav>
         </div>
       )}
@@ -4489,6 +4516,40 @@ export default function ClubProfilePage() {
           <SwRegister />
           <EnablePushPrompt />
         </>
+      )}
+
+      {/* MoreSheet — solo en editMode para el dueño. Mismo sheet que en
+          el panel principal; navegar dispara deep-link de vuelta al panel. */}
+      {editMode && (
+        <MoreSheet
+          open={moreSheetOpen}
+          onClose={() => setMoreSheetOpen(false)}
+          profile={userProfile}
+          onNavigate={(v, t) => {
+            setMoreSheetOpen(false)
+            if (typeof window === 'undefined') return
+            const params = new URLSearchParams()
+            if (v) params.set('view', v)
+            if (t) params.set('tab', t)
+            window.location.href = `/?${params.toString()}`
+          }}
+          onLogout={async () => {
+            setMoreSheetOpen(false)
+            const sb = getSupabase()
+            await sb.auth.signOut()
+            if (typeof window !== 'undefined') window.location.href = '/'
+          }}
+          onDeleteBusiness={async () => {
+            setMoreSheetOpen(false)
+            const res = await fetch('/api/user/delete-commerce', { method: 'DELETE' })
+            if (res.ok) {
+              if (typeof window !== 'undefined') window.location.href = '/?view=client'
+            } else {
+              const body = await res.json().catch(() => ({}))
+              alert(body.error || 'No se pudo eliminar el comercio')
+            }
+          }}
+        />
       )}
     </div>
   )
