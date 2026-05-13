@@ -2917,14 +2917,15 @@ function Navbar({ setView, cityName, user, profile, commerce, onLogin, onLogout,
   const [roleAskerOpen, setRoleAskerOpen] = useState(false) // legacy, no se usa
   const [dropdownOpen, setDropdownOpen] = useState(false)
   const [dropdownRect, setDropdownRect] = useState(null)
-  const dropdownWrapRef = useRef(null)
+  const dropdownWrapRef  = useRef(null)
+  const dropdownPortalRef = useRef(null)
 
   useEffect(() => {
     if (!dropdownOpen) return
     function handleOutside(e) {
-      if (dropdownWrapRef.current && !dropdownWrapRef.current.contains(e.target)) {
-        setDropdownOpen(false)
-      }
+      const inBtn    = dropdownWrapRef.current?.contains(e.target)
+      const inPortal = dropdownPortalRef.current?.contains(e.target)
+      if (!inBtn && !inPortal) setDropdownOpen(false)
     }
     document.addEventListener('mousedown', handleOutside)
     document.addEventListener('touchstart', handleOutside)
@@ -3213,7 +3214,7 @@ function Navbar({ setView, cityName, user, profile, commerce, onLogin, onLogout,
       )}
     </nav>
     {dropdownOpen && dropdownRect && typeof document !== 'undefined' && createPortal(
-      <div onMouseDown={e => e.stopPropagation()} style={{ position:'fixed', top: dropdownRect.top, right: dropdownRect.right, minWidth:192, background:'rgba(12,8,24,0.96)', backdropFilter:'blur(20px)', WebkitBackdropFilter:'blur(20px)', border:'1px solid rgba(255,255,255,0.12)', borderRadius:14, padding:6, zIndex:9999, boxShadow:'0 12px 40px rgba(0,0,0,0.60)' }}>
+      <div ref={dropdownPortalRef} style={{ position:'fixed', top: dropdownRect.top, right: dropdownRect.right, minWidth:192, background:'rgba(12,8,24,0.96)', backdropFilter:'blur(20px)', WebkitBackdropFilter:'blur(20px)', border:'1px solid rgba(255,255,255,0.12)', borderRadius:14, padding:6, zIndex:9999, boxShadow:'0 12px 40px rgba(0,0,0,0.60)' }}>
         <button
           onClick={() => { setDropdownOpen(false); isMerchantDD ? setView('commerce-settings') : undefined }}
           style={{ display:'block', width:'100%', textAlign:'left', background:'none', border:'none', cursor: isMerchantDD ? 'pointer' : 'default', padding:'10px 14px 8px', borderBottom:'1px solid rgba(255,255,255,0.08)', marginBottom:4 }}
