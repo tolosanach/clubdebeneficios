@@ -1506,12 +1506,10 @@ function QrFullscreen({ open, onClose, qrValue, audience = 'client', shareUrl = 
       setTimeout(() => setCopied(false), 1800)
     } catch {}
   }
-  // Genera una imagen JPG del ticket card (gradient + título + QR + footer)
-  // usando canvas. La idea: dibujamos cada elemento programáticamente sobre
-  // un canvas grande (1080x1620, ratio 2:3 para historias de Insta) y al
-  // final lo convertimos a Blob → File → Web Share API con archivo.
-  // Si el browser no soporta share con files, descargamos el archivo como
-  // fallback. Si nada de eso, copiamos la URL al portapapeles.
+  // Genera una imagen PNG del ticket con el mismo diseño visual que la pantalla:
+  // fondo violeta sólido, ticket blanco con esquinas superiores redondeadas,
+  // QR adentro, instrucción de texto, borde dentado inferior (semicírculos
+  // violetas) y nombre del negocio/usuario debajo en blanco.
   async function buildShareImage() {
     if (typeof document === 'undefined') return null
     const W = 1080, H = 1620
@@ -1521,81 +1519,107 @@ function QrFullscreen({ open, onClose, qrValue, audience = 'client', shareUrl = 
     const ctx = canvas.getContext('2d')
     if (!ctx) return null
 
-    // Background: gradient de marca naranja → violeta (mismo del logo)
-    const bg = ctx.createLinearGradient(0, 0, W, H)
-    bg.addColorStop(0,   '#FE5000')
-    bg.addColorStop(1,   '#7131E1')
-    ctx.fillStyle = bg
+    const VIOLET = '#7131E1'
+    const FONT   = "'Space Grotesk', system-ui, sans-serif"
+
+    // 1. Fondo violeta sólido
+    ctx.fillStyle = VIOLET
     ctx.fillRect(0, 0, W, H)
 
-    // Pattern decorativo radial
-    const r1 = ctx.createRadialGradient(W * 0.14, H * 0.16, 0, W * 0.14, H * 0.16, W * 0.45)
-    r1.addColorStop(0, 'rgba(255,255,255,0.10)')
-    r1.addColorStop(1, 'rgba(255,255,255,0)')
-    ctx.fillStyle = r1
-    ctx.fillRect(0, 0, W, H)
+    // 2. Label superior centrado
+    ctx.font         = `700 30px ${FONT}`
+    ctx.fillStyle    = 'rgba(255,255,255,0.55)'
+    ctx.textAlign    = 'center'
+    ctx.textBaseline = 'middle'
+    ctx.fillText(topLabel, W / 2, 170)
 
-    // Padding interno del ticket
-    const PAD = 80
+    // 3. Ticket: rect blanco con esquinas superiores redondeadas
+    const TX = 90          // margen horizontal
+    const TY = 240         // tope del ticket
+    const TW = W - TX * 2  // ancho = 900px
+    const CORNER = 52
 
-    // Título display — auto-fit al ancho disponible
-    const titleY = PAD + 20
-    ctx.fillStyle = '#0a0a0a'
-    ctx.textAlign = 'left'
-    ctx.textBaseline = 'top'
-    let titleSize = 200
-    do {
-      ctx.font = `900 ${titleSize}px 'Futura PT Condensed Extra Bold', 'Impact', 'Oswald', 'Arial Narrow', sans-serif`
-      if (ctx.measureText(title).width <= W - PAD * 2) break
-      titleSize -= 6
-    } while (titleSize > 60)
-    ctx.fillText(title, PAD, titleY)
+    // QR de 640px con 70px de padding superior dentro del ticket
+    const QR_SIZE = 640
+    const QR_X = (W - QR_SIZE) / 2
+    const QR_Y = TY + 70
 
-    // Subtítulo
-    ctx.font = `700 28px 'Space Grotesk', system-ui, sans-serif`
-    ctx.fillStyle = 'rgba(0,0,0,0.62)'
-    ctx.fillText(subtitle, PAD, titleY + titleSize + 18)
+    // Texto instrucción: 40px gap bajo el QR
+    const INSTR_Y    = QR_Y + QR_SIZE + 50
+    const INSTR_SIZE = 32
 
-    // QR — generamos un dataURL con el módulo `qrcode` y lo dibujamos
+    // Ticket body termina 70px bajo el texto de instrucción
+    const T_BODY_BOTTOM = INSTR_Y + INSTR_SIZE + 70
+
+    // Dibujar rect blanco (esquinas sup redondeadas, base flat)
+    ctx.fillStyle = '#ffffff'
+    ctx.beginPath()
+    ctx.moveTo(TX + CORNER, TY)
+    ctx.lineTo(TX + TW - CORNER, TY)
+    ctx.arcTo(TX + TW, TY, TX + TW, TY + CORNER, CORNER)
+    ctx.lineTo(TX + TW, T_BODY_BOTTOM)
+    ctx.lineTo(TX, T_BODY_BOTTOM)
+    ctx.lineTo(TX, TY + CORNER)
+    ctx.arcTo(TX, TY, TX + CORNER, TY, CORNER)
+    ctx.closePath()
+    ctx.fill()
+
+    // 4. QR dentro del ticket
     let qrDataUrl = null
     try {
       const QRCode = (await import('qrcode')).default
       qrDataUrl = await QRCode.toDataURL(qrValue || '', {
-        width: 720,
+        width: QR_SIZE,
         margin: 1,
-        errorCorrectionLevel: 'M',
-        color: { dark: '#0a0a0a', light: '#ffffff00' },
+        errorCorrectionLevel: 'H',
+        color: { dark: '#0a0a0a', light: '#ffffff' },
       })
-    } catch { /* sin qr → seguimos */ }
+    } catch {}
     if (qrDataUrl) {
       const img = new Image()
-      img.crossOrigin = 'anonymous'
       img.src = qrDataUrl
       await new Promise(r => { img.onload = r; img.onerror = r })
-      const qrSize = 720
-      const qrX = (W - qrSize) / 2
-      const qrY = titleY + titleSize + 100
-      ctx.drawImage(img, qrX, qrY, qrSize, qrSize)
+      ctx.drawImage(img, QR_X, QR_Y, QR_SIZE, QR_SIZE)
     }
 
-    // Footer del ticket: nombre del club + año
-    const footerName = (audience === 'merchant' && shareTitle && shareTitle !== 'Benefix' ? shareTitle : 'Benefix')
-    ctx.font  = `800 36px 'Space Grotesk', system-ui, sans-serif`
-    ctx.fillStyle = '#0a0a0a'
-    ctx.textAlign = 'left'
-    ctx.fillText(`${footerName.toUpperCase()} CLUB PASS`, PAD, H - PAD - 60)
-    ctx.font = `700 26px 'Space Grotesk', system-ui, sans-serif`
-    ctx.fillStyle = 'rgba(0,0,0,0.55)'
-    ctx.fillText('2026', PAD, H - PAD - 22)
+    // 5. Instrucción dentro del ticket
+    ctx.font         = `800 ${INSTR_SIZE}px ${FONT}`
+    ctx.fillStyle    = '#1a1a1a'
+    ctx.textAlign    = 'center'
+    ctx.textBaseline = 'top'
+    ctx.fillText(ticketInstruction, W / 2, INSTR_Y)
 
-    // Watermark "BENEFIX" en la esquina inferior derecha
-    ctx.font  = `700 20px 'Space Grotesk', system-ui, sans-serif`
-    ctx.fillStyle = 'rgba(0,0,0,0.40)'
-    ctx.textAlign = 'right'
-    ctx.fillText('benefix.com.ar', W - PAD, H - PAD)
+    // 6. Borde dentado — semicírculos violetas a lo largo de la base del ticket
+    const SERR_R   = 30   // radio de cada semicírculo
+    const SERR_GAP = 60   // separación entre centros
+    ctx.fillStyle  = VIOLET
+    let sx = TX + SERR_GAP / 2
+    while (sx < TX + TW) {
+      ctx.beginPath()
+      ctx.arc(sx, T_BODY_BOTTOM, SERR_R, 0, Math.PI * 2)
+      ctx.fill()
+      sx += SERR_GAP
+    }
+
+    // 7. Nombre debajo del ticket
+    const nameY = T_BODY_BOTTOM + SERR_R * 2 + 48
+    if (bottomName) {
+      ctx.font         = `700 58px ${FONT}`
+      ctx.fillStyle    = 'rgba(255,255,255,0.92)'
+      ctx.textAlign    = 'center'
+      ctx.textBaseline = 'top'
+      ctx.fillText(bottomName, W / 2, nameY)
+    }
+
+    // 8. Watermark
+    ctx.font         = `500 26px ${FONT}`
+    ctx.fillStyle    = 'rgba(255,255,255,0.32)'
+    ctx.textAlign    = 'center'
+    ctx.textBaseline = 'bottom'
+    ctx.fillText('benefix.com.ar', W / 2, H - 56)
 
     return new Promise((resolve) => {
-      canvas.toBlob((blob) => resolve(blob), 'image/jpeg', 0.92)
+      canvas.toBlob((blob) => resolve(blob), 'image/png', 1)
     })
   }
 
@@ -1603,8 +1627,8 @@ function QrFullscreen({ open, onClose, qrValue, audience = 'client', shareUrl = 
     if (!shareUrl) return
     let blob = null
     try { blob = await buildShareImage() } catch {}
-    const fileName = `${(shareTitle || 'benefix').toLowerCase().replace(/[^a-z0-9]+/g, '-')}-pass.jpg`
-    const file = blob ? new File([blob], fileName, { type: 'image/jpeg' }) : null
+    const fileName = `${(shareTitle || 'benefix').toLowerCase().replace(/[^a-z0-9]+/g, '-')}-qr.png`
+    const file = blob ? new File([blob], fileName, { type: 'image/png' }) : null
 
     // Intento 1: share API con archivo (mobile moderno)
     if (file && typeof navigator !== 'undefined' && navigator.canShare && navigator.canShare({ files: [file] })) {
@@ -1631,7 +1655,7 @@ function QrFullscreen({ open, onClose, qrValue, audience = 'client', shareUrl = 
       } catch { /* user canceled */ }
     }
 
-    // Intento 3: descarga el JPG
+    // Intento 3: descarga el PNG
     if (blob) {
       try {
         const url = URL.createObjectURL(blob)
