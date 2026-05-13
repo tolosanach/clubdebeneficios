@@ -1699,7 +1699,7 @@ function QrFullscreen({ open, onClose, qrValue, audience = 'client', shareUrl = 
         position: 'absolute', top: 22, left: 0, right: 0,
         display: 'flex', justifyContent: 'center', pointerEvents: 'none',
       }}>
-        <Logo size="sm" />
+        <Logo size="sm" style={{ height: 60 }} />
       </div>
 
       {/* Label superior */}
