@@ -5756,17 +5756,115 @@ function BigBoldRowsSection({ setView }) {
 
 // ─── HOME ─────────────────────────────────────────────────────────────────────
 function HomeView({ setView, user, profile, onLogin }) {
+  const isOwner = profile?.role === 'commerce_owner'
+
+  function handleMerchantCTA() {
+    if (!user) { onLogin && onLogin(); return }
+    if (isOwner) { setView('commerce-settings'); return }
+    try { sessionStorage.setItem('benefix:signupAs', 'merchant') } catch {}
+    setView('register-commerce')
+  }
+
+  const BIZ_BULLETS = [
+    { Icon: QrCode,    text: 'Tu QR listo en minutos' },
+    { Icon: Users,     text: 'Tus clientes acumulan y vuelven' },
+    { Icon: BarChart2, text: 'Ves quién viene y cuándo' },
+  ]
+
   return (
     <div>
-      {/* ── HERO V2 ── (versión Synapse-style con video HLS de fondo)
-          Variante alternativa del hero, en evaluación. Si te gusta más,
-          dejala. Si querés volver al CinematicSplash, comentá esta línea
-          y descomentá la de abajo. */}
+      {/* ── BLOQUE 1: CLIENTE ── */}
       <HeroV2Section setView={setView} user={user} profile={profile} onLogin={onLogin} />
-
-      {/* ── CINEMATIC SPLASH ── (versión anterior con BENEFIX gigante +
-          edificios al pie + parallax al scroll). Disponible si querés volver. */}
       {/* <CinematicSplashSection setView={setView} user={user} profile={profile} onLogin={onLogin} /> */}
+
+      {/* ── DIVISOR ── */}
+      <div style={{ background:'#080808', padding:'32px 20px' }}>
+        <div style={{ maxWidth:480, margin:'0 auto', display:'flex', alignItems:'center', gap:16 }}>
+          <div style={{ flex:1, height:1, background:'rgba(255,255,255,0.10)' }} />
+          <span style={{ fontFamily:FI, fontSize:13, color:'rgba(255,255,255,0.35)', whiteSpace:'nowrap' }}>
+            ¿Tenés un negocio?
+          </span>
+          <div style={{ flex:1, height:1, background:'rgba(255,255,255,0.10)' }} />
+        </div>
+      </div>
+
+      {/* ── BLOQUE 2: NEGOCIO ── */}
+      <div style={{ background:'#080808', padding:'72px 20px 96px' }}>
+        <div style={{ maxWidth:600, margin:'0 auto', textAlign:'center' }}>
+          <h2 style={{
+            fontFamily:FN,
+            fontSize:'clamp(32px, 6vw, 56px)',
+            fontWeight:600,
+            letterSpacing:'-.03em',
+            lineHeight:1.05,
+            color:C.white,
+            margin:'0 0 16px',
+          }}>
+            Fidelizá tus clientes<br />con un QR
+          </h2>
+          <p style={{
+            fontFamily:FI,
+            fontSize:'clamp(15px, 1.8vw, 18px)',
+            color:'rgba(255,255,255,0.65)',
+            lineHeight:1.55,
+            margin:'0 0 40px',
+          }}>
+            Creá tu club, sumá puntos y premiá a los que vuelven.
+          </p>
+
+          {/* Bullets */}
+          <div style={{ display:'flex', flexDirection:'column', gap:14, marginBottom:56, textAlign:'left', maxWidth:320, margin:'0 auto 56px' }}>
+            {BIZ_BULLETS.map(({ Icon, text }) => (
+              <div key={text} style={{ display:'flex', alignItems:'center', gap:14 }}>
+                <div style={{ width:36, height:36, borderRadius:10, background:'rgba(113,49,225,0.18)', border:'1px solid rgba(113,49,225,0.30)', display:'flex', alignItems:'center', justifyContent:'center', flexShrink:0 }}>
+                  <Icon size={17} color='#A78BFA' strokeWidth={2} />
+                </div>
+                <span style={{ fontFamily:FN, fontSize:15, fontWeight:500, color:'rgba(255,255,255,0.85)' }}>{text}</span>
+              </div>
+            ))}
+          </div>
+
+          {/* Pricing */}
+          <div style={{ marginBottom:48 }}>
+            <div style={{ textAlign:'center', marginBottom:32 }}>
+              <p style={{ fontFamily:FN, fontSize:13, fontWeight:600, color:'rgba(255,255,255,0.40)', letterSpacing:'.08em', textTransform:'uppercase', margin:'0 0 8px' }}>
+                Planes
+              </p>
+              <h3 style={{ fontFamily:FN, fontSize:'clamp(22px, 4vw, 36px)', fontWeight:600, letterSpacing:'-.02em', color:C.white, margin:'0 0 10px' }}>
+                Elegí tu <span style={{ fontStyle:'italic', fontWeight:500 }}>plan.</span>
+              </h3>
+              <p style={{ fontFamily:FI, fontSize:'clamp(13px, 1.5vw, 16px)', color:'rgba(255,255,255,0.55)', margin:0, lineHeight:1.5 }}>
+                Arrancá con el plan Free. Cambialo cuando tu club crezca.
+              </p>
+            </div>
+            <PlanCards onCTA={handleMerchantCTA} />
+            <div style={{ textAlign:'center', marginTop:28, fontSize:12, color:'rgba(255,255,255,0.35)', fontFamily:FI }}>
+              Sin contrato · Sin permanencia · Cancelá cuando quieras
+            </div>
+          </div>
+
+          {/* CTA principal */}
+          <button
+            onClick={handleMerchantCTA}
+            style={{
+              display:'inline-flex', alignItems:'center', gap:8,
+              padding:'14px 28px',
+              borderRadius:99,
+              background:'linear-gradient(135deg,#FE5000,#BD4BF8)',
+              border:'none',
+              color:'#fff',
+              fontFamily:FN, fontSize:15, fontWeight:700,
+              cursor:'pointer',
+              boxShadow:'0 4px 24px rgba(189,75,248,0.35)',
+            }}
+            onMouseEnter={e => { e.currentTarget.style.opacity = '0.88' }}
+            onMouseLeave={e => { e.currentTarget.style.opacity = '1' }}
+          >
+            Crear mi club
+            <ArrowRight size={16} strokeWidth={2.4} />
+          </button>
+        </div>
+      </div>
 
       <SectionDivider />
 
@@ -5777,53 +5875,6 @@ function HomeView({ setView, user, profile, onLogin }) {
 
       {/* ── PROCESO: 3 PASOS ── */}
       <HowItWorksSection />
-
-      {/* ── BIG BOLD ROWS ELIMINADO ──
-          La sección "Fidelización, reinventada" con las 3 filas Sumar /
-          Fidelizar / Reactivar fue removida del flow del home a pedido
-          del dueño. La función BigBoldRowsSection sigue definida arriba
-          en el archivo por si quisiéramos volver a usarla en el futuro.
-          También sacamos el SectionDivider que iba antes — el header
-          de "✦ Planes para negocios" ahora viene directo después del
-          BigBoldRowsSection, manteniendo el flujo limpio. */}
-
-      {/* ── PLANES ── (fondo negro plano, estética minimal alineada al hero V2) */}
-      <div style={{ background:'#000', padding:'96px 20px 120px', position:'relative' }}>
-        <div style={{ maxWidth:1100, margin:'0 auto' }}>
-          <div style={{ textAlign:'center', marginBottom:64 }}>
-            <h2 style={{
-              fontFamily:FN,
-              fontSize:'clamp(28px, 5vw, 48px)',
-              fontWeight:600,
-              color:C.white,
-              marginBottom:14,
-              lineHeight:1.05,
-              letterSpacing:'-.03em',
-            }}>
-              Elegí tu <span style={{ fontStyle:'italic', fontWeight:500 }}>plan.</span>
-            </h2>
-            <p style={{
-              fontFamily:FI,
-              fontSize:'clamp(14px, 1.6vw, 17px)',
-              color:'rgba(255,255,255,0.70)',
-              maxWidth:480,
-              margin:'0 auto',
-              lineHeight:1.5,
-            }}>
-              Arrancá con el plan Free. Cambialo cuando tu club crezca.
-            </p>
-          </div>
-          <PlanCards onCTA={() => setView('register-commerce')} />
-          <div style={{ textAlign:'center', marginTop:36, fontSize:13, color:'rgba(255,255,255,0.45)', fontFamily:FI }}>
-            Sin contrato · Sin permanencia · Cancelá cuando quieras
-          </div>
-        </div>
-      </div>
-
-      {/* ── TESTIMONIOS ── (oculto hasta tener reseñas reales — el
-          componente ya devuelve null por el feature flag REVIEWS_ENABLED.
-          Ocultamos también los SectionDivider para no dejar el doble
-          separador colgando.) */}
 
       <SectionDivider />
 
