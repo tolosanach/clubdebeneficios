@@ -23570,13 +23570,7 @@ export default function App() {
     if (opts?.nextView) {
       try { sessionStorage.setItem('benefix:loginNext', opts.nextView) } catch {}
     }
-    await supabase.auth.signInWithOAuth({
-      provider: 'google',
-      options: {
-        redirectTo: `${window.location.origin}/auth/callback`,
-        queryParams: { prompt: 'select_account' },
-      },
-    })
+    window.location.href = '/api/auth/google'
   }
 
   async function handleLogout() {

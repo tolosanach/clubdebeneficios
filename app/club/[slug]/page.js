@@ -2202,8 +2202,7 @@ export default function ClubProfilePage() {
       setShowSplash(false)
     } else {
       try { sessionStorage.setItem('benefix:pendingJoinSlug', slug) } catch {}
-      const returnTo = encodeURIComponent(`/club/${slug}`)
-      sb.auth.signInWithOAuth({ provider:'google', options:{ redirectTo:`${window.location.origin}/auth/callback?next=${returnTo}`, queryParams:{ prompt:'select_account' } } })
+      window.location.href = `/api/auth/google?next=${encodeURIComponent(`/club/${slug}`)}`
     }
   }
 
@@ -2234,18 +2233,7 @@ export default function ClubProfilePage() {
     setShowLoginPrompt(false)
     if (phone.trim()) sessionStorage.setItem('club_join_phone', phone.trim())
     const sb = getSupabase()
-    sb.auth.signInWithOAuth({
-      provider:'google',
-      // Pasamos por /auth/callback (server-side exchange del code) y le decimos
-      // a dónde volver con ?next=. Encodeamos porque el next contiene ? y =.
-      // queryParams.prompt='select_account' fuerza a Google a mostrar el
-      // picker de cuentas siempre — evita que después de un logout te re-loguee
-      // automáticamente con el último mail.
-      options:{
-        redirectTo:`${window.location.origin}/auth/callback?next=${encodeURIComponent(`/club/${slug}?auto_join=1`)}`,
-        queryParams:{ prompt:'select_account' },
-      },
-    })
+    window.location.href = `/api/auth/google?next=${encodeURIComponent(`/club/${slug}?auto_join=1`)}`
   }
 
   function validatePhone(val) {
