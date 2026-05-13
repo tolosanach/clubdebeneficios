@@ -16325,33 +16325,47 @@ function CommerceSettingsView({ user, profile, setView, onLogout, onOwnerProfile
                   : <ChevronDown size={16} color={C.mist} strokeWidth={2} />}
               </button>
 
-              {grantBalanceOpen && (
-                <div style={{ marginTop:14, paddingTop:14, borderTop:`1px solid ${C.rim}` }}>
-                  {grantBalanceError && (
-                    <div style={{ fontSize:11, color:'#f87444', marginBottom:10, padding:'7px 10px', background:'rgba(248,116,68,0.10)', border:'1px solid rgba(248,116,68,0.30)', borderRadius:8 }}>
-                      {grantBalanceError}
+              {grantBalanceOpen && (() => {
+                const step = isStars ? 1 : (parseInt(form?.prog_min_purchase) > 0 ? parseInt(form.prog_min_purchase) : 100)
+                const cur  = parseInt(grantBalanceAmount) || 0
+                const dec  = () => { const n = Math.max(step, cur - step); setGrantBalanceAmount(String(n)); setGrantBalanceError('') }
+                const inc  = () => { const n = Math.min(9999, cur + step); setGrantBalanceAmount(String(n)); setGrantBalanceError('') }
+                if (!grantBalanceAmount) setTimeout(() => setGrantBalanceAmount(String(step)), 0)
+                return (
+                  <div style={{ marginTop:14, paddingTop:14, borderTop:`1px solid ${C.rim}` }}>
+                    {grantBalanceError && (
+                      <div style={{ fontSize:11, color:'#f87444', marginBottom:10, padding:'7px 10px', background:'rgba(248,116,68,0.10)', border:'1px solid rgba(248,116,68,0.30)', borderRadius:8 }}>
+                        {grantBalanceError}
+                      </div>
+                    )}
+                    {/* Stepper */}
+                    <div style={{ display:'flex', alignItems:'center', gap:8, marginBottom:12 }}>
+                      <button onClick={dec} disabled={cur <= step}
+                        style={{ width:44, height:44, borderRadius:12, background:'rgba(255,255,255,0.08)', border:`1px solid ${C.rim}`, color:C.white, fontSize:22, fontWeight:300, cursor: cur <= step ? 'not-allowed' : 'pointer', opacity: cur <= step ? 0.4 : 1, display:'flex', alignItems:'center', justifyContent:'center', flexShrink:0 }}>
+                        −
+                      </button>
+                      <div style={{ flex:1, textAlign:'center' }}>
+                        <div style={{ fontFamily:FN, fontSize:28, fontWeight:900, color:C.white, lineHeight:1 }}>
+                          {cur || step}
+                        </div>
+                        <div style={{ fontSize:10, color:C.dust, marginTop:3 }}>
+                          {unitWord}{!isStars && step > 1 && ` · paso $${step.toLocaleString('es-AR')}`}
+                        </div>
+                      </div>
+                      <button onClick={inc} disabled={cur >= 9999}
+                        style={{ width:44, height:44, borderRadius:12, background:'rgba(255,255,255,0.08)', border:`1px solid ${C.rim}`, color:C.white, fontSize:22, fontWeight:300, cursor: cur >= 9999 ? 'not-allowed' : 'pointer', opacity: cur >= 9999 ? 0.4 : 1, display:'flex', alignItems:'center', justifyContent:'center', flexShrink:0 }}>
+                        +
+                      </button>
                     </div>
-                  )}
-                  <div style={{ display:'flex', gap:8 }}>
-                    <input
-                      type="number"
-                      min={1}
-                      max={9999}
-                      placeholder={`Cantidad de ${unitWord}`}
-                      value={grantBalanceAmount}
-                      onChange={e => { setGrantBalanceAmount(e.target.value); setGrantBalanceError('') }}
-                      onKeyDown={e => { if (e.key === 'Enter') grantBalanceToMember() }}
-                      style={{ flex:1, padding:'10px 14px', background:'rgba(255,255,255,0.06)', border:`1px solid ${C.rim}`, borderRadius:10, color:C.white, fontSize:14, fontFamily:FN, outline:'none', minWidth:0 }}
-                    />
                     <button
                       onClick={grantBalanceToMember}
-                      disabled={grantingBalance || !grantBalanceAmount}
-                      style={{ flexShrink:0, padding:'10px 18px', background: grantingBalance ? `${sysColor}55` : sysColor, border:'none', borderRadius:10, color:'#fff', fontFamily:FN, fontSize:13, fontWeight:700, cursor: grantingBalance ? 'wait' : 'pointer' }}>
-                      {grantingBalance ? '⟳' : 'Sumar'}
+                      disabled={grantingBalance || !cur}
+                      style={{ width:'100%', padding:'11px', background: grantingBalance ? `${sysColor}55` : sysColor, border:'none', borderRadius:10, color:'#fff', fontFamily:FN, fontSize:13, fontWeight:700, cursor: grantingBalance ? 'wait' : 'pointer' }}>
+                      {grantingBalance ? 'Sumando...' : `Sumar ${cur || step} ${unitWord}`}
                     </button>
                   </div>
-                </div>
-              )}
+                )
+              })()}
             </PCard>
           )
         })()}
