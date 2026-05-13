@@ -1629,7 +1629,6 @@ function QrFullscreen({ open, onClose, qrValue, audience = 'client', shareUrl = 
   }
 
   async function handleShare() {
-    if (!shareUrl) return
     let blob = null
     try { blob = await buildShareImage() } catch {}
     const fileName = `${(shareTitle || 'benefix').toLowerCase().replace(/[^a-z0-9]+/g, '-')}-qr.png`
@@ -1641,15 +1640,17 @@ function QrFullscreen({ open, onClose, qrValue, audience = 'client', shareUrl = 
         await navigator.share({
           files: [file],
           title: shareTitle,
-          text: `${shareTitle} en Benefix — escaneá para sumarte al club`,
-          url: shareUrl,
+          text: audience === 'merchant'
+            ? `${shareTitle} en Benefix — escaneá para sumarte al club`
+            : 'Mi QR de Benefix',
+          ...(shareUrl ? { url: shareUrl } : {}),
         })
         return
       } catch { /* user canceled */ }
     }
 
     // Intento 2: share API solo con URL (desktop / browsers viejos)
-    if (typeof navigator !== 'undefined' && navigator.share) {
+    if (shareUrl && typeof navigator !== 'undefined' && navigator.share) {
       try {
         await navigator.share({
           title: shareTitle,
@@ -1676,7 +1677,7 @@ function QrFullscreen({ open, onClose, qrValue, audience = 'client', shareUrl = 
     }
 
     // Último fallback: copiar URL
-    handleCopy()
+    if (shareUrl) handleCopy()
   }
 
   return (
@@ -1764,21 +1765,21 @@ function QrFullscreen({ open, onClose, qrValue, audience = 'client', shareUrl = 
         </div>
       )}
 
-      {/* Botones compartir — solo merchant */}
-      {audience === 'merchant' && shareUrl && (
-        <div style={{ display: 'flex', gap: 10, marginTop: 24 }}>
-          <button onClick={handleShare} style={{
-            display: 'flex', alignItems: 'center', gap: 7,
-            padding: '10px 18px',
-            background: 'rgba(255,255,255,0.14)',
-            border: '1px solid rgba(255,255,255,0.22)',
-            borderRadius: 99, color: '#fff',
-            fontFamily: FN, fontSize: 13, fontWeight: 600, cursor: 'pointer',
-            lineHeight: 1,
-          }}>
-            <Share2 size={14} strokeWidth={2.2} />
-            Compartir
-          </button>
+      {/* Botones compartir */}
+      <div style={{ display: 'flex', gap: 10, marginTop: 24 }}>
+        <button onClick={handleShare} style={{
+          display: 'flex', alignItems: 'center', gap: 7,
+          padding: '10px 18px',
+          background: 'rgba(255,255,255,0.14)',
+          border: '1px solid rgba(255,255,255,0.22)',
+          borderRadius: 99, color: '#fff',
+          fontFamily: FN, fontSize: 13, fontWeight: 600, cursor: 'pointer',
+          lineHeight: 1,
+        }}>
+          <Share2 size={14} strokeWidth={2.2} />
+          Compartir
+        </button>
+        {audience === 'merchant' && shareUrl && (
           <button onClick={handleCopy} style={{
             display: 'flex', alignItems: 'center', gap: 7,
             padding: '10px 18px',
@@ -1791,8 +1792,8 @@ function QrFullscreen({ open, onClose, qrValue, audience = 'client', shareUrl = 
             {copied ? <Check size={14} strokeWidth={2.4} /> : <Copy size={14} strokeWidth={2.2} />}
             {copied ? '¡Copiado!' : 'Copiar URL'}
           </button>
-        </div>
-      )}
+        )}
+      </div>
     </div>
   )
 }
