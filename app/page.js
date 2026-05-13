@@ -2916,6 +2916,7 @@ function Navbar({ setView, cityName, user, profile, commerce, onLogin, onLogout,
 
   const [roleAskerOpen, setRoleAskerOpen] = useState(false) // legacy, no se usa
   const [dropdownOpen, setDropdownOpen] = useState(false)
+  const [dropdownRect, setDropdownRect] = useState(null)
   const dropdownWrapRef = useRef(null)
 
   useEffect(() => {
@@ -3055,7 +3056,26 @@ function Navbar({ setView, cityName, user, profile, commerce, onLogin, onLogout,
   )
 
   // ── Logged-in user ────────────────────────────────────────────────────────
+  const isMerchantDD = activeContext === 'merchant'
+  const ddHeaderLabel = isMerchantDD
+    ? (commerce?.name || 'Mi negocio')
+    : (profile?.name || profile?.full_name || user?.email || '')
+  function DDItem({ icon: Icon, label, onClickItem, danger }) {
+    return (
+      <button
+        onClick={() => { setDropdownOpen(false); onClickItem() }}
+        style={{ display:'flex', alignItems:'center', gap:10, width:'100%', background:'none', border:'none', cursor:'pointer', padding:'10px 14px', borderRadius:10, color: danger ? '#f87444' : 'rgba(255,255,255,0.88)', fontFamily:FN, fontSize:13, fontWeight:500, textAlign:'left' }}
+        onMouseEnter={e => { e.currentTarget.style.background = danger ? 'rgba(248,116,68,0.10)' : 'rgba(255,255,255,0.07)' }}
+        onMouseLeave={e => { e.currentTarget.style.background = 'none' }}
+      >
+        <Icon size={15} strokeWidth={2} color={danger ? '#f87444' : '#A78BFA'} />
+        {label}
+      </button>
+    )
+  }
+
   return (
+    <>
     <nav className="navbar-glass" style={{ ...NAV, ...NAV_TRANSITION, ...NAV_SCROLL_STATE, padding:'0 16px' }}>
       <div style={{ cursor:'pointer' }} onClick={() => setView('home')}><Logo /></div>
       {/* LEGACY NAVBAR — reemplazado por BottomNavV2 el 2026-05-03.
@@ -3074,11 +3094,19 @@ function Navbar({ setView, cityName, user, profile, commerce, onLogin, onLogout,
             />
           </div>
         )}
-        {/* Avatar chip con dropdown */}
-        <div ref={dropdownWrapRef} style={{ position:'relative' }}>
+        {/* Avatar chip con dropdown — portal para escapar del overflow:hidden del nav */}
+        <div ref={dropdownWrapRef}>
           <button
             title={profile?.name || profile?.full_name || 'Mi perfil'}
-            onClick={() => setDropdownOpen(o => !o)}
+            onClick={() => {
+              if (!dropdownOpen && dropdownWrapRef.current) {
+                // Guardamos la posición del botón ANTES de abrir, para posicionar
+                // el portal con position:fixed correctamente.
+                const r = dropdownWrapRef.current.getBoundingClientRect()
+                setDropdownRect({ top: r.bottom + 8, right: window.innerWidth - r.right })
+              }
+              setDropdownOpen(o => !o)
+            }}
             style={{ display:'flex', alignItems:'center', gap:7, background:'rgba(255,255,255,0.08)', border:'1px solid rgba(255,255,255,0.12)', borderRadius:99, padding:'4px 10px 4px 4px', cursor:'pointer' }}
           >
             {profile?.avatar_url ? (
@@ -3094,42 +3122,6 @@ function Navbar({ setView, cityName, user, profile, commerce, onLogin, onLogout,
               {(profile?.name || profile?.full_name || user?.email || '').split(' ')[0]}
             </span>
           </button>
-
-          {dropdownOpen && (() => {
-            const isMerchant = activeContext === 'merchant'
-            const headerLabel = isMerchant
-              ? (commerce?.name || 'Mi negocio')
-              : (profile?.name || profile?.full_name || user?.email || '')
-            const DDItem = ({ icon: Icon, label, onClick: onClickItem, danger }) => (
-              <button
-                onClick={() => { setDropdownOpen(false); onClickItem() }}
-                style={{ display:'flex', alignItems:'center', gap:10, width:'100%', background:'none', border:'none', cursor:'pointer', padding:'10px 14px', borderRadius:10, color: danger ? '#f87444' : 'rgba(255,255,255,0.88)', fontFamily:FN, fontSize:13, fontWeight:500, textAlign:'left' }}
-                onMouseEnter={e => { e.currentTarget.style.background = danger ? 'rgba(248,116,68,0.10)' : 'rgba(255,255,255,0.07)' }}
-                onMouseLeave={e => { e.currentTarget.style.background = 'none' }}
-              >
-                <Icon size={15} strokeWidth={2} color={danger ? '#f87444' : '#A78BFA'} />
-                {label}
-              </button>
-            )
-            return (
-              <div style={{ position:'absolute', top:'calc(100% + 8px)', right:0, minWidth:192, background:'rgba(12,8,24,0.96)', backdropFilter:'blur(20px)', WebkitBackdropFilter:'blur(20px)', border:'1px solid rgba(255,255,255,0.12)', borderRadius:14, padding:6, zIndex:9999, boxShadow:'0 12px 40px rgba(0,0,0,0.60)' }}>
-                <div style={{ padding:'8px 14px 6px', borderBottom:'1px solid rgba(255,255,255,0.08)', marginBottom:4 }}>
-                  <span style={{ fontFamily:FN, fontSize:11, fontWeight:600, color:'rgba(255,255,255,0.40)', textTransform:'uppercase', letterSpacing:'.06em' }}>
-                    {headerLabel}
-                  </span>
-                </div>
-                {isMerchant ? (<>
-                  <DDItem icon={Eye} label="Ver perfil público" onClickItem={() => onOwnerProfile?.()} />
-                  <DDItem icon={LogOut} label="Cerrar sesión" onClickItem={() => onLogout?.()} danger />
-                </>) : (<>
-                  <DDItem icon={Home} label="Mis clubes" onClickItem={() => {
-                    window.dispatchEvent(new CustomEvent('benefix:navigate', { detail: { view:'client', tab:'mis clubs' } }))
-                  }} />
-                  <DDItem icon={LogOut} label="Cerrar sesión" onClickItem={() => onLogout?.()} danger />
-                </>)}
-              </div>
-            )
-          })()}
         </div>
       </div>
       {false && (
@@ -3220,6 +3212,26 @@ function Navbar({ setView, cityName, user, profile, commerce, onLogin, onLogout,
       </div>
       )}
     </nav>
+    {dropdownOpen && dropdownRect && typeof document !== 'undefined' && createPortal(
+      <div style={{ position:'fixed', top: dropdownRect.top, right: dropdownRect.right, minWidth:192, background:'rgba(12,8,24,0.96)', backdropFilter:'blur(20px)', WebkitBackdropFilter:'blur(20px)', border:'1px solid rgba(255,255,255,0.12)', borderRadius:14, padding:6, zIndex:9999, boxShadow:'0 12px 40px rgba(0,0,0,0.60)' }}>
+        <div style={{ padding:'8px 14px 6px', borderBottom:'1px solid rgba(255,255,255,0.08)', marginBottom:4 }}>
+          <span style={{ fontFamily:FN, fontSize:11, fontWeight:600, color:'rgba(255,255,255,0.40)', textTransform:'uppercase', letterSpacing:'.06em' }}>
+            {ddHeaderLabel}
+          </span>
+        </div>
+        {isMerchantDD ? (<>
+          <DDItem icon={Eye} label="Ver perfil público" onClickItem={() => onOwnerProfile?.()} />
+          <DDItem icon={LogOut} label="Cerrar sesión" onClickItem={() => onLogout?.()} danger />
+        </>) : (<>
+          <DDItem icon={Home} label="Mis clubes" onClickItem={() => {
+            window.dispatchEvent(new CustomEvent('benefix:navigate', { detail: { view:'client', tab:'mis clubs' } }))
+          }} />
+          <DDItem icon={LogOut} label="Cerrar sesión" onClickItem={() => onLogout?.()} danger />
+        </>)}
+      </div>,
+      document.body
+    )}
+    </>
   )
 }
 
