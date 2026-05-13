@@ -1694,6 +1694,14 @@ function QrFullscreen({ open, onClose, qrValue, audience = 'client', shareUrl = 
         <X size={24} strokeWidth={2} />
       </button>
 
+      {/* Logo centrado arriba */}
+      <div style={{
+        position: 'absolute', top: 22, left: 0, right: 0,
+        display: 'flex', justifyContent: 'center', pointerEvents: 'none',
+      }}>
+        <Logo size="sm" />
+      </div>
+
       {/* Label superior */}
       <div style={{
         fontFamily: FN, fontSize: 11, fontWeight: 700,
