@@ -3214,16 +3214,24 @@ function Navbar({ setView, cityName, user, profile, commerce, onLogin, onLogout,
     </nav>
     {dropdownOpen && dropdownRect && typeof document !== 'undefined' && createPortal(
       <div style={{ position:'fixed', top: dropdownRect.top, right: dropdownRect.right, minWidth:192, background:'rgba(12,8,24,0.96)', backdropFilter:'blur(20px)', WebkitBackdropFilter:'blur(20px)', border:'1px solid rgba(255,255,255,0.12)', borderRadius:14, padding:6, zIndex:9999, boxShadow:'0 12px 40px rgba(0,0,0,0.60)' }}>
-        <div style={{ padding:'10px 14px 8px', borderBottom:'1px solid rgba(255,255,255,0.08)', marginBottom:4 }}>
+        <button
+          onClick={() => { setDropdownOpen(false); isMerchantDD ? setView('commerce-settings') : undefined }}
+          style={{ display:'block', width:'100%', textAlign:'left', background:'none', border:'none', cursor: isMerchantDD ? 'pointer' : 'default', padding:'10px 14px 8px', borderBottom:'1px solid rgba(255,255,255,0.08)', marginBottom:4 }}
+          onMouseEnter={e => { if (isMerchantDD) e.currentTarget.style.background = 'rgba(255,255,255,0.05)' }}
+          onMouseLeave={e => { e.currentTarget.style.background = 'none' }}
+        >
           <div style={{ fontFamily:FN, fontSize:13, fontWeight:600, color:'rgba(255,255,255,0.88)', overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>
             {ddHeaderLabel}
           </div>
           <div style={{ fontFamily:FI, fontSize:11, color:'rgba(255,255,255,0.35)', marginTop:2, overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>
             {user?.email}
           </div>
-        </div>
+        </button>
         {isMerchantDD ? (<>
-          <DDItem icon={Eye} label="Ver perfil público" onClickItem={() => onOwnerProfile?.()} />
+          <DDItem icon={Eye} label="Ver perfil público" onClickItem={() => {
+            if (commerce?.slug) { window.location.href = `/club/${commerce.slug}?edit=1` }
+            else { setDropdownOpen(false); setView('commerce-settings') }
+          }} />
           <DDItem icon={LogOut} label="Cerrar sesión" onClickItem={() => onLogout?.()} danger />
         </>) : (<>
           <DDItem icon={Home} label="Mis clubes" onClickItem={() => {
