@@ -14,6 +14,7 @@ import { NextResponse } from 'next/server'
 
 export async function GET(request) {
   const { searchParams, origin } = new URL(request.url)
+
   const next = searchParams.get('next') || '/'
   const safeNext = next.startsWith('/') ? next : '/'
 

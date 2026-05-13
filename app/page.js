@@ -23132,24 +23132,19 @@ function DevToolbar({ user, profile, onRoleChange }) {
 // deep-link en vez del default. Limpiamos la URL inmediatamente para
 // que no quede pegada al refrescar.
 const _DEEP_LINK = (() => {
-  if (typeof window === 'undefined') return { view: null, tab: null, upgrade: null, member: null }
+  if (typeof window === 'undefined') return { view: null, tab: null, upgrade: null, member: null, msg: null }
   try {
     const params = new URLSearchParams(window.location.search)
     const v = params.get('view')
     const t = params.get('tab')
-    // upgrade=success|pending|failure → llega cuando MP redirige al merchant
-    // después del checkout de la suscripción. El App lo lee y muestra un
-    // modal de confirmación en lugar de aterrizar en la home pelada.
     const u = params.get('upgrade')
-    // member=<membership_id> → usado por la notif "Visita de [Cliente]"
-    // que mandamos al dueño desde /api/scan. Cuando tap, lo lleva al
-    // panel → tab clientes → con el cliente puntual seleccionado.
     const mb = params.get('member')
-    if (v || t || u || mb) {
+    const msg = params.get('msg')
+    if (v || t || u || mb || msg) {
       window.history.replaceState(null, '', window.location.pathname)
     }
-    return { view: v || null, tab: t || null, upgrade: u || null, member: mb || null }
-  } catch { return { view: null, tab: null, upgrade: null, member: null } }
+    return { view: v || null, tab: t || null, upgrade: u || null, member: mb || null, msg: msg || null }
+  } catch { return { view: null, tab: null, upgrade: null, member: null, msg: null } }
 })()
 
 // Helper: lee y consume los query params de deep-link. Combina dos
@@ -23172,17 +23167,16 @@ function readFreshDeepLink() {
     const urlT = params.get('tab')
     const urlU = params.get('upgrade')
     const urlMb = params.get('member')
-    if (urlV || urlT || urlU || urlMb) {
-      // Por si quedó algo en la URL (caso raro: el IIFE no corrió),
-      // limpiamos.
+    const urlMsg = params.get('msg')
+    if (urlV || urlT || urlU || urlMb || urlMsg) {
       window.history.replaceState(null, '', window.location.pathname)
     }
-    // Merge: URL gana si tiene valor, sino caemos al _DEEP_LINK del IIFE.
     return {
-      view:    urlV  || _DEEP_LINK.view    || null,
-      tab:     urlT  || _DEEP_LINK.tab     || null,
-      upgrade: urlU  || _DEEP_LINK.upgrade || null,
-      member:  urlMb || _DEEP_LINK.member  || null,
+      view:    urlV   || _DEEP_LINK.view    || null,
+      tab:     urlT   || _DEEP_LINK.tab     || null,
+      upgrade: urlU   || _DEEP_LINK.upgrade || null,
+      member:  urlMb  || _DEEP_LINK.member  || null,
+      msg:     urlMsg || _DEEP_LINK.msg     || null,
     }
   } catch { return _DEEP_LINK }
 }
@@ -23328,6 +23322,9 @@ export default function App() {
     }
     if (fresh.upgrade) {
       setUpgradeResult(fresh.upgrade)
+    }
+    if (fresh.msg === 'login-pronto') {
+      setTimeout(() => showToast('info', 'El login con Google está en construcción. Volvé en unos minutos.', 6000), 400)
     }
   }, [])
   const [citySlug, setCitySlug] = useState(null)
