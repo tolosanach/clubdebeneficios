@@ -11778,11 +11778,19 @@ function CommerceSettingsView({ user, profile, setView, onLogout, onOwnerProfile
   const [grantPanelOpen, setGrantPanelOpen] = useState(false)
   const [grantingPromoId, setGrantingPromoId] = useState(null)
   const [grantError, setGrantError]         = useState('')
+  // Otorgar balance manual (estrellas/puntos)
+  const [grantBalanceOpen, setGrantBalanceOpen]   = useState(false)
+  const [grantBalanceAmount, setGrantBalanceAmount] = useState('')
+  const [grantingBalance, setGrantingBalance]     = useState(false)
+  const [grantBalanceError, setGrantBalanceError] = useState('')
   // Resetear el panel cuando cambia el cliente seleccionado
   useEffect(() => {
     setGrantPanelOpen(false)
     setGrantingPromoId(null)
     setGrantError('')
+    setGrantBalanceOpen(false)
+    setGrantBalanceAmount('')
+    setGrantBalanceError('')
   }, [selectedMember?.id])
   // Historial
   const [activity, setActivity]           = useState([])
@@ -13413,6 +13421,46 @@ function CommerceSettingsView({ user, profile, setView, onLogout, onOwnerProfile
       setGrantError(e?.message || 'Error de red')
     } finally {
       setGrantingPromoId(null)
+    }
+  }
+
+  async function grantBalanceToMember() {
+    if (!selectedMember || grantingBalance) return
+    const parsed = parseInt(grantBalanceAmount, 10)
+    if (!Number.isFinite(parsed) || parsed < 1) {
+      setGrantBalanceError('Ingresá una cantidad válida')
+      return
+    }
+    setGrantBalanceError('')
+    setGrantingBalance(true)
+    try {
+      const res = await fetch('/api/grant-balance', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          commerce_id:   commerce.id,
+          membership_id: selectedMember.id,
+          amount:        parsed,
+        }),
+      })
+      const data = await res.json()
+      if (data.ok) {
+        const isStars  = form?.prog_type === 'stars'
+        const unitWord = isStars ? (parsed === 1 ? 'estrella' : 'estrellas') : (parsed === 1 ? 'punto' : 'puntos')
+        const clientFirst = (selectedMember.profiles?.display_name || selectedMember.profiles?.full_name || selectedMember.profiles?.name)?.split(' ')[0] || 'el cliente'
+        showToast('success', `Le sumaste ${parsed} ${unitWord} a ${clientFirst}`)
+        // Actualizar el balance en el state local para que la ficha refleje el cambio al instante
+        const col = data.col
+        setSelectedMember(prev => ({ ...prev, [col]: data.new_value }))
+        setGrantBalanceAmount('')
+        setGrantBalanceOpen(false)
+      } else {
+        setGrantBalanceError(data.error || 'No se pudo sumar el balance')
+      }
+    } catch (e) {
+      setGrantBalanceError(e?.message || 'Error de red')
+    } finally {
+      setGrantingBalance(false)
     }
   }
 
@@ -16253,6 +16301,60 @@ function CommerceSettingsView({ user, profile, setView, onLogout, onOwnerProfile
             ))}
           </div>
         </PCard>
+
+        {/* ── Sumar estrellas / puntos manualmente ── */}
+        {(() => {
+          const isStars   = form?.prog_type === 'stars'
+          const unitWord  = isStars ? 'estrellas' : 'puntos'
+          const sysColor  = isStars ? '#7131E1' : '#EC4899'
+          return (
+            <PCard style={{ padding:16, marginBottom:12, background:`${sysColor}10`, border:`1px solid ${sysColor}33` }}>
+              <button onClick={() => setGrantBalanceOpen(o => !o)}
+                style={{ width:'100%', display:'flex', alignItems:'center', justifyContent:'space-between', background:'transparent', border:'none', padding:0, cursor:'pointer', fontFamily:'inherit' }}>
+                <div style={{ display:'flex', alignItems:'center', gap:10 }}>
+                  <div style={{ width:34, height:34, borderRadius:10, background:sysColor, display:'flex', alignItems:'center', justifyContent:'center', flexShrink:0, boxShadow:`0 4px 14px ${sysColor}55` }}>
+                    {isStars ? <Star size={16} color="#fff" strokeWidth={2.2} /> : <Gem size={16} color="#fff" strokeWidth={2.2} />}
+                  </div>
+                  <div style={{ textAlign:'left' }}>
+                    <div style={{ fontFamily:FN, fontSize:13, fontWeight:700, color:C.white }}>Sumar {unitWord}</div>
+                    <div style={{ fontSize:11, color:C.dust, marginTop:2 }}>Agregá {unitWord} al saldo del cliente</div>
+                  </div>
+                </div>
+                {grantBalanceOpen
+                  ? <ChevronUp size={16} color={C.mist} strokeWidth={2} />
+                  : <ChevronDown size={16} color={C.mist} strokeWidth={2} />}
+              </button>
+
+              {grantBalanceOpen && (
+                <div style={{ marginTop:14, paddingTop:14, borderTop:`1px solid ${C.rim}` }}>
+                  {grantBalanceError && (
+                    <div style={{ fontSize:11, color:'#f87444', marginBottom:10, padding:'7px 10px', background:'rgba(248,116,68,0.10)', border:'1px solid rgba(248,116,68,0.30)', borderRadius:8 }}>
+                      {grantBalanceError}
+                    </div>
+                  )}
+                  <div style={{ display:'flex', gap:8 }}>
+                    <input
+                      type="number"
+                      min={1}
+                      max={9999}
+                      placeholder={`Cantidad de ${unitWord}`}
+                      value={grantBalanceAmount}
+                      onChange={e => { setGrantBalanceAmount(e.target.value); setGrantBalanceError('') }}
+                      onKeyDown={e => { if (e.key === 'Enter') grantBalanceToMember() }}
+                      style={{ flex:1, padding:'10px 14px', background:'rgba(255,255,255,0.06)', border:`1px solid ${C.rim}`, borderRadius:10, color:C.white, fontSize:14, fontFamily:FN, outline:'none', minWidth:0 }}
+                    />
+                    <button
+                      onClick={grantBalanceToMember}
+                      disabled={grantingBalance || !grantBalanceAmount}
+                      style={{ flexShrink:0, padding:'10px 18px', background: grantingBalance ? `${sysColor}55` : sysColor, border:'none', borderRadius:10, color:'#fff', fontFamily:FN, fontSize:13, fontWeight:700, cursor: grantingBalance ? 'wait' : 'pointer' }}>
+                      {grantingBalance ? '⟳' : 'Sumar'}
+                    </button>
+                  </div>
+                </div>
+              )}
+            </PCard>
+          )
+        })()}
 
         {/* QR del cliente — para que el comerciante pueda escanearlo
             si el cliente no tiene el teléfono a mano */}
