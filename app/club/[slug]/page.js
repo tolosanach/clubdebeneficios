@@ -2107,6 +2107,12 @@ export default function ClubProfilePage() {
     }
   }, [pageState, slug])
 
+  // Si el dueño visita su propio club, ocultar el splash de "Unirme".
+  useEffect(() => {
+    if (!user || !data?.commerce?.owner_id) return
+    if (user.id === data.commerce.owner_id) setShowSplash(false)
+  }, [user, data])
+
   useEffect(() => {
     const sb = getSupabase()
     sb.auth.getUser().then(({ data }) => setUser(data.user || null))

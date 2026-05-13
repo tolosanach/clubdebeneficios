@@ -23490,6 +23490,10 @@ export default function App() {
   async function loadProfile(userId, triggerOnboarding = false, restoreView = false) {
     const { data } = await supabase.from('profiles').select('*').eq('id', userId).single()
     setProfile(data)
+    if (data?.role === 'commerce_owner') {
+      supabase.from('commerces').select('*').eq('owner_id', userId).single()
+        .then(({ data: c }) => { if (c) setCommerce(c) })
+    }
 
     // Si el user YA está registrado (onboarding_completed=true), ignoramos
     // cualquier loginNext / signupAs huérfano. Esto cubre el caso "el user
