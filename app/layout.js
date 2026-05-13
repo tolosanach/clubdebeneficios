@@ -18,8 +18,8 @@ export const metadata = {
     images: ['/opengraph-image'],
   },
   icons: {
-    icon: '/icons/icon.svg',
-    apple: '/icons/icon.svg',
+    icon: '/benefix-icon.svg',
+    apple: '/benefix-icon.svg',
   },
   manifest: '/manifest.json',
   appleWebApp: {
@@ -50,8 +50,8 @@ export default function RootLayout({ children }) {
         <meta name="apple-mobile-web-app-capable" content="yes" />
         <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
         <meta name="apple-mobile-web-app-title" content="Benefix" />
-        <link rel="apple-touch-icon" href="/icons/apple-touch-icon.png" />
-        <link rel="icon" type="image/png" sizes="32x32" href="/favicon.png" />
+        <link rel="apple-touch-icon" href="/benefix-icon.svg" />
+        <link rel="icon" type="image/svg+xml" href="/benefix-icon.svg" />
       </head>
       {/* suppressHydrationWarning silencia los mismatches que vienen de
           extensiones del browser (ColorZilla agrega `cz-shortcut-listen`,
