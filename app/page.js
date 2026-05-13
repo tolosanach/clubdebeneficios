@@ -15339,25 +15339,6 @@ function CommerceSettingsView({ user, profile, setView, onLogout, onOwnerProfile
           </div>
         )}
 
-        {/* ── Nota explicativa de las cards locked en Pendientes ──
-            Solo se muestra cuando hay items completables pendientes Y items
-            locked. Si todos están completos, ya se mostró el banner de arriba. */}
-        {intentFilter === 'pendientes' && pendingCount > 0 && lockedItems.length > 0 && (
-          <div style={{
-            margin: isMobile ? '4px 18px 14px' : '4px 28px 14px',
-            padding: '10px 14px',
-            borderRadius: 12,
-            background: 'rgba(189,75,248,0.06)',
-            border: '1px solid rgba(189,75,248,0.20)',
-            display: 'flex', alignItems: 'flex-start', gap: 10,
-          }}>
-            <Sparkles size={14} color="#7131E1" strokeWidth={2.2} style={{ flexShrink: 0, marginTop: 1 }} />
-            <div style={{ fontSize: 11.5, color: 'rgba(255,255,255,0.72)', lineHeight: 1.5 }}>
-              Las tarjetas con chip <strong style={{ color: '#7131E1' }}>STARTER</strong> o <strong style={{ color: '#EC4899' }}>PRO</strong> son funciones premium. Aparecen acá para que las conozcas, pero no afectan tu progreso — son las que se desbloquean si actualizás tu plan.
-            </div>
-          </div>
-        )}
-
         {/* ── Empty state cuando la lista filtrada está vacía ──
             Pendientes vacío = todo está listo (celebración).
             Listas vacío    = el dueño todavía no completó nada. */}
@@ -16085,6 +16066,24 @@ function CommerceSettingsView({ user, profile, setView, onLogout, onOwnerProfile
             )
           })}
         </div>
+        )}
+
+        {/* ── Nota explicativa de las cards locked en Pendientes ──
+            Debajo de todas las cards para no interrumpir el scroll. */}
+        {intentFilter === 'pendientes' && pendingCount > 0 && lockedItems.length > 0 && (
+          <div style={{
+            margin: isMobile ? '14px 18px 4px' : '14px 28px 4px',
+            padding: '10px 14px',
+            borderRadius: 12,
+            background: 'rgba(189,75,248,0.06)',
+            border: '1px solid rgba(189,75,248,0.20)',
+            display: 'flex', alignItems: 'flex-start', gap: 10,
+          }}>
+            <Sparkles size={14} color="#7131E1" strokeWidth={2.2} style={{ flexShrink: 0, marginTop: 1 }} />
+            <div style={{ fontSize: 11.5, color: 'rgba(255,255,255,0.72)', lineHeight: 1.5 }}>
+              Las tarjetas con chip <strong style={{ color: '#7131E1' }}>STARTER</strong> o <strong style={{ color: '#EC4899' }}>PRO</strong> son funciones premium. Aparecen acá para que las conozcas, pero no afectan tu progreso — son las que se desbloquean si actualizás tu plan.
+            </div>
+          </div>
         )}
 
         </div>{/* fin del container "carpeta" pestañas + contenido */}
