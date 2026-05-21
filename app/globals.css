@@ -5,6 +5,13 @@
 
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
+/* Safe area inset para el bottom nav en PWA instalada (notch / home indicator).
+   viewport-fit=cover expande el canvas hasta los bordes del dispositivo;
+   env(safe-area-inset-bottom) compensa el espacio del home indicator. */
+.bnav-mobile {
+  padding-bottom: env(safe-area-inset-bottom, 0px);
+}
+
 /* Layout responsive del BottomNavV2 — en desktop el nav vive como
    side-rail vertical de 220px de ancho a la izquierda, asi que el
    contenido principal necesita correrse para no quedar tapado.

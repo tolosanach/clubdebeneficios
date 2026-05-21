@@ -7206,8 +7206,13 @@ function WalletCardFront({ club, colors, onFlip, visible }) {
   const showDiscountBadge = activePromo?.type === 'discount_next' && !!clientPromo
   const promoBadge  = showDiscountBadge ? `${activePromo.value}% OFF` : null
   const promoSub    = showDiscountBadge ? 'PRÓX. VISITA' : null
-  const doublePromo = (commerce?.promotions || []).find(p =>
-    p.active && p.type === 'double_points' && (!p.expires_at || new Date(p.expires_at) > now))
+  const doublePromo = (commerce?.promotions || []).find(p => {
+    if (!p.active || p.type !== 'double_points') return false
+    if (p.expires_at && new Date(p.expires_at) <= now) return false
+    // days vacío o los 7 = todos los días; si hay días específicos, verificar que hoy esté
+    if (!Array.isArray(p.days) || p.days.length === 0 || p.days.length === 7) return true
+    return p.days.includes(now.getDay()) // 0=Dom … 6=Sáb
+  })
 
   // Counting animation — runs each time front becomes visible
   const [displayBal,      setDisplayBal]      = useState(0)
@@ -7417,9 +7422,16 @@ function WalletCardBack({ club, colors, onFlip, userId }) {
   // muestra distinto info según type (descuento o ×2). Pero filtramos
   // discount_next al buscar el cupón del cliente, que solo aplica a ese
   // type — para double_points no hay client_promotion individual.
-  const activePromo = (commerce?.promotions || []).find(p =>
-    p.active && (!p.expires_at || new Date(p.expires_at) > now)
-  )
+  // Para double_points también chequeamos el día de la semana: si la
+  // promo tiene días configurados (p.days), solo aplica si hoy está.
+  const activePromo = (commerce?.promotions || []).find(p => {
+    if (!p.active || (p.expires_at && new Date(p.expires_at) <= now)) return false
+    if (p.type === 'double_points') {
+      if (!Array.isArray(p.days) || p.days.length === 0 || p.days.length === 7) return true
+      return p.days.includes(now.getDay()) // 0=Dom … 6=Sáb
+    }
+    return true
+  })
   const activeDiscountPromo = (commerce?.promotions || []).find(p =>
     p.active && p.type === 'discount_next' && (!p.expires_at || new Date(p.expires_at) > now)
   )
@@ -8455,7 +8467,7 @@ function ClientView({ setView, user, profile, onLogout, initialTab }) {
   // BottomNavV2 vive abajo, así que solo queda un padding chico para
   // que el contenido respire sobre el spacer 80px del Navbar global.
   return (
-    <div className="with-bottom-nav-v2 client-view-root" style={{ margin:'0 auto', padding:'4px 15px 90px' }}>
+    <div className="with-bottom-nav-v2 client-view-root" style={{ margin:'0 auto', padding:'4px 15px', paddingBottom:'calc(80px + env(safe-area-inset-bottom, 0px))' }}>
 
       {/* Banner top "¿Tenés un negocio?" — renderizado adentro de ClientView
           en lugar de en App.js. Se sincroniza vía localStorage con el resto
@@ -8659,9 +8671,15 @@ function ClientView({ setView, user, profile, onLogout, initialTab }) {
               }
               // Promos activas (discount_next + double_points)
               const now = Date.now()
-              const promoList = (c.promotions || []).filter(p =>
-                p.active && (!p.expires_at || new Date(p.expires_at).getTime() > now)
-              )
+              const todayDow = new Date(now).getDay() // 0=Dom … 6=Sáb
+              const promoList = (c.promotions || []).filter(p => {
+                if (!p.active || (p.expires_at && new Date(p.expires_at).getTime() <= now)) return false
+                if (p.type === 'double_points') {
+                  if (!Array.isArray(p.days) || p.days.length === 0 || p.days.length === 7) return true
+                  return p.days.includes(todayDow)
+                }
+                return true
+              })
               for (const pr of promoList) {
                 if (pr.type !== 'discount_next' && pr.type !== 'double_points') continue
                 all.push({
@@ -10445,19 +10463,17 @@ function TermsAcceptance({ user, onAccept }) {
         <Logo />
       </div>
 
-      {/* Body */}
-      <div style={{ flex:1, display:'flex', flexDirection:'column', padding:'0 20px 20px', maxWidth:520, margin:'0 auto', width:'100%', minHeight:0 }}>
+      {/* Body — scroll container; handles large-text phones and iOS safe area */}
+      <div ref={scrollRef} onScroll={handleScroll} style={{ flex:1, display:'flex', flexDirection:'column', padding:'0 20px', paddingBottom:'max(24px, env(safe-area-inset-bottom, 0px))', maxWidth:520, margin:'0 auto', width:'100%', minHeight:0, overflowY:'auto' }}>
 
         <div style={{ fontFamily:FN, fontSize:22, fontWeight:900, color:'#fff', marginBottom:4 }}>Términos y Condiciones</div>
         <div style={{ fontSize:13, color:'rgba(255,255,255,0.50)', marginBottom:16, fontFamily:FI }}>Leé el documento completo para poder continuar.</div>
 
-        {/* Scrollable terms — relative wrapper for the bottom fade */}
-        <div style={{ flex:1, position:'relative', minHeight:0, marginBottom:12 }}>
+        {/* Terms — full height, no inner scroll; the outer body scrolls */}
+        <div style={{ position:'relative', marginBottom:12 }}>
           <div
-            ref={scrollRef}
-            onScroll={handleScroll}
             className="liquid-glass"
-            style={{ height:'100%', borderRadius:20, padding:'16px 18px', overflowY:'auto' }}
+            style={{ borderRadius:20, padding:'16px 18px' }}
           >
             <div style={{ fontFamily:FI, fontSize:13, color:'rgba(255,255,255,0.70)', lineHeight:1.75 }}>
 
@@ -10498,14 +10514,6 @@ function TermsAcceptance({ user, onAccept }) {
             </div>
           </div>
 
-          {/* Bottom fade + scroll hint — disappears once scrolled to bottom */}
-          {!scrolledToBottom && (
-            <div style={{ position:'absolute', bottom:0, left:0, right:0, height:80, borderRadius:'0 0 20px 20px', background:'linear-gradient(to bottom, transparent, rgba(0,0,0,0.85))', pointerEvents:'none', display:'flex', alignItems:'flex-end', justifyContent:'center', paddingBottom:10 }}>
-              <span style={{ fontSize:11, color:'rgba(255,255,255,0.50)', fontFamily:FI, display:'flex', alignItems:'center', gap:4 }}>
-                <ChevronDown size={13} strokeWidth={2} /> Desplazate hasta el final
-              </span>
-            </div>
-          )}
         </div>
 
         {/* Checkbox — only enabled after full scroll */}
@@ -12398,7 +12406,7 @@ function CommerceSettingsView({ user, profile, setView, onLogout, onOwnerProfile
     const cercaPremio = cheapest
       ? members.filter(m => { const b = isStars ? (m.stars||0) : (m.points||0); return b > 0 && b >= cheapest.cost * 0.8 && b < cheapest.cost }).length
       : 0
-    const primera     = members.filter(m => m.visits_count === 1 && m.last_visit && m.last_visit >= firstCut).length
+    const primera     = members.filter(m => m.created_at && m.created_at >= firstCut).length
     const count       = reactiv + cercaPremio + primera
     if (count > 0) {
       autoPopupShown.current = true
@@ -13430,7 +13438,7 @@ function CommerceSettingsView({ user, profile, setView, onLogout, onOwnerProfile
         })
       : [],
     primeraVisita: members.filter(m =>
-      m.visits_count === 1 && m.last_visit && m.last_visit >= firstVisitCutoff
+      m.created_at && m.created_at >= firstVisitCutoff
     ),
   }
 
@@ -14579,7 +14587,7 @@ function CommerceSettingsView({ user, profile, setView, onLogout, onOwnerProfile
     // etc. desde el menú sin tener que pasar por las tarjetas. En mobile
     // sigue el flujo viejo (cards full-width + radial menu).
     return (
-      <div className="with-bottom-nav-v2" style={{ display:'flex', minHeight:'100vh', maxWidth:'100vw', overflowX:'hidden' }}>
+      <div className="with-bottom-nav-v2" style={{ display:'flex', minHeight:'100vh', maxWidth:'100vw', overflowX:'hidden', paddingBottom:'calc(80px + env(safe-area-inset-bottom, 0px))' }}>
         {/* Sidebar desktop — DESHABILITADO. Antes acá iba la lista vertical
             de pestañas en una columna fija a la izquierda. Ahora la
             navegación entre tabs vive arriba, en el MerchantTopTabs
@@ -16780,6 +16788,11 @@ function CommerceSettingsView({ user, profile, setView, onLogout, onOwnerProfile
                         }}>
                           {item.label}
                         </span>
+                        {item.id === 'mensajes' && totalDetected > 0 && (
+                          <span style={{ fontSize:9, fontWeight:800, color:'#fff', background:'#F59E0B', borderRadius:99, padding:'1px 6px', fontFamily:FN, flexShrink:0 }}>
+                            {totalDetected}
+                          </span>
+                        )}
                         {isProLocked && (
                           <span style={{ fontSize:8, fontWeight:800, color:'#fff', background:PLANS.pro.color, borderRadius:99, padding:'2px 5px', fontFamily:FN, letterSpacing:'.04em', flexShrink:0 }}>PRO</span>
                         )}
@@ -20265,7 +20278,7 @@ function CommerceSettingsView({ user, profile, setView, onLogout, onOwnerProfile
           const AUTO_META = {
             reactivacion:  { Icon: RefreshCw, label:'Reactivar inactivos',   sub:'Sin visitar hace varios días',         color:'#6366F1' },
             cercaPremio:   { Icon: Target,    label:'Cerca de premio',        sub:'A punto de canjear su recompensa',     color:'#F59E0B' },
-            primeraVisita: { Icon: UserPlus,  label:'Bienvenida 1ª visita',   sub:'Primera visita reciente',              color:'#22C55E' },
+            primeraVisita: { Icon: UserPlus,  label:'Bienvenida nuevos socios', sub:'Se unió al club esta semana',           color:'#22C55E' },
           }
 
           // Helper: header + card colapsable (shared entre locked y unlocked).
@@ -20379,12 +20392,12 @@ function CommerceSettingsView({ user, profile, setView, onLogout, onOwnerProfile
                   },
                   primeraVisita: {
                     Icon: UserPlus, color:'#22C55E', rgb:'34,197,94',
-                    title:'Bienvenida 1ª visita',
-                    hook:'Convertí la primera visita en cliente fiel',
+                    title:'Bienvenida nuevos socios',
+                    hook:'Dale la bienvenida a cada nuevo socio del club',
                     benefits:[
-                      'Detecta clientes que escanearon su primer QR',
+                      'Detecta clientes que se sumaron al club recientemente',
                       'Mensaje de bienvenida personalizado vía WhatsApp',
-                      'Aumenta la tasa de retorno de 1ra a 2da visita',
+                      'Aumenta la tasa de retorno de la primera a la segunda visita',
                       'El cliente se siente especial desde el día 1',
                     ],
                     example:'Ejemplo: "¡Bienvenido al club! Tenés 200 puntos de regalo"',
@@ -20455,7 +20468,7 @@ function CommerceSettingsView({ user, profile, setView, onLogout, onOwnerProfile
                   {clients.length} cliente{clients.length !== 1 ? 's' : ''} detectado{clients.length !== 1 ? 's' : ''}
                   {autoDetail === 'reactivacion' && ` · sin visitar hace más de ${cfg.days} días`}
                   {autoDetail === 'cercaPremio' && mockCheapestActive && ` · ≥80% hacia "${mockCheapestActive.name}" (${mockCheapestActive.cost} ${isAutoStars?'estrellas':'puntos'})`}
-                  {autoDetail === 'primeraVisita' && ` · primera visita en los últimos ${cfg.days || 7} días`}
+                  {autoDetail === 'primeraVisita' && ` · se unieron en los últimos ${cfg.days || 7} días`}
                 </div>
                 {clients.length === 0 && (
                   <PCard style={{ padding:16, textAlign:'center' }}>
@@ -20468,7 +20481,7 @@ function CommerceSettingsView({ user, profile, setView, onLogout, onOwnerProfile
                     <div style={{ fontSize:12, color:C.mist }}>
                       {autoDetail === 'reactivacion' && 'Todos tus clientes visitaron recientemente.'}
                       {autoDetail === 'cercaPremio'   && 'Ningún cliente está cerca de canjear aún.'}
-                      {autoDetail === 'primeraVisita' && 'No hubo primeras visitas en los últimos días.'}
+                      {autoDetail === 'primeraVisita' && 'No hubo nuevos socios en los últimos días.'}
                     </div>
                   </PCard>
                 )}
@@ -20491,7 +20504,7 @@ function CommerceSettingsView({ user, profile, setView, onLogout, onOwnerProfile
                             <div style={{ fontSize:11, color:C.mist, marginTop:2 }}>
                               {autoDetail === 'reactivacion' && daysSince !== null && `Última visita: hace ${daysSince} días`}
                               {autoDetail === 'cercaPremio'   && mockCheapestActive && `${Math.round(bal)} / ${mockCheapestActive.cost} ${isAutoStars?'⭐':'💎'} (falta ${Math.max(1, Math.round(mockCheapestActive.cost - bal))})`}
-                              {autoDetail === 'primeraVisita' && 'Primera visita registrada'}
+                              {autoDetail === 'primeraVisita' && 'Nuevo socio'}
                             </div>
                           </div>
                           {sent && (
