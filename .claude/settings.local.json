@@ -24,7 +24,21 @@
       "Bash(npx supabase *)",
       "Bash(curl *)",
       "Bash(python3 *)",
-      "Bash(python *)"
+      "Bash(python *)",
+      "Bash(git add *)",
+      "Bash(git commit -m ' *)",
+      "Bash(git push *)",
+      "mcp__claude_ai_Supabase__execute_sql",
+      "Bash(npx tsc *)",
+      "Bash(node_modules/.bin/next build *)",
+      "Bash(grep -n \"club/\\\\${commerce.slug}\\\\|/club/\\\\${commerce\" C:/club-beneficios/app/page.js)",
+      "Bash(git commit *)",
+      "Bash(Get-Content C:\\\\club-beneficios\\\\.env.local)",
+      "Bash(Select-String \"GOOGLE\")",
+      "Bash(grep -n \"^\\\\s*\\\\`}\" lib/HeroV2Section.js)",
+      "Bash(powershell -Command \"\\(Get-Content 'C:\\\\club-beneficios\\\\app\\\\club\\\\[slug]\\\\page.js'\\).Count\")",
+      "Bash(npx playwright *)",
+      "Bash(npm uninstall *)"
     ]
   }
 }

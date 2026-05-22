@@ -16195,20 +16195,23 @@ function CommerceSettingsView({ user, profile, setView, onLogout, onOwnerProfile
           <div style={{ fontSize:10, color:C.dust, fontWeight:700, letterSpacing:'.08em', textTransform:'uppercase', marginBottom:12 }}>Datos del cliente</div>
           <div style={{ display:'flex', flexDirection:'column', gap:10 }}>
             {[
-              { Icon: Mail,     label:'Email',     val: m.profiles?.email   || '–' },
-              { Icon: Phone,    label:'Teléfono',  val: m.profiles?.phone   || '–' },
+              { Icon: Mail,     label:'Email',        val: m.profiles?.email || '–',
+                action: m.profiles?.email ? { href:`mailto:${m.profiles.email}`, ActionIcon: Mail,          color:'#60A5FA', btnLabel:'Email'    } : null },
+              { Icon: Phone,    label:'Teléfono',     val: m.profiles?.phone || '–',
+                action: m.profiles?.phone ? { href:`https://wa.me/${m.profiles.phone}`, ActionIcon: MessageCircle, color:'#25D366', btnLabel:'WhatsApp' } : null },
               { Icon: Calendar, label:'Fecha de alta', val: m.joined_at ? new Date(m.joined_at).toLocaleDateString('es-AR',{day:'2-digit',month:'2-digit',year:'numeric'}) : '–' },
             ].map(row => (
               <div key={row.label} style={{ display:'flex', alignItems:'center', gap:10 }}>
                 <row.Icon size={14} color='rgba(255,255,255,0.50)' strokeWidth={2} style={{ flexShrink:0 }} />
-                <div>
+                <div style={{ flex:1, minWidth:0 }}>
                   <div style={{ fontSize:9, color:C.dust, textTransform:'uppercase', letterSpacing:'.06em' }}>{row.label}</div>
-                  <div style={{ fontSize:13, color: row.val === '–' ? C.dust : C.pearl, fontFamily:FN, fontWeight:600 }}>{row.val}</div>
+                  <div style={{ fontSize:13, color: row.val === '–' ? C.dust : C.pearl, fontFamily:FN, fontWeight:600, overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>{row.val}</div>
                 </div>
-                {row.label === 'Teléfono' && m.profiles?.phone && (
-                  <a href={`https://wa.me/${m.profiles.phone}`} target="_blank" rel="noreferrer"
-                    style={{ marginLeft:'auto', background:'#25D36622', border:'1px solid #25D36644', borderRadius:8, padding:'4px 10px', color:'#25D366', fontSize:11, fontWeight:700, textDecoration:'none', flexShrink:0 }}>
-                    WA
+                {row.action && (
+                  <a href={row.action.href} target="_blank" rel="noreferrer"
+                    style={{ marginLeft:'auto', display:'flex', alignItems:'center', gap:5, background:`${row.action.color}22`, border:`1px solid ${row.action.color}55`, borderRadius:8, padding:'5px 10px', color:row.action.color, fontSize:11, fontWeight:700, textDecoration:'none', flexShrink:0, whiteSpace:'nowrap' }}>
+                    <row.action.ActionIcon size={12} strokeWidth={2.5} />
+                    {row.action.btnLabel}
                   </a>
                 )}
               </div>
