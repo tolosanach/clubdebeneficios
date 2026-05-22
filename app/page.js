@@ -11658,6 +11658,11 @@ function CommerceSettingsView({ user, profile, setView, onLogout, onOwnerProfile
   const [grantBalanceAmount, setGrantBalanceAmount] = useState('')
   const [grantingBalance, setGrantingBalance]     = useState(false)
   const [grantBalanceError, setGrantBalanceError] = useState('')
+  // Registrar visita manual desde la ficha del cliente
+  const [addVisitOpen, setAddVisitOpen]       = useState(false)
+  const [addVisitAmount, setAddVisitAmount]   = useState('')
+  const [addVisitError, setAddVisitError]     = useState('')
+  const [addingVisit, setAddingVisit]         = useState(false)
   // Resetear el panel cuando cambia el cliente seleccionado
   useEffect(() => {
     setGrantPanelOpen(false)
@@ -11666,6 +11671,9 @@ function CommerceSettingsView({ user, profile, setView, onLogout, onOwnerProfile
     setGrantBalanceOpen(false)
     setGrantBalanceAmount('')
     setGrantBalanceError('')
+    setAddVisitOpen(false)
+    setAddVisitAmount('')
+    setAddVisitError('')
   }, [selectedMember?.id])
   // Historial
   const [activity, setActivity]           = useState([])
@@ -13336,6 +13344,54 @@ function CommerceSettingsView({ user, profile, setView, onLogout, onOwnerProfile
       setGrantBalanceError(e?.message || 'Error de red')
     } finally {
       setGrantingBalance(false)
+    }
+  }
+
+  async function addVisitToMember() {
+    if (!selectedMember || addingVisit) return
+    const isStars = form?.prog_type === 'stars'
+    if (!isStars) {
+      const parsed = parseInt(addVisitAmount, 10)
+      if (!Number.isFinite(parsed) || parsed < 1) {
+        setAddVisitError('Ingresá el monto de la compra')
+        return
+      }
+    }
+    setAddVisitError('')
+    setAddingVisit(true)
+    try {
+      const res = await fetch('/api/add-visit', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          commerce_id:   commerce.id,
+          membership_id: selectedMember.id,
+          ...(isStars ? {} : { amount: parseInt(addVisitAmount, 10) }),
+        }),
+      })
+      const data = await res.json()
+      if (data.ok) {
+        const { col, points_earned: earned, new_value, visits_count, last_visit, double_active } = data
+        const unitWord = col === 'stars'
+          ? (earned === 1 ? 'estrella' : 'estrellas')
+          : (earned === 1 ? 'punto' : 'puntos')
+        const clientFirst = (selectedMember.profiles?.display_name || selectedMember.profiles?.full_name || selectedMember.profiles?.name)?.split(' ')[0] || 'el cliente'
+        showToast('success', `Visita registrada — +${earned} ${unitWord} para ${clientFirst}${double_active ? ' (×2 hoy)' : ''}`)
+        setSelectedMember(prev => ({ ...prev, [col]: new_value, visits_count, last_visit }))
+        setMembers(ms => ms.map(x => x.id === selectedMember.id
+          ? { ...x, [col]: new_value, visits_count, last_visit }
+          : x
+        ))
+        setMemberVisits(vs => [{ id: data.visit_id, scanned_at: data.visit_at, points_earned: earned }, ...vs])
+        setAddVisitOpen(false)
+        setAddVisitAmount('')
+      } else {
+        setAddVisitError(data.error || 'No se pudo registrar la visita')
+      }
+    } catch (e) {
+      setAddVisitError(e?.message || 'Error de red')
+    } finally {
+      setAddingVisit(false)
     }
   }
 
@@ -16176,6 +16232,113 @@ function CommerceSettingsView({ user, profile, setView, onLogout, onOwnerProfile
             ))}
           </div>
         </PCard>
+
+        {/* ── Registrar visita manual ── */}
+        {(() => {
+          const isStars    = form?.prog_type === 'stars'
+          const sysColor   = isStars ? '#7131E1' : '#EC4899'
+          const step       = 100
+          const cur        = parseInt(addVisitAmount) || 0
+          const todayDow   = new Date().getDay()
+          const hasDoubleToday = (promos || []).some(p => {
+            if (!p.active || p.type !== 'double_points') return false
+            if (p.expires_at && new Date(p.expires_at) <= new Date()) return false
+            if (!Array.isArray(p.days) || p.days.length === 0) return true
+            return p.days.some(d => Number(d) === todayDow)
+          })
+          const starsToAdd = hasDoubleToday ? 2 : 1
+          const dec = () => { const n = Math.max(step, cur - step); setAddVisitAmount(String(n)); setAddVisitError('') }
+          const inc = () => { setAddVisitAmount(String(Math.min(9999999, (cur || step) + step))); setAddVisitError('') }
+          if (addVisitOpen && !addVisitAmount && !isStars) setTimeout(() => setAddVisitAmount(String(step)), 0)
+
+          return (
+            <PCard style={{
+              padding: 16, marginBottom: 12,
+              background: `linear-gradient(135deg, ${sysColor}14, ${sysColor}08)`,
+              border: `1px solid ${sysColor}44`,
+              boxShadow: `0 4px 16px ${sysColor}14`,
+            }}>
+              <button
+                onClick={() => setAddVisitOpen(o => !o)}
+                style={{ width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'space-between', background: 'transparent', border: 'none', padding: 0, cursor: 'pointer', fontFamily: 'inherit' }}
+              >
+                <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                  <div style={{ width: 34, height: 34, borderRadius: 10, background: sysColor, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, boxShadow: `0 4px 12px ${sysColor}55` }}>
+                    <ShoppingBag size={16} color="#fff" strokeWidth={2.2} />
+                  </div>
+                  <div style={{ textAlign: 'left' }}>
+                    <div style={{ fontFamily: FN, fontSize: 13, fontWeight: 700, color: C.white }}>Registrar visita</div>
+                    <div style={{ fontSize: 11, color: C.dust, marginTop: 2 }}>
+                      {isStars
+                        ? `Suma ${hasDoubleToday ? '×2 → 2 estrellas hoy' : '1 estrella'} por esta compra`
+                        : 'Suma puntos por el monto de la compra'}
+                    </div>
+                  </div>
+                </div>
+                {addVisitOpen
+                  ? <ChevronUp size={16} color={C.mist} strokeWidth={2} />
+                  : <ChevronDown size={16} color={C.mist} strokeWidth={2} />}
+              </button>
+
+              {addVisitOpen && (
+                <div style={{ marginTop: 14, paddingTop: 14, borderTop: `1px solid ${C.rim}` }}>
+                  {addVisitError && (
+                    <div style={{ fontSize: 11, color: '#f87444', marginBottom: 10, padding: '7px 10px', background: 'rgba(248,116,68,0.10)', border: '1px solid rgba(248,116,68,0.30)', borderRadius: 8 }}>
+                      {addVisitError}
+                    </div>
+                  )}
+
+                  {isStars ? (
+                    <div>
+                      {hasDoubleToday && (
+                        <div style={{ marginBottom: 12, padding: '8px 12px', background: `${sysColor}18`, border: `1px solid ${sysColor}44`, borderRadius: 10, display: 'flex', alignItems: 'center', gap: 8 }}>
+                          <Zap size={13} color={sysColor} strokeWidth={2.5} />
+                          <span style={{ fontSize: 12, color: C.white, fontWeight: 600 }}>Día de puntos dobles — se suman 2 estrellas</span>
+                        </div>
+                      )}
+                      <button
+                        onClick={addVisitToMember}
+                        disabled={addingVisit}
+                        style={{ width: '100%', padding: '11px', background: addingVisit ? `${sysColor}55` : sysColor, border: 'none', borderRadius: 10, color: '#fff', fontFamily: FN, fontSize: 13, fontWeight: 700, cursor: addingVisit ? 'wait' : 'pointer' }}
+                      >
+                        {addingVisit ? 'Registrando...' : `Registrar visita (+${starsToAdd} ★)`}
+                      </button>
+                    </div>
+                  ) : (
+                    <div>
+                      <div style={{ fontSize: 10, color: C.dust, fontWeight: 700, letterSpacing: '.07em', textTransform: 'uppercase', marginBottom: 10 }}>Monto de la compra ($)</div>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 10 }}>
+                        <button onClick={dec} disabled={cur <= step}
+                          style={{ width: 44, height: 44, borderRadius: 12, background: 'rgba(255,255,255,0.08)', border: `1px solid ${C.rim}`, color: C.white, fontSize: 22, fontWeight: 300, cursor: cur <= step ? 'not-allowed' : 'pointer', opacity: cur <= step ? 0.4 : 1, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                          −
+                        </button>
+                        <div style={{ flex: 1, textAlign: 'center' }}>
+                          <div style={{ fontFamily: FN, fontSize: 28, fontWeight: 900, color: C.white, lineHeight: 1 }}>${(cur || step).toLocaleString('es-AR')}</div>
+                          <div style={{ fontSize: 10, color: C.dust, marginTop: 3 }}>
+                            {hasDoubleToday
+                              ? <span style={{ color: sysColor, fontWeight: 700 }}>×2 = {((cur || step) * 2).toLocaleString('es-AR')} puntos hoy</span>
+                              : `= ${(cur || step).toLocaleString('es-AR')} puntos`}
+                          </div>
+                        </div>
+                        <button onClick={inc}
+                          style={{ width: 44, height: 44, borderRadius: 12, background: 'rgba(255,255,255,0.08)', border: `1px solid ${C.rim}`, color: C.white, fontSize: 22, fontWeight: 300, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                          +
+                        </button>
+                      </div>
+                      <button
+                        onClick={addVisitToMember}
+                        disabled={addingVisit || !cur}
+                        style={{ width: '100%', padding: '11px', background: (addingVisit || !cur) ? `${sysColor}55` : sysColor, border: 'none', borderRadius: 10, color: '#fff', fontFamily: FN, fontSize: 13, fontWeight: 700, cursor: addingVisit ? 'wait' : (!cur ? 'not-allowed' : 'pointer') }}
+                      >
+                        {addingVisit ? 'Registrando...' : 'Registrar visita'}
+                      </button>
+                    </div>
+                  )}
+                </div>
+              )}
+            </PCard>
+          )
+        })()}
 
         {/* ── Otorgar beneficio (unificado: balance + % OFF) ── */}
         {(() => {
