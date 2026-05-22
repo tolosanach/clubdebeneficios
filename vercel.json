@@ -5,6 +5,10 @@
     {
       "path": "/api/admin/check-empty-prize-clubs",
       "schedule": "0 14 * * *"
+    },
+    {
+      "path": "/api/admin/update-support-prompt",
+      "schedule": "0 2 * * *"
     }
   ],
   "headers": [
