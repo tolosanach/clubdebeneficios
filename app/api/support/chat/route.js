@@ -36,7 +36,41 @@ function isRateLimited(userId) {
   return false
 }
 
-function buildSystemPrompt(role) {
+// Cache de prompts — se refresca cada 5 minutos para evitar un round-trip
+// a Supabase en cada mensaje sin quedarse con datos viejos para siempre.
+const promptCache = { data: null, fetchedAt: 0 }
+const PROMPT_CACHE_TTL = 5 * 60 * 1000
+
+async function getPrompts() {
+  const now = Date.now()
+  if (promptCache.data && now - promptCache.fetchedAt < PROMPT_CACHE_TTL) {
+    return promptCache.data
+  }
+  const { data, error } = await supabaseAdmin
+    .from('app_config')
+    .select('key, value')
+    .in('key', ['support_prompt_common', 'support_prompt_merchant', 'support_prompt_client'])
+  if (error || !data?.length) return null
+  const map = Object.fromEntries(data.map(r => [r.key, r.value]))
+  promptCache.data    = map
+  promptCache.fetchedAt = now
+  return map
+}
+
+async function buildSystemPrompt(role) {
+  const prompts = await getPrompts()
+  if (prompts) {
+    const common = prompts['support_prompt_common'] || ''
+    const rolePrompt = role === 'merchant'
+      ? prompts['support_prompt_merchant']
+      : prompts['support_prompt_client']
+    return `${common}\n\n${rolePrompt || ''}`
+  }
+  // Fallback hardcodeado si la DB no responde
+  return buildSystemPromptFallback(role)
+}
+
+function buildSystemPromptFallback(role) {
   const common = `Sos el asistente de soporte de Benefix, una app argentina de fidelización para comercios y clientes. Hablás en castellano rioplatense, breve, claro y amable. Nunca uses emojis salvo que el usuario use primero.
 
 REALIDAD DE BENEFIX — no inventes nada fuera de esto:
@@ -185,7 +219,7 @@ export async function POST(request) {
       body: JSON.stringify({
         model: ANTHROPIC_MODEL,
         max_tokens: MAX_OUTPUT_TKNS,
-        system: buildSystemPrompt(conv.role),
+        system: await buildSystemPrompt(conv.role),
         messages: messagesForApi,
       }),
     })
