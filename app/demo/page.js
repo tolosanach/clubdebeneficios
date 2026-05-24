@@ -1,5 +1,5 @@
 'use client'
-// /demo — versión interactiva de Benefix con datos mock.
+// /demo — versión interactiva de Clufix con datos mock.
 //
 // El usuario entra y elige cómo quiere ver la app: como dueño de un
 // comercio (panel del comerciante) o como cliente (billetera + premios).
@@ -7,7 +7,7 @@
 //
 // Todo es standalone (no toca Supabase, no tiene auth real), así que los
 // cambios que el usuario hace en el demo se descartan apenas refresca.
-// Un banner sticky arriba lo aclara, y un CTA "Activá tu Benefix" lo
+// Un banner sticky arriba lo aclara, y un CTA "Activá tu Clufix" lo
 // rebota al registro real.
 
 import { useState, useEffect } from 'react'
@@ -250,7 +250,7 @@ function DemoBanner({ onCta }) {
             navegación back. */}
         <a
           href="/"
-          aria-label="Volver a Benefix"
+          aria-label="Volver a Clufix"
           style={{
             display: 'inline-flex', alignItems: 'center', gap: 4,
             padding: '6px 10px', borderRadius: 99,
@@ -283,7 +283,7 @@ function DemoBanner({ onCta }) {
           display: 'inline-flex', alignItems: 'center', gap: 6,
         }}
       >
-        Activá tu Benefix <ArrowRight size={14} strokeWidth={2.5} />
+        Activá tu Clufix <ArrowRight size={14} strokeWidth={2.5} />
       </button>
     </div>
   )
@@ -319,7 +319,7 @@ function RolePickerModal({ onPick }) {
             fontFamily: FN, fontSize: 22, fontWeight: 800,
             color: C.white, marginBottom: 6, letterSpacing: '-.01em',
           }}>
-            ¿Cómo querés ver Benefix?
+            ¿Cómo querés ver Clufix?
           </div>
           <div style={{
             fontFamily: FI, fontSize: 13, color: 'rgba(255,255,255,0.65)',
@@ -438,7 +438,7 @@ function RoleSwitcher({ mode, onSwitch }) {
   )
 }
 
-// ─── CTA MODAL (al hacer click en "Activá tu Benefix") ───────────────────────
+// ─── CTA MODAL (al hacer click en "Activá tu Clufix") ───────────────────────
 function CtaModal({ onClose }) {
   const benefits = [
     'Empezá gratis con el plan FREE — sin tarjeta de crédito',
@@ -497,7 +497,7 @@ function CtaModal({ onClose }) {
           fontFamily: FN, fontSize: 22, fontWeight: 800,
           color: C.white, marginBottom: 8, letterSpacing: '-.01em',
         }}>
-          Activá tu Benefix
+          Activá tu Clufix
         </div>
         <div style={{
           fontFamily: FI, fontSize: 13, color: 'rgba(255,255,255,0.65)',

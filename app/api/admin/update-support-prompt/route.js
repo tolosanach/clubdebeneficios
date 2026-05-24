@@ -16,7 +16,7 @@ const supabaseAdmin = createClient(
 const ANTHROPIC_URL   = 'https://api.anthropic.com/v1/messages'
 const ANTHROPIC_MODEL = 'claude-haiku-4-5-20251001'
 
-const META_PROMPT = `Sos un redactor de contenido para Benefix, una app argentina de fidelización para comercios.
+const META_PROMPT = `Sos un redactor de contenido para Clufix, una app argentina de fidelización para comercios.
 Te voy a dar el archivo CLAUDE.md que documenta el estado actual de la app. Tu tarea es generar los system prompts del chat de soporte integrado en la app.
 
 INSTRUCCIONES:
@@ -25,7 +25,7 @@ INSTRUCCIONES:
 - No uses emojis.
 - El resultado debe ser un JSON con exactamente estas 3 claves: "common", "merchant", "client".
 
-"common": instrucciones de comportamiento del asistente + realidad completa de Benefix (sistemas, premios, promos, planes con límites pero SIN precios en pesos, notificaciones, directorio). Incluí la regla: si piden precios exactos decir "los precios actuales se ven en la pestaña Planes". Incluí la regla: máximo 2-3 párrafos de respuesta.
+"common": instrucciones de comportamiento del asistente + realidad completa de Clufix (sistemas, premios, promos, planes con límites pero SIN precios en pesos, notificaciones, directorio). Incluí la regla: si piden precios exactos decir "los precios actuales se ven en la pestaña Planes". Incluí la regla: máximo 2-3 párrafos de respuesta.
 
 "merchant": contexto específico para el dueño/cajero — qué puede hacer desde cada pestaña del panel, flujo de escaneo, flujo del cupón (modal ¿Renovar?), cómo sumar clientes, preguntas típicas que haría un comerciante.
 

@@ -91,7 +91,7 @@ export async function POST() {
     }
 
     const payload = JSON.stringify({
-      title:   'Test push — Benefix',
+      title:   'Test push — Clufix',
       body:    'Si ves esto, los push notifications funcionan en este dispositivo.',
       link:    '/',
       type:    'redeem_pending',  // criticos: requireInteraction + urgency:high

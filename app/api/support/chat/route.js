@@ -4,7 +4,7 @@
 //
 // Soporte de chat con Claude Haiku 4.5. La IA responde según el rol del
 // usuario (cliente o comerciante) usando un system prompt grounded en la
-// realidad de Benefix. Persiste todo en support_conversations/messages.
+// realidad de Clufix. Persiste todo en support_conversations/messages.
 
 import { NextResponse } from 'next/server'
 import { createClient } from '@supabase/supabase-js'
@@ -71,9 +71,9 @@ async function buildSystemPrompt(role) {
 }
 
 function buildSystemPromptFallback(role) {
-  const common = `Sos el asistente de soporte de Benefix, una app argentina de fidelización para comercios y clientes. Hablás en castellano rioplatense, breve, claro y amable. Nunca uses emojis salvo que el usuario use primero.
+  const common = `Sos el asistente de soporte de Clufix, una app argentina de fidelización para comercios y clientes. Hablás en castellano rioplatense, breve, claro y amable. Nunca uses emojis salvo que el usuario use primero.
 
-REALIDAD DE BENEFIX — no inventes nada fuera de esto:
+REALIDAD DE CLUFIX — no inventes nada fuera de esto:
 
 La app es web mobile-first en benefix.com.ar. El login es con Google. Cada comercio crea un "club" donde sus clientes acumulan recompensas.
 
@@ -104,7 +104,7 @@ REGLAS DE RESPUESTA:
 - Si el usuario pide algo crítico que no podés resolver (cobros, cambio de plan, error raro, datos privados), decile "esto lo tiene que resolver el equipo" y sugerile el botón "Hablar con un humano".
 - No inventes features que no estén en esta lista.
 - Máximo 2-3 párrafos por respuesta.
-- Si la pregunta no tiene nada que ver con Benefix: "Soy el asistente de Benefix, ¿en qué te puedo ayudar con tu club o tu cuenta?"`
+- Si la pregunta no tiene nada que ver con Clufix: "Soy el asistente de Clufix, ¿en qué te puedo ayudar con tu club o tu cuenta?"`
 
   if (role === 'merchant') {
     return `${common}

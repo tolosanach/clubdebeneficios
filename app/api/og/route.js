@@ -5,7 +5,7 @@ import { ImageResponse } from 'next/og'
 // imagen del logo). Lo usa cada página de club al definir su metadata
 // para que las previews en WhatsApp/IG/etc se vean ricas.
 //
-// Rebrand mayo 2026: violeta sólido + badge "Benefix" arriba (sin el
+// Rebrand mayo 2026: violeta sólido + badge "Clufix" arriba (sin el
 // cuadrado de logo gradient). Cuando NO viene imagen del comercio,
 // renderea un cuadrado violeta con la letra "B" blanca en lugar del
 // path infinity viejo.
@@ -13,7 +13,7 @@ export const runtime = 'edge'
 
 export async function GET(request) {
   const { searchParams } = new URL(request.url)
-  const name        = searchParams.get('name')        || 'Benefix'
+  const name        = searchParams.get('name')        || 'Clufix'
   const description = searchParams.get('description') || 'Tus beneficios. Un solo QR.'
   const image       = searchParams.get('image')       || null
 
@@ -50,9 +50,9 @@ export async function GET(request) {
           </div>
         )}
 
-        {/* Badge "Benefix" — branding sutil */}
+        {/* Badge "Clufix" — branding sutil */}
         <div style={{ display:'flex', alignItems:'center', gap:8, padding:'5px 14px', borderRadius:9999, background:'rgba(255,255,255,0.16)', border:'1px solid rgba(255,255,255,0.40)', marginBottom:16, fontSize:14, color:'rgba(255,255,255,0.85)', letterSpacing:'0.06em' }}>
-          Benefix
+          Clufix
         </div>
 
         {/* Name del comercio */}

@@ -100,7 +100,7 @@ body {
 }
 
 /* CinematicSplash — ocupa toda la pantalla SIEMPRE (web y mobile).
-   Layout: marquee al tope (flex-start), bloque BENEFIX centrado en el
+   Layout: marquee al tope (flex-start), bloque CLUFIX centrado en el
    espacio restante (margin auto). El padding-top del section interno se
    encarga de empujar el marquee debajo del navbar fijo (que vive en
    top:10 con height:52, ocupando ~62-72px del viewport). */

@@ -1,19 +1,19 @@
 export const metadata = {
   metadataBase: new URL(process.env.NEXT_PUBLIC_URL || 'https://benefix.com.ar'),
-  title: 'Benefix | Tus beneficios. Un solo QR.',
-  description: 'Sumá puntos en tus negocios favoritos y canjeá recompensas con Benefix.',
+  title: 'Clufix | Tus beneficios. Un solo QR.',
+  description: 'Sumá puntos en tus negocios favoritos y canjeá recompensas con Clufix.',
   keywords: ['fidelización', 'puntos', 'recompensas', 'comercios', 'beneficios', 'QR', 'premios'],
   openGraph: {
-    title: 'Benefix | Tus beneficios. Un solo QR.',
-    description: 'Sumá puntos en tus negocios favoritos y canjeá recompensas con Benefix.',
+    title: 'Clufix | Tus beneficios. Un solo QR.',
+    description: 'Sumá puntos en tus negocios favoritos y canjeá recompensas con Clufix.',
     type: 'website',
-    images: [{ url: '/opengraph-image', width: 1200, height: 630, alt: 'Benefix' }],
-    siteName: 'Benefix',
+    images: [{ url: '/opengraph-image', width: 1200, height: 630, alt: 'Clufix' }],
+    siteName: 'Clufix',
     locale: 'es_AR',
   },
   twitter: {
     card: 'summary_large_image',
-    title: 'Benefix',
+    title: 'Clufix',
     description: 'Tus beneficios. Un solo QR.',
     images: ['/opengraph-image'],
   },
@@ -25,7 +25,7 @@ export const metadata = {
   appleWebApp: {
     capable: true,
     statusBarStyle: 'black-translucent',
-    title: 'Benefix',
+    title: 'Clufix',
   },
 }
 
@@ -49,7 +49,7 @@ export default function RootLayout({ children }) {
         <meta name="mobile-web-app-capable" content="yes" />
         <meta name="apple-mobile-web-app-capable" content="yes" />
         <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
-        <meta name="apple-mobile-web-app-title" content="Benefix" />
+        <meta name="apple-mobile-web-app-title" content="Clufix" />
         <link rel="apple-touch-icon" href="/benefix-icon.svg" />
         <link rel="icon" type="image/svg+xml" href="/benefix-icon.svg" />
       </head>

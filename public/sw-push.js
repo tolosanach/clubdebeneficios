@@ -29,10 +29,10 @@ self.addEventListener('push', (event) => {
   try {
     data = event.data ? event.data.json() : {}
   } catch (e) {
-    data = { title: 'Benefix', body: event.data ? event.data.text() : '' }
+    data = { title: 'Clufix', body: event.data ? event.data.text() : '' }
   }
 
-  const title = data.title || 'Benefix'
+  const title = data.title || 'Clufix'
   // Tipos "criticos" — eventos que el dueno no se puede perder porque
   // requieren accion (un cliente pidiendo canjear). Para estos forzamos:
   //   - requireInteraction: la notif queda fija en pantalla hasta que la
@@ -48,7 +48,7 @@ self.addEventListener('push', (event) => {
     icon:    '/icon-192.png',
     badge:   '/icon-192.png',
     data:    { link: data.link || '/', notifId: data.notifId, type: data.type },
-    tag:     data.notifId ? `notif-${data.notifId}` : 'benefix',
+    tag:     data.notifId ? `notif-${data.notifId}` : 'clufix',
     renotify: true,
     requireInteraction: !!isCritical,
     silent: false,
@@ -62,7 +62,7 @@ self.addEventListener('push', (event) => {
       self.registration.showNotification(title, options),
       // Avisar a las tabs abiertas para que refresquen el drawer de notifs.
       self.clients.matchAll({ type: 'window', includeUncontrolled: true })
-        .then(clients => clients.forEach(c => c.postMessage({ type: 'benefix:notification', notifId: data.notifId, notifType: data.type }))),
+        .then(clients => clients.forEach(c => c.postMessage({ type: 'clufix:notification', notifId: data.notifId, notifType: data.type }))),
     ])
   )
 })

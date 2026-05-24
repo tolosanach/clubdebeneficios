@@ -47,7 +47,7 @@ export default function ImportClientsPage() {
   const [grants, setGrants] = useState([])
   const [grantsLoading, setGrantsLoading] = useState(false)
   const [waMessage, setWaMessage] = useState(
-    'Hola {nombre} 👋 Te escribo de {comercio}. Renovamos el sistema de fidelización, ahora usamos Benefix.\n\n' +
+    'Hola {nombre} 👋 Te escribo de {comercio}. Renovamos el sistema de fidelización, ahora usamos Clufix.\n\n' +
     'Sumate al club acá 👉 https://benefix.com.ar/join/{slug}\n\n' +
     'Te regalo 200 puntos de bienvenida 🎁 y un 30% OFF en tu próxima visita (válido hasta el 31/05).\n\n' +
     'Cualquier duda me decís!'
@@ -75,7 +75,7 @@ export default function ImportClientsPage() {
   useEffect(() => {
     if (!commerceId) return
     try {
-      const raw = localStorage.getItem(`benefix:sentMap:${commerceId}`)
+      const raw = localStorage.getItem(`clufix:sentMap:${commerceId}`)
       if (raw) setSentMap(JSON.parse(raw))
       else setSentMap({})
     } catch { setSentMap({}) }
@@ -83,7 +83,7 @@ export default function ImportClientsPage() {
 
   function persistSent(map) {
     setSentMap(map)
-    try { localStorage.setItem(`benefix:sentMap:${commerceId}`, JSON.stringify(map)) } catch {}
+    try { localStorage.setItem(`clufix:sentMap:${commerceId}`, JSON.stringify(map)) } catch {}
   }
 
   // Parse Excel/CSV
@@ -342,7 +342,7 @@ export default function ImportClientsPage() {
                   <div style={{ fontSize:11, color:C.dust, marginBottom:4, display:'flex', justifyContent:'space-between' }}>
                     <span>Pendientes: {grants.filter(g => !sentMap[g.id] && !g.applied_at).length}</span>
                     <span>Mandados: {Object.keys(sentMap).filter(k => sentMap[k]).length}</span>
-                    <span>Ya en Benefix: {grants.filter(g => g.applied_at).length}</span>
+                    <span>Ya en Clufix: {grants.filter(g => g.applied_at).length}</span>
                   </div>
                   {grants.map(g => {
                     const isApplied = !!g.applied_at
@@ -355,7 +355,7 @@ export default function ImportClientsPage() {
                         </div>
                         {isApplied && (
                           <span style={{ fontSize:10, color:C.ok, background:`${C.ok}22`, padding:'3px 8px', borderRadius:99, fontWeight:700, fontFamily:FN }}>
-                            ✓ EN BENEFIX
+                            ✓ EN CLUFIX
                           </span>
                         )}
                         {!isApplied && (

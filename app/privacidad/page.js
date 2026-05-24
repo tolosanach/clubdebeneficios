@@ -19,7 +19,7 @@ export default function PrivacidadPage() {
 
           <section style={{ marginBottom:28 }}>
             <h2 style={Section}>1. Quiénes somos</h2>
-            <p>Benefix es una plataforma de fidelización para comercios con sede operativa en La Pampa, Argentina. Esta política describe cómo recolectamos, usamos y protegemos tus datos personales, en cumplimiento con la Ley 25.326 de Protección de Datos Personales.</p>
+            <p>Clufix es una plataforma de fidelización para comercios con sede operativa en La Pampa, Argentina. Esta política describe cómo recolectamos, usamos y protegemos tus datos personales, en cumplimiento con la Ley 25.326 de Protección de Datos Personales.</p>
           </section>
 
           <section style={{ marginBottom:28 }}>
@@ -49,7 +49,7 @@ export default function PrivacidadPage() {
             <ul style={{ paddingLeft:20 }}>
               <li><strong>Vos mismo</strong>: tenés acceso completo a tus datos desde la sección "Mi cuenta".</li>
               <li><strong>El comercio donde sos socio</strong>: el dueño del comercio puede ver tu nombre, teléfono (si lo cargaste) y tu actividad dentro de su club. No ve tu email salvo que vos lo compartas.</li>
-              <li><strong>Benefix</strong>: nuestro equipo accede a los datos solo para soporte técnico, prevención de fraude o cumplimiento legal.</li>
+              <li><strong>Clufix</strong>: nuestro equipo accede a los datos solo para soporte técnico, prevención de fraude o cumplimiento legal.</li>
               <li><strong>Proveedores</strong>: usamos servicios externos confiables como Supabase (base de datos), Google (autenticación), Vercel (hosting), Mercado Pago (pagos). Cada uno cumple sus propias políticas de privacidad.</li>
             </ul>
             <p style={{ marginTop:8 }}>No vendemos ni cedemos tus datos a terceros para fines comerciales.</p>
@@ -84,7 +84,7 @@ export default function PrivacidadPage() {
 
           <section style={{ marginBottom:28 }}>
             <h2 style={Section}>9. Menores de edad</h2>
-            <p>Benefix está destinado a personas mayores de 16 años. Si sos menor, necesitás autorización de tu representante legal para usar la plataforma.</p>
+            <p>Clufix está destinado a personas mayores de 16 años. Si sos menor, necesitás autorización de tu representante legal para usar la plataforma.</p>
           </section>
 
           <section style={{ marginBottom:28 }}>

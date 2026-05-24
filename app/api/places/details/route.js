@@ -6,7 +6,7 @@
 //   streetAddress } }
 //
 // Proxy al endpoint Place Details de Google Places API (New).
-// Devuelve los campos normalizados al schema de Benefix `commerces` +
+// Devuelve los campos normalizados al schema de Clufix `commerces` +
 // los componentes de dirección parseados (country/province/locality/etc.)
 // para que el wizard pueda prellenar dropdowns por separado.
 // La sesión (sessionToken) debe ser la misma del autocomplete que llevó
@@ -16,7 +16,7 @@
 import { NextResponse } from 'next/server'
 import { createClient } from '@supabase/supabase-js'
 import { createSupabaseServer } from '../../../../lib/supabase-server'
-import { suggestBenefixCategories } from '../../../../lib/googlePlacesCategoryMap'
+import { suggestClufixCategories } from '../../../../lib/googlePlacesCategoryMap'
 
 const supabaseAdmin = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL,
@@ -175,7 +175,7 @@ export async function POST(request) {
 
     const primaryType = place.primaryType || ''
     const types       = Array.isArray(place.types) ? place.types : []
-    const suggestedCategories = suggestBenefixCategories(primaryType, types)
+    const suggestedCategories = suggestClufixCategories(primaryType, types)
     const parsed      = parseAddressComponents(place.addressComponents)
 
     const normalized = {

@@ -1,6 +1,6 @@
 {
-  "name": "Benefix",
-  "short_name": "Benefix",
+  "name": "Clufix",
+  "short_name": "Clufix",
   "description": "Tus beneficios. Un solo QR.",
   "start_url": "/",
   "display": "standalone",

@@ -19,12 +19,12 @@ export default function TerminosPage() {
 
           <section style={{ marginBottom:28 }}>
             <h2 style={Section}>1. Aceptación de los términos</h2>
-            <p>Al utilizar Benefix (la "Plataforma"), aceptás estos Términos y Condiciones. Si no estás de acuerdo, no uses el servicio.</p>
+            <p>Al utilizar Clufix (la "Plataforma"), aceptás estos Términos y Condiciones. Si no estás de acuerdo, no uses el servicio.</p>
           </section>
 
           <section style={{ marginBottom:28 }}>
             <h2 style={Section}>2. Descripción del servicio</h2>
-            <p>Benefix es una plataforma digital de fidelización que conecta comercios con sus clientes mediante un sistema de puntos, estrellas, premios y promociones. Los comercios crean su "club" y los clientes acumulan beneficios por sus visitas.</p>
+            <p>Clufix es una plataforma digital de fidelización que conecta comercios con sus clientes mediante un sistema de puntos, estrellas, premios y promociones. Los comercios crean su "club" y los clientes acumulan beneficios por sus visitas.</p>
           </section>
 
           <section style={{ marginBottom:28 }}>
@@ -39,7 +39,7 @@ export default function TerminosPage() {
 
           <section style={{ marginBottom:28 }}>
             <h2 style={Section}>4. Uso aceptable</h2>
-            <p style={{ marginBottom:8 }}>Te comprometés a no usar Benefix para:</p>
+            <p style={{ marginBottom:8 }}>Te comprometés a no usar Clufix para:</p>
             <ul style={{ paddingLeft:20 }}>
               <li>Actividades ilegales, fraudulentas o engañosas.</li>
               <li>Falsificar visitas, escaneos QR o canjes.</li>
@@ -50,7 +50,7 @@ export default function TerminosPage() {
 
           <section style={{ marginBottom:28 }}>
             <h2 style={Section}>5. Programa de fidelización</h2>
-            <p>Los puntos, estrellas, premios y promociones son emitidos por cada comercio individualmente. Benefix actúa como facilitador tecnológico pero <strong>no es responsable</strong> del cumplimiento de los premios ni de las condiciones específicas que defina cada comerciante. Ante cualquier disputa sobre canjes o premios, el cliente debe dirigirse directamente al comercio.</p>
+            <p>Los puntos, estrellas, premios y promociones son emitidos por cada comercio individualmente. Clufix actúa como facilitador tecnológico pero <strong>no es responsable</strong> del cumplimiento de los premios ni de las condiciones específicas que defina cada comerciante. Ante cualquier disputa sobre canjes o premios, el cliente debe dirigirse directamente al comercio.</p>
           </section>
 
           <section style={{ marginBottom:28 }}>
@@ -60,17 +60,17 @@ export default function TerminosPage() {
 
           <section style={{ marginBottom:28 }}>
             <h2 style={Section}>7. Propiedad intelectual</h2>
-            <p>El nombre Benefix, su logo, código y diseño son propiedad de Benefix. El contenido subido por los comerciantes (logos, descripciones, premios) es propiedad del comerciante, quien otorga a Benefix una licencia no exclusiva para mostrarlo dentro de la plataforma.</p>
+            <p>El nombre Clufix, su logo, código y diseño son propiedad de Clufix. El contenido subido por los comerciantes (logos, descripciones, premios) es propiedad del comerciante, quien otorga a Clufix una licencia no exclusiva para mostrarlo dentro de la plataforma.</p>
           </section>
 
           <section style={{ marginBottom:28 }}>
             <h2 style={Section}>8. Modificaciones</h2>
-            <p>Benefix puede modificar estos términos en cualquier momento. Los cambios se notifican dentro de la plataforma. El uso continuado de Benefix tras los cambios implica aceptación de los nuevos términos.</p>
+            <p>Clufix puede modificar estos términos en cualquier momento. Los cambios se notifican dentro de la plataforma. El uso continuado de Clufix tras los cambios implica aceptación de los nuevos términos.</p>
           </section>
 
           <section style={{ marginBottom:28 }}>
             <h2 style={Section}>9. Limitación de responsabilidad</h2>
-            <p>Benefix se ofrece "tal cual está". No garantizamos disponibilidad 100% del servicio, exactitud de la información provista por terceros (comerciantes), ni que esté libre de errores. En la máxima medida que permita la ley, Benefix no es responsable por daños indirectos, lucro cesante o pérdidas derivadas del uso o imposibilidad de uso de la plataforma.</p>
+            <p>Clufix se ofrece "tal cual está". No garantizamos disponibilidad 100% del servicio, exactitud de la información provista por terceros (comerciantes), ni que esté libre de errores. En la máxima medida que permita la ley, Clufix no es responsable por daños indirectos, lucro cesante o pérdidas derivadas del uso o imposibilidad de uso de la plataforma.</p>
           </section>
 
           <section style={{ marginBottom:28 }}>

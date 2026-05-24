@@ -29,7 +29,7 @@ const DISMISS_COOLDOWN_MS    = 14 * DAY_MS        // si descarta, no vuelve por 
 const SUGGESTION_TTL_MS      = 30 * DAY_MS        // expiran a los 30d
 
 function buildBatchPrompt(triggers) {
-  return `Sos el asistente de Benefix, app argentina de fidelización para comercios. Te paso una lista de "triggers" detectados en la cuenta de un usuario y necesito que redactes una sugerencia breve y natural para cada uno, para mostrar en su buzón.
+  return `Sos el asistente de Clufix, app argentina de fidelización para comercios. Te paso una lista de "triggers" detectados en la cuenta de un usuario y necesito que redactes una sugerencia breve y natural para cada uno, para mostrar en su buzón.
 
 REGLAS DE REDACCIÓN:
 - Castellano rioplatense (vos, no tú). Tono cálido pero profesional. Sin emojis. Sin signos de exclamación salvo que sea muy puntual.

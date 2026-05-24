@@ -22,12 +22,12 @@ export async function generateMetadata({ params }) {
 
   if (!c) {
     return {
-      title: 'Club no encontrado | Benefix',
+      title: 'Club no encontrado | Clufix',
       robots: { index: false },
     }
   }
 
-  const title = `${c.name} | Benefix`
+  const title = `${c.name} | Clufix`
   const description = c.description
     || `Sumate al club de ${c.name} y acumulá puntos para canjear premios exclusivos.`
   const image = c.cover_image || c.img_url || `${BASE}/opengraph-image`
@@ -41,7 +41,7 @@ export async function generateMetadata({ params }) {
       type: 'website',
       url: `${BASE}/club/${slug}`,
       images: [{ url: image, width: 1200, height: 630, alt: c.name }],
-      siteName: 'Benefix',
+      siteName: 'Clufix',
     },
     twitter: {
       card: 'summary_large_image',

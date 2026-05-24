@@ -7,7 +7,7 @@ export const dynamic = 'force-static'
 const FAQ = [
   {
     q: '¿Cómo me sumo a un club?',
-    a: 'Andá al comercio, buscá su QR (suele estar en la caja o en la entrada), abrí Benefix, apretá el botón QR del menú y escaneá. En segundos quedás registrado como socio del club y empezás a sumar puntos o estrellas en cada visita.',
+    a: 'Andá al comercio, buscá su QR (suele estar en la caja o en la entrada), abrí Clufix, apretá el botón QR del menú y escaneá. En segundos quedás registrado como socio del club y empezás a sumar puntos o estrellas en cada visita.',
   },
   {
     q: '¿Cómo canjeo un premio?',
@@ -19,7 +19,7 @@ const FAQ = [
   },
   {
     q: 'Soy comerciante y quiero registrar mi negocio',
-    a: 'Ingresá a Benefix con tu cuenta de Google, andá a "Mi cuenta" y elegí "Registrar mi comercio". Te lleva un par de minutos. El plan gratis te permite hasta 30 clientes activos.',
+    a: 'Ingresá a Clufix con tu cuenta de Google, andá a "Mi cuenta" y elegí "Registrar mi comercio". Te lleva un par de minutos. El plan gratis te permite hasta 30 clientes activos.',
   },
   {
     q: 'Quiero cambiar de plan (Starter / Pro)',
@@ -54,7 +54,7 @@ export default function AyudaPage() {
         {/* Botones de contacto */}
         <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:10, marginBottom:36 }}>
           <a
-            href={`https://wa.me/${wa}?text=${encodeURIComponent('Hola Benefix! Necesito ayuda con...')}`}
+            href={`https://wa.me/${wa}?text=${encodeURIComponent('Hola Clufix! Necesito ayuda con...')}`}
             target="_blank" rel="noopener noreferrer"
             style={{
               display:'flex', alignItems:'center', justifyContent:'center', gap:8,
@@ -68,7 +68,7 @@ export default function AyudaPage() {
             WhatsApp
           </a>
           <a
-            href={`mailto:${email}?subject=${encodeURIComponent('Consulta Benefix')}`}
+            href={`mailto:${email}?subject=${encodeURIComponent('Consulta Clufix')}`}
             style={{
               display:'flex', alignItems:'center', justifyContent:'center', gap:8,
               padding:'14px 12px',

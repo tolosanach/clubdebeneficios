@@ -318,7 +318,7 @@ function ConfirmModal() {
 // ─── LOGIN PROMPT MODAL ──────────────────────────────────────────────────────
 // Interstitial antes de redirigir a Google. Sin esto, "Entrar" mandaba directo
 // al picker de Google y si el usuario se arrepentía no había una forma clara
-// de volver a Benefix (la pantalla de Google es de Google, no le podemos
+// de volver a Clufix (la pantalla de Google es de Google, no le podemos
 // agregar un botón "volver"). Promise-based, mismo patrón que showConfirm.
 let _setLoginPrompt = null
 function showLoginPrompt() {
@@ -372,7 +372,7 @@ function LoginPromptModal() {
           <span style={{ fontFamily:FN, fontSize:24, fontWeight:900, color:'#7131E1' }}>G</span>
         </div>
         <div style={{ fontFamily:FN, fontSize:20, fontWeight:800, color:'#fff', textAlign:'center', marginBottom:8, letterSpacing:'-0.01em' }}>Iniciar sesión con Google</div>
-        <div style={{ fontSize:13, color:'rgba(255,255,255,0.65)', textAlign:'center', lineHeight:1.6, marginBottom:24 }}>Te vamos a redirigir a Google para iniciar sesión. Después volvés a Benefix automáticamente.</div>
+        <div style={{ fontSize:13, color:'rgba(255,255,255,0.65)', textAlign:'center', lineHeight:1.6, marginBottom:24 }}>Te vamos a redirigir a Google para iniciar sesión. Después volvés a Clufix automáticamente.</div>
         <div style={{ display:'flex', gap:10 }}>
           <button onClick={cancel} style={{
             flex:1, padding:'13px',
@@ -630,7 +630,7 @@ function InstallPrompt() {
               <X size={14} strokeWidth={2.5} />
             </button>
             <div style={{ fontFamily:FN, fontSize:11, fontWeight:800, color:C.v, letterSpacing:'.10em', textTransform:'uppercase', marginBottom:6 }}>iPhone / iPad</div>
-            <div style={{ fontFamily:FN, fontSize:18, fontWeight:900, color:C.white, marginBottom:14, lineHeight:1.3 }}>Sumá Benefix a tu inicio</div>
+            <div style={{ fontFamily:FN, fontSize:18, fontWeight:900, color:C.white, marginBottom:14, lineHeight:1.3 }}>Sumá Clufix a tu inicio</div>
             <div style={{ display:'flex', flexDirection:'column', gap:14 }}>
               <div style={{ display:'flex', alignItems:'flex-start', gap:12 }}>
                 <div style={{ width:28, height:28, borderRadius:'50%', background:`${C.v}22`, color:C.v, fontFamily:FN, fontWeight:800, fontSize:13, display:'flex', alignItems:'center', justifyContent:'center', flexShrink:0 }}>1</div>
@@ -895,7 +895,7 @@ function OnboardingFlow({ user, onComplete }) {
               </div>
 
               <div style={{ fontSize:12, color:C.dust, lineHeight:1.55, marginBottom:20, padding:'10px 14px', background:'rgba(189,75,248,0.08)', border:'1px solid rgba(189,75,248,0.20)', borderRadius:12 }}>
-                Si registrás un negocio, también vas a poder usar Benefix como cliente
+                Si registrás un negocio, también vas a poder usar Clufix como cliente
                 de otros comercios y acumular beneficios. Es la misma cuenta.
               </div>
 
@@ -1014,7 +1014,7 @@ function CasiListoView({ user, onComplete }) {
               {agreed && <Check size={14} color="#fff" strokeWidth={3} />}
             </div>
             <span style={{ fontSize:13, color:'rgba(255,255,255,0.70)', fontFamily:FI, lineHeight:1.5 }}>
-              Leí y acepto los <span style={{ color:'#fff', fontWeight:600 }}>Términos y Condiciones</span> y la <span style={{ color:'#fff', fontWeight:600 }}>Política de Privacidad</span> de Benefix
+              Leí y acepto los <span style={{ color:'#fff', fontWeight:600 }}>Términos y Condiciones</span> y la <span style={{ color:'#fff', fontWeight:600 }}>Política de Privacidad</span> de Clufix
             </span>
           </label>
 
@@ -1038,7 +1038,7 @@ function CasiListoView({ user, onComplete }) {
               boxShadow: agreed && !saving ? '0 8px 28px rgba(113,49,225,0.35)' : 'none',
               transition:'background 250ms ease, opacity 160ms ease',
             }}>
-            {saving ? 'Guardando...' : 'Entrar a Benefix →'}
+            {saving ? 'Guardando...' : 'Entrar a Clufix →'}
           </button>
 
           <button onClick={() => supabase.auth.signOut()}
@@ -1255,7 +1255,7 @@ function makeSlug(str) {
 // Cuts a clean circular gap from the center of the QR and draws the app logo
 // into that space so no QR modules overlap the logo.
 async function makeQR(value, { width = 300, margin = 2, dark, light }, _logoColor /* unused */) {
-  // QR limpio sin logo central. El logo previo (la "C" de Benefix) rompía
+  // QR limpio sin logo central. El logo previo (la "C" de Clufix) rompía
   // la detección de jsQR — ahora el QR es 100% legible para cualquier scanner.
   // Mantenemos errorCorrectionLevel 'H' por las dudas de manchas/dobleces
   // físicos cuando se imprima.
@@ -1423,7 +1423,7 @@ function InstagramStoryQR({ commerce, qrDataUrl }) {
           </svg>
         </div>
         <div style={{ fontSize:40, fontWeight:700, color:'white', letterSpacing:'-.02em' }}>
-          Benefix
+          Clufix
         </div>
       </div>
 
@@ -1483,16 +1483,16 @@ function InstagramStoryQR({ commerce, qrDataUrl }) {
 //     dentro de un set por audiencia para que se sienta vivo.
 //   - QR negro sobre fondo blanco, en una card grande centrada.
 //   - X cerrar arriba a la derecha, glass discreto.
-function QrFullscreen({ open, onClose, qrValue, audience = 'client', shareUrl = '', shareTitle = 'Benefix', displayName = '' }) {
+function QrFullscreen({ open, onClose, qrValue, audience = 'client', shareUrl = '', shareTitle = 'Clufix', displayName = '' }) {
   const [copied, setCopied] = useState(false)
 
   const topLabel = audience === 'merchant'
-    ? `QR DE ${(shareTitle && shareTitle !== 'Benefix' ? shareTitle : 'MI NEGOCIO').toUpperCase()}`
+    ? `QR DE ${(shareTitle && shareTitle !== 'Clufix' ? shareTitle : 'MI NEGOCIO').toUpperCase()}`
     : 'QR PERSONAL'
   const ticketInstruction = audience === 'merchant'
     ? 'ESCANEÁ PARA UNIRTE AL CLUB'
     : 'ESCANEÁ ESTE QR EN EL NEGOCIO'
-  const bottomName = displayName || (shareTitle && shareTitle !== 'Benefix' ? shareTitle : '')
+  const bottomName = displayName || (shareTitle && shareTitle !== 'Clufix' ? shareTitle : '')
 
   // kept for buildShareImage
   const title    = audience === 'merchant' ? 'QR NEGOCIO' : 'QR PERSONAL'
@@ -1507,7 +1507,7 @@ function QrFullscreen({ open, onClose, qrValue, audience = 'client', shareUrl = 
     } catch {}
   }
   // Genera un PNG idéntico a la pantalla fullscreen:
-  // logo Benefix arriba centrado, label pequeño, ticket blanco con QR,
+  // logo Clufix arriba centrado, label pequeño, ticket blanco con QR,
   // instrucción, borde dentado y nombre debajo — todo sobre fondo violeta.
   async function buildShareImage() {
     if (typeof document === 'undefined') return null
@@ -1526,12 +1526,12 @@ function QrFullscreen({ open, onClose, qrValue, audience = 'client', shareUrl = 
     ctx.fillStyle = VIOLET
     ctx.fillRect(0, 0, W, H)
 
-    // ── 2. Logo Benefix — cargado desde el SVG público ───────────────────
+    // ── 2. Logo Clufix — cargado desde el SVG público ───────────────────
     const LOGO_H  = 150   // alto del logo en canvas (≈ 60px × ratio de pantalla)
     const LOGO_Y  = 130   // distancia desde el tope
     try {
       const logoImg = new Image()
-      logoImg.src = `${window.location.origin}/brand/logo-benefix-wordmark-white.svg`
+      logoImg.src = `${window.location.origin}/brand/logo-clufix-wordmark-white.svg`
       await new Promise(r => { logoImg.onload = r; logoImg.onerror = r })
       if (logoImg.naturalWidth > 0) {
         const logoW = logoImg.naturalWidth * (LOGO_H / logoImg.naturalHeight)
@@ -1631,7 +1631,7 @@ function QrFullscreen({ open, onClose, qrValue, audience = 'client', shareUrl = 
   async function handleShare() {
     let blob = null
     try { blob = await buildShareImage() } catch {}
-    const fileName = `${(shareTitle || 'benefix').toLowerCase().replace(/[^a-z0-9]+/g, '-')}-qr.png`
+    const fileName = `${(shareTitle || 'clufix').toLowerCase().replace(/[^a-z0-9]+/g, '-')}-qr.png`
     const file = blob ? new File([blob], fileName, { type: 'image/png' }) : null
 
     // Intento 1: share API con archivo (mobile moderno)
@@ -1641,8 +1641,8 @@ function QrFullscreen({ open, onClose, qrValue, audience = 'client', shareUrl = 
           files: [file],
           title: shareTitle,
           text: audience === 'merchant'
-            ? `${shareTitle} en Benefix — escaneá para sumarte al club`
-            : 'Mi QR de Benefix',
+            ? `${shareTitle} en Clufix — escaneá para sumarte al club`
+            : 'Mi QR de Clufix',
           ...(shareUrl ? { url: shareUrl } : {}),
         })
         return
@@ -1654,7 +1654,7 @@ function QrFullscreen({ open, onClose, qrValue, audience = 'client', shareUrl = 
       try {
         await navigator.share({
           title: shareTitle,
-          text: `${shareTitle} en Benefix — sumate al club`,
+          text: `${shareTitle} en Clufix — sumate al club`,
           url: shareUrl,
         })
         return
@@ -1901,7 +1901,7 @@ function CommerceQRCard({ commerce }) {
           }} />
           <div style={{ position:'relative', display:'flex', alignItems:'center', justifyContent:'space-between', marginBottom:14 }}>
             <div>
-              <div style={{ fontSize:9, color:'rgba(255,255,255,0.60)', textTransform:'uppercase', letterSpacing:'0.10em', marginBottom:2 }}>Benefix</div>
+              <div style={{ fontSize:9, color:'rgba(255,255,255,0.60)', textTransform:'uppercase', letterSpacing:'0.10em', marginBottom:2 }}>Clufix</div>
               <div style={{ fontFamily:FN, fontSize:17, fontWeight:700, color:'#fff' }}>{commerce?.name}</div>
             </div>
             <div style={{ width:36, height:36, borderRadius:'50%', background:'rgba(255,255,255,0.15)', display:'flex', alignItems:'center', justifyContent:'center' }}>
@@ -2017,7 +2017,7 @@ function CommerceQRCard({ commerce }) {
         fontFamily:'system-ui, -apple-system, sans-serif',
       }}>
         <div style={{ marginBottom:8 }}>
-          <span style={{ fontSize:13, fontWeight:700, color:'#9333ea', textTransform:'uppercase', letterSpacing:'0.08em' }}>Benefix</span>
+          <span style={{ fontSize:13, fontWeight:700, color:'#9333ea', textTransform:'uppercase', letterSpacing:'0.08em' }}>Clufix</span>
         </div>
         <div style={{ fontSize:26, fontWeight:700, color:'#111', marginBottom:24, lineHeight:1.2 }}>{commerce?.name}</div>
         <div style={{ display:'inline-block', padding:20, border:'2px solid #e5e7eb', borderRadius:16, marginBottom:20, position:'relative' }}>
@@ -2592,8 +2592,8 @@ function Spinner() {
   return <div style={{ width:32, height:32, border:`3px solid ${C.rim}`, borderTop:`3px solid ${C.v}`, borderRadius:'50%', animation:'spin 1s linear infinite', margin:'40px auto' }} />
 }
 
-// ─── BENEFIX LOADER ───────────────────────────────────────────────────────────
-function BenefixLoader({ size = 80 }) {
+// ─── CLUFIX LOADER ───────────────────────────────────────────────────────────
+function ClufixLoader({ size = 80 }) {
   return (
     <div style={{ display:'flex', alignItems:'center', justifyContent:'center' }}>
       <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" fill="none" width={size} height={size}>
@@ -2700,7 +2700,7 @@ function FullscreenLoader({ message }) {
     <div style={{ position:'fixed', inset:0, zIndex:9990, background:'#000', display:'flex', flexDirection:'column', alignItems:'center', justifyContent:'center' }}>
       <div style={{ position:'absolute', top:'-20%', left:'-10%', width:'60vw', height:'60vw', borderRadius:'50%', background:'radial-gradient(circle, rgba(139,92,246,0.30) 0%, transparent 70%)', filter:'blur(80px)', pointerEvents:'none' }} />
       <div style={{ position:'absolute', bottom:'-20%', right:'-10%', width:'50vw', height:'50vw', borderRadius:'50%', background:'radial-gradient(circle, rgba(236,72,153,0.25) 0%, transparent 70%)', filter:'blur(80px)', pointerEvents:'none' }} />
-      <BenefixLoader size={100} />
+      <ClufixLoader size={100} />
       {message && <p style={{ fontFamily:FI, fontSize:13, color:'rgba(255,255,255,0.50)', marginTop:24, margin:'24px 0 0' }}>{message}</p>}
     </div>
   )
@@ -2813,7 +2813,7 @@ function Navbar({ setView, cityName, user, profile, commerce, onLogin, onLogout,
     // Tap en el ícono User → siempre lleva a "Mi billetera" (mis clubs).
     // Antes iba a Perfil/Cuenta — pero la billetera es el "home" del
     // cliente, donde tiene sus tarjetas y descubre clubes nuevos.
-    window.dispatchEvent(new CustomEvent('benefix:navigate', {
+    window.dispatchEvent(new CustomEvent('clufix:navigate', {
       detail: { view: 'client', tab: 'mis clubs' },
     }))
   }
@@ -2894,7 +2894,7 @@ function Navbar({ setView, cityName, user, profile, commerce, onLogin, onLogout,
           de cuenta vive en el MoreSheet del BottomNavV2. */}
       <div style={{ display:'flex', gap:8, alignItems:'center' }}>
         {showContextSwitch && (
-          <div id="benefix-context-switch">
+          <div id="clufix-context-switch">
             <ContextSwitchPill
               activeContext={activeContext}
               onChange={onContextChange}
@@ -2980,7 +2980,7 @@ function Navbar({ setView, cityName, user, profile, commerce, onLogin, onLogout,
                 <button title="Mi Negocio"
                   onClick={() => {
                     if (currentView !== 'commerce-settings') setView('commerce-settings')
-                    window.dispatchEvent(new CustomEvent('benefix:merchant-intent'))
+                    window.dispatchEvent(new CustomEvent('clufix:merchant-intent'))
                   }}
                   style={{ ...BTN, ...(storeActive ? VIOLET_ACTIVE : NEUTRAL), cursor: 'pointer' }}>
                   <Store size={16} color={storeActive ? '#fff' : 'rgba(189,75,248,0.85)'} strokeWidth={2} />
@@ -3043,7 +3043,7 @@ function Navbar({ setView, cityName, user, profile, commerce, onLogin, onLogout,
           <DDItem icon={LogOut} label="Cerrar sesión" onClickItem={() => onLogout?.()} danger />
         </>) : (<>
           <DDItem icon={Home} label="Mis clubes" onClickItem={() => {
-            window.dispatchEvent(new CustomEvent('benefix:navigate', { detail: { view:'client', tab:'mis clubs' } }))
+            window.dispatchEvent(new CustomEvent('clufix:navigate', { detail: { view:'client', tab:'mis clubs' } }))
           }} />
           <DDItem icon={LogOut} label="Cerrar sesión" onClickItem={() => onLogout?.()} danger />
         </>)}
@@ -3160,7 +3160,7 @@ function ReviewsSection() {
           +500 comercios confían en nosotros
         </div>
         <h2 style={{ fontFamily:FN, fontSize:'clamp(24px,3.5vw,42px)', fontWeight:900, color:C.white, lineHeight:1.1 }}>
-          Lo que dicen de <span style={{ background:G, WebkitBackgroundClip:'text', WebkitTextFillColor:'transparent', backgroundClip:'text' }}>Benefix</span>
+          Lo que dicen de <span style={{ background:G, WebkitBackgroundClip:'text', WebkitTextFillColor:'transparent', backgroundClip:'text' }}>Clufix</span>
         </h2>
       </div>
 
@@ -3258,7 +3258,7 @@ function HeroSection({ setView, user, profile, onLogin }) {
   // Login redesign (abr 2026): los CTAs "Soy cliente" / "Soy comercio" del
   // landing manejan dos casos:
   //   • Usuario NO logueado → guardamos en sessionStorage el "rol" pretendido
-  //     (`benefix:signupAs`) y disparamos handleLogin(). Después del callback
+  //     (`clufix:signupAs`) y disparamos handleLogin(). Después del callback
   //     OAuth, el boot flow lee ese flag y muestra MinimalSignupModal en el
   //     modo correspondiente, en lugar del OnboardingFlow viejo de 6 pasos.
   //   • Usuario logueado → ruteo directo a su panel (cliente o comerciante).
@@ -3269,7 +3269,7 @@ function HeroSection({ setView, user, profile, onLogin }) {
   // que confundían a usuarios nuevos antes de identificarse.
   function handleSignupCTA(role) {
     if (!user) {
-      try { sessionStorage.setItem('benefix:signupAs', role) } catch {}
+      try { sessionStorage.setItem('clufix:signupAs', role) } catch {}
       onLogin && onLogin()
       return
     }
@@ -3280,8 +3280,8 @@ function HeroSection({ setView, user, profile, onLogin }) {
     // role === 'merchant'
     if (isOwner) { setView('commerce-settings'); return }
     // Usuario logueado pero sin negocio → abrimos modal merchant inline.
-    try { sessionStorage.setItem('benefix:signupAs', 'merchant') } catch {}
-    window.dispatchEvent(new CustomEvent('benefix:open-signup', { detail: { mode: 'merchant' } }))
+    try { sessionStorage.setItem('clufix:signupAs', 'merchant') } catch {}
+    window.dispatchEvent(new CustomEvent('clufix:open-signup', { detail: { mode: 'merchant' } }))
   }
 
   useEffect(() => {
@@ -3381,7 +3381,7 @@ function HeroSection({ setView, user, profile, onLogin }) {
             Más de 500 comercios confían en nosotros
           </p>
           <div
-            aria-label="Rubros de comercios que usan Benefix"
+            aria-label="Rubros de comercios que usan Clufix"
             style={{
               overflow: 'hidden',
               WebkitMaskImage: 'linear-gradient(to right, transparent 0%, black 60px, black calc(100% - 60px), transparent 100%)',
@@ -3570,7 +3570,7 @@ function FeaturesSection() {
           app/globals.css por si querés volver, pero ya no se referencian. */}
       <div style={{ maxWidth:1080, margin:'0 auto', position:'relative', zIndex:2 }}>
         <div style={{ textAlign:'center', marginBottom:18 }}>
-          <span className="liquid-glass" style={{ display:'inline-block', borderRadius:99, padding:'7px 18px', fontSize:11, color:'rgba(255,255,255,0.65)', fontFamily:FN, fontWeight:600, letterSpacing:'.10em', textTransform:'uppercase' }}>Qué tiene Benefix</span>
+          <span className="liquid-glass" style={{ display:'inline-block', borderRadius:99, padding:'7px 18px', fontSize:11, color:'rgba(255,255,255,0.65)', fontFamily:FN, fontWeight:600, letterSpacing:'.10em', textTransform:'uppercase' }}>Qué tiene Clufix</span>
         </div>
         {/* H2 con la misma escala y peso del headline del hero V2:
             clamp grande, weight 600 (no 900), letter-spacing negativo y
@@ -3817,7 +3817,7 @@ function HowItWorksSection() {
         {/* Overlay 1: tint de marca (gradient naranja → fucsia → violeta).
             mix-blend-mode 'overlay' aplica los colores de marca al video
             en escala de grises preservando los highlights y shadows del
-            video original. Produce el "look Benefix": video tintado en
+            video original. Produce el "look Clufix": video tintado en
             los tres tonos de marca según la zona de luminosidad. */}
         <div style={{
           position: 'absolute',
@@ -4653,7 +4653,7 @@ function TestimonialsSection() {
           <BlurText text="Lo que dicen nuestros clientes" delay={100} />
         </h2>
         <p style={{ fontFamily:FI, fontSize:15, color:'rgba(255,255,255,0.50)', textAlign:'center', marginBottom:56, maxWidth:560, margin:'0 auto 56px' }}>
-          Comercios de toda Argentina ya confían en Benefix para fidelizar a sus clientes.
+          Comercios de toda Argentina ya confían en Clufix para fidelizar a sus clientes.
         </p>
 
         {/* Grid */}
@@ -4857,7 +4857,7 @@ function Footer({ setView }) {
 
         {/* Copyright */}
         <div style={{ borderTop:`1px solid ${C.rim}`, paddingTop:24, display:'flex', flexWrap:'wrap', alignItems:'center', justifyContent:'space-between', gap:12 }}>
-          <p style={{ fontFamily:FI, fontSize:12, color:'rgba(255,255,255,0.30)' }}>© 2026 Benefix. Todos los derechos reservados.</p>
+          <p style={{ fontFamily:FI, fontSize:12, color:'rgba(255,255,255,0.30)' }}>© 2026 Clufix. Todos los derechos reservados.</p>
           <p style={{ fontFamily:FI, fontSize:12, color:'rgba(255,255,255,0.30)', display:'flex', alignItems:'center', gap:6 }}>
             Hecho con <span style={{ color:'#f87171' }}>♥</span> en Argentina 🇦🇷
           </p>
@@ -4873,7 +4873,7 @@ function SectionDivider() {
 }
 
 // ─── CINEMATIC SPLASH ─────────────────────────────────────────────────────────
-// "Momento marca" del home: tipografía gigante "Benefix" con la paleta de la
+// "Momento marca" del home: tipografía gigante "Clufix" con la paleta de la
 // marca (naranja → fucsia → violeta), skyline urbano en silueta con ventanas
 // que brillan en colores de marca. Fondo oscuro coherente con el resto de la
 // app (NO cielo celeste).
@@ -4900,7 +4900,7 @@ function CinematicSplashSection({ setView, user, profile, onLogin }) {
   // logueado, ruteo directo al panel correspondiente.
   function handleSignupCTA(role) {
     if (!user) {
-      try { sessionStorage.setItem('benefix:signupAs', role) } catch {}
+      try { sessionStorage.setItem('clufix:signupAs', role) } catch {}
       onLogin && onLogin()
       return
     }
@@ -4909,8 +4909,8 @@ function CinematicSplashSection({ setView, user, profile, onLogin }) {
       return
     }
     if (isOwner) { setView('commerce-settings'); return }
-    try { sessionStorage.setItem('benefix:signupAs', 'merchant') } catch {}
-    window.dispatchEvent(new CustomEvent('benefix:open-signup', { detail: { mode: 'merchant' } }))
+    try { sessionStorage.setItem('clufix:signupAs', 'merchant') } catch {}
+    window.dispatchEvent(new CustomEvent('clufix:open-signup', { detail: { mode: 'merchant' } }))
   }
 
   // Lista de rubros del marquee (mismos que tenía HeroSection).
@@ -5029,7 +5029,7 @@ function CinematicSplashSection({ setView, user, profile, onLogin }) {
 
       {/* Trust marquee ARRIBA — afuera del wrapper principal para que en
           mobile (cinematic-splash con flex column) quede pegado al tope
-          de la pantalla mientras el bloque BENEFIX se centra vertical
+          de la pantalla mientras el bloque CLUFIX se centra vertical
           via .splash-main. En desktop ambos siguen su flujo normal. */}
       <div className="splash-marquee" style={{
         position:'relative', zIndex:2,
@@ -5039,7 +5039,7 @@ function CinematicSplashSection({ setView, user, profile, onLogin }) {
         transition:'opacity 700ms ease',
       }}>
         <div
-          aria-label="Rubros de comercios que usan Benefix"
+          aria-label="Rubros de comercios que usan Clufix"
           style={{
             overflow: 'hidden',
             WebkitMaskImage: 'linear-gradient(to right, transparent 0%, black 80px, black calc(100% - 80px), transparent 100%)',
@@ -5073,7 +5073,7 @@ function CinematicSplashSection({ setView, user, profile, onLogin }) {
             Con delays escalonados (cada elemento entra ~250ms después del
             anterior) y easing cubic-bezier(0.22, 1, 0.36, 1). El blur-in
             le da el efecto cinematográfico de "materializarse" desde
-            fuera de foco. La excepción es BENEFIX, que mantiene su glow
+            fuera de foco. La excepción es CLUFIX, que mantiene su glow
             de marca y NO se le aplica blur en el filter (sino se cancela
             el drop-shadow). */}
 
@@ -5110,7 +5110,7 @@ function CinematicSplashSection({ setView, user, profile, onLogin }) {
           </div>
         </div>
 
-        {/* TIPOGRAFÍA GIGANTE BENEFIX — gradient marca naranja→fucsia→violet
+        {/* TIPOGRAFÍA GIGANTE CLUFIX — gradient marca naranja→fucsia→violet
             + glow violeta original. El blur-in no aplica acá porque el
             filter ya está usado por el drop-shadow del glow (no podemos
             tener dos filter independientes en el mismo elemento). En su
@@ -5140,7 +5140,7 @@ function CinematicSplashSection({ setView, user, profile, onLogin }) {
             pointerEvents:'none',
             userSelect:'none',
           }}>
-            Benefix
+            Clufix
           </h1>
           {/* Foreground — gradient nítido naranja→fucsia→violeta con glow
               violeta característico de la marca. Stagger delay: 280ms.
@@ -5166,7 +5166,7 @@ function CinematicSplashSection({ setView, user, profile, onLogin }) {
             transform: revealed ? 'scale(1) translateY(0)' : 'scale(0.94) translateY(20px)',
             transition: 'opacity 1000ms cubic-bezier(0.22,1,0.36,1) 280ms, transform 1000ms cubic-bezier(0.22,1,0.36,1) 280ms',
           }}>
-            Benefix
+            Clufix
           </h1>
         </div>
 
@@ -5225,7 +5225,7 @@ function CinematicSplashSection({ setView, user, profile, onLogin }) {
           dando sensación de "la ciudad sube y eclipsa el hero": al
           comienzo solo se ve la silueta al pie, a medida que el user
           scrollea las torres crecen hasta tapar el contenido del hero.
-          z-index ALTO (10) para que pase POR ENCIMA del título BENEFIX,
+          z-index ALTO (10) para que pase POR ENCIMA del título CLUFIX,
           tagline y CTAs (que están en zIndex 2) — la idea es justamente
           que los edificios obstruyan visualmente el hero al subir. */}
       <div style={{
@@ -5289,7 +5289,7 @@ function CinematicSplashSection({ setView, user, profile, onLogin }) {
 // a la izquierda, foto/gradient de fondo y flecha grande tipo "→" al final.
 // Hover: la imagen de fondo se expande y la flecha se desplaza.
 //
-// Para Benefix tomé los 3 momentos clave del journey del comerciante:
+// Para Clufix tomé los 3 momentos clave del journey del comerciante:
 //   SUMAR — captar nuevos clientes con QR
 //   FIDELIZAR — cargar premios + recompensas
 //   REACTIVAR — automatizaciones para los que no vuelven
@@ -5569,7 +5569,7 @@ function HomeView({ setView, user, profile, onLogin }) {
   function handleMerchantCTA() {
     if (!user) { onLogin && onLogin(); return }
     if (isOwner) { setView('commerce-settings'); return }
-    try { sessionStorage.setItem('benefix:signupAs', 'merchant') } catch {}
+    try { sessionStorage.setItem('clufix:signupAs', 'merchant') } catch {}
     setView('register-commerce')
   }
 
@@ -6327,8 +6327,8 @@ function CommerceView({ commerce:c, setView, user, onLoginRequired, onCommerceUp
               </div>
               {isOwner && (
                 <button onClick={() => {
-                  try { localStorage.setItem('benefix:cameFromPreview', '1') } catch {}
-                  window.dispatchEvent(new CustomEvent('benefix:navigate', { detail: { view: 'commerce-settings', tab: 'recompensas' } }))
+                  try { localStorage.setItem('clufix:cameFromPreview', '1') } catch {}
+                  window.dispatchEvent(new CustomEvent('clufix:navigate', { detail: { view: 'commerce-settings', tab: 'recompensas' } }))
                 }}
                   aria-label="Editar promoción"
                   style={{ position:'relative', zIndex:1, background:'rgba(0,0,0,0.30)', border:'1px solid rgba(255,255,255,0.18)', borderRadius:8, padding:6, cursor:'pointer', color:C.mist, display:'flex', flexShrink:0 }}>
@@ -6354,8 +6354,8 @@ function CommerceView({ commerce:c, setView, user, onLoginRequired, onCommerceUp
                 </div>
                 {isOwner && (
                   <button onClick={() => {
-                    try { localStorage.setItem('benefix:cameFromPreview', '1') } catch {}
-                    window.dispatchEvent(new CustomEvent('benefix:navigate', { detail: { view: 'commerce-settings', tab: 'premios' } }))
+                    try { localStorage.setItem('clufix:cameFromPreview', '1') } catch {}
+                    window.dispatchEvent(new CustomEvent('clufix:navigate', { detail: { view: 'commerce-settings', tab: 'premios' } }))
                   }}
                     style={{ background:'transparent', border:'none', color:'#7131E1', fontSize:11, fontFamily:FN, fontWeight:700, cursor:'pointer', display:'inline-flex', alignItems:'center', gap:4, padding:0, flexShrink:0 }}>
                     Ver catálogo <ArrowRight size={11} strokeWidth={2.5} />
@@ -7165,7 +7165,7 @@ function ChipEMV() {
   )
 }
 
-// BenefixWatermark removido (mayo 2026, rebrand fase 2). Era el icono
+// ClufixWatermark removido (mayo 2026, rebrand fase 2). Era el icono
 // "infinity" gradient que viv-ia detras de las wallet cards. Quitado
 // del JSX en fase 1 + funcion eliminada en fase 2 (dead code).
 // Si en el futuro se quiere agregar un watermark al wordmark nuevo,
@@ -7262,9 +7262,9 @@ function WalletCardFront({ club, colors, onFlip, visible }) {
       }}
     >
       {/* Watermark removido (rebrand mayo 2026, fase 1).
-          Antes habia un BenefixWatermark gigante (220px, infinity icon
+          Antes habia un ClufixWatermark gigante (220px, infinity icon
           gradient) detras del contenido. La presencia de marca vive
-          ahora solo en el wordmark Benefix del navbar — la card queda
+          ahora solo en el wordmark Clufix del navbar — la card queda
           mas limpia y el CommerceLogo del comercio (top-left) domina
           visualmente como protagonista de la tarjeta. */}
 
@@ -7375,7 +7375,7 @@ function WalletCardFront({ club, colors, onFlip, visible }) {
           onClick={e => {
             e.stopPropagation()
             if (typeof window !== 'undefined') {
-              window.dispatchEvent(new CustomEvent('benefix:club-nav', { detail: { name: commerce.name } }))
+              window.dispatchEvent(new CustomEvent('clufix:club-nav', { detail: { name: commerce.name } }))
             }
           }}
           style={{
@@ -7400,8 +7400,8 @@ function WalletCardFront({ club, colors, onFlip, visible }) {
         </a>
       )}
 
-      {/* Badge "benefixclub" descartado (mayo 2026). El CommerceLogo del
-          comercio top-left + el wordmark Benefix del navbar ya cubren
+      {/* Badge "clufixclub" descartado (mayo 2026). El CommerceLogo del
+          comercio top-left + el wordmark Clufix del navbar ya cubren
           la presencia de marca; sumar otro elemento abajo agregaba ruido
           y competia con el botón "Ir al club". Card queda más limpia. */}
     </div>
@@ -7566,7 +7566,7 @@ function WalletCardBack({ club, colors, onFlip, userId }) {
                   // mientras Next.js sirve la página del club. Sin esto la
                   // navegación se sentía "muerta" ~600ms.
                   if (typeof window !== 'undefined') {
-                    window.dispatchEvent(new CustomEvent('benefix:club-nav', { detail: { name: commerce.name } }))
+                    window.dispatchEvent(new CustomEvent('clufix:club-nav', { detail: { name: commerce.name } }))
                   }
                 }}
                 style={{
@@ -7591,7 +7591,7 @@ function WalletCardBack({ club, colors, onFlip, userId }) {
         </div>
       </div>
 
-      {/* Badge "benefixclub" descartado (mayo 2026) — el dorso queda limpio,
+      {/* Badge "clufixclub" descartado (mayo 2026) — el dorso queda limpio,
           la marca ya está implícita en la UI envolvente. */}
     </div>
   )
@@ -7601,7 +7601,7 @@ function WalletCardBack({ club, colors, onFlip, userId }) {
 // Flag global: el coachmark "Tocá para girar" + overlay oscuro solo se muestra
 // UNA VEZ por usuario. Persistimos en localStorage. Después del primer tap
 // (o pasados los 360ms del fade-out), marcamos la flag y nunca más reaparece.
-const FLIP_HINT_KEY = 'benefix:wallet-flip-hint-seen'
+const FLIP_HINT_KEY = 'clufix:wallet-flip-hint-seen'
 function WalletCard({ club, variant, isActive, onScrollTo, isMock, userId }) {
   const [flipped, setFlipped] = useState(false)
   const [showFlipHint, setShowFlipHint] = useState(false)
@@ -8098,11 +8098,11 @@ function ClientView({ setView, user, profile, onLogout, initialTab }) {
   // pueda volver sobre el tema cuando quiera (por ejemplo, si dijo "No"
   // y después se arrepintió, o si dijo "Sí" pero abandonó el signup).
   // bizAnswered lee localStorage en el primer render y se actualiza
-  // cuando el banner global dispatcha 'benefix:biz-answered'.
+  // cuando el banner global dispatcha 'clufix:biz-answered'.
   const [bizAnswered, setBizAnswered] = useState(() => {
     if (typeof window === 'undefined') return false
     try {
-      const a = localStorage.getItem('benefix:bizAnswer')
+      const a = localStorage.getItem('clufix:bizAnswer')
       return a === 'yes' || a === 'no'
     } catch { return false }
   })
@@ -8113,12 +8113,12 @@ function ClientView({ setView, user, profile, onLogout, initialTab }) {
   useEffect(() => {
     function onBizAnswered() {
       try {
-        const a = localStorage.getItem('benefix:bizAnswer')
+        const a = localStorage.getItem('clufix:bizAnswer')
         setBizAnswered(a === 'yes' || a === 'no')
       } catch {}
     }
-    window.addEventListener('benefix:biz-answered', onBizAnswered)
-    return () => window.removeEventListener('benefix:biz-answered', onBizAnswered)
+    window.addEventListener('clufix:biz-answered', onBizAnswered)
+    return () => window.removeEventListener('clufix:biz-answered', onBizAnswered)
   }, [])
   const supabase = getSupabase()
 
@@ -8143,7 +8143,7 @@ function ClientView({ setView, user, profile, onLogout, initialTab }) {
   // siempre quedan en formato nuevo.
   useEffect(() => {
     try {
-      const saved = JSON.parse(localStorage.getItem('benefix:clubsFilter') || '{}')
+      const saved = JSON.parse(localStorage.getItem('clufix:clubsFilter') || '{}')
       if (Array.isArray(saved.cities)) {
         setFilterCities(saved.cities)
       } else if (saved.city && saved.city !== 'Todos') {
@@ -8156,17 +8156,17 @@ function ClientView({ setView, user, profile, onLogout, initialTab }) {
       }
     } catch {}
     try {
-      const savedB = JSON.parse(localStorage.getItem('benefix:benefitsFilter') || '{}')
+      const savedB = JSON.parse(localStorage.getItem('clufix:benefitsFilter') || '{}')
       if (Array.isArray(savedB.commerces)) setFilterBenefitsCommerces(savedB.commerces)
     } catch {}
   }, [])
 
   // Persist filters
   useEffect(() => {
-    try { localStorage.setItem('benefix:clubsFilter', JSON.stringify({ cities: filterCities, categories: filterCategories })) } catch {}
+    try { localStorage.setItem('clufix:clubsFilter', JSON.stringify({ cities: filterCities, categories: filterCategories })) } catch {}
   }, [filterCities, filterCategories])
   useEffect(() => {
-    try { localStorage.setItem('benefix:benefitsFilter', JSON.stringify({ commerces: filterBenefitsCommerces })) } catch {}
+    try { localStorage.setItem('clufix:benefitsFilter', JSON.stringify({ commerces: filterBenefitsCommerces })) } catch {}
   }, [filterBenefitsCommerces])
 
   const refresh = useCallback(() => { setRefreshTick(t => t + 1) }, [])
@@ -8211,7 +8211,7 @@ function ClientView({ setView, user, profile, onLogout, initialTab }) {
     // (visita registrada, descuento canjeado, etc.) seguramente algo cambió
     // en la DB, así que refrescamos.
     function onSwMsg(e) {
-      if (e.data?.type === 'benefix:notification') setRefreshTick(t => t + 1)
+      if (e.data?.type === 'clufix:notification') setRefreshTick(t => t + 1)
     }
     if (typeof navigator !== 'undefined' && navigator.serviceWorker) {
       navigator.serviceWorker.addEventListener('message', onSwMsg)
@@ -8319,7 +8319,7 @@ function ClientView({ setView, user, profile, onLogout, initialTab }) {
     setAcctForm({ name: profile?.name || '', phone: profile?.phone || '' })
   }, [profile])
 
-  // Escucha 'benefix:set-tab' — lo dispara el nav de pestañas montado en otras
+  // Escucha 'clufix:set-tab' — lo dispara el nav de pestañas montado en otras
   // vistas (ej: ClientQRView dentro de view='scanner') para cambiar la pestaña
   // del cliente al volver acá.
   useEffect(() => {
@@ -8327,14 +8327,14 @@ function ClientView({ setView, user, profile, onLogout, initialTab }) {
       const next = e.detail?.tab
       if (next) setTab(next)
     }
-    window.addEventListener('benefix:set-tab', onSetTab)
-    return () => window.removeEventListener('benefix:set-tab', onSetTab)
+    window.addEventListener('clufix:set-tab', onSetTab)
+    return () => window.removeEventListener('clufix:set-tab', onSetTab)
   }, [])
 
   // Cada vez que el tab cambia, le avisamos al Navbar global para que pueda
   // sincronizar el highlight (botón persona arriba ↔ tabs del nav inferior).
   useEffect(() => {
-    window.dispatchEvent(new CustomEvent('benefix:client-tab-changed', { detail: { tab } }))
+    window.dispatchEvent(new CustomEvent('clufix:client-tab-changed', { detail: { tab } }))
   }, [tab])
 
   // Load account stats when "cuenta" tab is first opened
@@ -8537,7 +8537,7 @@ function ClientView({ setView, user, profile, onLogout, initialTab }) {
               <div style={{ fontSize:13, color:'rgba(255,255,255,0.38)', maxWidth:240, margin:'0 auto 24px', lineHeight:1.65 }}>Escaneá el QR de un comercio para sumar tu primer club.</div>
               <button
                 onClick={() => {
-                  try { sessionStorage.setItem('benefix:scanIntent', 'join-club') } catch {}
+                  try { sessionStorage.setItem('clufix:scanIntent', 'join-club') } catch {}
                   setView('scanner')
                 }}
                 style={{ padding:'11px 26px', borderRadius:99, background:'#7131E1', border:'none', cursor:'pointer', fontFamily:FN, fontSize:13, fontWeight:700, color:'#fff', boxShadow:'0 4px 20px rgba(139,92,246,0.40)' }}
@@ -9048,7 +9048,7 @@ function ClientView({ setView, user, profile, onLogout, initialTab }) {
               <div style={{ display:'flex', alignItems:'flex-start', justifyContent:'space-between', marginBottom:24, position:'relative' }}>
                 <div>
                   <div style={{ display:'flex', alignItems:'center', gap:6 }}>
-                    <div style={{ fontFamily:FN, fontSize:22, fontWeight:900, color:'#fff', letterSpacing:'-.01em', lineHeight:1 }}>BENEFIX PASS</div>
+                    <div style={{ fontFamily:FN, fontSize:22, fontWeight:900, color:'#fff', letterSpacing:'-.01em', lineHeight:1 }}>CLUFIX PASS</div>
                     <InfoHint align="left" color="rgba(255,255,255,0.85)" text={
                       'Tu QR personal único. Mostralo al comerciante en cada compra para que lo escanee y te sume estrellas o puntos.\n\n' +
                       'El mismo QR sirve para todos los clubes donde estés anotado — no necesitás uno por cada negocio.\n\n' +
@@ -9201,7 +9201,7 @@ function ClientView({ setView, user, profile, onLogout, initialTab }) {
           </div>
 
           {/* Volver a ver carteles de ayuda — resetea todos los flags
-              `benefix:help:*` del localStorage. Útil si descartó los carteles
+              `clufix:help:*` del localStorage. Útil si descartó los carteles
               y quiere volver a verlos. */}
           <div style={{ ...glass, overflow:'hidden', borderRadius:16, marginBottom:12 }}>
             <button
@@ -9708,7 +9708,7 @@ function RegisterCommerceView({ setView, user, onProfileRefresh, onLoginRequired
 
   // Maneja la selección de un Place de Google: prelena TODOS los campos
   // del form, matcheando province/city contra el enum LOCATIONS de
-  // Benefix (case + accent insensitive). Si algo no matchea, queda vacío
+  // Clufix (case + accent insensitive). Si algo no matchea, queda vacío
   // y el user lo elige manualmente.
   //
   // Mapeo:
@@ -10478,16 +10478,16 @@ function TermsAcceptance({ user, onAccept }) {
             <div style={{ fontFamily:FI, fontSize:13, color:'rgba(255,255,255,0.70)', lineHeight:1.75 }}>
 
               <p style={{ fontFamily:FN, fontWeight:700, color:'#fff', marginBottom:6, marginTop:0 }}>1. Aceptación de los Términos</p>
-              <p style={{ marginBottom:16 }}>Al acceder y utilizar Benefix, aceptás estos términos y condiciones en su totalidad. Si no estás de acuerdo con alguna parte, no podés usar la aplicación.</p>
+              <p style={{ marginBottom:16 }}>Al acceder y utilizar Clufix, aceptás estos términos y condiciones en su totalidad. Si no estás de acuerdo con alguna parte, no podés usar la aplicación.</p>
 
               <p style={{ fontFamily:FN, fontWeight:700, color:'#fff', marginBottom:6 }}>2. Descripción del Servicio</p>
-              <p style={{ marginBottom:16 }}>Benefix es una plataforma de fidelización que permite a los usuarios acumular puntos o estrellas en comercios adheridos y canjearlos por premios. Los comercios definen sus propios programas de beneficios.</p>
+              <p style={{ marginBottom:16 }}>Clufix es una plataforma de fidelización que permite a los usuarios acumular puntos o estrellas en comercios adheridos y canjearlos por premios. Los comercios definen sus propios programas de beneficios.</p>
 
               <p style={{ fontFamily:FN, fontWeight:700, color:'#fff', marginBottom:6 }}>3. Registro y Cuenta</p>
-              <p style={{ marginBottom:16 }}>Para usar Benefix necesitás una cuenta de Google. Sos responsable de mantener la confidencialidad de tu cuenta y de todas las actividades que ocurran bajo ella.</p>
+              <p style={{ marginBottom:16 }}>Para usar Clufix necesitás una cuenta de Google. Sos responsable de mantener la confidencialidad de tu cuenta y de todas las actividades que ocurran bajo ella.</p>
 
               <p style={{ fontFamily:FN, fontWeight:700, color:'#fff', marginBottom:6 }}>4. Uso del Servicio</p>
-              <p style={{ marginBottom:8 }}>Te comprometés a usar Benefix de manera lícita y respetuosa. Está prohibido:</p>
+              <p style={{ marginBottom:8 }}>Te comprometés a usar Clufix de manera lícita y respetuosa. Está prohibido:</p>
               <ul style={{ paddingLeft:18, marginBottom:16 }}>
                 <li style={{ marginBottom:4 }}>Crear cuentas falsas o múltiples</li>
                 <li style={{ marginBottom:4 }}>Manipular el sistema de puntos de forma fraudulenta</li>
@@ -10496,7 +10496,7 @@ function TermsAcceptance({ user, onAccept }) {
               </ul>
 
               <p style={{ fontFamily:FN, fontWeight:700, color:'#fff', marginBottom:6 }}>5. Puntos y Premios</p>
-              <p style={{ marginBottom:16 }}>Los puntos acumulados no tienen valor monetario y no son transferibles. Los comercios pueden modificar o cancelar sus programas de beneficios en cualquier momento. Benefix no es responsable por los premios ofrecidos por los comercios.</p>
+              <p style={{ marginBottom:16 }}>Los puntos acumulados no tienen valor monetario y no son transferibles. Los comercios pueden modificar o cancelar sus programas de beneficios en cualquier momento. Clufix no es responsable por los premios ofrecidos por los comercios.</p>
 
               <p style={{ fontFamily:FN, fontWeight:700, color:'#fff', marginBottom:6 }}>6. Privacidad</p>
               <p style={{ marginBottom:16 }}>Recopilamos información necesaria para el funcionamiento del servicio: nombre, email, teléfono y ubicación. No vendemos tus datos a terceros. Los comercios pueden ver tu actividad dentro de su club (visitas, puntos, canjes).</p>
@@ -10532,7 +10532,7 @@ function TermsAcceptance({ user, onAccept }) {
             {checked && <Check size={14} color="#fff" strokeWidth={3} />}
           </div>
           <span style={{ fontSize:13, color:'rgba(255,255,255,0.70)', fontFamily:FI, lineHeight:1.5 }}>
-            Leí y acepto los <span style={{ color:'#fff', fontWeight:600 }}>Términos y Condiciones</span> y la <span style={{ color:'#fff', fontWeight:600 }}>Política de Privacidad</span> de Benefix
+            Leí y acepto los <span style={{ color:'#fff', fontWeight:600 }}>Términos y Condiciones</span> y la <span style={{ color:'#fff', fontWeight:600 }}>Política de Privacidad</span> de Clufix
           </span>
         </label>
 
@@ -11565,7 +11565,7 @@ function CommerceSettingsView({ user, profile, setView, onLogout, onOwnerProfile
   // de qué pestaña vino el usuario (habilita el botón "Volver a X").
   const setTab = useCallback(async (next, source = null) => {
     if (next === tab) return
-    if (typeof window !== 'undefined' && window.__benefixDirty) {
+    if (typeof window !== 'undefined' && window.__clufixDirty) {
       const ok = await showConfirm({
         title: 'Tenés cambios sin guardar',
         message: 'Si salís ahora vas a perder los cambios. ¿Querés salir igual?',
@@ -11574,7 +11574,7 @@ function CommerceSettingsView({ user, profile, setView, onLogout, onOwnerProfile
         danger: true,
       })
       if (!ok) return
-      window.__benefixDirty = false
+      window.__clufixDirty = false
     }
     // Toda llamada sin source explícito limpia el origen — así el botón
     // "Volver a X" no aparece de forma stale en pantallas siguientes.
@@ -11584,11 +11584,11 @@ function CommerceSettingsView({ user, profile, setView, onLogout, onOwnerProfile
 
   // Cada vez que el tab cambia, le avisamos al AppRoot para que BottomNavV2
   // pueda sincronizar el slot activo (Inicio / Beneficios / etc). Igual al
-  // patron de ClientView con 'benefix:client-tab-changed'. Sin esto, el
+  // patron de ClientView con 'clufix:client-tab-changed'. Sin esto, el
   // BottomNavV2 nunca cambia de color al navegar entre tabs del comercio.
   useEffect(() => {
     if (typeof window === 'undefined') return
-    window.dispatchEvent(new CustomEvent('benefix:commerce-tab-changed', { detail: { tab } }))
+    window.dispatchEvent(new CustomEvent('clufix:commerce-tab-changed', { detail: { tab } }))
   }, [tab])
 
   const [form, setForm]                   = useState(null)
@@ -11832,9 +11832,9 @@ function CommerceSettingsView({ user, profile, setView, onLogout, onOwnerProfile
   useEffect(() => {
     if (typeof window === 'undefined') return
     try {
-      const section = sessionStorage.getItem('benefix:edit-section')
+      const section = sessionStorage.getItem('clufix:edit-section')
       if (section) {
-        sessionStorage.removeItem('benefix:edit-section')
+        sessionStorage.removeItem('clufix:edit-section')
         // Pequeño delay para que la pestaña configuracion esté montada
         // antes de tocar el state del accordion.
         setTimeout(() => {
@@ -11876,14 +11876,14 @@ function CommerceSettingsView({ user, profile, setView, onLogout, onOwnerProfile
   useEffect(() => {
     if (typeof window === 'undefined') return
     try {
-      const s = sessionStorage.getItem('benefix:preview-back-slug')
+      const s = sessionStorage.getItem('clufix:preview-back-slug')
       if (s) setPreviewBackSlug(s)
     } catch {}
   }, [])
   function handleBackToPreview() {
     if (typeof window === 'undefined') return
     const s = previewBackSlug
-    try { sessionStorage.removeItem('benefix:preview-back-slug') } catch {}
+    try { sessionStorage.removeItem('clufix:preview-back-slug') } catch {}
     setPreviewBackSlug(null)
     if (s) window.location.href = `/club/${s}?edit=1`
   }
@@ -11976,9 +11976,9 @@ function CommerceSettingsView({ user, profile, setView, onLogout, onOwnerProfile
   // Sincroniza con flag global usada por setTab (wrapper) y beforeunload.
   useEffect(() => {
     if (typeof window === 'undefined') return
-    window.__benefixDirty = isDirty
+    window.__clufixDirty = isDirty
     const onBeforeUnload = (e) => {
-      if (window.__benefixDirty) {
+      if (window.__clufixDirty) {
         e.preventDefault()
         e.returnValue = ''  // Chrome required
         return ''
@@ -12059,14 +12059,14 @@ function CommerceSettingsView({ user, profile, setView, onLogout, onOwnerProfile
     if (!intentPickerActive) { setShowPanelHint(false); return }
     if (typeof window === 'undefined') return
     try {
-      if (localStorage.getItem('benefix:panel-hint-seen')) return
+      if (localStorage.getItem('clufix:panel-hint-seen')) return
     } catch {}
     const t = setTimeout(() => setShowPanelHint(true), 5000)
     return () => clearTimeout(t)
   }, [intentPickerActive])
   function dismissPanelHint() {
     setShowPanelHint(false)
-    try { localStorage.setItem('benefix:panel-hint-seen', '1') } catch {}
+    try { localStorage.setItem('clufix:panel-hint-seen', '1') } catch {}
   }
   // showBusinessQrModal: modal fullscreen con el QR del local. Se abre desde
   // el intent picker ("Sumar un nuevo cliente al club") y desde otros lugares
@@ -12082,7 +12082,7 @@ function CommerceSettingsView({ user, profile, setView, onLogout, onOwnerProfile
   const [shortcutIds, setShortcutIds] = useState(() => {
     if (typeof window === 'undefined') return SHORTCUT_DEFAULT_IDS
     try {
-      const saved = JSON.parse(localStorage.getItem('benefix:panelShortcuts') || 'null')
+      const saved = JSON.parse(localStorage.getItem('clufix:panelShortcuts') || 'null')
       if (Array.isArray(saved) && saved.length > 0) return saved
     } catch {}
     return SHORTCUT_DEFAULT_IDS
@@ -12097,12 +12097,12 @@ function CommerceSettingsView({ user, profile, setView, onLogout, onOwnerProfile
   const cardRefs         = useRef({})
   const shortcutsBoxRef  = useRef(null)
   useEffect(() => {
-    try { localStorage.setItem('benefix:panelShortcuts', JSON.stringify(shortcutIds)) } catch {}
+    try { localStorage.setItem('clufix:panelShortcuts', JSON.stringify(shortcutIds)) } catch {}
   }, [shortcutIds])
 
   const supabase = getSupabase()
 
-  // Listener para el evento "benefix:merchant-intent" — disparado por el
+  // Listener para el evento "clufix:merchant-intent" — disparado por el
   // botón "Mi Negocio" del navbar (incluso si ya estás en commerce-settings)
   // para reabrir el intent picker. Cada re-entrada también resetea la manito
   // de la solapa fucsia para que vuelva a aparecer guiando al user.
@@ -12111,8 +12111,8 @@ function CommerceSettingsView({ user, profile, setView, onLogout, onOwnerProfile
       setIntentPickerActive(true)
       setRailTabHandSeen(false)
     }
-    window.addEventListener('benefix:merchant-intent', onIntent)
-    return () => window.removeEventListener('benefix:merchant-intent', onIntent)
+    window.addEventListener('clufix:merchant-intent', onIntent)
+    return () => window.removeEventListener('clufix:merchant-intent', onIntent)
   }, [])
 
   // Restore last tab on mount
@@ -12140,7 +12140,7 @@ function CommerceSettingsView({ user, profile, setView, onLogout, onOwnerProfile
       setIntentPickerActive(false)
       return
     }
-    const saved = localStorage.getItem('benefix:commerceTab')
+    const saved = localStorage.getItem('clufix:commerceTab')
     if (saved && VALID_TABS.includes(saved)) setTab(saved)
   }, [])
 
@@ -12169,10 +12169,10 @@ function CommerceSettingsView({ user, profile, setView, onLogout, onOwnerProfile
   // Persist tab on change (skip the initial mount render)
   useEffect(() => {
     if (!tabPersistMounted.current) { tabPersistMounted.current = true; return }
-    localStorage.setItem('benefix:commerceTab', tab)
+    localStorage.setItem('clufix:commerceTab', tab)
   }, [tab])
 
-  // Escucha 'benefix:set-tab' — lo dispara el buzón de sugerencias o cualquier otro
+  // Escucha 'clufix:set-tab' — lo dispara el buzón de sugerencias o cualquier otro
   // componente que necesite navegar a una pestaña específica del panel comerciante.
   // Algunos tabs "virtuales" (promociones) no tienen render propio, viven adentro
   // de otros (recompensas). Mapeamos para que el navigate caiga en el lugar correcto.
@@ -12197,8 +12197,8 @@ function CommerceSettingsView({ user, profile, setView, onLogout, onOwnerProfile
       // Salir del intent picker para que se vea el contenido del tab.
       setIntentPickerActive(false)
     }
-    window.addEventListener('benefix:set-tab', onSetTab)
-    return () => window.removeEventListener('benefix:set-tab', onSetTab)
+    window.addEventListener('clufix:set-tab', onSetTab)
+    return () => window.removeEventListener('clufix:set-tab', onSetTab)
   }, [setTab])
 
   useEffect(() => {
@@ -12257,7 +12257,7 @@ function CommerceSettingsView({ user, profile, setView, onLogout, onOwnerProfile
             // dueño sin descubrirlo si nunca entraba a esa tab.
             try {
               const sys = data?.prog_type || 'stars'
-              const flagKey = `benefix:welcome-prizes-shown-${data.id}`
+              const flagKey = `clufix:welcome-prizes-shown-${data.id}`
               if (!localStorage.getItem(flagKey)) {
                 const activeForSys = fetched.filter(p =>
                   p.active && (p.system_type || sys) === sys
@@ -12586,18 +12586,18 @@ function CommerceSettingsView({ user, profile, setView, onLogout, onOwnerProfile
       showToast('success', 'Tu negocio fue eliminado')
       // Limpieza de flags locales para que la app arranque "fresh" como si
       // fuera un cliente nuevo:
-      //  - benefix:bizAnswer: si la borramos, el cartel "¿Tenés un negocio?"
+      //  - clufix:bizAnswer: si la borramos, el cartel "¿Tenés un negocio?"
       //    vuelve a aparecer en su versión prominente (top-collapsed) en
       //    Perfil, ofreciendo registrar un comercio de nuevo.
-      //  - benefix:commerceTab / lastView: el user ya no tiene panel.
-      //  - benefix:rail-hint-seen / panel-hint-seen: si vuelve a registrarse,
+      //  - clufix:commerceTab / lastView: el user ya no tiene panel.
+      //  - clufix:rail-hint-seen / panel-hint-seen: si vuelve a registrarse,
       //    los coachmarks reaparecen.
       try {
-        localStorage.removeItem('benefix:bizAnswer')
-        localStorage.removeItem('benefix:commerceTab')
-        localStorage.removeItem('benefix:lastView')
-        localStorage.removeItem('benefix:rail-hint-seen')
-        localStorage.removeItem('benefix:panel-hint-seen')
+        localStorage.removeItem('clufix:bizAnswer')
+        localStorage.removeItem('clufix:commerceTab')
+        localStorage.removeItem('clufix:lastView')
+        localStorage.removeItem('clufix:rail-hint-seen')
+        localStorage.removeItem('clufix:panel-hint-seen')
       } catch (_) {}
       // Reload completo para limpiar todo el state — el user queda sin
       // comercio asociado y la app arranca desde cero como si fuera cliente.
@@ -13002,11 +13002,11 @@ function CommerceSettingsView({ user, profile, setView, onLogout, onOwnerProfile
     if (typeof window === 'undefined') return
     if (!Array.isArray(prizes) || prizes.length === 0) return
     let id
-    try { id = sessionStorage.getItem('benefix:edit-prize-id') } catch { return }
+    try { id = sessionStorage.getItem('clufix:edit-prize-id') } catch { return }
     if (!id) return
     const target = prizes.find(p => p.id === id)
     if (target) {
-      try { sessionStorage.removeItem('benefix:edit-prize-id') } catch {}
+      try { sessionStorage.removeItem('clufix:edit-prize-id') } catch {}
       // Pequeno delay para asegurar que la pestaa premios este montada
       // antes de abrir el modal del wizard.
       setTimeout(() => startEditPrize(target), 120)
@@ -13470,7 +13470,7 @@ function CommerceSettingsView({ user, profile, setView, onLogout, onOwnerProfile
     const def = PLANS[newPlan]
     const planLabel = def?.label || 'STARTER'
     const priceFmt = def?.price ? `$${def.price.toLocaleString('es-AR')}/mes` : ''
-    const msg = `Hola Benefix! Soy ${commerce?.name || 'un comerciante'} y tengo dudas para suscribirme al plan ${planLabel}${priceFmt ? ` (${priceFmt})` : ''}. ¿Me podés ayudar a coordinar el pago?`
+    const msg = `Hola Clufix! Soy ${commerce?.name || 'un comerciante'} y tengo dudas para suscribirme al plan ${planLabel}${priceFmt ? ` (${priceFmt})` : ''}. ¿Me podés ayudar a coordinar el pago?`
     const ADMIN_WHATSAPP = '542302351158'
     const url = `https://wa.me/${ADMIN_WHATSAPP}?text=${encodeURIComponent(msg)}`
     window.open(url, '_blank', 'noopener,noreferrer')
@@ -17232,7 +17232,7 @@ function CommerceSettingsView({ user, profile, setView, onLogout, onOwnerProfile
                           {phone && (
                             <button onClick={e => {
                               e.stopPropagation()
-                              const msg = `¡Hola ${name.split(' ')[0]}! Te invito a unirte al club de ${commerce?.name} en Benefix. Acumulá ${unitLabel} y canjeá recompensas\n\n${clubUrl}`
+                              const msg = `¡Hola ${name.split(' ')[0]}! Te invito a unirte al club de ${commerce?.name} en Clufix. Acumulá ${unitLabel} y canjeá recompensas\n\n${clubUrl}`
                               window.open(`https://wa.me/${phone.replace(/\D/g,'')}?text=${encodeURIComponent(msg)}`, '_blank')
                             }}
                             aria-label="Enviar WhatsApp"
@@ -17254,7 +17254,7 @@ function CommerceSettingsView({ user, profile, setView, onLogout, onOwnerProfile
                             {[
                               { label:'Ver detalle', Icon:User,  action: () => viewMember(m) },
                               { label:'Enviar WhatsApp', Icon:Phone, action: () => {
-                                const msg = `¡Hola ${name.split(' ')[0]}! Te invito a unirte al club de ${commerce?.name} en Benefix. Acumulá ${unitLabel} y canjeá recompensas 🎁\n\n${clubUrl}`
+                                const msg = `¡Hola ${name.split(' ')[0]}! Te invito a unirte al club de ${commerce?.name} en Clufix. Acumulá ${unitLabel} y canjeá recompensas 🎁\n\n${clubUrl}`
                                 window.open(phone ? `https://wa.me/${phone.replace(/\D/g,'')}?text=${encodeURIComponent(msg)}` : `https://wa.me/?text=${encodeURIComponent(msg)}`, '_blank')
                               }},
                             ].map(item => (
@@ -17402,9 +17402,9 @@ function CommerceSettingsView({ user, profile, setView, onLogout, onOwnerProfile
 
         {/* Botón "← Volver a previsualización pública" cuando el dueño llegó desde
             el preview público (ej: tocó el lápiz del banner de descuento). */}
-        {tab === 'recompensas' && typeof window !== 'undefined' && localStorage.getItem('benefix:cameFromPreview') === '1' && (
+        {tab === 'recompensas' && typeof window !== 'undefined' && localStorage.getItem('clufix:cameFromPreview') === '1' && (
           <button onClick={() => {
-            try { localStorage.removeItem('benefix:cameFromPreview') } catch {}
+            try { localStorage.removeItem('clufix:cameFromPreview') } catch {}
             onOwnerProfile?.()
           }}
             style={{ display:'inline-flex', alignItems:'center', gap:6, marginBottom:14, padding:'6px 12px 6px 8px', background:'rgba(189,75,248,0.10)', border:'1px solid rgba(189,75,248,0.30)', borderRadius:99, color:'#7131E1', fontFamily:FN, fontSize:11.5, fontWeight:700, cursor:'pointer' }}>
@@ -19803,7 +19803,7 @@ function CommerceSettingsView({ user, profile, setView, onLogout, onOwnerProfile
             />
 
             <div style={{ fontSize:11, color:C.dust, textAlign:'center', marginTop:24, lineHeight:1.8 }}>
-              Los planes son gestionados por el equipo de Benefix.<br />
+              Los planes son gestionados por el equipo de Clufix.<br />
               Los clientes existentes nunca se eliminan al cambiar de plan.
             </div>
           </div>
@@ -20963,12 +20963,12 @@ function ClientQRView({ user, profile, setView, headerExtra }) {
   async function handleClientScan(text) {
     if (processingRef.current) return
 
-    // El QR detectado no tiene formato de Benefix (no matchea /club/[slug] ni /join/[slug])
+    // El QR detectado no tiene formato de Clufix (no matchea /club/[slug] ni /join/[slug])
     const match = text.match(/\/(?:join|club)\/([^/?#\s]+)/)
     if (!match) {
       processingRef.current = true
       await stopCamera()
-      setDoneError('Este código QR no pertenece a un club de Benefix. Probá con el QR del local.')
+      setDoneError('Este código QR no pertenece a un club de Clufix. Probá con el QR del local.')
       setMode('error')
       return
     }
@@ -21046,12 +21046,12 @@ function ClientQRView({ user, profile, setView, headerExtra }) {
     </div>
   )
 
-  // ── Default: QR personal — mismo diseño BENEFIX PASS que el tab "mi qr" del bottom nav ─────
+  // ── Default: QR personal — mismo diseño CLUFIX PASS que el tab "mi qr" del bottom nav ─────
   // Setup del nav de pestañas: marca "Mi QR" como activa y al tocar otra pestaña
   // dispara navegación a view='client' con el tab elegido.
   const handleNavTab = (next) => {
     if (next === 'mi qr') return
-    window.dispatchEvent(new CustomEvent('benefix:navigate', {
+    window.dispatchEvent(new CustomEvent('clufix:navigate', {
       detail: { view: 'client', tab: next },
     }))
   }
@@ -21090,7 +21090,7 @@ function ClientQRView({ user, profile, setView, headerExtra }) {
           <div style={{ display:'flex', alignItems:'flex-start', justifyContent:'space-between', marginBottom:24, position:'relative' }}>
             <div>
               <div style={{ display:'flex', alignItems:'center', gap:6 }}>
-                <div style={{ fontFamily:FN, fontSize:22, fontWeight:900, color:'#fff', letterSpacing:'-.01em', lineHeight:1 }}>BENEFIX PASS</div>
+                <div style={{ fontFamily:FN, fontSize:22, fontWeight:900, color:'#fff', letterSpacing:'-.01em', lineHeight:1 }}>CLUFIX PASS</div>
                 <InfoHint align="left" color="rgba(255,255,255,0.85)" text={
                   'Tu QR personal único. Mostralo al comerciante en cada compra para que lo escanee y te sume estrellas o puntos.\n\n' +
                   'El mismo QR sirve para todos los clubes donde estés anotado — no necesitás uno por cada negocio.\n\n' +
@@ -21180,7 +21180,7 @@ function ScannerView({ user, profile, setView }) {
   const [scanMode, setScanMode]       = useState(null)
   const [modeSelected, setModeSelected] = useState(false)
 
-  // Listener 'benefix:scan-mode' — lo dispara MerchantQRSheet (al elegir
+  // Listener 'clufix:scan-mode' — lo dispara MerchantQRSheet (al elegir
   // "Mostrar QR del negocio" o "Registrar visita") y ClientQRSheet (al elegir
   // "Escanear QR de negocio"). Setea el scanMode + modeSelected para que
   // el ScannerView aterrice directo en el sub-flujo correspondiente,
@@ -21197,8 +21197,8 @@ function ScannerView({ user, profile, setView }) {
         setModeSelected(true)
       }
     }
-    window.addEventListener('benefix:scan-mode', onScanMode)
-    return () => window.removeEventListener('benefix:scan-mode', onScanMode)
+    window.addEventListener('clufix:scan-mode', onScanMode)
+    return () => window.removeEventListener('clufix:scan-mode', onScanMode)
   }, [])
   // Accordion del scanner — qué sección está abierta (null = todas cerradas).
   // Solo una abierta a la vez. Permite a los dos grupos "Abrir escáner" y
@@ -21222,7 +21222,7 @@ function ScannerView({ user, profile, setView }) {
   const [hasActiveDiscount, setHasActiveDiscount] = useState(false)  // ¿comercio tiene discount_next activo?
   const [activeDiscount,    setActiveDiscount]    = useState(null)   // la promo entera (para mostrar %)
   // Aviso flotante sobre el visor de la camara cuando el QR escaneado no es
-  // de un cliente Benefix. { type:'warn'|'error', text:string } | null. Se
+  // de un cliente Clufix. { type:'warn'|'error', text:string } | null. Se
   // auto-descarta a los 5s desde el setter (ver setScanWarningWithTimeout).
   const [scanWarning, setScanWarning] = useState(null)
   const scanWarningTimeoutRef = useRef(null)
@@ -21299,14 +21299,14 @@ function ScannerView({ user, profile, setView }) {
         if (!TRIGGER_TYPES.has(n.type)) return
         const commerceId = n.metadata?.commerce_id || null
         try {
-          if (commerceId) sessionStorage.setItem('benefix:highlight-commerce-id', commerceId)
-          sessionStorage.setItem('benefix:highlight-tab', 'mis clubs')
+          if (commerceId) sessionStorage.setItem('clufix:highlight-commerce-id', commerceId)
+          sessionStorage.setItem('clufix:highlight-tab', 'mis clubs')
         } catch {}
         // Cerrar el QR fullscreen y navegar al cliente.
         setScanMode(null)
         setModeSelected(false)
         if (typeof window !== 'undefined') {
-          window.dispatchEvent(new CustomEvent('benefix:navigate', {
+          window.dispatchEvent(new CustomEvent('clufix:navigate', {
             detail: { view: 'client', tab: 'mis clubs' },
           }))
         }
@@ -21338,15 +21338,15 @@ function ScannerView({ user, profile, setView }) {
   }, [])
 
   // Auto-arranque en modo "sumarme a un club" cuando el cliente vino del
-  // empty state de "Mi billetera está vacía" (sessionStorage benefix:scanIntent).
+  // empty state de "Mi billetera está vacía" (sessionStorage clufix:scanIntent).
   // Salta el picker de modos y abre la cámara directo para escanear el QR
   // del comercio. El flag se consume al primer mount y se limpia.
   useEffect(() => {
     if (!profile) return
     try {
-      const intent = sessionStorage.getItem('benefix:scanIntent')
+      const intent = sessionStorage.getItem('clufix:scanIntent')
       if (intent === 'join-club') {
-        sessionStorage.removeItem('benefix:scanIntent')
+        sessionStorage.removeItem('clufix:scanIntent')
         setScanMode('join-club')
         setModeSelected(true)
         setJoinScanActive(true)
@@ -21401,13 +21401,13 @@ function ScannerView({ user, profile, setView }) {
     // silencio cualquier otro QR (else return), lo que confundía al
     // dueño porque "no pasaba nada" al apuntar a algo equivocado.
     // Ahora detectamos 2 casos concretos y mostramos un toast claro:
-    //   • QR de OTRO comercio Benefix: el cliente está mostrando el QR
+    //   • QR de OTRO comercio Clufix: el cliente está mostrando el QR
     //     del LOCAL en vez de su QR personal — es un error común.
-    //   • QR completamente distinto (no Benefix): no contiene 'CLUB-'
+    //   • QR completamente distinto (no Clufix): no contiene 'CLUB-'
     //     ni la URL de benefix.com.ar/club/.
     if (!qrCode.startsWith('CLUB-')) {
-      const isBusinessQr = /benefix\.com\.ar\/club\//i.test(qrCode) || qrCode.startsWith('http')
-      if (isBusinessQr && /benefix/i.test(qrCode)) {
+      const isBusinessQr = /clufix\.com\.ar\/club\//i.test(qrCode) || qrCode.startsWith('http')
+      if (isBusinessQr && /clufix/i.test(qrCode)) {
         setScanWarningWithTimeout({
           type: 'warn',
           text: 'Ese es el QR del local, no del cliente. Pedile que abra "Mostrar QR personal" desde su app.',
@@ -21415,7 +21415,7 @@ function ScannerView({ user, profile, setView }) {
       } else {
         setScanWarningWithTimeout({
           type: 'error',
-          text: 'Ese QR no es de Benefix. Pedile al cliente que abra "Mostrar QR personal" desde su app.',
+          text: 'Ese QR no es de Clufix. Pedile al cliente que abra "Mostrar QR personal" desde su app.',
         })
       }
       return
@@ -21941,7 +21941,7 @@ function ScannerView({ user, profile, setView }) {
               onDecode={async (text) => {
                 const match = text.match(/\/(?:join|club)\/([^/?#\s]+)/)
                 if (!match) {
-                  setJoinScanError('Este QR no pertenece a un club de Benefix.')
+                  setJoinScanError('Este QR no pertenece a un club de Clufix.')
                   setJoinScanActive(false)
                   return
                 }
@@ -21975,7 +21975,7 @@ function ScannerView({ user, profile, setView }) {
     )
   }
 
-  // Modo "show-my-qr" — el dueño quiere mostrar su QR personal (BENEFIX PASS)
+  // Modo "show-my-qr" — el dueño quiere mostrar su QR personal (CLUFIX PASS)
   // a OTRO comerciante para que le sume visita en su local. Es la misma lógica
   // que el cliente: el QR codifica CLUB-{userId} y el otro comercio lo escanea
   // con su scanner para registrar visita en SU sistema.
@@ -22539,7 +22539,7 @@ function ScannerView({ user, profile, setView }) {
                       onClick={() => {
                         setView('commerce-settings')
                         setTimeout(() => {
-                          window.dispatchEvent(new CustomEvent('benefix:set-tab', { detail: { tab: 'recompensas' } }))
+                          window.dispatchEvent(new CustomEvent('clufix:set-tab', { detail: { tab: 'recompensas' } }))
                         }, 50)
                       }}
                       style={{
@@ -23385,7 +23385,7 @@ function SwitchTooltip({ onDismiss }) {
   const [visible, setVisible] = useState(false)
 
   useEffect(() => {
-    const el = document.getElementById('benefix-context-switch')
+    const el = document.getElementById('clufix-context-switch')
     if (el) setRect(el.getBoundingClientRect())
     const t = setTimeout(() => setVisible(true), 30)
     return () => clearTimeout(t)
@@ -23526,12 +23526,12 @@ export default function App() {
   const [user,     setUser]     = useState(null)
   const [profile,  setProfile]  = useState(null)
   // Tab activa del ClientView (Mis Clubs / Historial / Mi QR / Cuenta).
-  // El ClientView dispatcha 'benefix:client-tab-changed' cada vez que cambia,
+  // El ClientView dispatcha 'clufix:client-tab-changed' cada vez que cambia,
   // y acá lo guardamos para que el Navbar pueda saber cuál tab está activa
   // y coordinar el highlight del botón persona vs los tabs del nav inferior.
   const [clientTab, setClientTab] = useState('mis clubs')
   // Tab activa del CommerceSettingsView para que BottomNavV2 pueda iluminar
-  // el slot correcto. Lo dispatcha CommerceSettingsView via 'benefix:commerce-tab-changed'.
+  // el slot correcto. Lo dispatcha CommerceSettingsView via 'clufix:commerce-tab-changed'.
   const [merchantTab, setMerchantTab] = useState('dashboard')
   // activeContext: 'client' | 'merchant'. Determina que slots muestra el
   // BottomNavV2 y que QR sheet abre el boton central. Se inicializa en
@@ -23543,7 +23543,7 @@ export default function App() {
   // Tooltip de onboarding del switch cliente/comercio — aparece una sola vez
   // después del primer registro de negocio.
   const [showSwitchTooltip, setShowSwitchTooltip] = useState(false)
-  // unreadNotifsCount: lo dispatcha NotificationsBell via 'benefix:notifications-count'.
+  // unreadNotifsCount: lo dispatcha NotificationsBell via 'clufix:notifications-count'.
   // Lo usa BottomNavV2 para mostrar el dot rojo en el slot de Notificaciones.
   const [unreadNotifsCount, setUnreadNotifsCount] = useState(0)
   // Sheets del nuevo bottom-nav v2.
@@ -23558,8 +23558,8 @@ export default function App() {
   // signupModal: { mode: 'client' | 'merchant' } | null. Cuando está seteado,
   // se renderiza MinimalSignupModal por encima de todo. Lo seteamos:
   //   • Después de TermsAcceptance, si profile.onboarding_completed===false
-  //     (lee sessionStorage 'benefix:signupAs' para decidir el modo).
-  //   • Al recibir el evento 'benefix:open-signup' (cross-rol, ej: cliente
+  //     (lee sessionStorage 'clufix:signupAs' para decidir el modo).
+  //   • Al recibir el evento 'clufix:open-signup' (cross-rol, ej: cliente
   //     existente que quiere registrar negocio).
   const [signupModal,    setSignupModal]    = useState(null)
   const [authReady,     setAuthReady]     = useState(false)
@@ -23577,7 +23577,7 @@ export default function App() {
 
   // Primera visita de sesión → mostrar loading screen
   useEffect(() => {
-    if (!sessionStorage.getItem('benefix:loaded')) setIsAppLoading(true)
+    if (!sessionStorage.getItem('clufix:loaded')) setIsAppLoading(true)
   }, [])
 
   // Auth init — getSession reads from cookies immediately, no network needed
@@ -23604,8 +23604,8 @@ export default function App() {
         setProfile(null)
         setShowOnboarding(false)
         bootComplete.current = false
-        localStorage.removeItem('benefix:lastView')
-        localStorage.removeItem('benefix:commerceTab')
+        localStorage.removeItem('clufix:lastView')
+        localStorage.removeItem('clufix:commerceTab')
         navigate('home')
       }
     })
@@ -23627,19 +23627,19 @@ export default function App() {
     // mostrarle ningún wizard ni MinimalSignupModal.
     const alreadyOnboarded = data?.onboarding_completed === true
     if (alreadyOnboarded) {
-      try { sessionStorage.removeItem('benefix:loginNext') } catch {}
-      try { sessionStorage.removeItem('benefix:signupAs') } catch {}
+      try { sessionStorage.removeItem('clufix:loginNext') } catch {}
+      try { sessionStorage.removeItem('clufix:signupAs') } catch {}
     }
 
     // Login intent — si el usuario llegó al login desde "Soy comercio" u otro CTA
-    // que setea benefix:loginNext, lo respetamos y va a esa vista. Tiene
+    // que setea clufix:loginNext, lo respetamos y va a esa vista. Tiene
     // prioridad sobre el restoreView porque expresa la intención más reciente.
     // NO aplicamos loginNext si ya está onboarded (se borró arriba).
     let consumedLoginNext = false
     try {
-      const next = sessionStorage.getItem('benefix:loginNext')
+      const next = sessionStorage.getItem('clufix:loginNext')
       if (next) {
-        sessionStorage.removeItem('benefix:loginNext')
+        sessionStorage.removeItem('clufix:loginNext')
         setView(next)
         bootComplete.current = true
         consumedLoginNext = true
@@ -23654,7 +23654,7 @@ export default function App() {
     // ANTES del useEffect que setea el state — durante esa ventana, el
     // state está en {view:null} y caeríamos al lastView equivocado.
     if (!consumedLoginNext && restoreView && data?.role && !_DEEP_LINK.view) {
-      const saved = localStorage.getItem('benefix:lastView')
+      const saved = localStorage.getItem('clufix:lastView')
       const VALID = {
         client:         ['client', 'directory'],
         commerce_owner: ['commerce-settings', 'commerce', 'client', 'directory'],
@@ -23681,7 +23681,7 @@ export default function App() {
           setView(saved)
         }
       } else {
-        if (saved) localStorage.removeItem('benefix:lastView')
+        if (saved) localStorage.removeItem('clufix:lastView')
         setView(defaults[data.role] || 'home')
       }
       bootComplete.current = true
@@ -23700,9 +23700,9 @@ export default function App() {
     // La club page guarda el slug antes del OAuth; acá lo consumimos y unimos.
     if (data?.onboarding_completed === true) {
       try {
-        const pendingSlug = sessionStorage.getItem('benefix:pendingJoinSlug')
+        const pendingSlug = sessionStorage.getItem('clufix:pendingJoinSlug')
         if (pendingSlug) {
-          sessionStorage.removeItem('benefix:pendingJoinSlug')
+          sessionStorage.removeItem('clufix:pendingJoinSlug')
           const { data: c } = await supabase.from('commerces').select('id').eq('slug', pendingSlug).maybeSingle()
           if (c?.id) {
             await fetch('/api/join', {
@@ -23723,7 +23723,7 @@ export default function App() {
     if (profile?.onboarding_completed === false) {
       let signupMode = 'client'
       try {
-        const wanted = sessionStorage.getItem('benefix:signupAs')
+        const wanted = sessionStorage.getItem('clufix:signupAs')
         if (wanted === 'merchant' || wanted === 'client') signupMode = wanted
       } catch {}
       setSignupModal({ mode: signupMode })
@@ -23739,8 +23739,8 @@ export default function App() {
       const mode = e?.detail?.mode === 'merchant' ? 'merchant' : 'client'
       setSignupModal({ mode })
     }
-    window.addEventListener('benefix:open-signup', onOpenSignup)
-    return () => window.removeEventListener('benefix:open-signup', onOpenSignup)
+    window.addEventListener('clufix:open-signup', onOpenSignup)
+    return () => window.removeEventListener('clufix:open-signup', onOpenSignup)
   }, [])
 
   // Cities con conteos
@@ -23763,7 +23763,7 @@ export default function App() {
 
   async function handleLogin(opts = {}) {
     if (opts?.nextView) {
-      try { sessionStorage.setItem('benefix:loginNext', opts.nextView) } catch {}
+      try { sessionStorage.setItem('clufix:loginNext', opts.nextView) } catch {}
     }
     window.location.href = '/api/auth/google'
   }
@@ -23781,8 +23781,8 @@ export default function App() {
     // razón, igual seguimos limpiando el state local y forzando reload.
     try { await supabase.auth.signOut({ scope: 'global' }) } catch (_) {}
     try {
-      localStorage.removeItem('benefix:lastView')
-      localStorage.removeItem('benefix:commerceTab')
+      localStorage.removeItem('clufix:lastView')
+      localStorage.removeItem('clufix:commerceTab')
     } catch (_) {}
     // Forzar un reload completo. Sin esto, las cookies de Supabase pueden
     // quedar en estado inconsistente con el state de React y la sesión
@@ -23795,9 +23795,9 @@ export default function App() {
 
   function navigate(v) { setView(v); window.scrollTo({ top:0, behavior:'smooth' }) }
 
-  // Escucha 'benefix:navigate' (lo dispara el buzón de sugerencias cuando tocás un CTA).
+  // Escucha 'clufix:navigate' (lo dispara el buzón de sugerencias cuando tocás un CTA).
   // Si viene { view, tab }, navega a esa view y propaga el tab al CommerceSettingsView
-  // (que lo escucha como 'benefix:set-tab') una vez montado.
+  // (que lo escucha como 'clufix:set-tab') una vez montado.
   useEffect(() => {
     function onNavigate(e) {
       const targetView = e.detail?.view
@@ -23811,14 +23811,14 @@ export default function App() {
         // estamos en la misma view, el primer dispatch va al toque (sync),
         // sino esperamos un poquito a que monte. Reintento extra a 300ms
         // por las dudas de slow-mount en mobile. Cada listener idempotente.
-        const fire = () => window.dispatchEvent(new CustomEvent('benefix:set-tab', { detail: { tab } }))
+        const fire = () => window.dispatchEvent(new CustomEvent('clufix:set-tab', { detail: { tab } }))
         if (sameView) fire()
         setTimeout(fire, 80)
         setTimeout(fire, 300)
       }
     }
-    window.addEventListener('benefix:navigate', onNavigate)
-    return () => window.removeEventListener('benefix:navigate', onNavigate)
+    window.addEventListener('clufix:navigate', onNavigate)
+    return () => window.removeEventListener('clufix:navigate', onNavigate)
   }, [view])
 
   // ClientView nos avisa cada vez que cambia su tab, para que el Navbar
@@ -23828,8 +23828,8 @@ export default function App() {
       const next = e.detail?.tab
       if (next) setClientTab(next)
     }
-    window.addEventListener('benefix:client-tab-changed', onClientTabChanged)
-    return () => window.removeEventListener('benefix:client-tab-changed', onClientTabChanged)
+    window.addEventListener('clufix:client-tab-changed', onClientTabChanged)
+    return () => window.removeEventListener('clufix:client-tab-changed', onClientTabChanged)
   }, [])
 
   // CommerceSettingsView nos avisa cada vez que cambia su tab — eso permite
@@ -23839,8 +23839,8 @@ export default function App() {
       const next = e.detail?.tab
       if (next) setMerchantTab(next)
     }
-    window.addEventListener('benefix:commerce-tab-changed', onMerchantTabChanged)
-    return () => window.removeEventListener('benefix:commerce-tab-changed', onMerchantTabChanged)
+    window.addEventListener('clufix:commerce-tab-changed', onMerchantTabChanged)
+    return () => window.removeEventListener('clufix:commerce-tab-changed', onMerchantTabChanged)
   }, [])
 
   // Escucha el contador de no-leidas que dispatcha NotificationsBell.
@@ -23849,8 +23849,8 @@ export default function App() {
       const c = Number(e.detail?.count) || 0
       setUnreadNotifsCount(c)
     }
-    window.addEventListener('benefix:notifications-count', onCount)
-    return () => window.removeEventListener('benefix:notifications-count', onCount)
+    window.addEventListener('clufix:notifications-count', onCount)
+    return () => window.removeEventListener('clufix:notifications-count', onCount)
   }, [])
 
   // Carga el conteo de memberships del user para decidir si mostrar el
@@ -23877,7 +23877,7 @@ export default function App() {
     const hasCommerce = profile.role === 'commerce_owner'
     let next = 'client'
     if (intent === 'both') {
-      const stored = (() => { try { return localStorage.getItem('benefix:active-context') } catch { return null } })()
+      const stored = (() => { try { return localStorage.getItem('clufix:active-context') } catch { return null } })()
       if (stored === 'client' || stored === 'merchant') next = stored
       else next = hasCommerce ? 'merchant' : 'client'
     } else if (intent === 'client') {
@@ -23894,12 +23894,12 @@ export default function App() {
   // localStorage, dispara evento custom y navega a la vista raiz del rol.
   function handleContextChange(next) {
     setActiveContext(next)
-    try { localStorage.setItem('benefix:active-context', next) } catch {}
-    try { window.dispatchEvent(new CustomEvent('benefix:context-changed', { detail: { context: next } })) } catch {}
+    try { localStorage.setItem('clufix:active-context', next) } catch {}
+    try { window.dispatchEvent(new CustomEvent('clufix:context-changed', { detail: { context: next } })) } catch {}
     if (next === 'client') {
-      window.dispatchEvent(new CustomEvent('benefix:navigate', { detail: { view: 'client', tab: 'mis clubs' } }))
+      window.dispatchEvent(new CustomEvent('clufix:navigate', { detail: { view: 'client', tab: 'mis clubs' } }))
     } else {
-      window.dispatchEvent(new CustomEvent('benefix:navigate', { detail: { view: 'commerce-settings', tab: 'dashboard' } }))
+      window.dispatchEvent(new CustomEvent('clufix:navigate', { detail: { view: 'commerce-settings', tab: 'dashboard' } }))
     }
   }
 
@@ -23911,10 +23911,10 @@ export default function App() {
   }
 
   // Handler de navegacion del BottomNavV2 y MoreSheet. Delega al sistema
-  // existente via 'benefix:navigate' que ya sabe propagar el tab al destino.
+  // existente via 'clufix:navigate' que ya sabe propagar el tab al destino.
   function handleNavGo(v, t) {
     if (!v) return
-    window.dispatchEvent(new CustomEvent('benefix:navigate', { detail: { view: v, tab: t || null } }))
+    window.dispatchEvent(new CustomEvent('clufix:navigate', { detail: { view: v, tab: t || null } }))
   }
 
   // Reglas de visibilidad del ContextSwitchPill:
@@ -23949,8 +23949,8 @@ export default function App() {
   useEffect(() => {
     if (!shouldShowContextSwitch) return
     try {
-      if (localStorage.getItem('benefix:switch-tooltip-seen')) return
-      if (!sessionStorage.getItem('benefix:show-switch-tooltip')) return
+      if (localStorage.getItem('clufix:switch-tooltip-seen')) return
+      if (!sessionStorage.getItem('clufix:show-switch-tooltip')) return
     } catch { return }
     // Pequeño delay para que el switch ya esté montado en el DOM antes de
     // medir su posición con getBoundingClientRect().
@@ -24000,14 +24000,14 @@ export default function App() {
   useEffect(() => {
     if (TRANSIENT_VIEWS.has(view)) return
     if (!bootComplete.current) return
-    localStorage.setItem('benefix:lastView', view)
+    localStorage.setItem('clufix:lastView', view)
   }, [view])
 
   const currentCity = cities.find(c => c.slug === citySlug)
 
   if (isAppLoading) return (
     <LoadingScreen onComplete={() => {
-      sessionStorage.setItem('benefix:loaded', '1')
+      sessionStorage.setItem('clufix:loaded', '1')
       setIsAppLoading(false)
     }} />
   )
@@ -24023,7 +24023,7 @@ export default function App() {
 
   // ── Intent picker post-OAuth ──
   // Aparece cuando el user se loggeó pero todavía no eligió "cómo querés
-  // usar Benefix". Cubre dos escenarios:
+  // usar Clufix". Cubre dos escenarios:
   //  1) User nuevo — recién hizo OAuth, no tiene profile.user_intent ni
   //     intent_prompt_shown=true. Le mostramos las 3 opciones.
   //  2) User legacy — tenía cuenta antes de la migration, así que
@@ -24061,9 +24061,9 @@ export default function App() {
             // Auto-join pendiente desde flujo QR (club page almacena el slug
             // en sessionStorage antes de disparar el OAuth).
             try {
-              const pendingSlug = sessionStorage.getItem('benefix:pendingJoinSlug')
+              const pendingSlug = sessionStorage.getItem('clufix:pendingJoinSlug')
               if (pendingSlug) {
-                sessionStorage.removeItem('benefix:pendingJoinSlug')
+                sessionStorage.removeItem('clufix:pendingJoinSlug')
                 const sb = getSupabase()
                 const { data: c } = await sb.from('commerces').select('id').eq('slug', pendingSlug).maybeSingle()
                 if (c?.id) {
@@ -24106,8 +24106,8 @@ export default function App() {
               // ojo muestre un banner explicando que para más opciones
               // (premios, beneficios, mensajes) hay que ir a Mi Negocio.
               try {
-                sessionStorage.setItem('benefix:welcome-merchant', '1')
-                sessionStorage.setItem('benefix:show-switch-tooltip', '1')
+                sessionStorage.setItem('clufix:welcome-merchant', '1')
+                sessionStorage.setItem('clufix:show-switch-tooltip', '1')
               } catch {}
               if (slug && typeof window !== 'undefined') {
                 window.location.href = `/club/${slug}?edit=1`
@@ -24139,8 +24139,8 @@ export default function App() {
       {showSwitchTooltip && (
         <SwitchTooltip onDismiss={() => {
           try {
-            localStorage.setItem('benefix:switch-tooltip-seen', '1')
-            sessionStorage.removeItem('benefix:show-switch-tooltip')
+            localStorage.setItem('clufix:switch-tooltip-seen', '1')
+            sessionStorage.removeItem('clufix:show-switch-tooltip')
           } catch {}
           setShowSwitchTooltip(false)
         }} />
@@ -24187,7 +24187,7 @@ export default function App() {
               pill (campana de notifs + chat de soporte). Los componentes
               NotificationsBell y SupportChat se siguen montando para que
               sus drawers existan, pero con `hideButton` para que no
-              dupliquen botones flotantes. La interacción se delega vía eventos `benefix:open-notifications` y `benefix:open-support`. */}
+              dupliquen botones flotantes. La interacción se delega vía eventos `clufix:open-notifications` y `clufix:open-support`. */}
           {/* FloatingActionsTab OCULTADO el 2026-05-03: redundante con el slot Notificaciones del BottomNavV2. */}
           {false && <FloatingActionsTab />}
           <NotificationsBell hideButton role={view === 'commerce-settings' ? 'merchant' : 'client'} />
@@ -24230,13 +24230,13 @@ export default function App() {
             onShowCommerceQR={() => {
               if (view !== 'scanner') navigate('scanner')
               setTimeout(() => {
-                window.dispatchEvent(new CustomEvent('benefix:scan-mode', { detail: { mode: 'show-business-qr' } }))
+                window.dispatchEvent(new CustomEvent('clufix:scan-mode', { detail: { mode: 'show-business-qr' } }))
               }, 80)
             }}
             onScanClient={() => {
               if (view !== 'scanner') navigate('scanner')
               setTimeout(() => {
-                window.dispatchEvent(new CustomEvent('benefix:scan-mode', { detail: { mode: 'register-visit' } }))
+                window.dispatchEvent(new CustomEvent('clufix:scan-mode', { detail: { mode: 'register-visit' } }))
               }, 80)
             }}
           />
@@ -24252,7 +24252,7 @@ export default function App() {
               if (res.ok) {
                 await loadProfile(user.id)
                 setActiveContext('client')
-                try { localStorage.setItem('benefix:active-context', 'client') } catch {}
+                try { localStorage.setItem('clufix:active-context', 'client') } catch {}
                 navigate('client')
               } else {
                 const body = await res.json().catch(() => ({}))

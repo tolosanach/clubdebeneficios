@@ -357,7 +357,7 @@ function ClienteContent() {
 
         {/* Footer */}
         <div style={{ textAlign:'center', marginTop:32, fontSize:11, color:C.dust }}>
-          Benefix · {commerce.name}
+          Clufix · {commerce.name}
         </div>
       </div>
     </div>

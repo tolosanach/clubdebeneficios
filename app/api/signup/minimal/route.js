@@ -48,9 +48,9 @@ function promoteIntent(currentIntent) {
 }
 
 // Convierte el array openingHours de Google ({day:'Lunes', ranges:['09:00-13:00','16:00-22:00']})
-// al objeto hours_structured de Benefix (key=monday|...|sunday, {open, shifts:[{from,to}]}).
+// al objeto hours_structured de Clufix (key=monday|...|sunday, {open, shifts:[{from,to}]}).
 // Si el array es null/vacio devuelve null para no sobreescribir el default.
-function googleHoursToBenefix(googleHours) {
+function googleHoursToClufix(googleHours) {
   if (!Array.isArray(googleHours) || googleHours.length === 0) return null
   const DAY_KEY = {
     'lunes':'monday', 'martes':'tuesday', 'miércoles':'wednesday', 'miercoles':'wednesday',
@@ -192,7 +192,7 @@ export async function POST(request) {
     // un local de las sugerencias, prellenamos address, lat/lng y horarios
     // estructurados de una para evitar que tenga que volver a cargarlos.
     const gp = body.googlePlace || null
-    const gpHours = gp ? googleHoursToBenefix(gp.openingHours) : null
+    const gpHours = gp ? googleHoursToClufix(gp.openingHours) : null
 
     function buildPayload(currentSlug) {
       return {

@@ -2,10 +2,10 @@ import { ImageResponse } from 'next/og'
 
 // Open Graph image (1200x630). Se sirve cuando alguien comparte
 // benefix.com.ar en WhatsApp, Twitter, Facebook, etc.
-// Rebrand mayo 2026: violeta sólido + wordmark "Benefix" grande blanco
+// Rebrand mayo 2026: violeta sólido + wordmark "Clufix" grande blanco
 // + tagline. Sin gradient orange-fucsia, sin blobs rosa.
 export const runtime = 'edge'
-export const alt = 'Benefix — Tus beneficios. Un solo QR.'
+export const alt = 'Clufix — Tus beneficios. Un solo QR.'
 export const size = { width: 1200, height: 630 }
 export const contentType = 'image/png'
 
@@ -32,7 +32,7 @@ export default function OgImage() {
         {/* Wordmark gigante. La "B" en bold reemplaza al cuadrado-icon
             del rebrand viejo — el wordmark mismo es el branding. */}
         <div style={{ fontSize:120, fontWeight:800, color:'#fff', letterSpacing:'-4px', lineHeight:1, textAlign:'center', marginBottom:24 }}>
-          Benefix
+          Clufix
         </div>
 
         {/* Tagline */}

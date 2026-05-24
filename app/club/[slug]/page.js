@@ -340,7 +340,7 @@ function GlassCard({ children, style = {}, hover = true, onClick, className }) {
 // Logo — definicion local removida (mayo 2026, rebrand fase 1).
 // Antes era un wrapper <a href="/"> con icono SVG inline + wordmark
 // "club de / beneficios" partido en dos lineas. Ahora usamos el
-// componente unificado lib/Logo.js (mismo wordmark "Benefix" que el
+// componente unificado lib/Logo.js (mismo wordmark "Clufix" que el
 // resto de la app). Los call sites siguen envueltos en <a href="/">
 // donde corresponda — el componente Logo no fuerza tag wrapper.
 
@@ -1894,14 +1894,14 @@ export default function ClubProfilePage() {
   const [coverLightbox, setCoverLightbox] = useState(null)
   // showWelcomeMerchantBanner: banner verde "¡Tu club ya está vivo!" que
   // aparece la primera vez que el dueño llega al ojo recién registrado.
-  // Se dispara desde sessionStorage `benefix:welcome-merchant` que setea
+  // Se dispara desde sessionStorage `clufix:welcome-merchant` que setea
   // el MinimalSignupModal al terminar el signup merchant. Se descarta al
   // tocar la X o salir del modo edición.
   const [showWelcomeMerchantBanner, setShowWelcomeMerchantBanner] = useState(false)
   useEffect(() => {
     if (typeof window === 'undefined') return
     try {
-      if (sessionStorage.getItem('benefix:welcome-merchant') === '1') {
+      if (sessionStorage.getItem('clufix:welcome-merchant') === '1') {
         setShowWelcomeMerchantBanner(true)
       }
     } catch {}
@@ -2062,7 +2062,7 @@ export default function ClubProfilePage() {
     const slugParam = (typeof slug === 'string' ? slug : '') || ''
     if (!slugParam) return
     const fromQrFlag = searchParams?.get('from_qr') === '1'
-    const key = `benefix:spotlight_${slugParam}`
+    const key = `clufix:spotlight_${slugParam}`
     if (localStorage.getItem(key)) {
       setSpotlightSeen(true)
     } else {
@@ -2127,10 +2127,10 @@ export default function ClubProfilePage() {
   useEffect(() => {
     if (autoJoinDone.current) return
     if (!user || !data || membership) return
-    const pending = sessionStorage.getItem('benefix:pendingJoinSlug')
+    const pending = sessionStorage.getItem('clufix:pendingJoinSlug')
     if (pending !== slug) return
     autoJoinDone.current = true
-    sessionStorage.removeItem('benefix:pendingJoinSlug')
+    sessionStorage.removeItem('clufix:pendingJoinSlug')
     setShowSplash(false)
     handleJoin()
   }, [user, data, membership])
@@ -2209,7 +2209,7 @@ export default function ClubProfilePage() {
       await handleJoin()
       setShowSplash(false)
     } else {
-      try { sessionStorage.setItem('benefix:pendingJoinSlug', slug) } catch {}
+      try { sessionStorage.setItem('clufix:pendingJoinSlug', slug) } catch {}
       window.location.href = `/api/auth/google?next=${encodeURIComponent(`/club/${slug}`)}`
     }
   }
@@ -2331,16 +2331,16 @@ export default function ClubProfilePage() {
   const navigateEditField = (field) => {
     const mapping = FIELD_NAV_MAP[field] || { tab: 'configuracion', section: null }
     try {
-      sessionStorage.setItem('benefix:loginNext', 'commerce-settings')
-      sessionStorage.setItem('benefix:nextTab', mapping.tab)
-      if (mapping.section) sessionStorage.setItem('benefix:edit-section', mapping.section)
-      else sessionStorage.removeItem('benefix:edit-section')
+      sessionStorage.setItem('clufix:loginNext', 'commerce-settings')
+      sessionStorage.setItem('clufix:nextTab', mapping.tab)
+      if (mapping.section) sessionStorage.setItem('clufix:edit-section', mapping.section)
+      else sessionStorage.removeItem('clufix:edit-section')
       // Flag "vine del preview con slug X" — el panel CommerceSettingsView
       // lo lee al montar para mostrar un banner "Volver al preview" arriba
       // que devuelve a /club/[slug]?edit=1. Slug lo sacamos del prop del
       // componente padre. El flag se borra cuando el dueño efectivamente
       // toca "Volver al preview" o sale del panel.
-      if (slug) sessionStorage.setItem('benefix:preview-back-slug', slug)
+      if (slug) sessionStorage.setItem('clufix:preview-back-slug', slug)
     } catch {}
     if (typeof window !== 'undefined') {
       const params = []
@@ -2444,7 +2444,7 @@ export default function ClubProfilePage() {
       {/* ── NAVBAR MINIMO (solo editMode) ──
             En editMode (eye preview) reemplazamos la barra completa de
             iconos del navbar viejo por una barra liviana que SOLO tiene
-            el logo Benefix. Asi se mantiene el branding arriba sin la
+            el logo Clufix. Asi se mantiene el branding arriba sin la
             chrome de iconos role-aware (que se sentia ruidosa en este
             modo). El navegar entre vistas vive en el BottomNavV2 que
             montamos al final + el "Volver al panel" del banner de
@@ -2781,7 +2781,7 @@ export default function ClubProfilePage() {
           position:'relative',
         }}>
           <button onClick={() => {
-              try { sessionStorage.removeItem('benefix:welcome-merchant') } catch {}
+              try { sessionStorage.removeItem('clufix:welcome-merchant') } catch {}
               setShowWelcomeMerchantBanner(false)
             }}
             aria-label="Cerrar"
@@ -3422,7 +3422,7 @@ export default function ClubProfilePage() {
               </div>
             )}
 
-            {/* Footer "Benefix · Ciudad" eliminado de acá: quedaba flotando
+            {/* Footer "Clufix · Ciudad" eliminado de acá: quedaba flotando
                 en el medio de la página después de mergear los tabs. Si se
                 quiere volver a mostrar, va al final de todo el contenido. */}
           </div>
@@ -3600,7 +3600,7 @@ export default function ClubProfilePage() {
                         <button
                           onClick={(e) => {
                             e.stopPropagation()
-                            try { sessionStorage.setItem('benefix:edit-prize-id', prize.id) } catch {}
+                            try { sessionStorage.setItem('clufix:edit-prize-id', prize.id) } catch {}
                             navigateEditField('prize')
                           }}
                           aria-label={`Editar ${prize.name}`}
@@ -3878,7 +3878,7 @@ export default function ClubProfilePage() {
             si el dueño tapeo "Beneficios", aterriza en /?view=commerce-
             settings&tab=recompensas y la AppRoot deep-linker se encarga
             del resto. Para el slot Notificaciones reusamos el evento
-            'benefix:open-notifications' que la NotificationsBell que ya
+            'clufix:open-notifications' que la NotificationsBell que ya
             esta en este page escucha (la importamos arriba). */}
       {/* BottomNavV2 — siempre visible. Si el dueño está mirando su propio
           club via el ojo (editMode), el nav usa context='merchant' y todo
@@ -4394,7 +4394,7 @@ export default function ClubProfilePage() {
               <span style={{ fontFamily:FN, fontSize:22, fontWeight:900, color:'#7131E1' }}>G</span>
             </div>
             <div style={{ fontFamily:FN, fontSize:17, fontWeight:800, color:C.white, textAlign:'center', marginBottom:8 }}>Iniciar sesión con Google</div>
-            <div style={{ fontSize:13, color:C.mist, textAlign:'center', lineHeight:1.7, marginBottom:22 }}>Te vamos a redirigir a Google para iniciar sesión. Después volvés a Benefix automáticamente.</div>
+            <div style={{ fontSize:13, color:C.mist, textAlign:'center', lineHeight:1.7, marginBottom:22 }}>Te vamos a redirigir a Google para iniciar sesión. Después volvés a Clufix automáticamente.</div>
             <div style={{ display:'flex', gap:10 }}>
               <button onClick={() => setShowLoginPrompt(false)} style={{ flex:1, padding:'11px', background:'rgba(255,255,255,0.08)', border:'1px solid rgba(255,255,255,0.12)', borderRadius:12, color:'#F0EAFF', fontFamily:FN, fontSize:13, fontWeight:600, cursor:'pointer' }}>← Volver</button>
               <button onClick={confirmGoogleLogin} style={{ flex:1, padding:'11px', background:'#7131E1', border:'none', borderRadius:12, color:'#fff', fontFamily:FN, fontSize:13, fontWeight:700, cursor:'pointer' }}>Continuar →</button>
