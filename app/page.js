@@ -23944,6 +23944,7 @@ export default function App() {
   //   - user_intent='merchant' Y memberships > 0 (cliente de otros clubes)
   //   - en cualquier otro caso, no se monta
   const shouldShowContextSwitch = (() => {
+    if (view === 'home') return false
     const intent = profile?.user_intent
     if (!user || !profile) return false
     if (intent === 'both') return true
