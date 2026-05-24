@@ -85,7 +85,7 @@ export default function TerminosPage() {
 
           <section style={{ marginBottom:28 }}>
             <h2 style={Section}>12. Contacto</h2>
-            <p>Para consultas, reclamos o solicitudes relacionadas con estos términos, podés escribirnos por <Link href="/ayuda" style={{ color:'#BD4BF8', textDecoration:'underline' }}>nuestro canal de ayuda</Link>.</p>
+            <p>Para consultas, reclamos o solicitudes relacionadas con estos términos, podés escribirnos por <Link href="/ayuda" style={{ color:'#6F30DF', textDecoration:'underline' }}>nuestro canal de ayuda</Link>.</p>
           </section>
 
         </div>

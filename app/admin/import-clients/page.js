@@ -12,12 +12,12 @@ const C = {
   rim:'rgba(255,255,255,0.12)', white:'#fff', mist:'#9B85CC', dust:'#8370AD',
   // Rebrand mayo 2026 fase 2: v migra a violeta brand sólido. o (naranja)
   // queda solo si se usa como acento semántico; G ahora es solid.
-  v:'#7131E1', o:'#FE5000', ok:'#22E698', err:'#f87444', info:'#40C8FF',
+  v:'#6F30DF', o:'#FF199F', ok:'#22E698', err:'#f87444', info:'#40C8FF',
 }
 const FN = "'Space Grotesk', system-ui, sans-serif"
 // G — antes era gradient orange→fucsia. Rebrand mayo 2026 fase 2:
 // violeta brand sólido. Mantengo el nombre G por compat de call sites.
-const G  = '#7131E1'
+const G  = '#6F30DF'
 
 export default function ImportClientsPage() {
   const supabase = getSupabase()

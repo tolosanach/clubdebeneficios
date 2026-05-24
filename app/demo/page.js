@@ -19,16 +19,16 @@ import {
 
 // ─── PALETTE (idéntica a app/page.js) ────────────────────────────────────────
 // Rebrand mayo 2026 fase 2: G y GV pasaron de gradient orange→fucsia y
-// violeta-deep→violeta a violeta brand sólido (#7131E1). v y v1 también
-// migran al brand. o (#FE5000) queda solo como acento semántico naranja.
-const G  = '#7131E1'
-const GV = '#7131E1'
+// violeta-deep→violeta a violeta brand sólido (#6F30DF). v y v1 también
+// migran al brand. o (#FF199F) queda solo como acento semántico naranja.
+const G  = '#6F30DF'
+const GV = '#6F30DF'
 const C  = {
   bg:'#000', bg2:'rgba(255,255,255,0.05)', bg3:'rgba(255,255,255,0.04)',
   card:'rgba(255,255,255,0.06)', cardH:'rgba(255,255,255,0.10)',
   rim:'rgba(255,255,255,0.10)', rimH:'rgba(255,255,255,0.20)',
   white:'#FFFFFF', pearl:'#F0EAFF', mist:'#9B85CC', dust:'#8370AD',
-  o:'#FE5000', v:'#7131E1', v1:'#6935BD',
+  o:'#FF199F', v:'#6F30DF', v1:'#3D0A9E',
   ok:'#22E698', warn:'#F59E0B', info:'#40C8FF',
 }
 const FN = "'Space Grotesk', system-ui, sans-serif"
@@ -36,8 +36,8 @@ const FI = "'Inter', system-ui, sans-serif"
 
 const PLANS = {
   free:    { label:'FREE',    color:'#9CA3AF' },
-  starter: { label:'STARTER', color:'#7131E1' },
-  pro:     { label:'PRO',     color:'#EC4899' },
+  starter: { label:'STARTER', color:'#6F30DF' },
+  pro:     { label:'PRO',     color:'#FF199F' },
 }
 
 // ─── DATOS MOCK ──────────────────────────────────────────────────────────────
@@ -119,7 +119,7 @@ const DEMO_CLIENT_MEMBERSHIPS = [
     nextPrize:{ name:'Café gratis', cost:15, missing:3 },
     activeCoupon:{ promo_id:'pr1', value:20, label:'20% OFF próxima visita', expires_at:daysFromNow(5) },
     Icon: Coffee,
-    color:'#7131E1',
+    color:'#6F30DF',
   },
   {
     id:'cm2',
@@ -134,7 +134,7 @@ const DEMO_CLIENT_MEMBERSHIPS = [
     nextPrize:{ name:'Corte de pelo gratis', cost:8, missing:4 },
     activeCoupon:null,
     Icon: Scissors,
-    color:'#7131E1',
+    color:'#6F30DF',
   },
   {
     id:'cm3',
@@ -149,16 +149,16 @@ const DEMO_CLIENT_MEMBERSHIPS = [
     nextPrize:{ name:'Pizza muzzarella', cost:25, missing:17 },
     activeCoupon:null,
     Icon: Pizza,
-    color:'#EC4899',
+    color:'#FF199F',
   },
 ]
 
 const DEMO_CLIENT_PRIZES = [
-  { id:'cp1', commerce:'Aurora · Café & Brunch', name:'Café gratis',          cost:15, isStars:false, balance:12, color:'#7131E1', Icon: Gift },
-  { id:'cp2', commerce:'Aurora · Café & Brunch', name:'Medialunas x4',        cost:8,  isStars:false, balance:12, color:'#7131E1', Icon: Gift },
-  { id:'cp3', commerce:'Aurora · Café & Brunch', name:'20% OFF en tu visita', cost:25, isStars:false, balance:12, color:'#7131E1', Icon: Percent },
-  { id:'cp4', commerce:'Estética Ottavia',       name:'Corte de pelo gratis', cost:8,  isStars:true,  balance:4,  color:'#7131E1', Icon: Gift },
-  { id:'cp5', commerce:'Pizzería Don Vito',      name:'Pizza muzzarella',     cost:25, isStars:false, balance:8,  color:'#EC4899', Icon: Gift },
+  { id:'cp1', commerce:'Aurora · Café & Brunch', name:'Café gratis',          cost:15, isStars:false, balance:12, color:'#6F30DF', Icon: Gift },
+  { id:'cp2', commerce:'Aurora · Café & Brunch', name:'Medialunas x4',        cost:8,  isStars:false, balance:12, color:'#6F30DF', Icon: Gift },
+  { id:'cp3', commerce:'Aurora · Café & Brunch', name:'20% OFF en tu visita', cost:25, isStars:false, balance:12, color:'#6F30DF', Icon: Percent },
+  { id:'cp4', commerce:'Estética Ottavia',       name:'Corte de pelo gratis', cost:8,  isStars:true,  balance:4,  color:'#6F30DF', Icon: Gift },
+  { id:'cp5', commerce:'Pizzería Don Vito',      name:'Pizza muzzarella',     cost:25, isStars:false, balance:8,  color:'#FF199F', Icon: Gift },
 ]
 
 const DEMO_CLIENT_HISTORY = [
@@ -1392,7 +1392,7 @@ function ClientDemo() {
                 background: 'transparent', border: 'none',
                 cursor: 'pointer',
                 color: active
-                  ? (isWallet ? '#EC4899' : C.white)
+                  ? (isWallet ? '#FF199F' : C.white)
                   : (isWallet ? 'rgba(236,72,153,0.65)' : C.mist),
                 fontFamily: FN, fontSize: 11.5,
                 fontWeight: active ? 800 : 600,
@@ -1406,7 +1406,7 @@ function ClientDemo() {
                 <div style={{
                   position: 'absolute', bottom: -1, left: '20%', right: '20%',
                   height: 2, borderRadius: 2,
-                  background: isWallet ? '#EC4899' : C.v,
+                  background: isWallet ? '#FF199F' : C.v,
                 }} />
               )}
             </button>

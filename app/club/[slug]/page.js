@@ -52,9 +52,9 @@ const C = {
   dust:    '#71717a',
   // Rebrand mayo 2026 fase 2: v migra a violeta brand sólido. pink y o
   // se mantienen como acentos semánticos (cliente y descuento).
-  v:       '#7131E1',
-  pink:    '#ec4899',
-  o:       '#FE5000',
+  v:       '#6F30DF',
+  pink:    '#FF199F',
+  o:       '#FF199F',
   ok:      '#22E698',
   okBg:    'rgba(0,31,16,0.8)',
 }
@@ -62,8 +62,8 @@ const C = {
 // G y GA — antes eran gradients orange→violet y violet→fucsia.
 // Rebrand mayo 2026 fase 2: ambos a violeta brand sólido. Mantengo
 // los nombres por compat con call sites.
-const G   = '#7131E1'
-const GA  = '#7131E1'
+const G   = '#6F30DF'
+const GA  = '#6F30DF'
 
 const FN = "'Space Grotesk', system-ui, sans-serif"
 const FI = "'Inter', system-ui, sans-serif"
@@ -305,7 +305,7 @@ function StarRow({ rating, size = 14 }) {
   return (
     <div style={{ display:'flex', gap:2 }}>
       {[1,2,3,4,5].map(s => (
-        <Star key={s} size={size} strokeWidth={0} fill="currentColor" style={{ color: s <= Math.round(rating) ? '#ec4899' : 'rgba(236,72,153,0.2)' }} />
+        <Star key={s} size={size} strokeWidth={0} fill="currentColor" style={{ color: s <= Math.round(rating) ? '#FF199F' : 'rgba(236,72,153,0.2)' }} />
       ))}
     </div>
   )
@@ -413,7 +413,7 @@ function SlideToJoinButton({ onJoin, isDemoClub }) {
       {/* Gradiente de fondo base (siempre visible, sutil) */}
       <div style={{
         position:'absolute', inset:0,
-        background:'linear-gradient(135deg, #7131E1, #ec4899)',
+        background:'linear-gradient(135deg, #6F30DF, #FF199F)',
         opacity: 0.12,
         pointerEvents:'none',
       }} />
@@ -421,7 +421,7 @@ function SlideToJoinButton({ onJoin, isDemoClub }) {
       {/* Relleno de gradiente al deslizar */}
       <div style={{
         position:'absolute', inset:0,
-        background:'linear-gradient(135deg, #7131E1, #ec4899)',
+        background:'linear-gradient(135deg, #6F30DF, #FF199F)',
         opacity: fillOpacity * 0.88,
         transition: isDragging ? 'none' : 'opacity 0.3s ease',
         pointerEvents:'none',
@@ -452,7 +452,7 @@ function SlideToJoinButton({ onJoin, isDemoClub }) {
           width:70, height:70,
           background: isComplete
             ? 'linear-gradient(135deg, #22c55e, #10b981)'
-            : 'linear-gradient(135deg, #7131E1, #ec4899)',
+            : 'linear-gradient(135deg, #6F30DF, #FF199F)',
           borderRadius:'50%',
           display:'flex', alignItems:'center', justifyContent:'center',
           boxShadow:'0 4px 20px rgba(113,49,225,0.55)',
@@ -631,7 +631,7 @@ function InlineEditModal({ title, field, initial, inputStyle, labelStyle, onClos
         {/* Header */}
         <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', padding:'18px 20px 14px', borderBottom:'1px solid rgba(255,255,255,0.06)' }}>
           <div>
-            <div style={{ fontSize:10, color:'#7131E1', fontWeight:800, letterSpacing:'.18em', textTransform:'uppercase', marginBottom:4, fontFamily:'inherit' }}>Editar</div>
+            <div style={{ fontSize:10, color:'#6F30DF', fontWeight:800, letterSpacing:'.18em', textTransform:'uppercase', marginBottom:4, fontFamily:'inherit' }}>Editar</div>
             <h2 style={{ fontSize:18, fontWeight:900, color:'#fff', margin:0, letterSpacing:'-.01em', fontFamily:'inherit' }}>{title}</h2>
           </div>
           <button onClick={onClose} aria-label="Cerrar"
@@ -773,7 +773,7 @@ function InlineEditModal({ title, field, initial, inputStyle, labelStyle, onClos
                                 style={{
                                   padding:'6px 10px', borderRadius:99, fontSize:11.5, fontWeight:700, fontFamily:'inherit',
                                   cursor: disabled ? 'not-allowed' : 'pointer',
-                                  background: isSel ? 'linear-gradient(135deg, #7131E1, #7131E1)' : 'rgba(255,255,255,0.05)',
+                                  background: isSel ? 'linear-gradient(135deg, #6F30DF, #6F30DF)' : 'rgba(255,255,255,0.05)',
                                   color: isSel ? '#fff' : 'rgba(255,255,255,0.78)',
                                   border: isSel ? '1px solid rgba(113,49,225,0.55)' : '1px solid rgba(255,255,255,0.10)',
                                   opacity: disabled ? 0.4 : 1,
@@ -850,7 +850,7 @@ function InlineEditModal({ title, field, initial, inputStyle, labelStyle, onClos
               {/* Toggle activo */}
               <label style={{ display:'flex', alignItems:'center', gap:10, cursor:'pointer', userSelect:'none', padding:'10px 12px', background:'rgba(255,255,255,0.04)', borderRadius:10, border:'1px solid rgba(255,255,255,0.10)' }}>
                 <input type="checkbox" checked={!!val.active} onChange={e => setVal(v => ({ ...v, active: e.target.checked }))}
-                  style={{ width:18, height:18, accentColor:'#7131E1' }} />
+                  style={{ width:18, height:18, accentColor:'#6F30DF' }} />
                 <span style={{ fontSize:13, color:'#fff', fontFamily:'inherit', fontWeight:600 }}>Activo en el catálogo</span>
               </label>
               {/* Botón eliminar */}
@@ -875,7 +875,7 @@ function InlineEditModal({ title, field, initial, inputStyle, labelStyle, onClos
             Cancelar
           </button>
           <button onClick={save} disabled={saving}
-            style={{ flex:2, padding:'12px', background:'linear-gradient(135deg, #7131E1, #7131E1)', color:'#fff', border:'none', borderRadius:12, fontSize:13, fontWeight:800, cursor: saving ? 'wait' : 'pointer', boxShadow:'0 6px 18px rgba(113,49,225,0.45)', fontFamily:'inherit', opacity: saving ? 0.7 : 1 }}>
+            style={{ flex:2, padding:'12px', background:'linear-gradient(135deg, #6F30DF, #6F30DF)', color:'#fff', border:'none', borderRadius:12, fontSize:13, fontWeight:800, cursor: saving ? 'wait' : 'pointer', boxShadow:'0 6px 18px rgba(113,49,225,0.45)', fontFamily:'inherit', opacity: saving ? 0.7 : 1 }}>
             {saving ? 'Guardando…' : 'Guardar'}
           </button>
         </div>
@@ -941,7 +941,7 @@ function ClubNotifyBell({ commerceId, commerceName, onToggleResult }) {
         position:'absolute', top:16, right:16, zIndex:20,
         width:40, height:40, borderRadius:'50%',
         background: subscribed
-          ? 'linear-gradient(135deg, #7131E1, #EC4899)'
+          ? 'linear-gradient(135deg, #6F30DF, #FF199F)'
           : 'rgba(0,0,0,0.50)',
         backdropFilter: subscribed ? 'none' : 'blur(12px)',
         WebkitBackdropFilter: subscribed ? 'none' : 'blur(12px)',
@@ -1043,7 +1043,7 @@ function ClubNotifyToggle({ commerceId, commerceName }) {
       <div style={{
         width: 36, height: 36, borderRadius: 10, flexShrink: 0,
         background: subscribed
-          ? 'linear-gradient(135deg, #7131E1, #EC4899)'
+          ? 'linear-gradient(135deg, #6F30DF, #FF199F)'
           : 'rgba(255,255,255,0.06)',
         border: subscribed ? 'none' : '1px solid rgba(255,255,255,0.10)',
         display: 'flex', alignItems: 'center', justifyContent: 'center',
@@ -1101,7 +1101,7 @@ function MemberBadge({ createdAt }) {
       fontFamily:FN, fontSize:13, fontWeight:600,
       letterSpacing:'.005em',
       padding:'2px 2px',
-      color:'#7131E1',
+      color:'#6F30DF',
     }}>
       <style>{`
         @keyframes member-badge-shimmer {
@@ -1109,11 +1109,11 @@ function MemberBadge({ createdAt }) {
           100% { background-position: -50% 0; }
         }
       `}</style>
-      <Check size={14} color="#7131E1" strokeWidth={2.2}
+      <Check size={14} color="#6F30DF" strokeWidth={2.2}
         style={{ flexShrink: 0 }}
       />
       <span style={{
-        background: 'linear-gradient(100deg, #7131E1 0%, #7131E1 40%, #F0C2FF 50%, #7131E1 60%, #7131E1 100%)',
+        background: 'linear-gradient(100deg, #6F30DF 0%, #6F30DF 40%, #F0C2FF 50%, #6F30DF 60%, #6F30DF 100%)',
         backgroundSize: '300% 100%',
         WebkitBackgroundClip: 'text',
         backgroundClip: 'text',
@@ -1219,8 +1219,8 @@ function ClubHistory({ user, commerceId, unitLabel, unitColor, UnitIcon, unitIco
               {isVisit
                 ? <UnitIcon size={16} {...unitIconProps} color={unitColor} />
                 : it.kind === 'discount'
-                  ? <Percent size={16} color="#FE5000" strokeWidth={2} />
-                  : <Gift size={16} color="#EC4899" strokeWidth={2} />}
+                  ? <Percent size={16} color="#FF199F" strokeWidth={2} />
+                  : <Gift size={16} color="#FF199F" strokeWidth={2} />}
             </div>
             <div style={{ flex:1, minWidth:0 }}>
               <div style={{ fontFamily:FN, fontSize:13, fontWeight:600, color:C.white, marginBottom:2 }}>
@@ -1232,7 +1232,7 @@ function ClubHistory({ user, commerceId, unitLabel, unitColor, UnitIcon, unitIco
               </div>
               <div style={{ fontSize:11, color:C.mist }}>{dateStr} · {timeStr}{isVisit && it.amount > 0 ? ` · $${Number(it.amount).toLocaleString('es-AR')}` : ''}</div>
             </div>
-            <div style={{ flexShrink:0, fontFamily:FN, fontSize:13, fontWeight:700, color: isVisit ? unitColor : it.kind === 'discount' ? '#FE5000' : '#EC4899' }}>
+            <div style={{ flexShrink:0, fontFamily:FN, fontSize:13, fontWeight:700, color: isVisit ? unitColor : it.kind === 'discount' ? '#FF199F' : '#FF199F' }}>
               {isVisit
                 ? `+${it.points || 1} ${unitLabel === 'estrellas' ? '★' : 'pts'}`
                 : it.kind === 'discount'
@@ -1405,7 +1405,7 @@ function LimitedTimeBenefitsSlider({ promos, unitLabel, editMode = false, onEdit
               style={{
                 display:'inline-flex', alignItems:'center', justifyContent:'center',
                 width:28, height:28, borderRadius:'50%',
-                background:'linear-gradient(135deg, #B45309, #F5A623)',
+                background:'linear-gradient(135deg, #B45309, #FF199F)',
                 border:'1px solid rgba(255,255,255,0.22)',
                 color:'#fff', cursor:'pointer', padding:0,
                 boxShadow:'0 4px 12px rgba(245,166,35,0.50)',
@@ -1782,7 +1782,7 @@ function ClubTopNav({ tab, setTab, prizesCount, editMode = false }) {
       backdropFilter: 'none',
       WebkitBackdropFilter: 'none',
       borderRadius: 9999,
-      border: '1.5px solid #EC4899',
+      border: '1.5px solid #FF199F',
       padding: 6,
       display: 'flex',
       gap: 6,
@@ -1799,7 +1799,7 @@ function ClubTopNav({ tab, setTab, prizesCount, editMode = false }) {
             style={{
               // Activo: fondo fucsia, texto e ícono blanco.
               // Inactivo: fondo blanco, ícono negro — sin glow, sin sombras.
-              background: active ? '#EC4899' : '#ffffff',
+              background: active ? '#FF199F' : '#ffffff',
               border: 'none',
               borderRadius: 9999,
               padding: active ? '12px 18px' : '12px 14px',
@@ -1822,7 +1822,7 @@ function ClubTopNav({ tab, setTab, prizesCount, editMode = false }) {
             {badge > 0 && !active && (
               <span style={{
                 position:'absolute', top:-3, right:-3,
-                background:'#EC4899', color:'#fff',
+                background:'#FF199F', color:'#fff',
                 fontSize:10, fontWeight:800, fontFamily:FN,
                 borderRadius:9999, padding:'2px 6px',
                 minWidth:16, textAlign:'center', lineHeight:1.4,
@@ -2361,7 +2361,7 @@ export default function ClubProfilePage() {
     if (!editMode) return null
     const grad = done
       ? 'linear-gradient(135deg, #15803D, #22E698)'
-      : 'linear-gradient(135deg, #B45309, #F5A623)'
+      : 'linear-gradient(135deg, #B45309, #FF199F)'
     const shadow = done
       ? '0 4px 12px rgba(34,230,152,0.40)'
       : '0 4px 12px rgba(245,166,35,0.45)'
@@ -2667,7 +2667,7 @@ export default function ClubProfilePage() {
               const active   = id === 'mis clubs'
               const isWallet = id === 'mis clubs'
               const color    = isWallet
-                ? (active ? '#EC4899' : 'rgba(236,72,153,0.75)')
+                ? (active ? '#FF199F' : 'rgba(236,72,153,0.75)')
                 : (active ? '#fff'    : 'rgba(255,255,255,0.55)')
               return (
                 <a key={id}
@@ -2691,7 +2691,7 @@ export default function ClubProfilePage() {
                     <span style={{
                       position:'absolute', bottom:-1, left:'25%', right:'25%',
                       height: 2, borderRadius: 2,
-                      background:'#7131E1',
+                      background:'#6F30DF',
                     }} />
                   )}
                 </a>
@@ -2939,7 +2939,7 @@ export default function ClubProfilePage() {
                 const hasCovers = covers.length > 0
                 const grad = hasCovers
                   ? 'linear-gradient(135deg, #15803D, #22E698)'
-                  : 'linear-gradient(135deg, #B45309, #F5A623)'
+                  : 'linear-gradient(135deg, #B45309, #FF199F)'
                 const shadow = hasCovers
                   ? '0 4px 14px rgba(34,230,152,0.50)'
                   : '0 4px 14px rgba(245,166,35,0.55)'
@@ -3022,7 +3022,7 @@ export default function ClubProfilePage() {
                     <div style={{ display:'flex', alignItems:'center', gap:6, marginTop:4 }}>
                       <span style={{ fontSize:11, color:'rgba(255,255,255,0.55)', background:'rgba(255,255,255,0.08)', borderRadius:99, padding:'2px 8px' }}>{commerce.category}</span>
                       {REVIEWS_ENABLED && (reviewsAvg !== null || commerce.rating) && (
-                        <span style={{ display:'flex', alignItems:'center', gap:3, fontSize:11, color:'#ec4899' }}>
+                        <span style={{ display:'flex', alignItems:'center', gap:3, fontSize:11, color:'#FF199F' }}>
                           <Star size={11} strokeWidth={0} fill="currentColor" /> {reviewsAvg ?? commerce.rating}
                         </span>
                       )}
@@ -3167,7 +3167,7 @@ export default function ClubProfilePage() {
                         {commerce.city && <p style={{ color:'rgba(255,255,255,0.45)', fontSize:12, margin:'2px 0 0' }}>{commerce.city.name}</p>}
                       </div>
                     </div>
-                    <span style={{ background:'transparent', color:'#7131E1', border:'1.5px solid #7131E1', borderRadius:8, padding:'6px 12px', fontSize:12, fontWeight:700, fontFamily:FN, whiteSpace:'nowrap', flexShrink:0 }}>Cómo llegar →</span>
+                    <span style={{ background:'transparent', color:'#6F30DF', border:'1.5px solid #6F30DF', borderRadius:8, padding:'6px 12px', fontSize:12, fontWeight:700, fontFamily:FN, whiteSpace:'nowrap', flexShrink:0 }}>Cómo llegar →</span>
                   </a>
                   {editPencil('address', 'Editar ubicación', true /* en este branch hay address o coords */)}
                 </div>
@@ -3301,11 +3301,11 @@ export default function ClubProfilePage() {
                 <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', marginBottom:16 }}>
                   <div>
                     <h2 style={{ fontFamily:FN, fontSize:17, fontWeight:600, color:C.white, letterSpacing:'-0.02em', marginBottom:4, display:'flex', alignItems:'center', gap:8 }}>
-                      <Star size={17} strokeWidth={0} fill="currentColor" style={{ color:'#ec4899' }} /> Reseñas
+                      <Star size={17} strokeWidth={0} fill="currentColor" style={{ color:'#FF199F' }} /> Reseñas
                     </h2>
                     {reviewsAvg !== null && (
                       <div style={{ display:'flex', alignItems:'center', gap:8 }}>
-                        <span style={{ fontFamily:FN, fontSize:28, fontWeight:700, color:'#ec4899', lineHeight:1 }}>{reviewsAvg}</span>
+                        <span style={{ fontFamily:FN, fontSize:28, fontWeight:700, color:'#FF199F', lineHeight:1 }}>{reviewsAvg}</span>
                         <div>
                           <StarRow rating={reviewsAvg} size={14} />
                           <p style={{ fontSize:11, color:C.mist, marginTop:2 }}>{reviewsTotal} reseña{reviewsTotal!==1?'s':''}</p>
@@ -3342,7 +3342,7 @@ export default function ClubProfilePage() {
                           onMouseEnter={() => setReviewHover(s)}
                           onMouseLeave={() => setReviewHover(0)}
                           onClick={() => setReviewRating(s)}
-                          style={{ background:'none', border:'none', cursor:'pointer', padding:2, fontSize:28, lineHeight:1, color:'#ec4899', transition:'transform .1s', transform: (reviewHover||reviewRating) >= s ? 'scale(1.15)' : 'scale(1)' }}>
+                          style={{ background:'none', border:'none', cursor:'pointer', padding:2, fontSize:28, lineHeight:1, color:'#FF199F', transition:'transform .1s', transform: (reviewHover||reviewRating) >= s ? 'scale(1.15)' : 'scale(1)' }}>
                           <Star size={28} strokeWidth={0} fill="currentColor" style={{ opacity: (reviewHover||reviewRating) >= s ? 1 : 0.25 }} />
                         </button>
                       ))}
@@ -3366,7 +3366,7 @@ export default function ClubProfilePage() {
                       </button>
                       <button onClick={handleSubmitReview} disabled={submittingReview || !reviewRating}
                         className="btn-pulse"
-                        style={{ flex:2, padding:'11px', background: !reviewRating ? 'rgba(255,255,255,0.05)' : 'linear-gradient(135deg, #7131E1, #ec4899)', border:'none', borderRadius:12, color: !reviewRating ? C.dust : '#fff', fontFamily:FN, fontSize:13, fontWeight:600, cursor: !reviewRating ? 'not-allowed' : 'pointer', transition:'all .2s' }}>
+                        style={{ flex:2, padding:'11px', background: !reviewRating ? 'rgba(255,255,255,0.05)' : 'linear-gradient(135deg, #6F30DF, #FF199F)', border:'none', borderRadius:12, color: !reviewRating ? C.dust : '#fff', fontFamily:FN, fontSize:13, fontWeight:600, cursor: !reviewRating ? 'not-allowed' : 'pointer', transition:'all .2s' }}>
                         {submittingReview ? 'Enviando...' : userReview ? 'Actualizar' : 'Publicar reseña'}
                       </button>
                     </div>
@@ -3389,7 +3389,7 @@ export default function ClubProfilePage() {
                         <div style={{ display:'flex', alignItems:'center', gap:10 }}>
                           {r.profile?.avatar_url
                             ? <img src={r.profile.avatar_url} alt="" style={{ width:34, height:34, borderRadius:'50%', objectFit:'cover', flexShrink:0 }} />
-                            : <div style={{ width:34, height:34, borderRadius:'50%', background:'linear-gradient(135deg, #7131E1, #ec4899)', display:'flex', alignItems:'center', justifyContent:'center', fontSize:14, fontWeight:700, color:'#fff', flexShrink:0 }}>
+                            : <div style={{ width:34, height:34, borderRadius:'50%', background:'linear-gradient(135deg, #6F30DF, #FF199F)', display:'flex', alignItems:'center', justifyContent:'center', fontSize:14, fontWeight:700, color:'#fff', flexShrink:0 }}>
                                 {(r.profile?.name || '?')[0].toUpperCase()}
                               </div>
                           }
@@ -3528,7 +3528,7 @@ export default function ClubProfilePage() {
                     style={{
                       padding: '10px 18px', borderRadius: 12,
                       // Estado vacio = sin premios cargados → amarillo.
-                      background: 'linear-gradient(135deg, #B45309, #F5A623)',
+                      background: 'linear-gradient(135deg, #B45309, #FF199F)',
                       border: '1px solid rgba(255,255,255,0.22)',
                       color: '#fff',
                       fontFamily: FN, fontSize: 12.5, fontWeight: 700,
@@ -3638,7 +3638,7 @@ export default function ClubProfilePage() {
                               top: 10,
                               left: -28,
                               transform: 'rotate(-45deg)',
-                              background: 'linear-gradient(135deg, #7131E1 0%, #7131E1 50%, #7131E1 100%)',
+                              background: 'linear-gradient(135deg, #6F30DF 0%, #6F30DF 50%, #6F30DF 100%)',
                               color: '#fff',
                               fontFamily: FN,
                               fontSize: 9,
@@ -3678,8 +3678,8 @@ export default function ClubProfilePage() {
                               {prize.name}
                             </div>
                             <div style={{ display:'flex', alignItems:'center', gap:5, marginTop:4 }}>
-                              <Gem size={13} color="#7131E1" strokeWidth={2} />
-                              <span style={{ color:'#7131E1', fontSize:12, fontWeight:600, fontFamily:FN }}>
+                              <Gem size={13} color="#6F30DF" strokeWidth={2} />
+                              <span style={{ color:'#6F30DF', fontSize:12, fontWeight:600, fontFamily:FN }}>
                                 {prize.cost} {unitLabel}
                               </span>
                               {prize.stock !== null && (
@@ -3694,7 +3694,7 @@ export default function ClubProfilePage() {
                               • canRedeem (100%): degradé de marca naranja→violeta
                                 fluyendo lento (4.5s). Glow doble naranja + violeta.
                               • Aún no llegó al cost: violeta de marca pleno
-                                (#7131E1) sin animación de flow, con pulse muy
+                                (#6F30DF) sin animación de flow, con pulse muy
                                 sutil para que se sienta "vivo" sin distraer. */}
                           <div>
                             <div style={{
@@ -3711,8 +3711,8 @@ export default function ClubProfilePage() {
                                   minWidth: progressPct > 0 ? 10 : 0,
                                   borderRadius:9999,
                                   background: canRedeem
-                                    ? '#7131E1'
-                                    : '#7131E1',
+                                    ? '#6F30DF'
+                                    : '#6F30DF',
                                   backgroundSize: canRedeem ? '200% 100%' : 'auto',
                                   boxShadow: canRedeem
                                     ? '0 0 12px rgba(254,80,0,0.65), 0 0 22px rgba(113,49,225,0.55), inset 0 0 10px rgba(255,255,255,0.30)'
@@ -3731,7 +3731,7 @@ export default function ClubProfilePage() {
                                     ? <><span style={{ color:C.white, fontWeight:600 }}>{pointsLeft}</span> {unitLabel}</>
                                     : `${prize.cost} ${unitLabel}`}
                               </p>
-                              <ChevronRight size={12} strokeWidth={2.6} color="#7131E1" style={{ flexShrink:0 }} />
+                              <ChevronRight size={12} strokeWidth={2.6} color="#6F30DF" style={{ flexShrink:0 }} />
                             </div>
                           </div>
 
@@ -3960,7 +3960,7 @@ export default function ClubProfilePage() {
                 </div>
                 <button onClick={handleGoogleLogin}
                   className="btn-pulse"
-                  style={{ width:'100%', padding:'15px', background:'linear-gradient(135deg, #7131E1, #ec4899)', border:'none', borderRadius:15, color:'#fff', fontFamily:FN, fontSize:14, fontWeight:700, cursor:'pointer', display:'flex', alignItems:'center', justifyContent:'center', gap:10, boxShadow:'0 8px 28px rgba(113,49,225,0.45)', transition:'all .2s ease' }}>
+                  style={{ width:'100%', padding:'15px', background:'linear-gradient(135deg, #6F30DF, #FF199F)', border:'none', borderRadius:15, color:'#fff', fontFamily:FN, fontSize:14, fontWeight:700, cursor:'pointer', display:'flex', alignItems:'center', justifyContent:'center', gap:10, boxShadow:'0 8px 28px rgba(113,49,225,0.45)', transition:'all .2s ease' }}>
                   <span style={{ fontWeight:900, fontSize:17 }}>G</span>Continuar con Google
                 </button>
                 <div style={{ textAlign:'center', marginTop:12, fontSize:11, color:C.dust }}>Gratis · Sin spam · Cancelá cuando quieras</div>
@@ -3979,7 +3979,7 @@ export default function ClubProfilePage() {
                 {joinError && <div style={{ fontSize:13, color:'#f87171', marginBottom:14 }}>{joinError}</div>}
                 <button onClick={() => handleJoin()} disabled={joining||!!phoneErr||!consent}
                   className="btn-pulse"
-                  style={{ width:'100%', padding:'15px', background:'linear-gradient(135deg, #7131E1, #ec4899)', border:'none', borderRadius:15, color:'#fff', fontFamily:FN, fontSize:15, fontWeight:700, cursor:joining||!consent?'not-allowed':'pointer', opacity:joining||!consent?0.6:1, boxShadow:'0 8px 28px rgba(113,49,225,0.4)', transition:'all .2s ease' }}>
+                  style={{ width:'100%', padding:'15px', background:'linear-gradient(135deg, #6F30DF, #FF199F)', border:'none', borderRadius:15, color:'#fff', fontFamily:FN, fontSize:15, fontWeight:700, cursor:joining||!consent?'not-allowed':'pointer', opacity:joining||!consent?0.6:1, boxShadow:'0 8px 28px rgba(113,49,225,0.4)', transition:'all .2s ease' }}>
                   {joining ? '⟳ Uniéndome...' : 'Unirme al club →'}
                 </button>
               </>
@@ -4255,8 +4255,8 @@ export default function ClubProfilePage() {
                           minWidth: progressPct > 0 ? 10 : 0,
                           borderRadius:9999,
                           background: canRedeem
-                            ? '#7131E1'
-                            : '#7131E1',
+                            ? '#6F30DF'
+                            : '#6F30DF',
                           backgroundSize: canRedeem ? '200% 100%' : 'auto',
                           boxShadow: canRedeem
                             ? '0 0 14px rgba(254,80,0,0.70), 0 0 26px rgba(113,49,225,0.60), inset 0 0 12px rgba(255,255,255,0.35)'
@@ -4329,8 +4329,8 @@ export default function ClubProfilePage() {
                       width:'100%', padding:'14px 0',
                       // Violeta de marca con un toque de profundidad —
                       // mismo degradé que usamos en otros CTAs primarios
-                      // del comercio (#7131E1 → #7131E1).
-                      background:'linear-gradient(135deg, #7131E1, #7131E1)',
+                      // del comercio (#6F30DF → #6F30DF).
+                      background:'linear-gradient(135deg, #6F30DF, #6F30DF)',
                       border:'none', borderRadius:14,
                       color:'#fff', fontFamily:FN, fontSize:15, fontWeight:800,
                       letterSpacing:'.02em',
@@ -4359,7 +4359,7 @@ export default function ClubProfilePage() {
               <X size={14} strokeWidth={2.4} />
             </button>
             <div style={{ width:48, height:48, borderRadius:'50%', background:'rgba(113,49,225,0.18)', display:'flex', alignItems:'center', justifyContent:'center', margin:'0 auto 14px' }}>
-              <Gift size={22} strokeWidth={1.5} color="#7131E1" />
+              <Gift size={22} strokeWidth={1.5} color="#6F30DF" />
             </div>
             <div style={{ fontFamily:FN, fontSize:17, fontWeight:800, color:'#fff', textAlign:'center', marginBottom:6 }}>¿Canjear {confirmPrize.name}?</div>
             <div style={{ fontSize:12, color:C.mist, textAlign:'center', lineHeight:1.6, marginBottom:20 }}>
@@ -4371,7 +4371,7 @@ export default function ClubProfilePage() {
             <div style={{ display:'flex', gap:10 }}>
               <button onClick={() => setConfirmPrize(null)} style={{ flex:1, padding:'11px', background:'rgba(255,255,255,0.08)', border:'1px solid rgba(255,255,255,0.12)', borderRadius:12, color:'#fff', fontFamily:FN, fontSize:13, fontWeight:600, cursor:'pointer' }}>Cancelar</button>
               <button onClick={() => { const p = confirmPrize; setConfirmPrize(null); doRedeem(p) }}
-                style={{ flex:1, padding:'11px', background:'linear-gradient(135deg,#7131E1,#7131E1)', border:'none', borderRadius:12, color:'#fff', fontFamily:FN, fontSize:13, fontWeight:700, cursor:'pointer', boxShadow:'0 4px 14px rgba(113,49,225,0.45)' }}>
+                style={{ flex:1, padding:'11px', background:'linear-gradient(135deg,#6F30DF,#6F30DF)', border:'none', borderRadius:12, color:'#fff', fontFamily:FN, fontSize:13, fontWeight:700, cursor:'pointer', boxShadow:'0 4px 14px rgba(113,49,225,0.45)' }}>
                 Confirmar
               </button>
             </div>
@@ -4391,13 +4391,13 @@ export default function ClubProfilePage() {
               <X size={14} strokeWidth={2.4} />
             </button>
             <div style={{ width:50, height:50, borderRadius:'50%', background:'rgba(113,49,225,0.18)', display:'flex', alignItems:'center', justifyContent:'center', margin:'0 auto 16px' }}>
-              <span style={{ fontFamily:FN, fontSize:22, fontWeight:900, color:'#7131E1' }}>G</span>
+              <span style={{ fontFamily:FN, fontSize:22, fontWeight:900, color:'#6F30DF' }}>G</span>
             </div>
             <div style={{ fontFamily:FN, fontSize:17, fontWeight:800, color:C.white, textAlign:'center', marginBottom:8 }}>Iniciar sesión con Google</div>
             <div style={{ fontSize:13, color:C.mist, textAlign:'center', lineHeight:1.7, marginBottom:22 }}>Te vamos a redirigir a Google para iniciar sesión. Después volvés a Clufix automáticamente.</div>
             <div style={{ display:'flex', gap:10 }}>
               <button onClick={() => setShowLoginPrompt(false)} style={{ flex:1, padding:'11px', background:'rgba(255,255,255,0.08)', border:'1px solid rgba(255,255,255,0.12)', borderRadius:12, color:'#F0EAFF', fontFamily:FN, fontSize:13, fontWeight:600, cursor:'pointer' }}>← Volver</button>
-              <button onClick={confirmGoogleLogin} style={{ flex:1, padding:'11px', background:'#7131E1', border:'none', borderRadius:12, color:'#fff', fontFamily:FN, fontSize:13, fontWeight:700, cursor:'pointer' }}>Continuar →</button>
+              <button onClick={confirmGoogleLogin} style={{ flex:1, padding:'11px', background:'#6F30DF', border:'none', borderRadius:12, color:'#fff', fontFamily:FN, fontSize:13, fontWeight:700, cursor:'pointer' }}>Continuar →</button>
             </div>
           </div>
         </div>
@@ -4492,7 +4492,7 @@ export default function ClubProfilePage() {
                 style={{
                   width: '100%', padding: '12px 16px',
                   borderRadius: 12,
-                  background: '#7131E1',
+                  background: '#6F30DF',
                   border: 'none', color: '#fff',
                   fontFamily: FN, fontSize: 13.5, fontWeight: 700,
                   cursor: 'pointer',

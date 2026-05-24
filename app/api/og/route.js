@@ -23,7 +23,7 @@ export async function GET(request) {
         width: '100%', height: '100%',
         display: 'flex', flexDirection: 'column',
         alignItems: 'center', justifyContent: 'center',
-        background: '#7131E1',
+        background: '#6F30DF',
         fontFamily: 'system-ui, sans-serif',
         position: 'relative', overflow: 'hidden',
       }}>
@@ -43,7 +43,7 @@ export async function GET(request) {
             background:'#ffffff',
             marginBottom:28,
             boxShadow:'0 16px 48px rgba(0,0,0,0.40)',
-            fontSize: 64, fontWeight: 800, color: '#7131E1',
+            fontSize: 64, fontWeight: 800, color: '#6F30DF',
             letterSpacing: '-0.04em',
           }}>
             B

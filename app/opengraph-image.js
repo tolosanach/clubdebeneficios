@@ -17,7 +17,7 @@ export default function OgImage() {
           width: '100%', height: '100%',
           display: 'flex', flexDirection: 'column',
           alignItems: 'center', justifyContent: 'center',
-          background: '#7131E1',
+          background: '#6F30DF',
           fontFamily: 'system-ui, sans-serif',
           position: 'relative',
           overflow: 'hidden',

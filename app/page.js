@@ -108,21 +108,42 @@ const MENU = [
 // Cuando haya masa crítica de comercios y reseñas, flippear a true.
 const REVIEWS_ENABLED = false
 
-// ─── PALETTE ──────────────────────────────────────────────────────────────────
-// Rebrand mayo 2026 fase 2: G, GV y GH dejan de ser gradients (orange→
-// fucsia, deep→brand, multi-stop) y pasan a ser violeta brand sólido.
-// Mantengo los nombres de constantes por compat con call sites en toda
-// la app — el contenido es el color brand único #7131E1.
-const G  = '#7131E1'
-const GV = '#7131E1'
-const GH = '#7131E1'
+// ─── Design tokens Clufix ─────────────────────────────────────────────────────
+const G  = '#6F30DF'        // color principal
+const GV = '#3D0A9E'        // hover / énfasis
+const GH = '#1A0050'        // hero / secciones oscuras
+
 const C = {
-  bg:'transparent', bg2:'rgba(255,255,255,0.05)', bg3:'rgba(255,255,255,0.04)',
-  card:'rgba(255,255,255,0.06)', cardH:'rgba(255,255,255,0.10)',
-  rim:'rgba(255,255,255,0.10)', rimH:'rgba(255,255,255,0.20)',
-  white:'#FFFFFF', pearl:'#F0EAFF', mist:'#9B85CC', dust:'#8370AD',
-  o:'#FE5000', v:'#7131E1', v1:'#6935BD',
-  ok:'#22E698', okBg:'rgba(0,31,16,0.8)', info:'#40C8FF',
+  // Fondos
+  bg:     'transparent',
+  bg2:    'rgba(255,255,255,0.05)',
+  bg3:    'rgba(255,255,255,0.04)',
+  card:   'rgba(255,255,255,0.06)',
+  cardH:  'rgba(255,255,255,0.10)',
+  rim:    'rgba(255,255,255,0.10)',
+  rimH:   'rgba(255,255,255,0.20)',
+  dark:   '#1A0050',
+  deep:   '#3D0A9E',
+  light:  '#F0E8FF',
+
+  // Texto
+  white:  '#FFFFFF',
+  pearl:  '#F0E8FF',
+  mist:   'rgba(255,255,255,0.55)',
+  dust:   'rgba(255,255,255,0.35)',
+
+  // Acento
+  pink:   '#FF199F',
+
+  // Colores principales
+  v:      '#6F30DF',
+  v1:     '#3D0A9E',
+  v2:     '#1A0050',
+
+  // Semánticos
+  ok:     '#22E698',
+  okBg:   'rgba(0,31,16,0.8)',
+  info:   '#40C8FF',
 }
 const FN = "'Space Grotesk', system-ui, sans-serif"
 const FI = "'Inter', system-ui, sans-serif"
@@ -160,7 +181,7 @@ const PLANS = {
     label:           'STARTER',
     limit:           60,
     price:           25000,
-    color:           '#7131E1',
+    color:           '#6F30DF',
     badge:           '#1F0935',
     // Link de pago recurrente de Mercado Pago. Al abrirse, le agregamos
     // `?external_reference={commerce.id}` para que cuando MP nos notifique
@@ -171,7 +192,7 @@ const PLANS = {
     label:           'PRO',
     limit:           null,
     price:           45000,
-    color:           '#EC4899',
+    color:           '#FF199F',
     badge:           '#3D0F26',
     subscriptionUrl: 'https://www.mercadopago.com.ar/subscriptions/checkout?preapproval_plan_id=62e68b0c9a6d4e7697a6032fda8e95ec',
   },
@@ -210,7 +231,7 @@ function ToastContainer() {
           success: { bg:'rgba(34,230,152,0.14)', border:'rgba(34,230,152,0.32)', color:C.ok,     Icon:Check        },
           error:   { bg:'rgba(248,116,68,0.14)',  border:'rgba(248,116,68,0.32)',  color:'#f87444', Icon:AlertTriangle },
           info:    { bg:'rgba(64,200,255,0.14)',   border:'rgba(64,200,255,0.32)',  color:C.info,   Icon:AlertCircle  },
-          warn:    { bg:'rgba(254,80,0,0.14)',     border:'rgba(254,80,0,0.32)',    color:C.o,      Icon:AlertTriangle },
+          warn:    { bg:'rgba(254,80,0,0.14)',     border:'rgba(254,80,0,0.32)',    color:C.pink,      Icon:AlertTriangle },
         }[t.type] || { bg:'rgba(189,75,248,0.14)', border:'rgba(189,75,248,0.32)', color:C.v, Icon:Bell }
         return (
           <div key={t.id} className="modal-in" style={{ pointerEvents:'auto', display:'flex', alignItems:'center', gap:10, padding:'12px 16px', background:cfg.bg, backdropFilter:'blur(24px)', WebkitBackdropFilter:'blur(24px)', border:`1px solid ${cfg.border}`, borderRadius:14, boxShadow:'0 8px 32px rgba(0,0,0,0.40)' }}>
@@ -240,7 +261,7 @@ function ConfirmModal() {
   const confirm = () => { setModal(null); resolve(true)  }
   const cancel  = () => { setModal(null); resolve(false) }
   // Acento del icon: violeta de marca por defecto, naranja-rojo cuando es danger
-  const accentColor = danger ? '#FE5000' : '#7131E1'
+  const accentColor = danger ? '#FF199F' : '#6F30DF'
   const accentGlow  = danger ? 'rgba(254,80,0,0.55)' : 'rgba(189,75,248,0.55)'
   return createPortal(
     <div style={{ position:'fixed', inset:0, zIndex:9998, display:'flex', alignItems:'center', justifyContent:'center', padding:20 }}>
@@ -363,13 +384,13 @@ function LoginPromptModal() {
         </button>
         <div style={{
           width:64, height:64, borderRadius:'50%',
-          border: '2px solid #7131E1',
+          border: '2px solid #6F30DF',
           background: 'transparent',
           display:'flex', alignItems:'center', justifyContent:'center',
           margin:'0 auto 18px',
           boxShadow: '0 0 22px rgba(189,75,248,0.55), inset 0 0 12px rgba(189,75,248,0.55)',
         }}>
-          <span style={{ fontFamily:FN, fontSize:24, fontWeight:900, color:'#7131E1' }}>G</span>
+          <span style={{ fontFamily:FN, fontSize:24, fontWeight:900, color:'#6F30DF' }}>G</span>
         </div>
         <div style={{ fontFamily:FN, fontSize:20, fontWeight:800, color:'#fff', textAlign:'center', marginBottom:8, letterSpacing:'-0.01em' }}>Iniciar sesión con Google</div>
         <div style={{ fontSize:13, color:'rgba(255,255,255,0.65)', textAlign:'center', lineHeight:1.6, marginBottom:24 }}>Te vamos a redirigir a Google para iniciar sesión. Después volvés a Clufix automáticamente.</div>
@@ -978,7 +999,7 @@ function CasiListoView({ user, onComplete }) {
       <div style={{ flex:1, display:'flex', flexDirection:'column', justifyContent:'center', padding:'0 24px 40px', maxWidth:420, width:'100%', margin:'0 auto' }}>
         <div className="fu">
           <div style={{ width:72, height:72, borderRadius:'50%', background:'rgba(113,49,225,0.15)', border:'2px solid rgba(113,49,225,0.40)', display:'flex', alignItems:'center', justifyContent:'center', margin:'0 auto 24px', boxShadow:'0 8px 28px rgba(113,49,225,0.25)' }}>
-            <Sparkles size={34} color="#7131E1" strokeWidth={1.8} />
+            <Sparkles size={34} color="#6F30DF" strokeWidth={1.8} />
           </div>
 
           <div style={{ fontFamily:FN, fontSize:28, fontWeight:800, color:C.white, textAlign:'center', marginBottom:8, letterSpacing:'-0.02em' }}>¡Casi listo!</div>
@@ -1007,7 +1028,7 @@ function CasiListoView({ user, onComplete }) {
             <div style={{
               width:24, height:24, borderRadius:8, flexShrink:0, marginTop:1,
               display:'flex', alignItems:'center', justifyContent:'center',
-              background: agreed ? '#7131E1' : 'rgba(255,255,255,0.08)',
+              background: agreed ? '#6F30DF' : 'rgba(255,255,255,0.08)',
               border: agreed ? 'none' : '1px solid rgba(255,255,255,0.20)',
               transition:'background 160ms ease, border 160ms ease',
             }}>
@@ -1030,7 +1051,7 @@ function CasiListoView({ user, onComplete }) {
             disabled={!agreed || saving}
             style={{
               width:'100%', padding:'16px',
-              background: agreed ? '#7131E1' : 'rgba(255,255,255,0.08)',
+              background: agreed ? '#6F30DF' : 'rgba(255,255,255,0.08)',
               border:'none', borderRadius:16, color:'#fff',
               fontFamily:FN, fontSize:15, fontWeight:700,
               cursor: agreed && !saving ? 'pointer' : 'not-allowed',
@@ -1068,7 +1089,7 @@ function GBtn({ children, onClick, sm, outline, style:s={}, disabled }) {
       onMouseDown={()=>setActive(true)} onMouseUp={()=>setActive(false)}
       style={{ display:'inline-flex', alignItems:'center', justifyContent:'center', gap:7, borderRadius:10, fontFamily:FN, fontWeight:700, fontSize:sm?12:14, padding:sm?'7px 16px':'12px 28px', transition:'transform 160ms cubic-bezier(0.23,1,0.32,1), background 200ms cubic-bezier(0.23,1,0.32,1), box-shadow 200ms cubic-bezier(0.23,1,0.32,1), opacity 160ms ease', border:'none', opacity:disabled?.6:1, cursor:disabled?'not-allowed':'pointer',
         ...(outline ? { background:'transparent', color:C.v, border:`1.5px solid ${C.v}`, transform:scale }
-          : { background:hov?'linear-gradient(135deg,#FF7733,#D47DFF)':G, color:'#fff', boxShadow:hov?'0 8px 26px #FE500066':'0 4px 18px #FE500044', transform:scale }), ...s }}>
+          : { background:hov?'linear-gradient(135deg,#FF7733,#D47DFF)':G, color:'#fff', boxShadow:hov?'0 8px 26px #FF199F66':'0 4px 18px #FF199F44', transform:scale }), ...s }}>
       {children}
     </button>
   )
@@ -1099,8 +1120,8 @@ function InfoBanner({ type = 'info', icon: CustomIcon, children, action, subtle 
   }
   const cfgMap = {
     info:    { bg:'rgba(189,75,248,0.08)',  bd:`1px solid rgba(189,75,248,0.25)`, iconBg:'rgba(189,75,248,0.18)', iconCol:C.v,   tc:C.pearl },
-    warning: { bg:`${C.o}0d`,              bd:`1px solid ${C.o}44`,              iconBg:`${C.o}20`,             iconCol:C.o,   tc:C.pearl },
-    limit:   { bg:'linear-gradient(135deg,rgba(139,92,246,0.10),rgba(236,72,153,0.10))', bd:'1px solid rgba(139,92,246,0.30)', iconBg:'#7131E1', iconCol:'#fff', tc:C.pearl },
+    warning: { bg:`${C.pink}0d`,              bd:`1px solid ${C.pink}44`,              iconBg:`${C.pink}20`,             iconCol:C.pink,   tc:C.pearl },
+    limit:   { bg:'linear-gradient(135deg,rgba(139,92,246,0.10),rgba(236,72,153,0.10))', bd:'1px solid rgba(139,92,246,0.30)', iconBg:'#6F30DF', iconCol:'#fff', tc:C.pearl },
     success: { bg:`${C.ok}0d`,             bd:`1px solid ${C.ok}44`,             iconBg:`${C.ok}20`,            iconCol:C.ok,  tc:C.pearl },
   }
   const cfg = cfgMap[type] || cfgMap.info
@@ -1406,7 +1427,7 @@ function InstagramStoryQR({ commerce, qrDataUrl }) {
   return (
     <div style={{
       width:1080, height:1920,
-      background:'#7131E1',
+      background:'#6F30DF',
       display:'flex', flexDirection:'column', alignItems:'center',
       justifyContent:'center',
       fontFamily:'system-ui, -apple-system, sans-serif',
@@ -1519,7 +1540,7 @@ function QrFullscreen({ open, onClose, qrValue, audience = 'client', shareUrl = 
     const ctx = canvas.getContext('2d')
     if (!ctx) return null
 
-    const VIOLET = '#7131E1'
+    const VIOLET = '#6F30DF'
     const FONT   = "'Space Grotesk', system-ui, sans-serif"
 
     // ── 1. Fondo violeta ─────────────────────────────────────────────────
@@ -1683,7 +1704,7 @@ function QrFullscreen({ open, onClose, qrValue, audience = 'client', shareUrl = 
   return (
     <div role="dialog" aria-modal="true" style={{
       position: 'fixed', inset: 0, zIndex: 99999,
-      background: '#7131E1',
+      background: '#6F30DF',
       display: 'flex', flexDirection: 'column',
       alignItems: 'center', justifyContent: 'center',
       padding: `64px 24px calc(32px + env(safe-area-inset-bottom, 0px))`,
@@ -1747,7 +1768,7 @@ function QrFullscreen({ open, onClose, qrValue, audience = 'client', shareUrl = 
         {/* Borde dentado inferior — semicírculos violeta que muerden el blanco */}
         <div style={{
           width: '100%', height: 10,
-          backgroundImage: 'radial-gradient(circle at 50% 100%, #7131E1 6px, #fff 7px)',
+          backgroundImage: 'radial-gradient(circle at 50% 100%, #6F30DF 6px, #fff 7px)',
           backgroundSize: '16px 10px',
           backgroundRepeat: 'repeat-x',
         }} />
@@ -1891,7 +1912,7 @@ function CommerceQRCard({ commerce }) {
 
         {/* Gradient QR card */}
         <div style={{
-          background:'#7131E1',
+          background:'#6F30DF',
           borderRadius:20, padding:'20px 20px 16px', marginBottom:14,
           position:'relative', overflow:'hidden',
         }}>
@@ -1971,7 +1992,7 @@ function CommerceQRCard({ commerce }) {
                 display:'flex', alignItems:'center', gap:14, textAlign:'left',
                 opacity: downloading === 'digital' ? 0.6 : 1,
               }}>
-                <div style={{ width:48, height:48, borderRadius:12, background:'#7131E1', display:'flex', alignItems:'center', justifyContent:'center', flexShrink:0 }}>
+                <div style={{ width:48, height:48, borderRadius:12, background:'#6F30DF', display:'flex', alignItems:'center', justifyContent:'center', flexShrink:0 }}>
                   <Smartphone size={22} color="white" strokeWidth={1.5} />
                 </div>
                 <div>
@@ -2104,7 +2125,7 @@ function UpgradeResultModal({ result, onClose }) {
           style={{
             width:'100%', padding:'14px 18px', borderRadius:14,
             background: isSuccess
-              ? '#7131E1'
+              ? '#6F30DF'
               : 'rgba(255,255,255,0.08)',
             border: isSuccess ? 'none' : '1px solid rgba(255,255,255,0.16)',
             color:'#fff',
@@ -2447,7 +2468,7 @@ function PlanCards({ currentPlan=null, clientCount=0, planLimit=null, onUpgrade,
                 background: clientCount >= planLimit
                   ? '#f87444'
                   : clientCount >= planLimit * .8
-                    ? C.o
+                    ? C.pink
                     : (isStarter ? C.v : def.color),
                 borderRadius: 3, transition: 'width .4s',
               }} />
@@ -2474,7 +2495,7 @@ function PlanCards({ currentPlan=null, clientCount=0, planLimit=null, onUpgrade,
                   sobre él. */}
               <span style={{
                 width: 16, height: 16, borderRadius: '50%',
-                background: '#7131E1',
+                background: '#6F30DF',
                 display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
                 flexShrink: 0, marginTop: 1,
                 boxShadow: `0 2px 6px ${C.v}55`,
@@ -2600,9 +2621,9 @@ function ClufixLoader({ size = 80 }) {
         <style>{`@keyframes bf-snake{to{stroke-dashoffset:-120.6}}.bf-p{stroke-dasharray:55 66;stroke-dashoffset:0;animation:bf-snake 3s linear infinite}`}</style>
         <defs>
           <linearGradient id="bfg" x1="0" y1="0" x2="1" y2="1">
-            <stop offset="0%" stopColor="#7131E1" />
+            <stop offset="0%" stopColor="#6F30DF" />
             <stop offset="55%" stopColor="#c026d3" />
-            <stop offset="100%" stopColor="#ec4899" />
+            <stop offset="100%" stopColor="#FF199F" />
           </linearGradient>
         </defs>
         <path className="bf-p"
@@ -2656,7 +2677,7 @@ function LoadingScreen({ onComplete }) {
             <span key={word} style={{
               position:'absolute', inset:0, display:'flex', alignItems:'center', justifyContent:'center',
               fontFamily: FN, fontSize:'clamp(40px,8vw,72px)', fontWeight:900, letterSpacing:'-0.03em',
-              background:'#7131E1',
+              background:'#6F30DF',
               WebkitBackgroundClip:'text', WebkitTextFillColor:'transparent',
               opacity:    i === wordIndex ? 1 : 0,
               transform:  i === wordIndex ? 'translateY(0)' : 'translateY(28px)',
@@ -2684,7 +2705,7 @@ function LoadingScreen({ onComplete }) {
         <div style={{ height:3, background:'rgba(255,255,255,0.10)', borderRadius:99, overflow:'hidden' }}>
           <div style={{
             height:'100%', borderRadius:99,
-            background:'#7131E1',
+            background:'#6F30DF',
             boxShadow:'0 0 20px rgba(168,85,247,0.55)',
             width:`${count}%`,
             transition:'width 80ms linear',
@@ -2779,10 +2800,10 @@ function Navbar({ setView, cityName, user, profile, commerce, onLogin, onLogout,
   const BTN = { position:'relative', zIndex:1, display:'flex', alignItems:'center', justifyContent:'center', width:34, height:34, borderRadius:9, flexShrink:0, transition:'background 220ms ease, box-shadow 220ms ease' }
   const NEUTRAL = { background:'transparent', border:'none' }
   // Activo = degradé de marca
-  // Rebrand mayo 2026: violeta brand sólido (#7131E1) en lugar del
+  // Rebrand mayo 2026: violeta brand sólido (#6F30DF) en lugar del
   // gradient orange→fucsia (G). Mantiene la lectura de "indicador
   // activo" sin contradecir la nueva identidad sólida.
-  const GRAD_ACTIVE = { background:'#7131E1', border:'none', boxShadow:'0 2px 10px rgba(113,49,225,0.42)' }
+  const GRAD_ACTIVE = { background:'#6F30DF', border:'none', boxShadow:'0 2px 10px rgba(113,49,225,0.42)' }
   // Aliases legacy (mantenidos para compatibilidad de los call sites; ahora todos
   // los activos usan el mismo gradient)
   const QR_HINT = NEUTRAL
@@ -2920,7 +2941,7 @@ function Navbar({ setView, cityName, user, profile, commerce, onLogin, onLogout,
             {profile?.avatar_url ? (
               <img src={profile.avatar_url} alt="" style={{ width:26, height:26, borderRadius:'50%', objectFit:'cover', flexShrink:0 }} />
             ) : (
-              <div style={{ width:26, height:26, borderRadius:'50%', background:'#7131E1', display:'flex', alignItems:'center', justifyContent:'center', flexShrink:0 }}>
+              <div style={{ width:26, height:26, borderRadius:'50%', background:'#6F30DF', display:'flex', alignItems:'center', justifyContent:'center', flexShrink:0 }}>
                 <span style={{ fontFamily:FN, fontSize:12, fontWeight:700, color:'#fff' }}>
                   {(profile?.name || profile?.full_name || user?.email || '?')[0].toUpperCase()}
                 </span>
@@ -2963,11 +2984,11 @@ function Navbar({ setView, cityName, user, profile, commerce, onLogin, onLogout,
           {(() => {
             const eyeActive   = currentView === 'commerce'
             const storeActive = currentView === 'commerce-settings'
-            // Rebrand mayo 2026: violeta brand sólido (#7131E1) en
+            // Rebrand mayo 2026: violeta brand sólido (#6F30DF) en
             // lugar del gradient violeta-violeta. Misma intencion: marcar
             // el icono activo del kit duenio con glow brand, ícono blanco.
             const VIOLET_ACTIVE = {
-              background: '#7131E1',
+              background: '#6F30DF',
               border: 'none',
               boxShadow: '0 2px 10px rgba(113,49,225,0.55)',
             }
@@ -3108,7 +3129,7 @@ function ReviewCard({ review }) {
             <img src={review.avatarUrl} alt={review.name}
               style={{ width:38, height:38, borderRadius:'50%', objectFit:'cover', flexShrink:0, border:'1px solid rgba(255,255,255,0.12)' }} />
           ) : (
-            <div style={{ width:38, height:38, borderRadius:'50%', background:'#7131E1', display:'flex', alignItems:'center', justifyContent:'center', fontFamily:FN, fontSize:13, fontWeight:800, color:'#fff', flexShrink:0 }}>
+            <div style={{ width:38, height:38, borderRadius:'50%', background:'#6F30DF', display:'flex', alignItems:'center', justifyContent:'center', fontFamily:FN, fontSize:13, fontWeight:800, color:'#fff', flexShrink:0 }}>
               {initials}
             </div>
           )}
@@ -3117,7 +3138,7 @@ function ReviewCard({ review }) {
             <div style={{ display:'flex', alignItems:'center', gap:5, minWidth:0 }}>
               <p style={{ fontFamily:FN, fontSize:13, fontWeight:700, color:'#fff', whiteSpace:'nowrap', overflow:'hidden', textOverflow:'ellipsis' }}>{review.name}</p>
               {review.verified && (
-                <CheckCircle size={13} color='#7131E1' strokeWidth={2.5} style={{ flexShrink:0 }} />
+                <CheckCircle size={13} color='#6F30DF' strokeWidth={2.5} style={{ flexShrink:0 }} />
               )}
             </div>
             {/* Business name (owners) or location */}
@@ -3129,7 +3150,7 @@ function ReviewCard({ review }) {
             )}
           </div>
         </div>
-        <span style={{ flexShrink:0, fontSize:10, fontWeight:700, fontFamily:FN, padding:'3px 9px', borderRadius:99, background: isOwner ? 'rgba(168,85,247,0.18)' : 'rgba(236,72,153,0.18)', color: isOwner ? C.v : '#ec4899', border:`1px solid ${isOwner ? 'rgba(168,85,247,0.30)' : 'rgba(236,72,153,0.30)'}` }}>
+        <span style={{ flexShrink:0, fontSize:10, fontWeight:700, fontFamily:FN, padding:'3px 9px', borderRadius:99, background: isOwner ? 'rgba(168,85,247,0.18)' : 'rgba(236,72,153,0.18)', color: isOwner ? C.v : '#FF199F', border:`1px solid ${isOwner ? 'rgba(168,85,247,0.30)' : 'rgba(236,72,153,0.30)'}` }}>
           {isOwner ? 'Negocio' : 'Cliente'}
         </span>
       </div>
@@ -3203,7 +3224,7 @@ function BeneficioWord({ delay = 0 }) {
       transform: show ? 'translateY(0)' : 'translateY(20px)',
       transition: `opacity 0.7s ease, filter 0.7s ease, transform 0.7s cubic-bezier(0.23,1,0.32,1)`,
       transitionDelay: `${delay}ms`,
-      background: '#7131E1',
+      background: '#6F30DF',
       backgroundSize: '300% 100%',
       WebkitBackgroundClip: 'text',
       WebkitTextFillColor: 'transparent',
@@ -3391,14 +3412,14 @@ function HeroSection({ setView, user, profile, onLogin }) {
             <div className="trust-marquee">
               {TRUST.map(({ Icon, label }) => (
                 <div key={label} className="trust-marquee-item">
-                  <Icon size={24} color="#7131E1" strokeWidth={1.5} />
+                  <Icon size={24} color="#6F30DF" strokeWidth={1.5} />
                   <span>{label}</span>
                 </div>
               ))}
               {/* Duplicado para loop seamless — oculto a lectores de pantalla */}
               {TRUST.map(({ Icon, label }) => (
                 <div key={`d-${label}`} className="trust-marquee-item" aria-hidden="true">
-                  <Icon size={24} color="#7131E1" strokeWidth={1.5} />
+                  <Icon size={24} color="#6F30DF" strokeWidth={1.5} />
                   <span>{label}</span>
                 </div>
               ))}
@@ -3417,7 +3438,7 @@ function HeroSection({ setView, user, profile, onLogin }) {
       }}>
         <span style={{ fontFamily:FN, fontSize:10, color:'rgba(255,255,255,0.35)', letterSpacing:'0.15em', textTransform:'uppercase' }}>Scroll</span>
         <div style={{ width:1, height:48, background:'rgba(255,255,255,0.15)', position:'relative', overflow:'hidden', borderRadius:1 }}>
-          <div className="scroll-light" style={{ position:'absolute', top:0, left:0, width:'100%', height:16, background:'#7131E1', borderRadius:1 }} />
+          <div className="scroll-light" style={{ position:'absolute', top:0, left:0, width:'100%', height:16, background:'#6F30DF', borderRadius:1 }} />
         </div>
       </div>
 
@@ -3481,13 +3502,13 @@ function FeaturesSection() {
       Icon: QrCode,
       title: 'QR único del negocio',
       desc: 'Cada local tiene su QR personalizado. El cliente escanea, queda dentro del club. Cero tarjetas de papel que se pierden.',
-      color: '#7131E1',
+      color: '#6F30DF',
     },
     {
       Icon: Star,
       title: 'Estrellas o puntos',
       desc: 'Elegís el sistema que mejor te queda. Estrellas (1 por compra) para algo simple, o puntos (1 = $1) para algo flexible.',
-      color: '#EC4899',
+      color: '#FF199F',
     },
     {
       Icon: Gift,
@@ -3499,7 +3520,7 @@ function FeaturesSection() {
       Icon: Percent,
       title: 'Promos automáticas',
       desc: 'Cupón de descuento para la próxima visita, o doble puntos los días que vos elijas (lunes flojos, miércoles muertos). Lo configurás una vez y corre solo.',
-      color: '#5B8DEF',
+      color: '#6F30DF',
     },
     {
       Icon: BarChart2,
@@ -3511,7 +3532,7 @@ function FeaturesSection() {
       Icon: Bell,
       title: 'WhatsApp y notificaciones',
       desc: 'Mensajes de WhatsApp listos para mandar al cliente que hace tiempo no viene. Y notifs push cuando tiene un premio para canjear.',
-      color: '#F5A623',
+      color: '#FF199F',
     },
   ]
 
@@ -4000,8 +4021,8 @@ function _HowItWorksSectionLegacy() {
       title:'Escaneá',
       desc:'Mostrá el QR del local y unite al club en segundos. Sin descargar nada, sin papelitos.',
       pills:['QR único por local', 'Sin app extra', 'Funciona offline'],
-      accent:'#7131E1',         // violeta — sistema "stars"
-      accentDark:'#7131E1',
+      accent:'#6F30DF',         // violeta — sistema "stars"
+      accentDark:'#6F30DF',
       grad:'linear-gradient(135deg, #2A1140 0%, #1A0626 60%, #0d0218 100%)',
       visual:'qr',
     },
@@ -4012,8 +4033,8 @@ function _HowItWorksSectionLegacy() {
       title:'Sumás',
       desc:'Cada visita suma estrellas o puntos automáticos. El comerciante escanea tu tarjeta y listo.',
       pills:['Estrellas o puntos', 'Suma automática', 'Sin trámite'],
-      accent:'#EC4899',         // fucsia — sistema "points"
-      accentDark:'#DB2777',
+      accent:'#FF199F',         // fucsia — sistema "points"
+      accentDark:'#d4007f',
       grad:'linear-gradient(135deg, #2A0E22 0%, #1B0612 60%, #0F0309 100%)',
       visual:'sparks',
     },
@@ -4024,7 +4045,7 @@ function _HowItWorksSectionLegacy() {
       title:'Canjeás',
       desc:'Usás lo acumulado para llevarte premios reales: cafés, descuentos, productos y más.',
       pills:['Premios reales', 'Descuentos exclusivos', 'Stock en vivo'],
-      accent:'#FE5000',         // naranja — color CTA marca
+      accent:'#FF199F',         // naranja — color CTA marca
       accentDark:'#EA580C',
       grad:'linear-gradient(135deg, #2B1308 0%, #1A0A04 60%, #0F0502 100%)',
       visual:'gift',
@@ -4429,7 +4450,7 @@ function _HeroSlider({ setView, profile }) {
       onCta: () => setView(isOwner ? 'commerce-settings' : 'client'),
       Icon:  QrCode,
       blob1: 'rgba(189,75,248,0.28)', blob2: 'rgba(254,80,0,0.18)',
-      bg:    'radial-gradient(ellipse at 28% 38%, #6935BD 0%, #1a0040 50%, #09000e 100%)',
+      bg:    'radial-gradient(ellipse at 28% 38%, #3D0A9E 0%, #1a0040 50%, #09000e 100%)',
     },
     {
       id: 2,
@@ -4440,7 +4461,7 @@ function _HeroSlider({ setView, profile }) {
       onCta: () => setView('register-commerce'),
       Icon:  Users,
       blob1: 'rgba(254,80,0,0.22)', blob2: 'rgba(189,75,248,0.18)',
-      bg:    'radial-gradient(ellipse at 72% 30%, #7131E1 0%, #1a0040 50%, #09000e 100%)',
+      bg:    'radial-gradient(ellipse at 72% 30%, #6F30DF 0%, #1a0040 50%, #09000e 100%)',
     },
     {
       id: 3,
@@ -4462,7 +4483,7 @@ function _HeroSlider({ setView, profile }) {
       onCta: () => setView('register-commerce'),
       Icon:  Bot,
       blob1: 'rgba(64,200,255,0.14)', blob2: 'rgba(189,75,248,0.22)',
-      bg:    'radial-gradient(ellipse at 18% 70%, #6935BD 0%, #1a0040 50%, #09000e 100%)',
+      bg:    'radial-gradient(ellipse at 18% 70%, #3D0A9E 0%, #1a0040 50%, #09000e 100%)',
     },
     {
       id: 5,
@@ -4473,7 +4494,7 @@ function _HeroSlider({ setView, profile }) {
       onCta: () => setView(isOwner ? 'commerce-settings' : 'client'),
       Icon:  Rocket,
       blob1: 'rgba(189,75,248,0.32)', blob2: 'rgba(254,80,0,0.22)',
-      bg:    'radial-gradient(ellipse at 62% 28%, #7131E1 0%, #1a0040 50%, #09000e 100%)',
+      bg:    'radial-gradient(ellipse at 62% 28%, #6F30DF 0%, #1a0040 50%, #09000e 100%)',
     },
   ]
 
@@ -4672,7 +4693,7 @@ function TestimonialsSection() {
               </div>
               {/* Author */}
               <div style={{ display:'flex', alignItems:'center', gap:14 }}>
-                <div style={{ width:44, height:44, borderRadius:'50%', background:'#7131E1', display:'flex', alignItems:'center', justifyContent:'center', flexShrink:0 }}>
+                <div style={{ width:44, height:44, borderRadius:'50%', background:'#6F30DF', display:'flex', alignItems:'center', justifyContent:'center', flexShrink:0 }}>
                   <span style={{ fontFamily:FN, fontSize:14, fontWeight:900, color:'#fff' }}>
                     {t.name.split(' ').map(n=>n[0]).join('')}
                   </span>
@@ -5049,13 +5070,13 @@ function CinematicSplashSection({ setView, user, profile, onLogin }) {
           <div className="trust-marquee trust-marquee--splash">
             {TRUST.map(({ Icon, label }) => (
               <div key={label} className="trust-marquee-item">
-                <Icon size={18} color="#7131E1" strokeWidth={1.6} />
+                <Icon size={18} color="#6F30DF" strokeWidth={1.6} />
                 <span>{label}</span>
               </div>
             ))}
             {TRUST.map(({ Icon, label }) => (
               <div key={`d-${label}`} className="trust-marquee-item" aria-hidden="true">
-                <Icon size={18} color="#7131E1" strokeWidth={1.6} />
+                <Icon size={18} color="#6F30DF" strokeWidth={1.6} />
                 <span>{label}</span>
               </div>
             ))}
@@ -5129,7 +5150,7 @@ function CinematicSplashSection({ setView, user, profile, onLogin }) {
             lineHeight:0.88,
             textTransform:'uppercase',
             color:'transparent',
-            backgroundImage:'#7131E1',
+            backgroundImage:'#6F30DF',
             WebkitBackgroundClip:'text',
             backgroundClip:'text',
             WebkitTextFillColor:'transparent',
@@ -5156,7 +5177,7 @@ function CinematicSplashSection({ setView, user, profile, onLogin }) {
             letterSpacing:'-0.04em',
             lineHeight:0.88,
             textTransform:'uppercase',
-            backgroundImage:'#7131E1',
+            backgroundImage:'#6F30DF',
             WebkitBackgroundClip:'text',
             backgroundClip:'text',
             WebkitTextFillColor:'transparent',
@@ -5251,24 +5272,24 @@ function CinematicSplashSection({ setView, user, profile, onLogin }) {
             sobre el rango 0-65% del alto, que es donde el clip-path tiene
             edificios sólidos. */}
         {[
-          { l:'5%',  b:'24%', c:'#FE5000' },
-          { l:'9%',  b:'31%', c:'#7131E1' },
-          { l:'14%', b:'40%', c:'#FE5000' },
-          { l:'17%', b:'27%', c:'#EC4899' },
-          { l:'22%', b:'21%', c:'#7131E1' },
-          { l:'26%', b:'45%', c:'#FE5000' },
-          { l:'34%', b:'58%', c:'#7131E1' },
-          { l:'40%', b:'30%', c:'#EC4899' },
-          { l:'45%', b:'39%', c:'#FE5000' },
-          { l:'50%', b:'48%', c:'#7131E1' },
-          { l:'56%', b:'25%', c:'#EC4899' },
-          { l:'64%', b:'62%', c:'#FE5000' },
-          { l:'69%', b:'37%', c:'#7131E1' },
-          { l:'75%', b:'27%', c:'#EC4899' },
-          { l:'81%', b:'45%', c:'#7131E1' },
-          { l:'86%', b:'30%', c:'#FE5000' },
-          { l:'92%', b:'40%', c:'#7131E1' },
-          { l:'95%', b:'24%', c:'#EC4899' },
+          { l:'5%',  b:'24%', c:'#FF199F' },
+          { l:'9%',  b:'31%', c:'#6F30DF' },
+          { l:'14%', b:'40%', c:'#FF199F' },
+          { l:'17%', b:'27%', c:'#FF199F' },
+          { l:'22%', b:'21%', c:'#6F30DF' },
+          { l:'26%', b:'45%', c:'#FF199F' },
+          { l:'34%', b:'58%', c:'#6F30DF' },
+          { l:'40%', b:'30%', c:'#FF199F' },
+          { l:'45%', b:'39%', c:'#FF199F' },
+          { l:'50%', b:'48%', c:'#6F30DF' },
+          { l:'56%', b:'25%', c:'#FF199F' },
+          { l:'64%', b:'62%', c:'#FF199F' },
+          { l:'69%', b:'37%', c:'#6F30DF' },
+          { l:'75%', b:'27%', c:'#FF199F' },
+          { l:'81%', b:'45%', c:'#6F30DF' },
+          { l:'86%', b:'30%', c:'#FF199F' },
+          { l:'92%', b:'40%', c:'#6F30DF' },
+          { l:'95%', b:'24%', c:'#FF199F' },
         ].map((w, i) => (
           <div key={i} style={{
             position:'absolute',
@@ -5426,21 +5447,21 @@ function BigBoldRowsSection({ setView }) {
       title: 'Sumar',
       desc: 'Cada cliente que entra al local escanea tu QR y queda dentro del club. Cero tarjetas de papel, cero fricción.',
       bg: 'linear-gradient(110deg, #1a0d2e 0%, #2a1340 50%, #4c1d95 100%)',
-      accent: '#7131E1',
+      accent: '#6F30DF',
     },
     {
       key: 'fidelizar',
       title: 'Fidelizar',
       desc: 'Cargás premios con foto y costo. Tu cliente los ve desde su tarjeta y los canjea con las estrellas o puntos que acumuló.',
       bg: 'linear-gradient(110deg, #2a0e1f 0%, #4a1936 50%, #be185d 100%)',
-      accent: '#EC4899',
+      accent: '#FF199F',
     },
     {
       key: 'reactivar',
       title: 'Reactivar',
       desc: 'Cupones automáticos para la próxima visita y mensajes a los que no vuelven. Lo configurás una vez, corre solo.',
       bg: 'linear-gradient(110deg, #1f0e0a 0%, #3a1a0c 50%, #c2410c 100%)',
-      accent: '#FE5000',
+      accent: '#FF199F',
     },
   ]
   return (
@@ -5472,7 +5493,7 @@ function BigBoldRowsSection({ setView }) {
               transition: 'opacity 800ms ease 200ms, transform 800ms cubic-bezier(0.22,1,0.36,1) 200ms',
             }}>
               Fidelización,<br />
-              <span className="font-display" style={{ color:'#7131E1', fontWeight:400, letterSpacing:'-.005em' }}>reinventada:</span>
+              <span className="font-display" style={{ color:'#6F30DF', fontWeight:400, letterSpacing:'-.005em' }}>reinventada:</span>
             </h2>
           </div>
         </div>
@@ -5658,7 +5679,7 @@ function HomeView({ setView, user, profile, onLogin }) {
               display:'inline-flex', alignItems:'center', gap:8,
               padding:'14px 28px',
               borderRadius:99,
-              background:'linear-gradient(135deg,#FE5000,#BD4BF8)',
+              background:'linear-gradient(135deg,#FF199F,#6F30DF)',
               border:'none',
               color:'#fff',
               fontFamily:FN, fontSize:15, fontWeight:700,
@@ -5777,7 +5798,7 @@ function DirectoryView({ citySlug, cities, setView, setCommerce }) {
         <Inp value={search} onChange={e=>setSearch(e.target.value)} placeholder="Buscar..." style={{ width:170, fontSize:12 }} />
         <div style={{ display:'flex', gap:5, flexWrap:'wrap' }}>
           {CATS.map(c => (
-            <button key={c.id} onClick={()=>setCat(c.id)} style={{ padding:'6px 12px', borderRadius:99, background:cat===c.id?G:'transparent', color:cat===c.id?'#fff':C.mist, border:cat===c.id?'none':`1px solid ${C.rim}`, fontSize:11, fontWeight:600, cursor:'pointer', boxShadow:cat===c.id?'0 4px 12px #FE500044':'none', transition:'background 160ms ease, border-color 160ms ease, color 160ms ease, transform 160ms cubic-bezier(0.23,1,0.32,1), box-shadow 160ms ease' }}>{c.label}</button>
+            <button key={c.id} onClick={()=>setCat(c.id)} style={{ padding:'6px 12px', borderRadius:99, background:cat===c.id?G:'transparent', color:cat===c.id?'#fff':C.mist, border:cat===c.id?'none':`1px solid ${C.rim}`, fontSize:11, fontWeight:600, cursor:'pointer', boxShadow:cat===c.id?'0 4px 12px #FF199F44':'none', transition:'background 160ms ease, border-color 160ms ease, color 160ms ease, transform 160ms cubic-bezier(0.23,1,0.32,1), box-shadow 160ms ease' }}>{c.label}</button>
           ))}
         </div>
       </div>
@@ -5787,8 +5808,8 @@ function DirectoryView({ citySlug, cities, setView, setCommerce }) {
           {featured.length > 0 && (
             <div style={{ marginBottom:30 }}>
               <div style={{ display:'flex', alignItems:'center', gap:10, marginBottom:13 }}>
-                <Pill color={C.o}>✦ Destacados</Pill>
-                <div style={{ flex:1, height:1, background:`linear-gradient(90deg,${C.o}44,transparent)` }} />
+                <Pill color={C.pink}>✦ Destacados</Pill>
+                <div style={{ flex:1, height:1, background:`linear-gradient(90deg,${C.pink}44,transparent)` }} />
               </div>
               <div style={{ display:'grid', gridTemplateColumns:'repeat(auto-fill, minmax(270px, 1fr))', gap:13, paddingTop:54 }}>
                 {featured.map((c,i) => <DirCard key={c.id} commerce={c} delay={i*80} onOpen={()=>{ setCommerce(c); setView('commerce') }} />)}
@@ -5825,7 +5846,7 @@ function DirCard({ commerce:c, delay, onOpen }) {
       <div style={{ height:2, background:hov?G:`${c.reward_color||C.v}55`, borderRadius:'17px 17px 0 0', transition:'background .3s' }} />
       <div style={{ padding:'50px 15px 15px', textAlign:'center' }}>
         <div style={{ fontFamily:FN, fontSize:16, fontWeight:900, color:C.white, marginBottom:3 }}>{c.name}</div>
-        <div style={{ fontSize:11, color:C.mist, marginBottom:10 }}>{c.emoji}{REVIEWS_ENABLED && <> <span style={{ color:C.o, display:'inline-flex', alignItems:'center', gap:2 }}><Star size={10} color={C.o} fill={C.o} strokeWidth={0} />{c.rating}</span></>}</div>
+        <div style={{ fontSize:11, color:C.mist, marginBottom:10 }}>{c.emoji}{REVIEWS_ENABLED && <> <span style={{ color:C.pink, display:'inline-flex', alignItems:'center', gap:2 }}><Star size={10} color={C.pink} fill={C.pink} strokeWidth={0} />{c.rating}</span></>}</div>
         <div style={{ height:1, background:C.rim, marginBottom:10 }} />
         <div style={{ background:C.bg3, borderRadius:8, padding:'9px 11px', borderLeft:`3px solid ${c.reward_color||C.v}`, display:'flex', alignItems:'center', gap:7, textAlign:'left', marginBottom:11 }}>
           <Gift size={13} color={c.reward_color||C.v} strokeWidth={2} />
@@ -6086,7 +6107,7 @@ function CommerceView({ commerce:c, setView, user, onLoginRequired, onCommerceUp
           violeta/fucsia de marca (definido inline cuando coverSrc es null).
           El logo (img_url) se muestra al lado del nombre como avatar circular,
           NO se estira como cover. */}
-      <div style={{ position:'relative', width:'100%', height:260, overflow:'hidden', background: coverSrc ? '#000' : '#7131E1' }}>
+      <div style={{ position:'relative', width:'100%', height:260, overflow:'hidden', background: coverSrc ? '#000' : '#6F30DF' }}>
         {coverSrc && (
           <img src={coverSrc} alt="" style={{ position:'absolute', inset:0, width:'100%', height:'100%', objectFit:'cover' }} />
         )}
@@ -6101,7 +6122,7 @@ function CommerceView({ commerce:c, setView, user, onLoginRequired, onCommerceUp
         )}
         <div style={{ position:'absolute', bottom:0, left:0, right:0, height:120, background:'linear-gradient(to bottom,transparent,rgba(0,0,0,0.92))', zIndex:3 }} />
         <div style={{ position:'absolute', bottom:0, left:0, right:0, zIndex:4, padding:'0 22px 20px' }}>
-          {c.featured && <div style={{ marginBottom:7 }}><Pill color={C.o}>✦ Destacado</Pill></div>}
+          {c.featured && <div style={{ marginBottom:7 }}><Pill color={C.pink}>✦ Destacado</Pill></div>}
           {/* Logo a la izquierda + nombre. Click en logo → maximiza. Owner puede
               editar logo y nombre con un lápiz. Logo se edita desde Configuración
               (necesita upload UI). */}
@@ -6202,7 +6223,7 @@ function CommerceView({ commerce:c, setView, user, onLoginRequired, onCommerceUp
                 </span>
               )
             })()}
-            {REVIEWS_ENABLED && <span style={{ display:'flex', alignItems:'center', gap:3 }}><Star size={11} color={C.o} fill={C.o} strokeWidth={0} />{c.rating}</span>}
+            {REVIEWS_ENABLED && <span style={{ display:'flex', alignItems:'center', gap:3 }}><Star size={11} color={C.pink} fill={C.pink} strokeWidth={0} />{c.rating}</span>}
             {/* Conteo de socios escondido en el perfil — el negocio no necesita
                 exponerlo y mostrar 0 socios al inicio desincentiva al cliente. */}
           </div>
@@ -6280,7 +6301,7 @@ function CommerceView({ commerce:c, setView, user, onLoginRequired, onCommerceUp
                 </button>
               )}
               <a href={mapsUrl} target="_blank" rel="noopener noreferrer"
-                style={{ background:'transparent', color:'#7131E1', border:'1.5px solid #7131E1', borderRadius:8, padding:'6px 12px', fontSize:11, fontWeight:700, fontFamily:FN, cursor:'pointer', textDecoration:'none', whiteSpace:'nowrap', display:'inline-flex', alignItems:'center', gap:4, transition:'background .15s' }}>
+                style={{ background:'transparent', color:'#6F30DF', border:'1.5px solid #6F30DF', borderRadius:8, padding:'6px 12px', fontSize:11, fontWeight:700, fontFamily:FN, cursor:'pointer', textDecoration:'none', whiteSpace:'nowrap', display:'inline-flex', alignItems:'center', gap:4, transition:'background .15s' }}>
                 Cómo llegar →
               </a>
             </div>
@@ -6308,13 +6329,13 @@ function CommerceView({ commerce:c, setView, user, onLoginRequired, onCommerceUp
           return (
             <div style={{ marginBottom:13, padding:'14px 16px', background:'linear-gradient(135deg, rgba(124,58,237,0.20), rgba(189,75,248,0.18))', border:'1px solid rgba(189,75,248,0.45)', borderRadius:14, display:'flex', alignItems:'center', gap:14, position:'relative', overflow:'hidden' }}>
               <div style={{ position:'absolute', top:-30, right:-20, width:120, height:120, borderRadius:'50%', background:'radial-gradient(circle, rgba(168,85,247,0.30) 0%, transparent 70%)', filter:'blur(20px)', pointerEvents:'none' }} />
-              <div style={{ width:54, height:54, borderRadius:14, background:'#7131E1', display:'flex', alignItems:'center', justifyContent:'center', flexShrink:0, position:'relative', zIndex:1, boxShadow:'0 4px 14px rgba(168,85,247,0.40)' }}>
+              <div style={{ width:54, height:54, borderRadius:14, background:'#6F30DF', display:'flex', alignItems:'center', justifyContent:'center', flexShrink:0, position:'relative', zIndex:1, boxShadow:'0 4px 14px rgba(168,85,247,0.40)' }}>
                 <Flame size={26} color="#fff" strokeWidth={2} />
               </div>
               <div style={{ flex:1, minWidth:0, position:'relative', zIndex:1 }}>
                 <div style={{ fontFamily:FN, fontSize:9, fontWeight:800, color:'#D8B4FE', letterSpacing:'.12em', textTransform:'uppercase', marginBottom:3 }}>Descuento activo</div>
                 <div style={{ display:'flex', alignItems:'baseline', gap:6, flexWrap:'wrap' }}>
-                  <span style={{ fontFamily:FN, fontSize:24, fontWeight:900, background:'#7131E1', WebkitBackgroundClip:'text', WebkitTextFillColor:'transparent', backgroundClip:'text', lineHeight:1 }}>{discount.value}% OFF</span>
+                  <span style={{ fontFamily:FN, fontSize:24, fontWeight:900, background:'#6F30DF', WebkitBackgroundClip:'text', WebkitTextFillColor:'transparent', backgroundClip:'text', lineHeight:1 }}>{discount.value}% OFF</span>
                   <span style={{ fontSize:12, color:C.mist }}>en tu próxima compra</span>
                 </div>
                 {(discount.description || expDate) && (
@@ -6345,19 +6366,19 @@ function CommerceView({ commerce:c, setView, user, onLoginRequired, onCommerceUp
           const isStars = c.prog_type === 'stars'
           const unitLabel = isStars ? 'estrellas' : 'puntos'
           const unitIcon  = isStars ? '★' : '◆'
-          const unitColor = isStars ? '#7131E1' : '#EC4899'  // violeta / fucsia (paleta de sistemas)
+          const unitColor = isStars ? '#6F30DF' : '#FF199F'  // violeta / fucsia (paleta de sistemas)
           return (
             <PCard style={{ padding:18, marginBottom:13 }}>
               <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', marginBottom:13, gap:8 }}>
-                <div style={{ fontFamily:FN, fontSize:10, color:'#7131E1', fontWeight:800, letterSpacing:'.14em', textTransform:'uppercase', display:'flex', alignItems:'center', gap:7 }}>
-                  <Gift size={12} strokeWidth={2.5} color="#7131E1" /> Catálogo de premios
+                <div style={{ fontFamily:FN, fontSize:10, color:'#6F30DF', fontWeight:800, letterSpacing:'.14em', textTransform:'uppercase', display:'flex', alignItems:'center', gap:7 }}>
+                  <Gift size={12} strokeWidth={2.5} color="#6F30DF" /> Catálogo de premios
                 </div>
                 {isOwner && (
                   <button onClick={() => {
                     try { localStorage.setItem('clufix:cameFromPreview', '1') } catch {}
                     window.dispatchEvent(new CustomEvent('clufix:navigate', { detail: { view: 'commerce-settings', tab: 'premios' } }))
                   }}
-                    style={{ background:'transparent', border:'none', color:'#7131E1', fontSize:11, fontFamily:FN, fontWeight:700, cursor:'pointer', display:'inline-flex', alignItems:'center', gap:4, padding:0, flexShrink:0 }}>
+                    style={{ background:'transparent', border:'none', color:'#6F30DF', fontSize:11, fontFamily:FN, fontWeight:700, cursor:'pointer', display:'inline-flex', alignItems:'center', gap:4, padding:0, flexShrink:0 }}>
                     Ver catálogo <ArrowRight size={11} strokeWidth={2.5} />
                   </button>
                 )}
@@ -6373,9 +6394,9 @@ function CommerceView({ commerce:c, setView, user, onLoginRequired, onCommerceUp
                     // Premio creado en los últimos 7 días → badge "NUEVO" violeta
                     const isNew = p.created_at && (Date.now() - new Date(p.created_at).getTime()) < 7 * 24 * 60 * 60 * 1000
                     return (
-                      <div key={p.id} style={{ position:'relative', display:'flex', alignItems:'center', gap:11, padding:'10px 12px', background:C.bg3, borderRadius:10, border:`1px solid ${isNew ? '#7131E1' : C.rim}`, opacity: out ? 0.55 : 1 }}>
+                      <div key={p.id} style={{ position:'relative', display:'flex', alignItems:'center', gap:11, padding:'10px 12px', background:C.bg3, borderRadius:10, border:`1px solid ${isNew ? '#6F30DF' : C.rim}`, opacity: out ? 0.55 : 1 }}>
                         {isNew && (
-                          <span style={{ position:'absolute', top:-6, right:8, background:'#7131E1', color:'#fff', fontFamily:FN, fontSize:9, fontWeight:800, letterSpacing:'.1em', padding:'2px 8px', borderRadius:99, boxShadow:'0 2px 8px rgba(139,92,246,0.45)' }}>NUEVO</span>
+                          <span style={{ position:'absolute', top:-6, right:8, background:'#6F30DF', color:'#fff', fontFamily:FN, fontSize:9, fontWeight:800, letterSpacing:'.1em', padding:'2px 8px', borderRadius:99, boxShadow:'0 2px 8px rgba(139,92,246,0.45)' }}>NUEVO</span>
                         )}
                         {p.img_url
                           ? <img src={p.img_url} alt="" style={{ width:46, height:46, borderRadius:8, objectFit:'cover', flexShrink:0 }} />
@@ -6389,7 +6410,7 @@ function CommerceView({ commerce:c, setView, user, onLoginRequired, onCommerceUp
                           <div style={{ display:'flex', alignItems:'center', gap:6, marginTop:3, flexWrap:'wrap' }}>
                             <span style={{ fontSize:11, color:unitColor, fontWeight:700 }}>{unitIcon} {p.cost} {unitLabel}</span>
                             {p.stock !== null && p.stock !== undefined && (
-                              <span style={{ fontSize:10, fontWeight:700, color: p.stock === 0 ? '#f87444' : p.stock === 1 ? C.o : C.dust, background: p.stock === 0 ? '#f874441a' : p.stock === 1 ? `${C.o}18` : 'transparent', padding:'1px 6px', borderRadius:6, border:`1px solid ${p.stock === 0 ? '#f8744433' : p.stock === 1 ? `${C.o}44` : C.rim}` }}>
+                              <span style={{ fontSize:10, fontWeight:700, color: p.stock === 0 ? '#f87444' : p.stock === 1 ? C.pink : C.dust, background: p.stock === 0 ? '#f874441a' : p.stock === 1 ? `${C.pink}18` : 'transparent', padding:'1px 6px', borderRadius:6, border:`1px solid ${p.stock === 0 ? '#f8744433' : p.stock === 1 ? `${C.pink}44` : C.rim}` }}>
                                 {p.stock === 0 ? 'Sin stock' : p.stock === 1 ? 'Último' : `Stock: ${p.stock}`}
                               </span>
                             )}
@@ -6465,7 +6486,7 @@ function CommerceView({ commerce:c, setView, user, onLoginRequired, onCommerceUp
                   <div style={{ display:'flex', alignItems:'center', gap:10, background:'rgba(255,255,255,0.05)', border:'1px solid rgba(255,255,255,0.09)', borderRadius:11, padding:'10px 13px' }}>
                     {joinBenefits.prog_type === 'stars'
                       ? <Star size={15} color={C.v} fill={C.v} strokeWidth={0} style={{ flexShrink:0 }} />
-                      : <Gem  size={15} color='#EC4899' strokeWidth={1.5} style={{ flexShrink:0 }} />
+                      : <Gem  size={15} color='#FF199F' strokeWidth={1.5} style={{ flexShrink:0 }} />
                     }
                     <span style={{ fontSize:13, color:C.pearl }}>
                       {joinBenefits.prog_type === 'stars'
@@ -6477,14 +6498,14 @@ function CommerceView({ commerce:c, setView, user, onLoginRequired, onCommerceUp
                   {/* Doble puntos hoy */}
                   {joinBenefits.has_double_today && (
                     <div style={{ display:'flex', alignItems:'center', gap:10, background:'rgba(245,166,35,0.10)', border:'1px solid rgba(245,166,35,0.30)', borderRadius:11, padding:'10px 13px' }}>
-                      <Zap size={15} color='#F5A623' strokeWidth={2} style={{ flexShrink:0 }} />
-                      <span style={{ fontSize:13, color:'#F5A623', fontWeight:600 }}>¡Hoy sumás el doble!</span>
+                      <Zap size={15} color='#FF199F' strokeWidth={2} style={{ flexShrink:0 }} />
+                      <span style={{ fontSize:13, color:'#FF199F', fontWeight:600 }}>¡Hoy sumás el doble!</span>
                     </div>
                   )}
                   {/* Cupones de descuento otorgados */}
                   {joinBenefits.granted_discounts.map((d, i) => (
                     <div key={i} style={{ display:'flex', alignItems:'center', gap:10, background:'rgba(254,80,0,0.08)', border:'1px solid rgba(254,80,0,0.22)', borderRadius:11, padding:'10px 13px' }}>
-                      <Percent size={15} color={C.o} strokeWidth={2} style={{ flexShrink:0 }} />
+                      <Percent size={15} color={C.pink} strokeWidth={2} style={{ flexShrink:0 }} />
                       <span style={{ fontSize:13, color:C.pearl }}>
                         <strong style={{ color:C.white }}>{d.value}% OFF</strong> en tu próxima visita
                       </span>
@@ -6546,9 +6567,9 @@ function CommerceView({ commerce:c, setView, user, onLoginRequired, onCommerceUp
               }
               return (
                 <div style={{ padding:'12px 14px', marginBottom:14, background:'rgba(254,80,0,0.10)', border:'1px solid rgba(254,80,0,0.32)', borderRadius:10, fontSize:12, color:'#fcb89a', lineHeight:1.55, display:'flex', alignItems:'flex-start', gap:9 }}>
-                  <AlertTriangle size={14} strokeWidth={2} color={C.o} style={{ flexShrink:0, marginTop:1 }} />
+                  <AlertTriangle size={14} strokeWidth={2} color={C.pink} style={{ flexShrink:0, marginTop:1 }} />
                   <div>
-                    <strong style={{ color:C.o }}>Atención:</strong> una vez que cambies el nombre, <strong>no vas a poder cambiarlo de nuevo durante 20 días</strong>. Tus clientes ya conocen este nombre — un cambio puede confundirlos.
+                    <strong style={{ color:C.pink }}>Atención:</strong> una vez que cambies el nombre, <strong>no vas a poder cambiarlo de nuevo durante 20 días</strong>. Tus clientes ya conocen este nombre — un cambio puede confundirlos.
                   </div>
                 </div>
               )
@@ -7028,7 +7049,7 @@ function ClientBottomNav({ tab, setTab, profile, setView }) {
           const isWallet = id === 'mis clubs'
           let color
           if (isWallet) {
-            color = active ? '#EC4899' : 'rgba(236,72,153,0.75)'
+            color = active ? '#FF199F' : 'rgba(236,72,153,0.75)'
           } else {
             color = active ? '#fff' : 'rgba(255,255,255,0.55)'
           }
@@ -7058,7 +7079,7 @@ function ClientBottomNav({ tab, setTab, profile, setView }) {
                 <span style={{
                   position:'absolute', bottom:-1, left:'25%', right:'25%',
                   height: 2, borderRadius: 2,
-                  background:'#7131E1',
+                  background:'#6F30DF',
                 }} />
               )}
             </button>
@@ -7384,7 +7405,7 @@ function WalletCardFront({ club, colors, onFlip, visible }) {
             zIndex:6,
             display:'inline-flex', alignItems:'center', gap:5,
             // Rebrand mayo 2026: violeta brand solido, sin gradient.
-            background:'#7131E1',
+            background:'#6F30DF',
             border:'1px solid rgba(255,255,255,0.22)',
             borderRadius:9999,
             padding:'6px 11px',
@@ -7536,7 +7557,7 @@ function WalletCardBack({ club, colors, onFlip, userId }) {
         <div onClick={e => e.stopPropagation()} style={{ display:'flex', justifyContent:'space-between', alignItems:'center' }}>
           {/* Botones del back de la tarjeta — par armónico:
                 "Mi QR": pill glass outlined, secundaria.
-                "Ir al club": pill violeta brand sólido (#7131E1), primaria.
+                "Ir al club": pill violeta brand sólido (#6F30DF), primaria.
               Ambos con backdrop-blur para que se sientan parte de la tarjeta
               sin chocar con el color de fondo del club. */}
           <button
@@ -7572,7 +7593,7 @@ function WalletCardBack({ club, colors, onFlip, userId }) {
                 style={{
                   display:'inline-flex', alignItems:'center', gap:6,
                   // Rebrand mayo 2026: violeta brand solido, sin gradient.
-                  background:'#7131E1',
+                  background:'#6F30DF',
                   border:'1px solid rgba(255,255,255,0.22)',
                   borderRadius:9999,
                   padding:'7px 14px',
@@ -8018,9 +8039,9 @@ function FilterPills({ pills, selected, onSelect, label, size, multi = false }) 
                 fontFamily:   FN,
                 fontWeight:   active ? 700 : 500,
                 // Activo: outline violeta + relleno violeta tenue. Inactivo: outline gris.
-                color:        active ? '#7131E1' : 'rgba(255,255,255,0.50)',
+                color:        active ? '#6F30DF' : 'rgba(255,255,255,0.50)',
                 background:   active ? 'rgba(168,85,247,0.10)' : 'transparent',
-                border:       `1.5px solid ${active ? '#7131E1' : 'rgba(255,255,255,0.30)'}`,
+                border:       `1.5px solid ${active ? '#6F30DF' : 'rgba(255,255,255,0.30)'}`,
                 cursor:       'pointer',
                 transition:   'all 150ms ease',
                 whiteSpace:   'nowrap',
@@ -8049,7 +8070,7 @@ function FilterPills({ pills, selected, onSelect, label, size, multi = false }) 
                   style={{
                     display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
                     width: isLarge ? 16 : 14, height: isLarge ? 16 : 14, borderRadius: '50%',
-                    background: 'rgba(168,85,247,0.20)', color: '#7131E1',
+                    background: 'rgba(168,85,247,0.20)', color: '#6F30DF',
                     fontSize: isLarge ? 11 : 9, fontWeight: 800, cursor: 'pointer', lineHeight: 1,
                   }}
                 >×</span>
@@ -8487,7 +8508,7 @@ function ClientView({ setView, user, profile, onLogout, initialTab }) {
         <div style={{ display:'flex', gap:12, alignItems:'center' }}>
           {profile?.avatar_url
             ? <img src={profile.avatar_url} alt="" style={{ width:44, height:44, borderRadius:'50%', objectFit:'cover', flexShrink:0 }} />
-            : <div style={{ width:44, height:44, borderRadius:'50%', background:'#7131E1', display:'flex', alignItems:'center', justifyContent:'center', fontFamily:FN, fontSize:14, fontWeight:900, color:'#fff', flexShrink:0 }}>{initials}</div>
+            : <div style={{ width:44, height:44, borderRadius:'50%', background:'#6F30DF', display:'flex', alignItems:'center', justifyContent:'center', fontFamily:FN, fontSize:14, fontWeight:900, color:'#fff', flexShrink:0 }}>{initials}</div>
           }
           <div style={{ flex:1, minWidth:0 }}>
             <div style={{ fontFamily:FN, fontSize:15, fontWeight:700, color:'#fff', marginBottom:2, overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>{profile?.name || user.email}</div>
@@ -8540,7 +8561,7 @@ function ClientView({ setView, user, profile, onLogout, initialTab }) {
                   try { sessionStorage.setItem('clufix:scanIntent', 'join-club') } catch {}
                   setView('scanner')
                 }}
-                style={{ padding:'11px 26px', borderRadius:99, background:'#7131E1', border:'none', cursor:'pointer', fontFamily:FN, fontSize:13, fontWeight:700, color:'#fff', boxShadow:'0 4px 20px rgba(139,92,246,0.40)' }}
+                style={{ padding:'11px 26px', borderRadius:99, background:'#6F30DF', border:'none', cursor:'pointer', fontFamily:FN, fontSize:13, fontWeight:700, color:'#fff', boxShadow:'0 4px 20px rgba(139,92,246,0.40)' }}
               >
                 Escanear QR
               </button>
@@ -8741,10 +8762,10 @@ function ClientView({ setView, user, profile, onLogout, initialTab }) {
                     title         = data.name
                     subtitle      = commerce.name
                     LeftIcon      = data.img_url ? null : Gift
-                    leftIconColor = '#7131E1'
+                    leftIconColor = '#6F30DF'
                     const UI      = isStars ? Star : Gem
                     costDisplay   = (
-                      <span style={{ display:'inline-flex', alignItems:'center', gap:4, fontFamily:FN, fontSize:13, fontWeight:800, color:'#7131E1' }}>
+                      <span style={{ display:'inline-flex', alignItems:'center', gap:4, fontFamily:FN, fontSize:13, fontWeight:800, color:'#6F30DF' }}>
                         <UI size={11} {...(isStars ? { strokeWidth:0, fill:'currentColor' } : { strokeWidth:2 })} />
                         {data.cost}
                       </span>
@@ -8755,9 +8776,9 @@ function ClientView({ setView, user, profile, onLogout, initialTab }) {
                     title         = `${data.value || 10}% OFF en próxima compra`
                     subtitle      = commerce.name
                     LeftIcon      = Percent
-                    leftIconColor = '#7131E1'
+                    leftIconColor = '#6F30DF'
                     costDisplay   = (
-                      <span style={{ fontFamily:FN, fontSize:13, fontWeight:800, color:'#7131E1' }}>
+                      <span style={{ fontFamily:FN, fontSize:13, fontWeight:800, color:'#6F30DF' }}>
                         {data.value || 10}%
                       </span>
                     )
@@ -8768,9 +8789,9 @@ function ClientView({ setView, user, profile, onLogout, initialTab }) {
                     title         = `Doble ${isStars ? 'estrellas' : 'puntos'}${days ? ` los ${days.toLowerCase()}` : ''}`
                     subtitle      = commerce.name
                     LeftIcon      = Sparkles
-                    leftIconColor = '#7131E1'
+                    leftIconColor = '#6F30DF'
                     costDisplay   = (
-                      <span style={{ fontFamily:FN, fontSize:13, fontWeight:800, color:'#7131E1' }}>
+                      <span style={{ fontFamily:FN, fontSize:13, fontWeight:800, color:'#6F30DF' }}>
                         ×2
                       </span>
                     )
@@ -8810,8 +8831,8 @@ function ClientView({ setView, user, profile, onLogout, initialTab }) {
                             width:`${pct}%`, height:'100%',
                             borderRadius:99,
                             background: canRedeem
-                              ? '#7131E1'
-                              : '#7131E1',
+                              ? '#6F30DF'
+                              : '#6F30DF',
                             backgroundSize: canRedeem ? '200% 100%' : 'auto',
                             boxShadow: canRedeem
                               ? '0 0 8px rgba(254,80,0,0.55), 0 0 16px rgba(189,75,248,0.45), inset 0 0 6px rgba(255,255,255,0.25)'
@@ -8823,7 +8844,7 @@ function ClientView({ setView, user, profile, onLogout, initialTab }) {
                       {/* Costo + status — todo en violeta */}
                       <div style={{ flexShrink:0, textAlign:'right' }}>
                         {costDisplay}
-                        <div style={{ fontSize:10, color: canRedeem ? '#7131E1' : 'rgba(255,255,255,0.45)', fontWeight: canRedeem ? 700 : 400, marginTop:2, whiteSpace:'nowrap' }}>
+                        <div style={{ fontSize:10, color: canRedeem ? '#6F30DF' : 'rgba(255,255,255,0.45)', fontWeight: canRedeem ? 700 : 400, marginTop:2, whiteSpace:'nowrap' }}>
                           {statusText}
                         </div>
                       </div>
@@ -8860,7 +8881,7 @@ function ClientView({ setView, user, profile, onLogout, initialTab }) {
                   <div style={{ fontSize:10, color:'rgba(255,255,255,0.4)', marginTop:2 }}>visitas</div>
                 </div>
                 <div style={{ ...glass, padding:'14px 8px', textAlign:'center' }}>
-                  <div style={{ fontFamily:FN, fontSize:24, fontWeight:900, color:'#7131E1' }}>{totalRedeems}</div>
+                  <div style={{ fontFamily:FN, fontSize:24, fontWeight:900, color:'#6F30DF' }}>{totalRedeems}</div>
                   <div style={{ fontSize:10, color:'rgba(255,255,255,0.4)', marginTop:2 }}>canjes</div>
                 </div>
                 <div style={{ ...glass, padding:'14px 8px', textAlign:'center' }}>
@@ -8928,10 +8949,10 @@ function ClientView({ setView, user, profile, onLogout, initialTab }) {
 
             // Helpers para el render
             const ICONS = {
-              'visit':           { Icon: Star,    color: '#7131E1', bg: 'rgba(168,85,247,0.16)', border: 'rgba(168,85,247,0.36)' },
+              'visit':           { Icon: Star,    color: '#6F30DF', bg: 'rgba(168,85,247,0.16)', border: 'rgba(168,85,247,0.36)' },
               'redeem-prize':    { Icon: Gift,    color: '#22E698', bg: 'rgba(34,230,152,0.14)', border: 'rgba(34,230,152,0.34)' },
-              'redeem-discount': { Icon: Percent, color: '#FE5000', bg: 'rgba(254,80,0,0.14)',   border: 'rgba(254,80,0,0.34)' },
-              'join':            { Icon: UserPlus,color: '#EC4899', bg: 'rgba(236,72,153,0.14)', border: 'rgba(236,72,153,0.34)' },
+              'redeem-discount': { Icon: Percent, color: '#FF199F', bg: 'rgba(254,80,0,0.14)',   border: 'rgba(254,80,0,0.34)' },
+              'join':            { Icon: UserPlus,color: '#FF199F', bg: 'rgba(236,72,153,0.14)', border: 'rgba(236,72,153,0.34)' },
             }
 
             return events.map((ev, i) => {
@@ -8951,7 +8972,7 @@ function ClientView({ setView, user, profile, onLogout, initialTab }) {
                         marginLeft: 2,
                         padding: '1px 5px',
                         borderRadius: 4,
-                        background: '#7131E1',
+                        background: '#6F30DF',
                         color: '#fff',
                         fontSize: 9, fontWeight: 900,
                         letterSpacing: '.02em',
@@ -9037,7 +9058,7 @@ function ClientView({ setView, user, profile, onLogout, initialTab }) {
           <div style={{ width:'100%', maxWidth:340, borderRadius:28, overflow:'hidden', boxShadow:'0 24px 64px rgba(189,75,248,0.30), 0 8px 24px rgba(0,0,0,0.50)' }}>
 
             {/* Cuerpo del pase */}
-            <div style={{ background:'#7131E1', padding:'24px 24px 28px', position:'relative', overflow:'hidden' }}>
+            <div style={{ background:'#6F30DF', padding:'24px 24px 28px', position:'relative', overflow:'hidden' }}>
 
               {/* Blobs decorativos */}
               <div style={{ position:'absolute', top:-32, right:-32, width:120, height:120, borderRadius:'50%', background:'rgba(255,255,255,0.10)', filter:'blur(24px)', pointerEvents:'none' }} />
@@ -9087,7 +9108,7 @@ function ClientView({ setView, user, profile, onLogout, initialTab }) {
             </div>
 
             {/* Separador tipo ticket */}
-            <div style={{ position:'relative', background:'#7131E1' }}>
+            <div style={{ position:'relative', background:'#6F30DF' }}>
               {/* Muescas */}
               <div style={{ position:'absolute', left:-1, top:'50%', transform:'translateY(-50%)', width:18, height:18, borderRadius:'50%', background:'#000', zIndex:2 }} />
               <div style={{ position:'absolute', right:-1, top:'50%', transform:'translateY(-50%)', width:18, height:18, borderRadius:'50%', background:'#000', zIndex:2 }} />
@@ -9129,7 +9150,7 @@ function ClientView({ setView, user, profile, onLogout, initialTab }) {
           <div style={{ ...glass, padding:'18px', marginBottom:12, display:'flex', alignItems:'center', gap:14 }}>
             {profile?.avatar_url
               ? <img src={profile.avatar_url} alt="" style={{ width:56, height:56, borderRadius:'50%', objectFit:'cover', flexShrink:0 }} />
-              : <div style={{ width:56, height:56, borderRadius:'50%', background:'#7131E1', display:'flex', alignItems:'center', justifyContent:'center', fontFamily:FN, fontSize:18, fontWeight:900, color:'#fff', flexShrink:0 }}>{initials}</div>
+              : <div style={{ width:56, height:56, borderRadius:'50%', background:'#6F30DF', display:'flex', alignItems:'center', justifyContent:'center', fontFamily:FN, fontSize:18, fontWeight:900, color:'#fff', flexShrink:0 }}>{initials}</div>
             }
             <div style={{ flex:1, minWidth:0 }}>
               <div style={{ fontFamily:FN, fontSize:15, fontWeight:700, color:'#fff', overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>{profile?.name || 'Sin nombre'}</div>
@@ -9250,7 +9271,7 @@ function ClientView({ setView, user, profile, onLogout, initialTab }) {
             >
               <div style={{
                 width: 36, height: 36, borderRadius: 10,
-                background: '#7131E1',
+                background: '#6F30DF',
                 display: 'flex', alignItems: 'center', justifyContent: 'center',
                 flexShrink: 0,
                 boxShadow: '0 6px 18px -4px rgba(189,75,248,0.55)',
@@ -9424,7 +9445,7 @@ function ClientView({ setView, user, profile, onLogout, initialTab }) {
                     }}>
                       <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:8 }}>
                         <span style={{ fontSize:12, color:'rgba(255,255,255,0.65)', fontWeight:600 }}>Tu progreso</span>
-                        <span style={{ fontSize:12, color:'#7131E1', fontWeight:700 }}>
+                        <span style={{ fontSize:12, color:'#6F30DF', fontWeight:700 }}>
                           {bal} / {data.cost} {unitLabel}
                         </span>
                       </div>
@@ -9434,8 +9455,8 @@ function ClientView({ setView, user, profile, onLogout, initialTab }) {
                           minWidth: pct > 0 ? 10 : 0,
                           borderRadius:99,
                           background: canRedeem
-                            ? '#7131E1'
-                            : '#7131E1',
+                            ? '#6F30DF'
+                            : '#6F30DF',
                           backgroundSize: canRedeem ? '200% 100%' : 'auto',
                           boxShadow: canRedeem
                             ? '0 0 14px rgba(254,80,0,0.70), 0 0 26px rgba(189,75,248,0.60), inset 0 0 12px rgba(255,255,255,0.35)'
@@ -9533,7 +9554,7 @@ function ClientView({ setView, user, profile, onLogout, initialTab }) {
                   style={{
                     width:'100%', padding:'14px 0',
                     background: canRedeem
-                      ? '#7131E1'
+                      ? '#6F30DF'
                       : 'rgba(189,75,248,0.18)',
                     border: canRedeem ? 'none' : '1px solid rgba(189,75,248,0.40)',
                     borderRadius:14,
@@ -10048,7 +10069,7 @@ function RegisterCommerceView({ setView, user, onProfileRefresh, onLoginRequired
                   border: '1px solid rgba(189,75,248,0.32)',
                   display: 'flex', alignItems: 'flex-start', gap: 10,
                 }}>
-                  <CheckCircle size={15} color="#7131E1" strokeWidth={2.4} style={{ flexShrink: 0, marginTop: 2 }} />
+                  <CheckCircle size={15} color="#6F30DF" strokeWidth={2.4} style={{ flexShrink: 0, marginTop: 2 }} />
                   <div style={{ flex: 1, minWidth: 0 }}>
                     <div style={{ fontFamily: FN, fontSize: 12.5, fontWeight: 700, color: '#fff', marginBottom: 3 }}>
                       Datos importados de Google Maps
@@ -10589,7 +10610,7 @@ function OnboardingView({ commerce, onComplete }) {
 
   const unitLabel = progType === 'stars' ? 'estrellas' : 'puntos'
   const unitIcon  = progType === 'stars' ? '★' : '◆'
-  const unitColor = progType === 'stars' ? '#7131E1' : '#EC4899'
+  const unitColor = progType === 'stars' ? '#6F30DF' : '#FF199F'
 
   function next() { setStep(s => Math.min(s + 1, TOTAL)) }
   function skip() { if (step < TOTAL) next() }
@@ -10777,16 +10798,16 @@ function OnboardingView({ commerce, onComplete }) {
           { id:'points', Icon:Gem,   label:'Puntos',   desc:'1 punto por cada peso gastado. Flexible para ticket variable.' },
         ].map(opt => (
           <button key={opt.id} onClick={() => setProgType(opt.id)}
-            style={{ display:'flex', alignItems:'flex-start', gap:14, padding:18, background: progType===opt.id ? `${opt.id==='stars'?'#7131E1':'#EC4899'}18` : C.card, border:`2px solid ${progType===opt.id ? (opt.id==='stars'?'#7131E1':'#EC4899') : C.rim}`, borderRadius:16, cursor:'pointer', textAlign:'left', position:'relative', transition:'background 130ms ease, border-color 130ms ease, color 130ms ease, transform 130ms cubic-bezier(0.23,1,0.32,1)' }}>
-            <div style={{ width:36, height:36, borderRadius:10, background:`${opt.id==='stars'?'#7131E1':'#EC4899'}22`, display:'flex', alignItems:'center', justifyContent:'center', flexShrink:0 }}>{(() => { const I = opt.Icon; return I ? <I size={20} color={opt.id==='stars'?'#7131E1':'#EC4899'} strokeWidth={1.5} /> : null })()}</div>
+            style={{ display:'flex', alignItems:'flex-start', gap:14, padding:18, background: progType===opt.id ? `${opt.id==='stars'?'#6F30DF':'#FF199F'}18` : C.card, border:`2px solid ${progType===opt.id ? (opt.id==='stars'?'#6F30DF':'#FF199F') : C.rim}`, borderRadius:16, cursor:'pointer', textAlign:'left', position:'relative', transition:'background 130ms ease, border-color 130ms ease, color 130ms ease, transform 130ms cubic-bezier(0.23,1,0.32,1)' }}>
+            <div style={{ width:36, height:36, borderRadius:10, background:`${opt.id==='stars'?'#6F30DF':'#FF199F'}22`, display:'flex', alignItems:'center', justifyContent:'center', flexShrink:0 }}>{(() => { const I = opt.Icon; return I ? <I size={20} color={opt.id==='stars'?'#6F30DF':'#FF199F'} strokeWidth={1.5} /> : null })()}</div>
             <div style={{ flex:1 }}>
               <div style={{ display:'flex', alignItems:'center', gap:8, marginBottom:4 }}>
                 <span style={{ fontFamily:FN, fontSize:15, fontWeight:700, color:C.white }}>{opt.label}</span>
-                {opt.badge && <span style={{ fontSize:9, fontWeight:700, color:'#7131E1', background:'#7131E122', padding:'2px 7px', borderRadius:10, letterSpacing:'.07em' }}>{opt.badge}</span>}
+                {opt.badge && <span style={{ fontSize:9, fontWeight:700, color:'#6F30DF', background:'#6F30DF22', padding:'2px 7px', borderRadius:10, letterSpacing:'.07em' }}>{opt.badge}</span>}
               </div>
               <div style={{ fontSize:12, color:C.mist, lineHeight:1.5 }}>{opt.desc}</div>
             </div>
-            {progType===opt.id && <div style={{ position:'absolute', top:14, right:16, width:18, height:18, borderRadius:'50%', background: opt.id==='stars'?'#F5A623':'#5B8DEF', display:'flex', alignItems:'center', justifyContent:'center', fontSize:10 }}>✓</div>}
+            {progType===opt.id && <div style={{ position:'absolute', top:14, right:16, width:18, height:18, borderRadius:'50%', background: opt.id==='stars'?'#FF199F':'#6F30DF', display:'flex', alignItems:'center', justifyContent:'center', fontSize:10 }}>✓</div>}
           </button>
         ))}
       </div>
@@ -11012,7 +11033,7 @@ function OnboardingView({ commerce, onComplete }) {
         <div style={{ opacity:0.35, pointerEvents:'none', userSelect:'none' }}>
           <PCard style={{ padding:16, marginBottom:10 }}>
             <div style={{ display:'flex', alignItems:'center', gap:10 }}>
-              <div style={{ width:40, height:40, borderRadius:10, background:`${C.o}22`, display:'flex', alignItems:'center', justifyContent:'center' }}><Zap size={18} color={C.o} strokeWidth={2} /></div>
+              <div style={{ width:40, height:40, borderRadius:10, background:`${C.pink}22`, display:'flex', alignItems:'center', justifyContent:'center' }}><Zap size={18} color={C.pink} strokeWidth={2} /></div>
               <div style={{ flex:1 }}>
                 <div style={{ fontFamily:FN, fontSize:13, fontWeight:700, color:C.white }}>10% OFF próxima visita</div>
                 <div style={{ fontSize:10, color:C.ok }}>● Activa · vence en 3 días</div>
@@ -11172,7 +11193,7 @@ function PromoWizard({ progType = 'points', onClose, onComplete, activePromos = 
               <div style={{ fontFamily:FN, fontSize:16, fontWeight:800, color:C.white }}>
                 {step === 1 ? 'Nueva promoción' : (
                   <div style={{ display:'flex', alignItems:'center', gap:8 }}>
-                    <div aria-hidden="true" style={{ width:24, height:24, borderRadius:8, background: promoType==='discount_next' ? '#7131E1' : '#DB2777', display:'flex', alignItems:'center', justifyContent:'center', flexShrink:0 }}>
+                    <div aria-hidden="true" style={{ width:24, height:24, borderRadius:8, background: promoType==='discount_next' ? '#6F30DF' : '#d4007f', display:'flex', alignItems:'center', justifyContent:'center', flexShrink:0 }}>
                       <span style={{ fontFamily:FN, fontWeight:900, fontSize:9, color:'#fff', letterSpacing:'-0.02em', lineHeight:1 }}>
                         {promoType==='discount_next' ? '−%' : '×2'}
                       </span>
@@ -11189,7 +11210,7 @@ function PromoWizard({ progType = 'points', onClose, onComplete, activePromos = 
           {showProgress && (
             <>
               <div style={{ height:3, background:'rgba(255,255,255,0.10)', borderRadius:99, overflow:'hidden', marginBottom:6 }}>
-                <div style={{ height:'100%', borderRadius:99, background: promoType === 'discount_next' ? GV : promoType === 'double_points' ? '#EC4899' : G, width:`${progressPct}%`, transition:'width 150ms ease' }} />
+                <div style={{ height:'100%', borderRadius:99, background: promoType === 'discount_next' ? GV : promoType === 'double_points' ? '#FF199F' : G, width:`${progressPct}%`, transition:'width 150ms ease' }} />
               </div>
               <div style={{ fontSize:10, color:'rgba(255,255,255,0.35)', fontFamily:FI }}>Paso {step} de {totalSteps}</div>
             </>
@@ -11207,8 +11228,8 @@ function PromoWizard({ progType = 'points', onClose, onComplete, activePromos = 
                 <div style={{ fontSize:13, color:C.mist, marginBottom:20 }}>Elegí una opción para continuar</div>
                 <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:12, marginBottom: activePromos.length > 0 ? 14 : 0 }}>
                   {[
-                    { id:'discount_next', symbol:'−%', label:'Descuento en visita', desc:'% OFF automático en la próxima visita',    bg:'#7131E1', shadow:'0 12px 32px -8px rgba(139,92,246,0.45)', shadowHov:'0 12px 32px -8px rgba(139,92,246,0.65)' },
-                    { id:'double_points', symbol:'×2', label:'Suma doble',          desc:`Doble de ${unitLabel} por período o días`, bg:'#EC4899', shadow:'0 12px 32px -8px rgba(236,72,153,0.45)', shadowHov:'0 12px 32px -8px rgba(236,72,153,0.65)' },
+                    { id:'discount_next', symbol:'−%', label:'Descuento en visita', desc:'% OFF automático en la próxima visita',    bg:'#6F30DF', shadow:'0 12px 32px -8px rgba(139,92,246,0.45)', shadowHov:'0 12px 32px -8px rgba(139,92,246,0.65)' },
+                    { id:'double_points', symbol:'×2', label:'Suma doble',          desc:`Doble de ${unitLabel} por período o días`, bg:'#FF199F', shadow:'0 12px 32px -8px rgba(236,72,153,0.45)', shadowHov:'0 12px 32px -8px rgba(236,72,153,0.65)' },
                   ].map(t => {
                     const blocked = activePromos.some(p => p.type === t.id)
                     return (
@@ -11308,7 +11329,7 @@ function PromoWizard({ progType = 'points', onClose, onComplete, activePromos = 
                           onClick={() => setForm(f => ({ ...f, days: sel ? f.days.filter(d => d !== v) : [...f.days, v] }))}
                           style={{
                             flex:1, padding:'10px 0', borderRadius:10,
-                            border:`1.5px solid ${sel ? '#ec4899' : C.rim}`,
+                            border:`1.5px solid ${sel ? '#FF199F' : C.rim}`,
                             background: sel ? 'rgba(236,72,153,0.18)' : C.bg3,
                             color: sel ? C.white : C.mist,
                             fontFamily:FN, fontSize:12, fontWeight:700,
@@ -11415,7 +11436,7 @@ function PromoWizard({ progType = 'points', onClose, onComplete, activePromos = 
                     <div style={{ width:42, height:42, borderRadius:12, background:promoType==='discount_next'?`${C.v}30`:'rgba(236,72,153,0.25)', display:'flex', alignItems:'center', justifyContent:'center' }}>
                       {promoType === 'discount_next'
                         ? <Zap size={20} color={C.v} strokeWidth={1.5} />
-                        : <RefreshCw size={20} color="#ec4899" strokeWidth={1.5} />}
+                        : <RefreshCw size={20} color="#FF199F" strokeWidth={1.5} />}
                     </div>
                     <div>
                       <div style={{ fontFamily:FN, fontSize:15, fontWeight:800, color:C.white }}>
@@ -11460,7 +11481,7 @@ function PromoWizard({ progType = 'points', onClose, onComplete, activePromos = 
                 <div style={{ display:'flex', gap:10 }}>
                   <button onClick={prev} style={{ flex:1, padding:'13px', background:'rgba(255,255,255,0.07)', border:`1px solid ${C.rim}`, borderRadius:13, color:C.mist, fontFamily:FN, fontSize:13, fontWeight:600, cursor:'pointer' }}>Atrás</button>
                   <button onClick={submit} disabled={saving}
-                    style={{ flex:2, padding:'13px', background: promoType==='discount_next' ? GV : '#EC4899', border:'none', borderRadius:13, color:'#fff', fontFamily:FN, fontSize:14, fontWeight:700, cursor:saving?'not-allowed':'pointer', opacity:saving?0.6:1, boxShadow: promoType==='discount_next' ? '0 4px 16px rgba(139,92,246,0.40)' : '0 4px 16px rgba(236,72,153,0.40)', display:'flex', alignItems:'center', justifyContent:'center', gap:7 }}>
+                    style={{ flex:2, padding:'13px', background: promoType==='discount_next' ? GV : '#FF199F', border:'none', borderRadius:13, color:'#fff', fontFamily:FN, fontSize:14, fontWeight:700, cursor:saving?'not-allowed':'pointer', opacity:saving?0.6:1, boxShadow: promoType==='discount_next' ? '0 4px 16px rgba(139,92,246,0.40)' : '0 4px 16px rgba(236,72,153,0.40)', display:'flex', alignItems:'center', justifyContent:'center', gap:7 }}>
                     {saving ? 'Activando...' : 'Activar promoción'}
                   </button>
                 </div>
@@ -12383,8 +12404,8 @@ function CommerceSettingsView({ user, profile, setView, onLogout, onOwnerProfile
           // Mock data de segmentos
           setSegments({
             nuevos: { label: 'Nuevos', icon: '🌟', color: '#40C8FF', count: 5, percent: 25, description: 'Clientes que acaban de unirse' },
-            frecuentes: { label: 'Frecuentes', icon: '🔥', color: '#FE5000', count: 8, percent: 40, description: 'Clientes que visitan regularmente' },
-            vip: { label: 'VIP', icon: '👑', color: '#7131E1', count: 4, percent: 20, description: 'Clientes más leales y comprometidos' },
+            frecuentes: { label: 'Frecuentes', icon: '🔥', color: '#FF199F', count: 8, percent: 40, description: 'Clientes que visitan regularmente' },
+            vip: { label: 'VIP', icon: '👑', color: '#6F30DF', count: 4, percent: 20, description: 'Clientes más leales y comprometidos' },
             inactivos: { label: 'Inactivos', icon: '😴', color: '#9B85CC', count: 3, percent: 15, description: 'Clientes sin visitas recientes' },
           })
         }
@@ -12393,8 +12414,8 @@ function CommerceSettingsView({ user, profile, setView, onLogout, onOwnerProfile
         // Mock data si hay error
         setSegments({
           nuevos: { label: 'Nuevos', icon: '🌟', color: '#40C8FF', count: 5, percent: 25, description: 'Clientes que acaban de unirse' },
-          frecuentes: { label: 'Frecuentes', icon: '🔥', color: '#FE5000', count: 8, percent: 40, description: 'Clientes que visitan regularmente' },
-          vip: { label: 'VIP', icon: '👑', color: '#7131E1', count: 4, percent: 20, description: 'Clientes más leales y comprometidos' },
+          frecuentes: { label: 'Frecuentes', icon: '🔥', color: '#FF199F', count: 8, percent: 40, description: 'Clientes que visitan regularmente' },
+          vip: { label: 'VIP', icon: '👑', color: '#6F30DF', count: 4, percent: 20, description: 'Clientes más leales y comprometidos' },
           inactivos: { label: 'Inactivos', icon: '😴', color: '#9B85CC', count: 3, percent: 15, description: 'Clientes sin visitas recientes' },
         })
         setLoadingSegments(false)
@@ -13420,7 +13441,7 @@ function CommerceSettingsView({ user, profile, setView, onLogout, onOwnerProfile
 
   const unitLabel = form?.prog_type === 'stars' ? 'estrellas' : 'puntos'
   const unitIcon  = form?.prog_type === 'stars' ? '★' : '◆'
-  const unitColor = form?.prog_type === 'stars' ? '#7131E1' : '#EC4899'
+  const unitColor = form?.prog_type === 'stars' ? '#6F30DF' : '#FF199F'
   const activePrizes   = prizes.filter(p => p.active)
   const minPrizeCost   = activePrizes.length ? Math.min(...activePrizes.map(p => p.cost)) : 10
 
@@ -13608,7 +13629,7 @@ function CommerceSettingsView({ user, profile, setView, onLogout, onOwnerProfile
                 zIndex: 200,
                 width: 52, height: 52, borderRadius: '50%',
                 background: (active || isHovered)
-                  ? '#7131E1'
+                  ? '#6F30DF'
                   : 'rgba(40,18,62,0.55)',
                 backdropFilter: 'blur(22px) saturate(180%)',
                 WebkitBackdropFilter: 'blur(22px) saturate(180%)',
@@ -13676,7 +13697,7 @@ function CommerceSettingsView({ user, profile, setView, onLogout, onOwnerProfile
             borderLeft:   '1px solid rgba(255,255,255,0.85)',
             borderRight:  '1px solid rgba(255,255,255,0.85)',
             borderBottom: 'none',
-            color: '#7131E1',
+            color: '#6F30DF',
             cursor: 'pointer',
             display: 'flex', alignItems: 'center', justifyContent: 'center',
             padding: 0,
@@ -13696,8 +13717,8 @@ function CommerceSettingsView({ user, profile, setView, onLogout, onOwnerProfile
           }}
         >
           {radialOpen
-            ? <X size={22} strokeWidth={2.8} color="#7131E1" />
-            : <Settings size={22} strokeWidth={2.4} color="#7131E1" />
+            ? <X size={22} strokeWidth={2.8} color="#6F30DF" />
+            : <Settings size={22} strokeWidth={2.4} color="#6F30DF" />
           }
         </button>
 
@@ -13757,7 +13778,7 @@ function CommerceSettingsView({ user, profile, setView, onLogout, onOwnerProfile
         padding: 0,
         border: 'none',
         borderRadius: '0 16px 16px 0',
-        background: '#7131E1',
+        background: '#6F30DF',
         boxShadow: '4px 0 22px rgba(189,75,248,0.65), inset -1px 0 0 rgba(255,255,255,0.20)',
         color: '#fff',
         cursor: 'pointer',
@@ -14024,7 +14045,7 @@ function CommerceSettingsView({ user, profile, setView, onLogout, onOwnerProfile
                 <span style={{
                   position: 'absolute', bottom: 0, left: '15%', right: '15%',
                   height: 2, borderRadius: 2,
-                  background: '#7131E1',
+                  background: '#6F30DF',
                 }} />
               )}
             </button>
@@ -14057,7 +14078,7 @@ function CommerceSettingsView({ user, profile, setView, onLogout, onOwnerProfile
     const VIOLET_THEME = {
       bg:         'linear-gradient(135deg, rgba(124,58,237,0.18), rgba(168,85,247,0.10), rgba(189,75,248,0.14))',
       border:     'rgba(168,85,247,0.42)',
-      iconBg:     '#7131E1',
+      iconBg:     '#6F30DF',
       shadow:     '0 6px 22px rgba(168,85,247,0.40)',
       descColor:  'rgba(229,221,255,0.78)',
       arrowColor: 'rgba(196,181,253,0.88)',
@@ -14234,7 +14255,7 @@ function CommerceSettingsView({ user, profile, setView, onLogout, onOwnerProfile
         padding:'0 4px 10px',
         marginBottom:2,
       }}>
-        <div style={{ width:3, height:14, borderRadius:99, background:'#7131E1' }} />
+        <div style={{ width:3, height:14, borderRadius:99, background:'#6F30DF' }} />
         <div style={{
           fontFamily:FN, fontSize:11.5, fontWeight:800,
           color:'rgba(255,255,255,0.85)',
@@ -14957,7 +14978,7 @@ function CommerceSettingsView({ user, profile, setView, onLogout, onOwnerProfile
                     label="Cupón"
                     value={activeDiscount ? `${activeDiscount.value}% OFF` : 'No activo'}
                     hint={activeDiscount ? 'en próxima compra' : 'sin configurar'}
-                    color={C.o}
+                    color={C.pink}
                     dimmed={!activeDiscount}
                     onEdit={() => handleWizardDeepLink({ tab: 'recompensas', subTab: 'discount' })}
                   />
@@ -15129,7 +15150,7 @@ function CommerceSettingsView({ user, profile, setView, onLogout, onOwnerProfile
                   actual. Items locked se rendean aparte con su chip de plan.
                   Encendidos (done) = verde brillante con glow, mismo verde
                   que la solapa "Completos" (#22E698) para coherencia.
-                  Apagados = amarillo apagado (#F5A623 al 28% opacidad),
+                  Apagados = amarillo apagado (#FF199F al 28% opacidad),
                   mismo amarillo que la solapa "Pendientes" para que se
                   lea de un vistazo "esto está pendiente, esto está hecho". */}
               <div style={{ position:'relative', zIndex:1, display:'flex', alignItems:'center', justifyContent:'space-between', width:'100%' }}>
@@ -15195,7 +15216,7 @@ function CommerceSettingsView({ user, profile, setView, onLogout, onOwnerProfile
             // Completos siempre se nota verde y Pendientes siempre amarilla
             // — el active/inactive diferencia INTENSIDAD, no color.
             {
-              id: 'pendientes', label: 'Pendientes', count: pendingCount, color: '#F5A623', symbol: '!',
+              id: 'pendientes', label: 'Pendientes', count: pendingCount, color: '#FF199F', symbol: '!',
               activeBg:     'rgba(245,166,35,0.20)',
               activeBorder: 'rgba(245,166,35,0.55)',
               dimBg:        'rgba(245,166,35,0.05)',
@@ -15374,7 +15395,7 @@ function CommerceSettingsView({ user, profile, setView, onLogout, onOwnerProfile
                 style={{
                   marginTop: 16,
                   padding: '10px 18px', borderRadius: 12,
-                  background: '#7131E1',
+                  background: '#6F30DF',
                   border: 'none', color: '#fff',
                   fontFamily: FN, fontSize: 13, fontWeight: 800,
                   cursor: 'pointer',
@@ -15603,9 +15624,9 @@ function CommerceSettingsView({ user, profile, setView, onLogout, onOwnerProfile
               // chip del plan que las desbloquea + CTA "Actualizar plan".
               const isLocked = !!item.lockedByPlan
               const lockPlan = item.lockedByPlan && PLANS[item.lockedByPlan]
-              const lockColor = lockPlan?.color || '#7131E1'
+              const lockColor = lockPlan?.color || '#6F30DF'
               // ── Tema de la tab actual ──
-              // Pendientes (intentFilter='pendientes') → amarillo (#F5A623,
+              // Pendientes (intentFilter='pendientes') → amarillo (#FF199F,
               // mismo color que la solapa Pendientes).
               // Completos (intentFilter='listas') → verde (#22E698, mismo
               // color que la solapa Completos).
@@ -15619,7 +15640,7 @@ function CommerceSettingsView({ user, profile, setView, onLogout, onOwnerProfile
               // card: background degradé, glow del border, icon circle,
               // CTA button. El user pidió que el color "pinte la card
               // entera" en lugar de solo aparecer en detalles sutiles.
-              const themeColor     = isPending ? '#F5A623' : '#22E698'
+              const themeColor     = isPending ? '#FF199F' : '#22E698'
               const themeColorD    = isPending ? '#D97706' : '#15803D'  // Tono más oscuro para gradientes/sombras
               const themeColorL    = isPending ? '#FBBF24' : '#4ade80'  // Tono más claro/vibrante
               const themeRgba22    = isPending ? 'rgba(245,166,35,0.22)' : 'rgba(34,230,152,0.22)'
@@ -16040,7 +16061,7 @@ function CommerceSettingsView({ user, profile, setView, onLogout, onOwnerProfile
                 aria-label={`Ir a la tarjeta ${i + 1}`}
                 style={{
                   width: active ? 28 : 7, height: 7, borderRadius: 99,
-                  background: active ? '#7131E1' : 'rgba(255,255,255,0.18)',
+                  background: active ? '#6F30DF' : 'rgba(255,255,255,0.18)',
                   border: 'none', padding: 0, cursor: 'pointer',
                   transition: 'width 150ms ease, background 150ms ease',
                 }}
@@ -16061,9 +16082,9 @@ function CommerceSettingsView({ user, profile, setView, onLogout, onOwnerProfile
             border: '1px solid rgba(189,75,248,0.20)',
             display: 'flex', alignItems: 'flex-start', gap: 10,
           }}>
-            <Sparkles size={14} color="#7131E1" strokeWidth={2.2} style={{ flexShrink: 0, marginTop: 1 }} />
+            <Sparkles size={14} color="#6F30DF" strokeWidth={2.2} style={{ flexShrink: 0, marginTop: 1 }} />
             <div style={{ fontSize: 11.5, color: 'rgba(255,255,255,0.72)', lineHeight: 1.5 }}>
-              Las tarjetas con chip <strong style={{ color: '#7131E1' }}>STARTER</strong> o <strong style={{ color: '#EC4899' }}>PRO</strong> son funciones premium. Aparecen acá para que las conozcas, pero no afectan tu progreso — son las que se desbloquean si actualizás tu plan.
+              Las tarjetas con chip <strong style={{ color: '#6F30DF' }}>STARTER</strong> o <strong style={{ color: '#FF199F' }}>PRO</strong> son funciones premium. Aparecen acá para que las conozcas, pero no afectan tu progreso — son las que se desbloquean si actualizás tu plan.
             </div>
           </div>
         )}
@@ -16242,7 +16263,7 @@ function CommerceSettingsView({ user, profile, setView, onLogout, onOwnerProfile
         {/* ── Registrar visita manual ── */}
         {(() => {
           const isStars    = form?.prog_type === 'stars'
-          const sysColor   = isStars ? '#7131E1' : '#EC4899'
+          const sysColor   = isStars ? '#6F30DF' : '#FF199F'
           const step       = 100
           const cur        = parseInt(addVisitAmount) || 0
           const todayDow   = new Date().getDay()
@@ -16350,7 +16371,7 @@ function CommerceSettingsView({ user, profile, setView, onLogout, onOwnerProfile
         {(() => {
           const isStars  = form?.prog_type === 'stars'
           const unitWord = isStars ? 'estrellas' : 'puntos'
-          const sysColor = isStars ? '#7131E1' : '#EC4899'
+          const sysColor = isStars ? '#6F30DF' : '#FF199F'
           const step     = isStars ? 1 : (parseInt(form?.prog_min_purchase) > 0 ? parseInt(form.prog_min_purchase) : 100)
           const cur      = parseInt(grantBalanceAmount) || 0
           const dec      = () => { const n = Math.max(step, cur - step); setGrantBalanceAmount(String(n)); setGrantBalanceError('') }
@@ -16591,7 +16612,7 @@ function CommerceSettingsView({ user, profile, setView, onLogout, onOwnerProfile
 
       {showAutoPopup && (
         <div onClick={() => setShowAutoPopup(false)} style={{ position:'fixed', inset:0, background:'rgba(0,0,0,0.80)', backdropFilter:'blur(4px)', WebkitBackdropFilter:'blur(4px)', zIndex:9000, display:'flex', alignItems:'center', justifyContent:'center', padding:20 }}>
-          <div onClick={e => e.stopPropagation()} className="modal-in" style={{ background:'#7131E1', borderRadius:28, padding:'36px 28px 28px', maxWidth:320, width:'100%', textAlign:'center', boxShadow:'0 32px 80px rgba(0,0,0,0.6), 0 0 60px rgba(168,85,247,0.30)' }}>
+          <div onClick={e => e.stopPropagation()} className="modal-in" style={{ background:'#6F30DF', borderRadius:28, padding:'36px 28px 28px', maxWidth:320, width:'100%', textAlign:'center', boxShadow:'0 32px 80px rgba(0,0,0,0.6), 0 0 60px rgba(168,85,247,0.30)' }}>
             {/* Icon */}
             <div style={{ width:64, height:64, borderRadius:'50%', background:'rgba(255,255,255,0.20)', display:'flex', alignItems:'center', justifyContent:'center', margin:'0 auto 20px' }}>
               <Users size={30} color='#fff' strokeWidth={2} />
@@ -16611,7 +16632,7 @@ function CommerceSettingsView({ user, profile, setView, onLogout, onOwnerProfile
             {/* Primary CTA */}
             <button
               onClick={() => { setShowAutoPopup(false); setTab('mensajes') }}
-              style={{ width:'100%', padding:'14px 0', borderRadius:16, background:'#fff', border:'none', color:'#7131E1', fontFamily:FN, fontSize:14, fontWeight:700, cursor:'pointer', marginBottom:10, transition:'opacity 160ms ease' }}
+              style={{ width:'100%', padding:'14px 0', borderRadius:16, background:'#fff', border:'none', color:'#6F30DF', fontFamily:FN, fontSize:14, fontWeight:700, cursor:'pointer', marginBottom:10, transition:'opacity 160ms ease' }}
               onMouseEnter={e => e.currentTarget.style.opacity = '0.92'}
               onMouseLeave={e => e.currentTarget.style.opacity = '1'}>
               Ver automatizaciones →
@@ -16681,11 +16702,11 @@ function CommerceSettingsView({ user, profile, setView, onLogout, onOwnerProfile
             </div>
             {planDef.limit !== null && (
               <>
-                <div style={{ fontSize:10, color: atLimit ? '#f87444' : nearLimit ? C.o : C.mist, marginBottom:4 }}>
+                <div style={{ fontSize:10, color: atLimit ? '#f87444' : nearLimit ? C.pink : C.mist, marginBottom:4 }}>
                   {clientCount} / {planDef.limit} clientes
                 </div>
                 <div style={{ height:3, borderRadius:3, background:C.rim, overflow:'hidden' }}>
-                  <div style={{ height:'100%', width:`${Math.min(100, (clientCount/planDef.limit)*100)}%`, background: atLimit ? '#f87444' : nearLimit ? C.o : planDef.color, borderRadius:3, transition:'width .4s' }} />
+                  <div style={{ height:'100%', width:`${Math.min(100, (clientCount/planDef.limit)*100)}%`, background: atLimit ? '#f87444' : nearLimit ? C.pink : planDef.color, borderRadius:3, transition:'width .4s' }} />
                 </div>
               </>
             )}
@@ -16745,7 +16766,7 @@ function CommerceSettingsView({ user, profile, setView, onLogout, onOwnerProfile
                 <div style={{ display:'flex', alignItems:'center', gap:6, marginTop:2 }}>
                   <span style={{ fontFamily:FN, fontSize:9, fontWeight:700, color:planDef.color, letterSpacing:'.06em', padding:'1px 6px', borderRadius:4, background:planDef.badge }}>{planDef.label}</span>
                   {planDef.limit !== null && (
-                    <span style={{ fontSize:10, color: atLimit ? '#f87444' : nearLimit ? C.o : C.mist }}>{clientCount}/{planDef.limit} clientes</span>
+                    <span style={{ fontSize:10, color: atLimit ? '#f87444' : nearLimit ? C.pink : C.mist }}>{clientCount}/{planDef.limit} clientes</span>
                   )}
                   {planDef.limit === null && (
                     <span style={{ fontSize:10, color:C.mist }}>{clientCount} clientes</span>
@@ -16756,7 +16777,7 @@ function CommerceSettingsView({ user, profile, setView, onLogout, onOwnerProfile
             {/* Progress bar */}
             {planDef.limit !== null && (
               <div style={{ height:3, borderRadius:3, background:C.rim, overflow:'hidden', marginTop:8 }}>
-                <div style={{ height:'100%', width:`${Math.min(100,(clientCount/planDef.limit)*100)}%`, background: atLimit ? '#f87444' : nearLimit ? C.o : planDef.color, borderRadius:3, transition:'width .4s' }} />
+                <div style={{ height:'100%', width:`${Math.min(100,(clientCount/planDef.limit)*100)}%`, background: atLimit ? '#f87444' : nearLimit ? C.pink : planDef.color, borderRadius:3, transition:'width .4s' }} />
               </div>
             )}
           </div>
@@ -16793,7 +16814,7 @@ function CommerceSettingsView({ user, profile, setView, onLogout, onOwnerProfile
           <div style={{ padding:'12px 16px', borderTop:`1px solid ${C.rim}` }}>
             <button
               onClick={() => { setView('scanner'); setDrawerOpen(false) }}
-              style={{ display:'flex', alignItems:'center', justifyContent:'center', gap:8, width:'100%', padding:'13px 0', borderRadius:12, background:G, border:'none', color:'#fff', fontFamily:FN, fontSize:14, fontWeight:700, cursor:'pointer', boxShadow:'0 4px 18px #FE500044' }}>
+              style={{ display:'flex', alignItems:'center', justifyContent:'center', gap:8, width:'100%', padding:'13px 0', borderRadius:12, background:G, border:'none', color:'#fff', fontFamily:FN, fontSize:14, fontWeight:700, cursor:'pointer', boxShadow:'0 4px 18px #FF199F44' }}>
               <QrCode size={18} />
               Escáner QR
             </button>
@@ -17063,7 +17084,7 @@ function CommerceSettingsView({ user, profile, setView, onLogout, onOwnerProfile
               </>}
             />
           )
-          const sysColor = form?.prog_type === 'stars' ? '#7131E1' : '#EC4899'
+          const sysColor = form?.prog_type === 'stars' ? '#6F30DF' : '#FF199F'
           const isStars  = form?.prog_type === 'stars'
           const norm     = s => (s||'').toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g,'')
           const q        = norm(memberSearch.trim())
@@ -17098,7 +17119,7 @@ function CommerceSettingsView({ user, profile, setView, onLogout, onOwnerProfile
                   {hasClients && (
                     <div style={{ fontSize:12, color:C.mist, marginTop:2 }}>
                       {clientCount === 1 ? '1 cliente registrado' : `${clientCount} clientes registrados`}
-                      {planDef.limit !== null && <span style={{ color: atLimit?'#f87444':nearLimit?C.o:C.dust }}> · {clientCount}/{planDef.limit} del plan {planDef.label}</span>}
+                      {planDef.limit !== null && <span style={{ color: atLimit?'#f87444':nearLimit?C.pink:C.dust }}> · {clientCount}/{planDef.limit} del plan {planDef.label}</span>}
                     </div>
                   )}
                 </div>
@@ -17132,7 +17153,7 @@ function CommerceSettingsView({ user, profile, setView, onLogout, onOwnerProfile
                 <div style={{ marginTop:12, marginBottom:4 }}>
                   <InfoBanner type="warning" icon={AlertTriangle}
                     action={
-                      <button onClick={() => setUpgradeModal('clients')} style={{ background:'transparent', border:`1px solid ${C.o}`, borderRadius:9, padding:'6px 14px', color:C.o, fontFamily:FN, fontSize:11, fontWeight:700, cursor:'pointer' }}>
+                      <button onClick={() => setUpgradeModal('clients')} style={{ background:'transparent', border:`1px solid ${C.pink}`, borderRadius:9, padding:'6px 14px', color:C.pink, fontFamily:FN, fontSize:11, fontWeight:700, cursor:'pointer' }}>
                         Actualizar plan
                       </button>
                     }>
@@ -17407,7 +17428,7 @@ function CommerceSettingsView({ user, profile, setView, onLogout, onOwnerProfile
             try { localStorage.removeItem('clufix:cameFromPreview') } catch {}
             onOwnerProfile?.()
           }}
-            style={{ display:'inline-flex', alignItems:'center', gap:6, marginBottom:14, padding:'6px 12px 6px 8px', background:'rgba(189,75,248,0.10)', border:'1px solid rgba(189,75,248,0.30)', borderRadius:99, color:'#7131E1', fontFamily:FN, fontSize:11.5, fontWeight:700, cursor:'pointer' }}>
+            style={{ display:'inline-flex', alignItems:'center', gap:6, marginBottom:14, padding:'6px 12px 6px 8px', background:'rgba(189,75,248,0.10)', border:'1px solid rgba(189,75,248,0.30)', borderRadius:99, color:'#6F30DF', fontFamily:FN, fontSize:11.5, fontWeight:700, cursor:'pointer' }}>
             <ArrowLeft size={13} strokeWidth={2.5} /> Volver a previsualización
           </button>
         )}
@@ -17526,7 +17547,7 @@ function CommerceSettingsView({ user, profile, setView, onLogout, onOwnerProfile
           }}>
         {(() => {
           const headerType = pendingSystemType ?? commerce?.prog_type ?? 'stars'
-          const headerCol  = headerType === 'points' ? '#EC4899' : '#7131E1'
+          const headerCol  = headerType === 'points' ? '#FF199F' : '#6F30DF'
           // headerUnit ya no se usa: el título dejó de ser
           // "¿Cómo suman {unit}?" y pasó a ser fijo "Sistema de
           // acumulación". headerCol sigue tinteando el ícono Gift.
@@ -17555,9 +17576,9 @@ function CommerceSettingsView({ user, profile, setView, onLogout, onOwnerProfile
 
         {(() => {
           const SYSTEMS = [
-            { id:'stars',  Icon:Star, label:'Estrellas', color:'#7131E1', colorDark:'#7131E1',
+            { id:'stars',  Icon:Star, label:'Estrellas', color:'#6F30DF', colorDark:'#6F30DF',
               desc:'1 estrella por compra. Simple y visual.' },
-            { id:'points', Icon:Gem,  label:'Puntos',    color:'#EC4899', colorDark:'#DB2777',
+            { id:'points', Icon:Gem,  label:'Puntos',    color:'#FF199F', colorDark:'#d4007f',
               // "Flexible para ticket variable." quitado a pedido del
               // dueño — la idea queda explicada con el ejemplo concreto
               // que se renderiza debajo del card activo.
@@ -17699,7 +17720,7 @@ function CommerceSettingsView({ user, profile, setView, onLogout, onOwnerProfile
                           para que el dueño entienda la mecánica de un vistazo. */}
                       {currentType === 'points' && (
                         <div style={{ padding:'10px 12px', background:'rgba(236,72,153,0.08)', border:'1px solid rgba(236,72,153,0.18)', borderRadius:10, fontSize:11.5, color:'rgba(255,255,255,0.70)', lineHeight:1.5, display:'flex', alignItems:'flex-start', gap:9 }}>
-                          <Lightbulb size={13} color="#EC4899" strokeWidth={2.2} style={{ flexShrink:0, marginTop:2 }} />
+                          <Lightbulb size={13} color="#FF199F" strokeWidth={2.2} style={{ flexShrink:0, marginTop:2 }} />
                           <div>
                             Por ejemplo: si tenés un premio que vale <strong style={{ color:'#fff' }}>10.000 puntos</strong>, significa que tu cliente tiene que haber gastado <strong style={{ color:'#fff' }}>$10.000</strong> en tu negocio.
                           </div>
@@ -17857,8 +17878,8 @@ function CommerceSettingsView({ user, profile, setView, onLogout, onOwnerProfile
                 para estrellas, fucsia para puntos). */}
             {(() => {
               const sysType = pendingSystemType ?? commerce?.prog_type ?? 'stars'
-              const sysCol  = sysType === 'points' ? '#EC4899' : '#7131E1'
-              const sysColD = sysType === 'points' ? '#DB2777' : '#7131E1'
+              const sysCol  = sysType === 'points' ? '#FF199F' : '#6F30DF'
+              const sysColD = sysType === 'points' ? '#d4007f' : '#6F30DF'
               const sysUnit = sysType === 'points' ? 'puntos' : 'estrellas'
               const activeDouble = (Array.isArray(promos) ? promos : []).find(p =>
                 p.type === 'double_points' && p.active && (!p.expires_at || new Date(p.expires_at) > new Date())
@@ -18278,7 +18299,7 @@ function CommerceSettingsView({ user, profile, setView, onLogout, onOwnerProfile
                   {p.img_url
                     ? <img src={p.img_url} alt="" style={{ width: 60, height: 60, borderRadius: 14, objectFit: 'cover', flexShrink: 0 }} />
                     : <div style={{ width: 60, height: 60, borderRadius: 14, background: 'rgba(113,49,225,0.10)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
-                        <Gift size={26} color="#7131E1" strokeWidth={1.6} />
+                        <Gift size={26} color="#6F30DF" strokeWidth={1.6} />
                       </div>
                   }
                   <div style={{ flex: 1, minWidth: 0 }}>
@@ -18400,8 +18421,8 @@ function CommerceSettingsView({ user, profile, setView, onLogout, onOwnerProfile
             {(() => {
               const sysCurrent  = commerce?.prog_type || 'stars'
               const sysUnit     = sysCurrent === 'points' ? 'puntos' : 'estrellas'
-              const sysColor    = sysCurrent === 'points' ? '#EC4899' : '#7131E1'
-              const sysColorD   = sysCurrent === 'points' ? '#DB2777' : '#7131E1'
+              const sysColor    = sysCurrent === 'points' ? '#FF199F' : '#6F30DF'
+              const sysColorD   = sysCurrent === 'points' ? '#d4007f' : '#6F30DF'
               const activeForCurrentSys = prizes.filter(p =>
                 p.active && (p.system_type || sysCurrent) === sysCurrent
               )
@@ -18820,7 +18841,7 @@ function CommerceSettingsView({ user, profile, setView, onLogout, onOwnerProfile
             {confirmDelete && (
               <div style={{ position:'fixed', inset:0, background:'rgba(0,0,0,.7)', zIndex:100, display:'flex', alignItems:'center', justifyContent:'center', padding:20 }}>
                 <PCard className="modal-in" style={{ padding:24, maxWidth:360, width:'100%' }}>
-                  <div style={{ display:'flex', justifyContent:'center', marginBottom:12 }}><AlertTriangle size={22} color={C.o} strokeWidth={2} /></div>
+                  <div style={{ display:'flex', justifyContent:'center', marginBottom:12 }}><AlertTriangle size={22} color={C.pink} strokeWidth={2} /></div>
                   <div style={{ fontFamily:FN, fontSize:15, fontWeight:700, color:C.white, marginBottom:10 }}>¿Eliminar promoción activa?</div>
                   <div style={{ fontSize:13, color:C.mist, lineHeight:1.6, marginBottom:20 }}>
                     Algunos clientes pueden haberla visto o estar esperándola. Eliminarla puede generar una mala experiencia.
@@ -18842,7 +18863,7 @@ function CommerceSettingsView({ user, profile, setView, onLogout, onOwnerProfile
             {/* Modal edición de promo activa — descripción + vencimiento. */}
             {editingPromo && (() => {
               const ep = editingPromo
-              const epColor = ep.type === 'discount_next' ? C.v : '#ec4899'
+              const epColor = ep.type === 'discount_next' ? C.v : '#FF199F'
               // Date input value: si tiene expires_at, usamos su fecha (YYYY-MM-DD)
               const initialDate = ep.expires_at
                 ? new Date(ep.expires_at).toISOString().slice(0,10)
@@ -18980,7 +19001,7 @@ function CommerceSettingsView({ user, profile, setView, onLogout, onOwnerProfile
                   // viejo, es color semántico del tipo "suma doble").
                   const isDouble  = p.type === 'double_points'
                   const accentRgb = isDouble ? '236,72,153' : '113,49,225'
-                  const accentColor = isDouble ? '#EC4899' : '#7131E1'
+                  const accentColor = isDouble ? '#FF199F' : '#6F30DF'
                   const accentLight = isDouble ? '#F8A4C8' : '#B59CFF'
                   const typeSym   = isDouble ? '×2' : '−%'
                   const valueText = isDouble ? '×2' : `${p.value}% OFF`
@@ -19116,7 +19137,7 @@ function CommerceSettingsView({ user, profile, setView, onLogout, onOwnerProfile
                 {displayInactivePromos.map(p => {
                   const isDisc = p.type === 'discount_next'
                   const accentRgb  = isDisc ? '113,49,225' : '236,72,153'
-                  const accentColor = isDisc ? '#7131E1' : '#EC4899'
+                  const accentColor = isDisc ? '#6F30DF' : '#FF199F'
                   const accentLight = isDisc ? '#B59CFF' : '#F8A4C8'
                   const typeSym = isDisc ? '−%' : '×2'
                   const valueText = isDisc ? `${p.discount_pct || 0}% OFF` : '×2'
@@ -19517,7 +19538,7 @@ function CommerceSettingsView({ user, profile, setView, onLogout, onOwnerProfile
                               <td style={{ padding:'10px 12px', color:C.white }}>{row.fecha} {row.hora}</td>
                               <td style={{ padding:'10px 12px', color:C.mist, maxWidth:150, overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>{row.cliente}</td>
                               <td style={{ padding:'10px 12px', color:C.white, fontFamily:FN, fontWeight:700 }}>{reportsTab === 'visitas' ? `${row.puntos} ${row.unidad}` : row.premio}</td>
-                              {reportsTab === 'visitas' && <td style={{ padding:'10px 12px', color:row.descuento === '-' ? C.dust : C.o, fontFamily:FN, fontWeight:700 }}>{row.descuento}</td>}
+                              {reportsTab === 'visitas' && <td style={{ padding:'10px 12px', color:row.descuento === '-' ? C.dust : C.pink, fontFamily:FN, fontWeight:700 }}>{row.descuento}</td>}
                               {reportsTab === 'redemptions' && <td style={{ padding:'10px 12px', color:C.white, fontFamily:FN, fontWeight:700 }}>{row.puntos_gastados} {row.unidad}</td>}
                             </tr>
                           ))}
@@ -20414,7 +20435,7 @@ function CommerceSettingsView({ user, profile, setView, onLogout, onOwnerProfile
                     }}>
                       <span style={{
                         display: 'inline-block', width: 6, height: 6, borderRadius: '50%',
-                        background: '#F5A623', marginRight: 8, verticalAlign: 'middle',
+                        background: '#FF199F', marginRight: 8, verticalAlign: 'middle',
                         boxShadow: '0 0 6px rgba(245,166,35,0.85)',
                       }} />
                       Cambios sin guardar
@@ -20747,7 +20768,7 @@ function CommerceSettingsView({ user, profile, setView, onLogout, onOwnerProfile
                   localStorage con clave separada. */}
               {(() => {
                 const onColor  = '#22E698'
-                const offColor = '#F5A623'
+                const offColor = '#FF199F'
                 const c = messagesConfigured ? onColor : offColor
                 const handleToggle = () => {
                   const next = !messagesConfigured
@@ -21079,7 +21100,7 @@ function ClientQRView({ user, profile, setView, headerExtra }) {
       <div style={{ width:'100%', maxWidth:340, borderRadius:28, overflow:'hidden', boxShadow:'0 24px 64px rgba(189,75,248,0.30), 0 8px 24px rgba(0,0,0,0.50)' }}>
 
         {/* Cuerpo del pase */}
-        <div style={{ background:'#7131E1', padding:'24px 24px 28px', position:'relative', overflow:'hidden' }}>
+        <div style={{ background:'#6F30DF', padding:'24px 24px 28px', position:'relative', overflow:'hidden' }}>
 
           {/* Blobs decorativos */}
           <div style={{ position:'absolute', top:-32, right:-32, width:120, height:120, borderRadius:'50%', background:'rgba(255,255,255,0.10)', filter:'blur(24px)', pointerEvents:'none' }} />
@@ -21128,7 +21149,7 @@ function ClientQRView({ user, profile, setView, headerExtra }) {
         </div>
 
         {/* Separador tipo ticket */}
-        <div style={{ position:'relative', background:'#7131E1' }}>
+        <div style={{ position:'relative', background:'#6F30DF' }}>
           <div style={{ position:'absolute', left:-1, top:'50%', transform:'translateY(-50%)', width:18, height:18, borderRadius:'50%', background:'#000', zIndex:2 }} />
           <div style={{ position:'absolute', right:-1, top:'50%', transform:'translateY(-50%)', width:18, height:18, borderRadius:'50%', background:'#000', zIndex:2 }} />
           <div style={{ borderTop:'1.5px dashed rgba(255,255,255,0.20)', margin:'0 22px' }} />
@@ -21624,7 +21645,7 @@ function ScannerView({ user, profile, setView }) {
 
   const unitIcon = result?.prog_type === 'stars' ? '★' : '◆'
   const unitLabel = result?.prog_type === 'stars' ? 'estrellas' : 'puntos'
-  const unitColor = result?.prog_type === 'stars' ? '#7131E1' : '#EC4899'
+  const unitColor = result?.prog_type === 'stars' ? '#6F30DF' : '#FF199F'
 
   // Pantalla inicial — opciones agrupadas en dos secciones según la acción
   // que requieren del usuario:
@@ -21643,7 +21664,7 @@ function ScannerView({ user, profile, setView }) {
         Icon: ScanLine,
         bg:         'linear-gradient(135deg, rgba(124,58,237,0.16), rgba(139,92,246,0.10))',
         border:     'rgba(139,92,246,0.40)',
-        iconBg:     '#7131E1',
+        iconBg:     '#6F30DF',
         shadow:     '0 4px 18px rgba(139,92,246,0.40)',
         descColor:  'rgba(229,221,255,0.75)',
         arrowColor: 'rgba(196,181,253,0.85)',
@@ -21655,7 +21676,7 @@ function ScannerView({ user, profile, setView }) {
         Icon: ScanLine,
         bg:         'linear-gradient(135deg, rgba(219,39,119,0.16), rgba(236,72,153,0.10))',
         border:     'rgba(236,72,153,0.40)',
-        iconBg:     '#EC4899',
+        iconBg:     '#FF199F',
         shadow:     '0 4px 18px rgba(236,72,153,0.40)',
         descColor:  'rgba(255,221,236,0.75)',
         arrowColor: 'rgba(251,182,206,0.85)',
@@ -21670,7 +21691,7 @@ function ScannerView({ user, profile, setView }) {
         // Violeta — el QR del local lleva ese color en toda la app.
         bg:         'linear-gradient(135deg, rgba(124,58,237,0.16), rgba(139,92,246,0.10))',
         border:     'rgba(139,92,246,0.40)',
-        iconBg:     '#7131E1',
+        iconBg:     '#6F30DF',
         shadow:     '0 4px 18px rgba(139,92,246,0.40)',
         descColor:  'rgba(229,221,255,0.78)',
         arrowColor: 'rgba(196,181,253,0.85)',
@@ -21682,7 +21703,7 @@ function ScannerView({ user, profile, setView }) {
         Icon: User,
         bg:         'linear-gradient(135deg, rgba(254,80,0,0.16), rgba(251,113,133,0.10))',
         border:     'rgba(251,113,133,0.40)',
-        iconBg:     '#FE5000',
+        iconBg:     '#FF199F',
         shadow:     '0 4px 18px rgba(254,80,0,0.40)',
         descColor:  'rgba(255,228,222,0.78)',
         arrowColor: 'rgba(252,165,165,0.85)',
@@ -21698,7 +21719,7 @@ function ScannerView({ user, profile, setView }) {
         padding:'0 4px 10px',
         marginBottom:2,
       }}>
-        <div style={{ width:3, height:14, borderRadius:99, background:'#7131E1' }} />
+        <div style={{ width:3, height:14, borderRadius:99, background:'#6F30DF' }} />
         <div style={{
           fontFamily:FN, fontSize:11.5, fontWeight:800,
           color:'rgba(255,255,255,0.85)',
@@ -21823,7 +21844,7 @@ function ScannerView({ user, profile, setView }) {
           const VIOLET = {
             bg:         'linear-gradient(135deg, rgba(124,58,237,0.18), rgba(168,85,247,0.10), rgba(189,75,248,0.14))',
             border:     'rgba(168,85,247,0.42)',
-            iconBg:     '#7131E1',
+            iconBg:     '#6F30DF',
             shadow:     '0 6px 22px rgba(168,85,247,0.40)',
             arrowColor: 'rgba(196,181,253,0.88)',
           }
@@ -21924,7 +21945,7 @@ function ScannerView({ user, profile, setView }) {
     return (
       <div style={{ maxWidth:440, margin:'0 auto', padding:'30px 18px 80px' }}>
         {backToPicker}
-        <div style={{ fontFamily:FN, fontSize:10, color:C.o, fontWeight:800, letterSpacing:'.15em', textTransform:'uppercase', marginBottom:8 }}>✦ Escáner QR</div>
+        <div style={{ fontFamily:FN, fontSize:10, color:C.pink, fontWeight:800, letterSpacing:'.15em', textTransform:'uppercase', marginBottom:8 }}>✦ Escáner QR</div>
         <h1 style={{ fontFamily:FN, fontSize:'clamp(22px,4vw,32px)', fontWeight:900, color:C.white, marginBottom:4 }}>Quiero sumarme a un club</h1>
         <p style={{ fontSize:13, color:C.mist, marginBottom:22 }}>Apuntá la cámara al QR del local para sumarte como cliente.</p>
 
@@ -22031,7 +22052,7 @@ function ScannerView({ user, profile, setView }) {
   return (
     <div style={{ maxWidth:440, margin:'0 auto', padding:'30px 18px 80px' }}>
       {backToPicker}
-      <div style={{ fontFamily:FN, fontSize:10, color:C.o, fontWeight:800, letterSpacing:'.15em', textTransform:'uppercase', marginBottom:8 }}>✦ Escáner QR</div>
+      <div style={{ fontFamily:FN, fontSize:10, color:C.pink, fontWeight:800, letterSpacing:'.15em', textTransform:'uppercase', marginBottom:8 }}>✦ Escáner QR</div>
       <h1 style={{ fontFamily:FN, fontSize:'clamp(22px,4vw,32px)', fontWeight:900, color:C.white, marginBottom:4 }}>Registrar visita</h1>
       <p style={{ fontSize:13, color:C.mist, marginBottom:22 }}>Apuntá la cámara al QR del socio.</p>
 
@@ -22062,7 +22083,7 @@ function ScannerView({ user, profile, setView }) {
         return (
           <PCard style={{ padding:16, marginBottom:14 }}>
             <div style={{ fontSize:11, color:C.mist, marginBottom:6, fontFamily:FN, fontWeight:600, display:'flex', alignItems:'center', gap:5 }}>
-              <Gem size={11} color="#EC4899" strokeWidth={2} /> Monto de la compra (en pesos)
+              <Gem size={11} color="#FF199F" strokeWidth={2} /> Monto de la compra (en pesos)
             </div>
             <input type="number" min={1} value={amount} onChange={e => setAmount(e.target.value)}
               placeholder="Ej: 2500" inputMode="numeric"
@@ -22117,15 +22138,15 @@ function ScannerView({ user, profile, setView }) {
               <X size={14} strokeWidth={2.5} />
             </button>
             <div style={{ width:54, height:54, borderRadius:14, background:'rgba(254,80,0,0.22)', border:'1px solid rgba(254,80,0,0.50)', display:'flex', alignItems:'center', justifyContent:'center', marginBottom:14 }}>
-              <Flame size={26} color={C.o} strokeWidth={2} />
+              <Flame size={26} color={C.pink} strokeWidth={2} />
             </div>
-            <div style={{ fontFamily:FN, fontSize:11, fontWeight:800, color:C.o, letterSpacing:'.08em', textTransform:'uppercase', marginBottom:6 }}>Descuento disponible</div>
+            <div style={{ fontFamily:FN, fontSize:11, fontWeight:800, color:C.pink, letterSpacing:'.08em', textTransform:'uppercase', marginBottom:6 }}>Descuento disponible</div>
             <div style={{ fontFamily:FN, fontSize:18, fontWeight:900, color:C.white, lineHeight:1.3, marginBottom:10 }}>
-              No suma estrella, pero el cliente igual puede sumar el <span style={{ color:C.o }}>descuento de próxima compra</span>
+              No suma estrella, pero el cliente igual puede sumar el <span style={{ color:C.pink }}>descuento de próxima compra</span>
             </div>
             <div style={{ fontSize:12, color:C.mist, marginBottom:18, lineHeight:1.55 }}>Al escanear, no se le va a sumar estrella, pero sí va a quedar el cupón de descuento activo en su próxima visita.</div>
             <button onClick={handleApplyDiscountOnly}
-              style={{ width:'100%', padding:'13px', background:`linear-gradient(135deg, ${C.o}, #f97316)`, border:'none', borderRadius:12, color:'#fff', fontFamily:FN, fontSize:14, fontWeight:700, cursor:'pointer', boxShadow:`0 6px 22px rgba(254,80,0,0.40)` }}>
+              style={{ width:'100%', padding:'13px', background:`linear-gradient(135deg, ${C.pink}, #f97316)`, border:'none', borderRadius:12, color:'#fff', fontFamily:FN, fontSize:14, fontWeight:700, cursor:'pointer', boxShadow:`0 6px 22px rgba(254,80,0,0.40)` }}>
               Continuar y aplicar descuento
             </button>
           </div>
@@ -22147,9 +22168,9 @@ function ScannerView({ user, profile, setView }) {
               <X size={14} strokeWidth={2.5} />
             </button>
             <div style={{ width:54, height:54, borderRadius:14, background:'rgba(254,80,0,0.22)', border:'1px solid rgba(254,80,0,0.50)', display:'flex', alignItems:'center', justifyContent:'center', marginBottom:14 }}>
-              <Percent size={26} color={C.o} strokeWidth={2.4} />
+              <Percent size={26} color={C.pink} strokeWidth={2.4} />
             </div>
-            <div style={{ fontFamily:FN, fontSize:11, fontWeight:800, color:C.o, letterSpacing:'.08em', textTransform:'uppercase', marginBottom:6 }}>Cupón próxima compra</div>
+            <div style={{ fontFamily:FN, fontSize:11, fontWeight:800, color:C.pink, letterSpacing:'.08em', textTransform:'uppercase', marginBottom:6 }}>Cupón próxima compra</div>
             <div style={{ fontFamily:FN, fontSize:18, fontWeight:900, color:C.white, lineHeight:1.3, marginBottom:10 }}>
               ¿Otorgar {grantDiscountPromo.value ? `${grantDiscountPromo.value}% OFF` : 'descuento'} para próxima compra?
             </div>
@@ -22295,7 +22316,7 @@ function ScannerView({ user, profile, setView }) {
           si vos lo renovaste o no, etc. La idea es que el cashier lea de un
           vistazo y sepa qué decirle al cliente sin tener que interpretar nada. */}
       {result && !redeemStep && (
-        <PCard style={{ padding:20, background:result.ok?`${C.ok}12`:`${C.o}10`, border:`1px solid ${result.ok?`${C.ok}55`:`${C.o}55`}` }}>
+        <PCard style={{ padding:20, background:result.ok?`${C.ok}12`:`${C.pink}10`, border:`1px solid ${result.ok?`${C.ok}55`:`${C.pink}55`}` }}>
           {result.ok ? (() => {
             const firstName = (result.member_name || 'Cliente').split(' ')[0]
             const isStars   = result.prog_type === 'stars'
@@ -22307,20 +22328,20 @@ function ScannerView({ user, profile, setView }) {
             if (result.star_skipped) {
               narrativeLines.push({
                 icon: AlertCircle,
-                color: C.o,
+                color: C.pink,
                 text: <>La compra no alcanzó el mínimo, así que <strong>no se le sumó estrella</strong>.</>,
               })
             } else if (earned > 0) {
               if (isStars) {
                 narrativeLines.push({
                   icon: Star,
-                  color: '#7131E1',
+                  color: '#6F30DF',
                   text: <><strong>{firstName}</strong> ganó <strong>{earned} estrella{earned !== 1 ? 's' : ''}</strong> por su compra.</>,
                 })
               } else {
                 narrativeLines.push({
                   icon: Gem,
-                  color: '#EC4899',
+                  color: '#FF199F',
                   text: <><strong>{firstName}</strong> ganó <strong>{earned} punto{earned !== 1 ? 's' : ''}</strong> por su compra{result.double_active ? <> <span style={{ color:C.v, fontWeight:700 }}>(×2 hoy)</span></> : null}.</>,
                 })
               }
@@ -22332,7 +22353,7 @@ function ScannerView({ user, profile, setView }) {
               const valueTxt = dv ? `${dv}% OFF` : 'su descuento'
               narrativeLines.push({
                 icon: Percent,
-                color: C.o,
+                color: C.pink,
                 text: <><strong>{firstName}</strong> canjeó <strong>{valueTxt}</strong> de descuento que tenía guardado.</>,
               })
               // Sub-resultado: depende de si el dueño ya decidió renovar/no.
@@ -22440,7 +22461,7 @@ function ScannerView({ user, profile, setView }) {
                 {/* Stats — visitas totales + balance actual */}
                 <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:8, marginBottom:10 }}>
                   <div style={{ background:C.bg3, borderRadius:10, padding:'10px 12px', textAlign:'center' }}>
-                    <div style={{ fontFamily:FN, fontSize:22, fontWeight:700, color:C.o }}>{result.visit_count}</div>
+                    <div style={{ fontFamily:FN, fontSize:22, fontWeight:700, color:C.pink }}>{result.visit_count}</div>
                     <div style={{ fontSize:10, color:C.dust }}>visitas totales</div>
                   </div>
                   <div style={{ background:C.bg3, borderRadius:10, padding:'10px 12px', textAlign:'center' }}>
@@ -22496,12 +22517,12 @@ function ScannerView({ user, profile, setView }) {
                   } else {
                     tone = 'amber'
                     label = 'Cupón próxima compra'
-                    body = <>No tenés cupón activo. <span style={{ color: '#F5A623', fontWeight: 700 }}>Activalo en Recompensas →</span></>
+                    body = <>No tenés cupón activo. <span style={{ color: '#FF199F', fontWeight: 700 }}>Activalo en Recompensas →</span></>
                   }
                   const palette = tone === 'green'
                     ? { bg:'rgba(34,230,152,0.08)', border:'rgba(34,230,152,0.30)', iconBg:'rgba(34,230,152,0.18)', iconBorder:'rgba(34,230,152,0.45)', icon:'#22E698', label:'#22E698' }
                     : tone === 'amber'
-                      ? { bg:'rgba(245,166,35,0.08)', border:'rgba(245,166,35,0.32)', iconBg:'rgba(245,166,35,0.18)', iconBorder:'rgba(245,166,35,0.45)', icon:'#F5A623', label:'#F5A623' }
+                      ? { bg:'rgba(245,166,35,0.08)', border:'rgba(245,166,35,0.32)', iconBg:'rgba(245,166,35,0.18)', iconBorder:'rgba(245,166,35,0.45)', icon:'#FF199F', label:'#FF199F' }
                       : { bg:'rgba(255,255,255,0.04)', border:'rgba(255,255,255,0.10)', iconBg:'rgba(255,255,255,0.06)', iconBorder:'rgba(255,255,255,0.16)', icon:'rgba(255,255,255,0.55)', label:'rgba(255,255,255,0.55)' }
                   return (
                 <div style={{
@@ -22547,7 +22568,7 @@ function ScannerView({ user, profile, setView }) {
                         padding: '7px 11px', borderRadius: 8,
                         background: 'rgba(245,166,35,0.18)',
                         border: '1px solid rgba(245,166,35,0.45)',
-                        color: '#F5A623',
+                        color: '#FF199F',
                         fontFamily: FN, fontSize: 10.5, fontWeight: 800,
                         cursor: 'pointer',
                         letterSpacing: '.04em',
@@ -22580,7 +22601,7 @@ function ScannerView({ user, profile, setView }) {
             )
           })() : (
             <>
-              <div style={{ fontFamily:FN, fontSize:16, fontWeight:900, color:C.o, marginBottom:6 }}>⚠ Error</div>
+              <div style={{ fontFamily:FN, fontSize:16, fontWeight:900, color:C.pink, marginBottom:6 }}>⚠ Error</div>
               <div style={{ fontSize:13, color:C.mist, marginBottom:12 }}>{result.error}</div>
               <GBtn onClick={resetAll} style={{ width:'100%', justifyContent:'center' }}>
                 Intentar de nuevo
@@ -22758,7 +22779,7 @@ function ScannerView({ user, profile, setView }) {
             </>
           ) : (
             <>
-              <div style={{ fontFamily:FN, fontSize:16, fontWeight:900, color:C.o, marginBottom:6 }}>⚠ Error al canjear</div>
+              <div style={{ fontFamily:FN, fontSize:16, fontWeight:900, color:C.pink, marginBottom:6 }}>⚠ Error al canjear</div>
               <div style={{ fontSize:13, color:C.mist, marginBottom:14 }}>{redeemResult.error}</div>
               <GBtn onClick={() => setRedeemStep('selecting')} style={{ width:'100%', justifyContent:'center' }}>
                 Intentar de nuevo
@@ -22860,7 +22881,7 @@ function AdminView({ cities: initialCities, profile }) {
     setAddingCity(false)
   }
 
-  const planColor = (p) => p === 'pro' ? C.o : p === 'starter' ? C.v : C.dust
+  const planColor = (p) => p === 'pro' ? C.pink : p === 'starter' ? C.v : C.dust
   const TABS = [
     { id:'overview',   label:'Overview',  Icon:LayoutDashboard },
     { id:'comercios',  label:'Comercios', Icon:Building2       },
@@ -22881,13 +22902,13 @@ function AdminView({ cities: initialCities, profile }) {
 
       {/* Pending alert banner */}
       {pendingCommerces.length > 0 && (
-        <div className="fu" style={{ margin:'14px 0', padding:'12px 16px', borderRadius:12, background:'rgba(254,80,0,0.10)', border:`1px solid ${C.o}40`, display:'flex', alignItems:'center', gap:10 }}>
-          <AlertTriangle size={16} color={C.o} />
-          <span style={{ fontSize:12, color:C.o, fontFamily:FN, fontWeight:700 }}>
+        <div className="fu" style={{ margin:'14px 0', padding:'12px 16px', borderRadius:12, background:'rgba(254,80,0,0.10)', border:`1px solid ${C.pink}40`, display:'flex', alignItems:'center', gap:10 }}>
+          <AlertTriangle size={16} color={C.pink} />
+          <span style={{ fontSize:12, color:C.pink, fontFamily:FN, fontWeight:700 }}>
             {pendingCommerces.length} comercio{pendingCommerces.length>1?'s':''} pendiente{pendingCommerces.length>1?'s':''} de aprobación
           </span>
           <button onClick={()=>{ setTab('comercios'); setFilterStatus('inactive') }}
-            style={{ marginLeft:'auto', fontSize:11, color:C.o, background:'transparent', border:`1px solid ${C.o}60`, borderRadius:7, padding:'3px 10px', cursor:'pointer', fontFamily:FN }}>
+            style={{ marginLeft:'auto', fontSize:11, color:C.pink, background:'transparent', border:`1px solid ${C.pink}60`, borderRadius:7, padding:'3px 10px', cursor:'pointer', fontFamily:FN }}>
             Ver
           </button>
         </div>
@@ -22896,7 +22917,7 @@ function AdminView({ cities: initialCities, profile }) {
       {/* Stats grid */}
       <div style={{ display:'grid', gridTemplateColumns:'repeat(auto-fill, minmax(175px, 1fr))', gap:10, margin:'18px 0 20px' }}>
         {[
-          { Icon:Building2, label:'Comercios',     value:stats.commerces, color:C.o,    sub:`${pendingCommerces.length} pendientes` },
+          { Icon:Building2, label:'Comercios',     value:stats.commerces, color:C.pink,    sub:`${pendingCommerces.length} pendientes` },
           { Icon:Users,     label:'Usuarios',       value:fmt(stats.members), color:C.v  },
           { Icon:Camera,    label:'Visitas',         value:fmt(stats.visits),  color:C.info },
           { Icon:Star,      label:'Membresías',      value:fmt(stats.memberships||0), color:C.ok },
@@ -22908,7 +22929,7 @@ function AdminView({ cities: initialCities, profile }) {
             </div>
             <div style={{ fontFamily:FN, fontSize:24, fontWeight:900, color:x.color, marginBottom:2 }}>{x.value}</div>
             <div style={{ fontSize:11, color:C.mist }}>{x.label}</div>
-            {x.sub && <div style={{ fontSize:10, color:C.o, marginTop:4 }}>{x.sub}</div>}
+            {x.sub && <div style={{ fontSize:10, color:C.pink, marginTop:4 }}>{x.sub}</div>}
           </PCard>
         ))}
       </div>
@@ -22937,7 +22958,7 @@ function AdminView({ cities: initialCities, profile }) {
               <div key={c.id} style={{ display:'flex', justifyContent:'space-between', alignItems:'center', padding:'8px 0', borderBottom:i<ar.length-1?`1px solid ${C.rim}`:'none', cursor:'pointer' }}
                 onClick={()=>{ setSelectedCommerce(c); setTab('comercios') }}>
                 <div style={{ display:'flex', gap:9, alignItems:'center' }}>
-                  <div style={{ width:7, height:7, borderRadius:'50%', background:c.active?C.ok:C.o, boxShadow:`0 0 6px ${c.active?C.ok:C.o}55`, flexShrink:0 }} />
+                  <div style={{ width:7, height:7, borderRadius:'50%', background:c.active?C.ok:C.pink, boxShadow:`0 0 6px ${c.active?C.ok:C.pink}55`, flexShrink:0 }} />
                   <span style={{ fontSize:12, color:C.pearl, fontFamily:FN, fontWeight:600 }}>{c.name}</span>
                   <Pill color={C.dust}>{c.city?.name}</Pill>
                 </div>
@@ -23018,7 +23039,7 @@ function AdminView({ cities: initialCities, profile }) {
                       </td>
                       <td style={{ padding:'10px 12px', fontSize:12, color:C.mist, whiteSpace:'nowrap' }}>{c.city?.name}</td>
                       <td style={{ padding:'10px 12px' }}><Pill color={planColor(c.plan)}>{c.plan}</Pill></td>
-                      <td style={{ padding:'10px 12px' }}><Pill color={c.active?C.ok:C.o}>{c.active?'Activo':'Pendiente'}</Pill></td>
+                      <td style={{ padding:'10px 12px' }}><Pill color={c.active?C.ok:C.pink}>{c.active?'Activo':'Pendiente'}</Pill></td>
                       <td style={{ padding:'10px 12px' }}>
                         <div style={{ display:'flex', gap:5 }}>
                           {!c.active && (
@@ -23029,7 +23050,7 @@ function AdminView({ cities: initialCities, profile }) {
                           )}
                           {c.active && (
                             <button onClick={()=>suspendCommerce(c.id)} disabled={actioning===c.id}
-                              style={{ display:'flex', alignItems:'center', gap:3, background:`${C.o}18`, border:`1px solid ${C.o}50`, borderRadius:6, padding:'4px 8px', color:C.o, fontSize:10, fontFamily:FN, cursor:'pointer', opacity:actioning===c.id?.5:1 }}>
+                              style={{ display:'flex', alignItems:'center', gap:3, background:`${C.pink}18`, border:`1px solid ${C.pink}50`, borderRadius:6, padding:'4px 8px', color:C.pink, fontSize:10, fontFamily:FN, cursor:'pointer', opacity:actioning===c.id?.5:1 }}>
                               <Ban size={10} /> Suspender
                             </button>
                           )}
@@ -23085,7 +23106,7 @@ function AdminView({ cities: initialCities, profile }) {
                       </td>
                       <td style={{ padding:'10px 12px', fontSize:11, color:C.mist }}>{u.email}</td>
                       <td style={{ padding:'10px 12px', fontSize:11, color:C.mist }}>{u.phone||'—'}</td>
-                      <td style={{ padding:'10px 12px' }}><Pill color={u.role==='admin'?C.o:u.role==='commerce_owner'?C.v:C.dust}>{u.role}</Pill></td>
+                      <td style={{ padding:'10px 12px' }}><Pill color={u.role==='admin'?C.pink:u.role==='commerce_owner'?C.v:C.dust}>{u.role}</Pill></td>
                       <td style={{ padding:'10px 12px', fontSize:11, color:C.mist, whiteSpace:'nowrap' }}>{u.created_at?.slice(0,10)}</td>
                     </tr>
                   ))}
@@ -23209,7 +23230,7 @@ function AdminView({ cities: initialCities, profile }) {
                 <div style={{ fontFamily:FN, fontSize:17, fontWeight:900, color:C.white, marginBottom:4 }}>{selectedCommerce.name}</div>
                 <div style={{ display:'flex', gap:7, flexWrap:'wrap' }}>
                   <Pill color={planColor(selectedCommerce.plan)}>{selectedCommerce.plan}</Pill>
-                  <Pill color={selectedCommerce.active?C.ok:C.o}>{selectedCommerce.active?'Activo':'Pendiente'}</Pill>
+                  <Pill color={selectedCommerce.active?C.ok:C.pink}>{selectedCommerce.active?'Activo':'Pendiente'}</Pill>
                   {selectedCommerce.city && <Pill color={C.dust}>{selectedCommerce.city.name}</Pill>}
                 </div>
               </div>
@@ -23254,7 +23275,7 @@ function AdminView({ cities: initialCities, profile }) {
                 </button>
               ) : (
                 <button onClick={()=>suspendCommerce(selectedCommerce.id)} disabled={actioning===selectedCommerce.id}
-                  style={{ display:'flex', alignItems:'center', gap:6, background:`${C.o}18`, border:`1px solid ${C.o}`, borderRadius:9, padding:'9px 18px', color:C.o, fontSize:12, fontFamily:FN, fontWeight:700, cursor:'pointer', opacity:actioning===selectedCommerce.id?.5:1 }}>
+                  style={{ display:'flex', alignItems:'center', gap:6, background:`${C.pink}18`, border:`1px solid ${C.pink}`, borderRadius:9, padding:'9px 18px', color:C.pink, fontSize:12, fontFamily:FN, fontWeight:700, cursor:'pointer', opacity:actioning===selectedCommerce.id?.5:1 }}>
                   <Ban size={13} /> Suspender
                 </button>
               )}
@@ -23283,7 +23304,7 @@ function DevToolbar({ user, profile, onRoleChange }) {
 
   const ROLES = [
     { id:'client',         label:'Cliente',   color:C.info },
-    { id:'commerce_owner', label:'Comercio',  color:C.o   },
+    { id:'commerce_owner', label:'Comercio',  color:C.pink   },
     { id:'admin',          label:'Admin',     color:C.v   },
   ]
 
@@ -23472,7 +23493,7 @@ function SwitchTooltip({ onDismiss }) {
           onClick={onDismiss}
           style={{
             width: '100%', padding:'10px',
-            background: '#7131E1', border:'none',
+            background: '#6F30DF', border:'none',
             borderRadius: 10,
             color: '#fff', fontFamily:FN, fontSize:13, fontWeight:700,
             cursor: 'pointer',
@@ -24035,7 +24056,7 @@ export default function App() {
   // callback, dejamos que el flujo siga sin interrumpir.
   return (
     <>
-      <style>{`input:focus { outline: none; border-color: #7131E1 !important; box-shadow: 0 0 0 3px #7131E118; }`}</style>
+      <style>{`input:focus { outline: none; border-color: #6F30DF !important; box-shadow: 0 0 0 3px #6F30DF18; }`}</style>
       <ToastContainer />
       <ConfirmModal />
       <SwRegister />

@@ -16,7 +16,7 @@ const C = {
   accent:'#a855f7',
   ok:    '#22C55E',
   warn:  '#F59E0B',
-  stars: '#F5A623',
+  stars: '#FF199F',
 }
 
 function Spinner() {

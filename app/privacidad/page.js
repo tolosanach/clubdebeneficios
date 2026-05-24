@@ -64,7 +64,7 @@ export default function PrivacidadPage() {
               <li><strong>Actualización</strong>: actualizar datos desactualizados.</li>
               <li><strong>Eliminación</strong>: pedir que borremos tu cuenta y tus datos. Podés hacerlo desde "Mi cuenta" → "Eliminar cuenta".</li>
             </ul>
-            <p style={{ marginTop:8 }}>Para ejercer estos derechos podés escribirnos por <Link href="/ayuda" style={{ color:'#BD4BF8', textDecoration:'underline' }}>el canal de ayuda</Link>. Respondemos dentro de los 10 días hábiles.</p>
+            <p style={{ marginTop:8 }}>Para ejercer estos derechos podés escribirnos por <Link href="/ayuda" style={{ color:'#6F30DF', textDecoration:'underline' }}>el canal de ayuda</Link>. Respondemos dentro de los 10 días hábiles.</p>
           </section>
 
           <section style={{ marginBottom:28 }}>
@@ -94,7 +94,7 @@ export default function PrivacidadPage() {
 
           <section style={{ marginBottom:28 }}>
             <h2 style={Section}>11. Contacto y reclamos</h2>
-            <p>Para cualquier consulta o reclamo sobre el tratamiento de tus datos personales, escribinos por <Link href="/ayuda" style={{ color:'#BD4BF8', textDecoration:'underline' }}>nuestro canal de ayuda</Link>. Si considerás que no respondimos adecuadamente, podés presentar una denuncia ante la Agencia de Acceso a la Información Pública de Argentina, autoridad de aplicación de la Ley 25.326.</p>
+            <p>Para cualquier consulta o reclamo sobre el tratamiento de tus datos personales, escribinos por <Link href="/ayuda" style={{ color:'#6F30DF', textDecoration:'underline' }}>nuestro canal de ayuda</Link>. Si considerás que no respondimos adecuadamente, podés presentar una denuncia ante la Agencia de Acceso a la Información Pública de Argentina, autoridad de aplicación de la Ley 25.326.</p>
           </section>
 
         </div>

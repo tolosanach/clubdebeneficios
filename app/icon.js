@@ -1,7 +1,7 @@
 import { ImageResponse } from 'next/og'
 
 // Icon dinámico de Next.js — runtime edge.
-// Rebrand mayo 2026: violeta sólido #7131E1 + letra "B" blanca grande
+// Rebrand mayo 2026: violeta sólido #6F30DF + letra "B" blanca grande
 // centrada (espejo del icon.svg estático). Sin gradient orange-fucsia.
 // Para los PNGs de manifest se usa public/icons/icon-*.png generados
 // con scripts/generate-icons.js — esto es el fallback dinámico que
@@ -16,7 +16,7 @@ export default function Icon() {
       <div style={{
         width: '100%', height: '100%',
         display: 'flex', alignItems: 'center', justifyContent: 'center',
-        background: '#7131E1',
+        background: '#6F30DF',
         borderRadius: 115,
         fontFamily: 'system-ui, -apple-system, sans-serif',
         fontSize: 380,

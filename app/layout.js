@@ -1,11 +1,11 @@
 export const metadata = {
   metadataBase: new URL(process.env.NEXT_PUBLIC_URL || 'https://benefix.com.ar'),
-  title: 'Clufix | Tus beneficios. Un solo QR.',
-  description: 'Sumá puntos en tus negocios favoritos y canjeá recompensas con Clufix.',
+  title: 'Clufix — Tu club de beneficios',
+  description: 'El sistema de fidelización más simple del país. Escaneá, acumulá, canjeá.',
   keywords: ['fidelización', 'puntos', 'recompensas', 'comercios', 'beneficios', 'QR', 'premios'],
   openGraph: {
-    title: 'Clufix | Tus beneficios. Un solo QR.',
-    description: 'Sumá puntos en tus negocios favoritos y canjeá recompensas con Clufix.',
+    title: 'Clufix — Tu club de beneficios',
+    description: 'El sistema de fidelización más simple del país. Escaneá, acumulá, canjeá.',
     type: 'website',
     images: [{ url: '/opengraph-image', width: 1200, height: 630, alt: 'Clufix' }],
     siteName: 'Clufix',
@@ -14,7 +14,7 @@ export const metadata = {
   twitter: {
     card: 'summary_large_image',
     title: 'Clufix',
-    description: 'Tus beneficios. Un solo QR.',
+    description: 'El sistema de fidelización más simple del país.',
     images: ['/opengraph-image'],
   },
   icons: {
@@ -34,7 +34,7 @@ export const viewport = {
   initialScale: 1,
   maximumScale: 1,
   userScalable: false,
-  themeColor: '#7131E1',
+  themeColor: '#6F30DF',
 }
 
 export default function RootLayout({ children }) {
@@ -42,7 +42,7 @@ export default function RootLayout({ children }) {
     <html lang="es">
       <head>
         <link
-          href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=Inter:wght@400;500;600&display=swap"
+          href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=Inter:wght@400;500;600;700;900&display=swap"
           rel="stylesheet"
         />
         <link rel="manifest" href="/manifest.json" />
@@ -59,7 +59,7 @@ export default function RootLayout({ children }) {
           mismatches reales del código nuestro — esos siguen apareciendo. */}
       <body suppressHydrationWarning style={{ margin: 0, padding: 0, background: '#000' }}>
         {/* Blobs ambientales — rebrand mayo 2026: los 3 ahora usan
-            el violeta marca #7131E1 (rgba 113,49,225). Antes eran
+            el violeta marca #6F30DF (rgba 113,49,225). Antes eran
             mezclados violeta-rosa (139,92,246 / 236,72,153 / 168,85,247).
             Mismas opacidades para preservar profundidad sin desviarse
             de la nueva identidad sólida. */}
