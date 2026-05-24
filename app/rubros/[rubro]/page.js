@@ -6,8 +6,9 @@ export async function generateStaticParams() {
   return Object.keys(rubros).map((rubro) => ({ rubro }))
 }
 
-export default function Page({ params }) {
-  const rubro = rubros[params.rubro]
+export default async function Page({ params }) {
+  const { rubro: slug } = await params
+  const rubro = rubros[slug]
   if (!rubro) notFound()
-  return <RubroPage rubro={rubro} slug={params.rubro} />
+  return <RubroPage rubro={rubro} slug={slug} />
 }
