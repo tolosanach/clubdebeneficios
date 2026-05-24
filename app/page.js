@@ -10463,14 +10463,14 @@ function TermsAcceptance({ user, onAccept }) {
         <Logo />
       </div>
 
-      {/* Body — scroll container; handles large-text phones and iOS safe area */}
-      <div ref={scrollRef} onScroll={handleScroll} style={{ flex:1, display:'flex', flexDirection:'column', padding:'0 20px', paddingBottom:'max(24px, env(safe-area-inset-bottom, 0px))', maxWidth:520, margin:'0 auto', width:'100%', minHeight:0, overflowY:'auto' }}>
+      {/* Body — scroll container; only the terms text scrolls */}
+      <div ref={scrollRef} onScroll={handleScroll} style={{ flex:1, padding:'0 20px', maxWidth:520, margin:'0 auto', width:'100%', minHeight:0, overflowY:'auto', boxSizing:'border-box' }}>
 
         <div style={{ fontFamily:FN, fontSize:22, fontWeight:900, color:'#fff', marginBottom:4 }}>Términos y Condiciones</div>
         <div style={{ fontSize:13, color:'rgba(255,255,255,0.50)', marginBottom:16, fontFamily:FI }}>Leé el documento completo para poder continuar.</div>
 
         {/* Terms — full height, no inner scroll; the outer body scrolls */}
-        <div style={{ position:'relative', marginBottom:12 }}>
+        <div style={{ position:'relative', marginBottom:20 }}>
           <div
             className="liquid-glass"
             style={{ borderRadius:20, padding:'16px 18px' }}
@@ -10513,8 +10513,11 @@ function TermsAcceptance({ user, onAccept }) {
               <p style={{ fontSize:11, color:'rgba(255,255,255,0.35)', marginTop:8 }}>Última actualización: Abril 2026</p>
             </div>
           </div>
-
         </div>
+      </div>
+
+      {/* Footer — always visible, outside the scroll area */}
+      <div style={{ flexShrink:0, padding:'12px 20px', paddingBottom:'max(20px, env(safe-area-inset-bottom, 20px))', maxWidth:520, margin:'0 auto', width:'100%', boxSizing:'border-box' }}>
 
         {/* Checkbox — only enabled after full scroll */}
         <label style={{ display:'flex', alignItems:'flex-start', gap:12, cursor: scrolledToBottom ? 'pointer' : 'default', marginBottom:14, opacity: scrolledToBottom ? 1 : 0.40, transition:'opacity 250ms ease' }}
