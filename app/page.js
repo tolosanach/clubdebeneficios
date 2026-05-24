@@ -2851,6 +2851,9 @@ function Navbar({ setView, cityName, user, profile, commerce, onLogin, onLogout,
     borderBottom: '1px solid rgba(255,255,255,0.06)',
   }
 
+  // En home la landing tiene su propio nav — el glass pill del AppRoot no se monta.
+  if (currentView === 'home') return null
+
   // ── No logged-in user ─────────────────────────────────────────────────────
   if (!user) return (
     <>
