@@ -36,6 +36,7 @@ import MoreSheet from '../lib/MoreSheet'
 import Logo from '../lib/Logo'
 import HelpBanner, { resetAllHelpBanners } from '../lib/HelpBanner'
 import JsQrScanner from '../lib/JsQrScanner'
+import HomePublic from '../lib/HomePublic'
 import { QRCodeSVG } from 'qrcode.react'
 import {
   Menu, QrCode, User, Home, LayoutDashboard, Users, Star, Gift,
@@ -24185,7 +24186,7 @@ export default function App() {
           <BizPromptBanner profile={profile} />
         </div>
       )}
-      {view === 'home'      && <HomeView setView={navigate} user={user} profile={profile} onLogin={handleLogin} />}
+      {view === 'home'      && <HomePublic onLoginClick={handleLogin} />}
       {view === 'directory'          && <DirectoryView citySlug={citySlug} cities={cities} setView={navigate} setCommerce={setCommerce} />}
       {view === 'commerce'           && <CommerceView commerce={commerce} setView={navigate} user={user} onLoginRequired={handleLogin} onCommerceUpdate={updates => setCommerce(prev => ({ ...prev, ...updates }))} />}
       {view === 'client'             && <ClientView setView={navigate} user={user} profile={profile} onLogout={handleLogout} initialTab={deepLink.tab} />}

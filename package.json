@@ -12,6 +12,7 @@
   "dependencies": {
     "@supabase/ssr": "^0.10.2",
     "@supabase/supabase-js": "^2.103.2",
+    "@tabler/icons-react": "^3.44.0",
     "html2canvas": "^1.4.1",
     "html5-qrcode": "^2.3.8",
     "jsqr": "^1.4.0",
