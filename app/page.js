@@ -1052,12 +1052,12 @@ function CasiListoView({ user, onComplete }) {
             disabled={!agreed || saving}
             style={{
               width:'100%', padding:'16px',
-              background: agreed ? '#6F30DF' : 'rgba(255,255,255,0.08)',
-              border:'none', borderRadius:16, color:'#fff',
+              background: agreed ? '#EDD5F6' : 'rgba(255,255,255,0.08)',
+              border:'none', borderRadius:16, color: agreed ? '#220033' : 'rgba(255,255,255,0.45)',
               fontFamily:FN, fontSize:15, fontWeight:700,
               cursor: agreed && !saving ? 'pointer' : 'not-allowed',
               opacity: saving ? 0.7 : 1,
-              boxShadow: agreed && !saving ? '0 8px 28px rgba(113,49,225,0.35)' : 'none',
+              boxShadow: agreed && !saving ? '0 8px 28px rgba(34,0,51,0.14)' : 'none',
               transition:'background 250ms ease, opacity 160ms ease',
             }}>
             {saving ? 'Guardando...' : 'Entrar a Clufix →'}
@@ -7408,20 +7408,20 @@ function WalletCardFront({ club, colors, onFlip, visible }) {
             right:14, bottom:12,
             zIndex:6,
             display:'inline-flex', alignItems:'center', gap:5,
-            // Rebrand mayo 2026: violeta brand solido, sin gradient.
-            background:'#6F30DF',
-            border:'1px solid rgba(255,255,255,0.22)',
+            // Rebrand mayo 2026: paleta DK/LT.
+            background:'#EDD5F6',
+            border:'1px solid rgba(34,0,51,0.15)',
             borderRadius:9999,
             padding:'6px 11px',
-            color:'#fff',
+            color:'#220033',
             fontFamily:FN, fontSize:11, fontWeight:800,
             letterSpacing:'.02em',
             textDecoration:'none',
-            boxShadow:'0 6px 16px rgba(113,49,225,0.40)',
+            boxShadow:'0 6px 16px rgba(34,0,51,0.18)',
           }}
         >
           <span>Ir al club</span>
-          <ArrowRight size={11} strokeWidth={2.6} color="#fff" />
+          <ArrowRight size={11} strokeWidth={2.6} color="#220033" />
         </a>
       )}
 
@@ -7596,20 +7596,20 @@ function WalletCardBack({ club, colors, onFlip, userId }) {
                 }}
                 style={{
                   display:'inline-flex', alignItems:'center', gap:6,
-                  // Rebrand mayo 2026: violeta brand solido, sin gradient.
-                  background:'#6F30DF',
-                  border:'1px solid rgba(255,255,255,0.22)',
+                  // Rebrand mayo 2026: paleta DK/LT.
+                  background:'#EDD5F6',
+                  border:'1px solid rgba(34,0,51,0.15)',
                   borderRadius:9999,
                   padding:'7px 14px',
-                  color:'#fff',
+                  color:'#220033',
                   fontFamily:FN, fontSize:12, fontWeight:800,
                   letterSpacing:'.02em',
                   textDecoration:'none',
-                  boxShadow:'0 6px 18px rgba(113,49,225,0.40)',
+                  boxShadow:'0 6px 18px rgba(34,0,51,0.18)',
                 }}
               >
                 <span>Ir al club</span>
-                <ArrowRight size={13} strokeWidth={2.6} color="#fff" />
+                <ArrowRight size={13} strokeWidth={2.6} color="#220033" />
               </a>
             : <span style={{ fontFamily:FN, fontSize:11, color:colors.textSub, opacity:0.40 }}>tap para volver</span>
           }
@@ -8565,7 +8565,7 @@ function ClientView({ setView, user, profile, onLogout, initialTab }) {
                   try { sessionStorage.setItem('clufix:scanIntent', 'join-club') } catch {}
                   setView('scanner')
                 }}
-                style={{ padding:'11px 26px', borderRadius:99, background:'#6F30DF', border:'none', cursor:'pointer', fontFamily:FN, fontSize:13, fontWeight:700, color:'#fff', boxShadow:'0 4px 20px rgba(139,92,246,0.40)' }}
+                style={{ padding:'11px 26px', borderRadius:99, background:'#EDD5F6', border:'none', cursor:'pointer', fontFamily:FN, fontSize:13, fontWeight:700, color:'#220033', boxShadow:'0 4px 20px rgba(34,0,51,0.15)' }}
               >
                 Escanear QR
               </button>
@@ -24190,7 +24190,7 @@ export default function App() {
           <BizPromptBanner profile={profile} />
         </div>
       )}
-      {view === 'home'      && <HomePublic onLoginClick={handleLogin} />}
+      {view === 'home'      && <HomePublic onLoginClick={handleLogin} onLogoClick={() => navigate('home')} onGoPanel={() => navigate(profile?.role === 'commerce_owner' ? 'commerce-settings' : 'client')} user={user} />}
       {view === 'directory'          && <DirectoryView citySlug={citySlug} cities={cities} setView={navigate} setCommerce={setCommerce} />}
       {view === 'commerce'           && <CommerceView commerce={commerce} setView={navigate} user={user} onLoginRequired={handleLogin} onCommerceUpdate={updates => setCommerce(prev => ({ ...prev, ...updates }))} />}
       {view === 'client'             && <ClientView setView={navigate} user={user} profile={profile} onLogout={handleLogout} initialTab={deepLink.tab} />}
