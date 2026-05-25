@@ -814,5 +814,9 @@ input[type="week"]::-webkit-calendar-picker-indicator:hover {
 @keyframes bell-cartel-in {
   0%   { opacity: 0; transform: translateX(8px) scale(0.96); }
   100% { opacity: 1; transform: translateX(0)    scale(1);    }
+}
 
+@keyframes homepub-marquee {
+  from { transform: translateX(0); }
+  to   { transform: translateX(-50%); }
 }
