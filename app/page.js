@@ -24233,7 +24233,7 @@ export default function App() {
               propio sub-nav (Overview / Comercios / Usuarios / Ciudades /
               Actividad / Config) y el contexto cliente/merchant no aplica
               ahí — mostrar el bottom-nav genera ruido. */}
-          {view !== 'admin' && (
+          {view !== 'admin' && view !== 'home' && (
             <BottomNavV2
               activeContext={activeContext}
               currentView={view}
