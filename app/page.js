@@ -1090,7 +1090,7 @@ function GBtn({ children, onClick, sm, outline, style:s={}, disabled }) {
       onMouseDown={()=>setActive(true)} onMouseUp={()=>setActive(false)}
       style={{ display:'inline-flex', alignItems:'center', justifyContent:'center', gap:7, borderRadius:10, fontFamily:FN, fontWeight:700, fontSize:sm?12:14, padding:sm?'7px 16px':'12px 28px', transition:'transform 160ms cubic-bezier(0.23,1,0.32,1), background 200ms cubic-bezier(0.23,1,0.32,1), box-shadow 200ms cubic-bezier(0.23,1,0.32,1), opacity 160ms ease', border:'none', opacity:disabled?.6:1, cursor:disabled?'not-allowed':'pointer',
         ...(outline ? { background:'transparent', color:C.v, border:`1.5px solid ${C.v}`, transform:scale }
-          : { background:hov?'linear-gradient(135deg,#FF7733,#D47DFF)':G, color:'#fff', boxShadow:hov?'0 8px 26px #FF199F66':'0 4px 18px #FF199F44', transform:scale }), ...s }}>
+          : { background:hov?'#D4B8E0':'#EDD5F6', color:'#220033', boxShadow:hov?'0 8px 26px rgba(34,0,51,0.20)':'0 4px 18px rgba(34,0,51,0.12)', transform:scale }), ...s }}>
       {children}
     </button>
   )
@@ -2783,16 +2783,16 @@ function Navbar({ setView, cityName, user, profile, commerce, onLogin, onLogout,
   }
   const NAV_SCROLL_STATE = scrolled
     ? {
-        background: 'rgba(0, 0, 0, 0.72)',
+        background: 'rgba(34, 0, 51, 0.96)',
         backdropFilter: 'blur(14px)',
         WebkitBackdropFilter: 'blur(14px)',
-        borderBottom: '1px solid rgba(255,255,255,0.06)',
+        borderBottom: '1px solid rgba(237,213,246,0.10)',
       }
     : {
-        background: 'transparent',
-        backdropFilter: 'none',
-        WebkitBackdropFilter: 'none',
-        borderBottom: '1px solid transparent',
+        background: 'rgba(34, 0, 51, 0.80)',
+        backdropFilter: 'blur(14px)',
+        WebkitBackdropFilter: 'blur(14px)',
+        borderBottom: '1px solid rgba(237,213,246,0.08)',
       }
 
   // ── Shared style helpers ──────────────────────────────────────────────────
@@ -2845,10 +2845,10 @@ function Navbar({ setView, cityName, user, profile, commerce, onLogin, onLogout,
   // Para usuarios no autenticados el navbar es siempre opaco — el botón
   // "Entrar" tiene que ser legible en cualquier scroll y cualquier sección.
   const NAV_OPAQUE = {
-    background: 'rgba(0, 0, 0, 0.72)',
+    background: 'rgba(34, 0, 51, 0.96)',
     backdropFilter: 'blur(14px)',
     WebkitBackdropFilter: 'blur(14px)',
-    borderBottom: '1px solid rgba(255,255,255,0.06)',
+    borderBottom: '1px solid rgba(237,213,246,0.10)',
   }
 
   // En home la landing tiene su propio nav — el glass pill del AppRoot no se monta.
