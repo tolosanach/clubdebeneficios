@@ -274,9 +274,9 @@ function Splash({ commerce, UnitIcon, unitIconProps, unitLabel, onClose, onJoin 
             cantidad y mostrar 0 desincentiva al primer cliente. */}
 
         <button onClick={() => { onJoin && onJoin() }} className="btn-pulse" style={{
-          width:'100%', padding:'15px', background:GA, border:'none', borderRadius:16,
-          color:'#fff', fontFamily:FN, fontSize:15, fontWeight:700, cursor:'pointer',
-          boxShadow:'0 8px 28px rgba(113,49,225,0.45)', transition:'all .2s ease',
+          width:'100%', padding:'15px', background:'#EDD5F6', border:'none', borderRadius:16,
+          color:'#220033', fontFamily:FN, fontSize:15, fontWeight:700, cursor:'pointer',
+          boxShadow:'0 8px 28px rgba(34,0,51,0.18)', transition:'all .2s ease',
           position:'relative', zIndex:1,
         }}>
           Unirme a este club →
@@ -2434,7 +2434,7 @@ export default function ClubProfilePage() {
           <button
             onClick={handleSplashJoin}
             className="btn-pulse"
-            style={{ display:'block', width:'100%', maxWidth:420, margin:'0 auto', padding:'15px', background:GA, border:'none', borderRadius:16, color:'#fff', fontFamily:FN, fontSize:15, fontWeight:700, cursor:'pointer', boxShadow:'0 8px 28px rgba(113,49,225,0.55)', pointerEvents:'all' }}
+            style={{ display:'block', width:'100%', maxWidth:420, margin:'0 auto', padding:'15px', background:'#EDD5F6', border:'none', borderRadius:16, color:'#220033', fontFamily:FN, fontSize:15, fontWeight:700, cursor:'pointer', boxShadow:'0 8px 28px rgba(34,0,51,0.18)', pointerEvents:'all' }}
           >
             Unirme a este club →
           </button>
@@ -3979,7 +3979,7 @@ export default function ClubProfilePage() {
                 {joinError && <div style={{ fontSize:13, color:'#f87171', marginBottom:14 }}>{joinError}</div>}
                 <button onClick={() => handleJoin()} disabled={joining||!!phoneErr||!consent}
                   className="btn-pulse"
-                  style={{ width:'100%', padding:'15px', background:'linear-gradient(135deg, #6F30DF, #FF199F)', border:'none', borderRadius:15, color:'#fff', fontFamily:FN, fontSize:15, fontWeight:700, cursor:joining||!consent?'not-allowed':'pointer', opacity:joining||!consent?0.6:1, boxShadow:'0 8px 28px rgba(113,49,225,0.4)', transition:'all .2s ease' }}>
+                  style={{ width:'100%', padding:'15px', background:'#EDD5F6', border:'none', borderRadius:15, color:'#220033', fontFamily:FN, fontSize:15, fontWeight:700, cursor:joining||!consent?'not-allowed':'pointer', opacity:joining||!consent?0.6:1, boxShadow:'0 8px 28px rgba(34,0,51,0.18)', transition:'all .2s ease' }}>
                   {joining ? '⟳ Uniéndome...' : 'Unirme al club →'}
                 </button>
               </>
