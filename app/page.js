@@ -14571,10 +14571,14 @@ function CommerceSettingsView({ user, profile, setView, onLogout, onOwnerProfile
     const totalCount       = completableItems.length
     const pendingCount     = pendingItems.length
     const cfgPct           = totalCount > 0 ? Math.round(doneCount / totalCount * 100) : 0
+    // Cuando no hay pendientes, forzamos la vista a "listas" sin importar
+    // qué pestaña haya elegido el dueño — si no hay nada pendiente, mostrar
+    // la pestaña de Pendientes vacía no aporta valor.
+    const effectiveFilter = pendingCount === 0 ? 'listas' : intentFilter
     // sortedItems aplica el filtro elegido por el dueño en las pestañas.
     // En Pendientes mostramos primero los completables-pendientes y al final
     // los locked (siguiente nivel). En Listas solo los completados.
-    const sortedItems = intentFilter === 'listas'
+    const sortedItems = effectiveFilter === 'listas'
       ? doneItems
       : [...pendingItems, ...lockedItems]
     // Flag para mostrar el banner de "todo listo en tu plan" cuando el dueño
@@ -15234,7 +15238,7 @@ function CommerceSettingsView({ user, profile, setView, onLogout, onOwnerProfile
               dimBorder:    'rgba(34,230,152,0.22)',
             },
           ].map(t => {
-            const active = intentFilter === t.id
+            const active = effectiveFilter === t.id
             return (
               <button
                 key={t.id}
@@ -15317,7 +15321,7 @@ function CommerceSettingsView({ user, profile, setView, onLogout, onOwnerProfile
             Estrategia de marketing: celebrar la finalización ANTES de empujar
             el upgrade. El dueño que ya configuró todo es mucho más receptivo
             a expandirse al ver lo que viene como "siguiente nivel". */}
-        {intentFilter === 'pendientes' && planFullyComplete && (
+        {effectiveFilter === 'pendientes' && planFullyComplete && (
           <div style={{
             margin: isMobile ? '4px 18px 16px' : '4px 28px 16px',
             padding: '16px 18px',
@@ -15354,46 +15358,46 @@ function CommerceSettingsView({ user, profile, setView, onLogout, onOwnerProfile
             margin: isMobile ? '20px 18px 0' : '20px 28px 0',
             padding: '32px 22px',
             borderRadius: 22,
-            background: intentFilter === 'pendientes'
+            background: effectiveFilter === 'pendientes'
               ? 'linear-gradient(135deg, rgba(34,230,152,0.10), rgba(34,230,152,0.04))'
               : 'rgba(255,255,255,0.03)',
-            border: intentFilter === 'pendientes'
+            border: effectiveFilter === 'pendientes'
               ? '1px solid rgba(34,230,152,0.32)'
               : '1px solid rgba(255,255,255,0.08)',
             textAlign: 'center',
-            animation: intentFilter === 'pendientes' ? 'celebrate-card 1.4s cubic-bezier(0.16,1,0.3,1)' : undefined,
+            animation: effectiveFilter === 'pendientes' ? 'celebrate-card 1.4s cubic-bezier(0.16,1,0.3,1)' : undefined,
           }}>
             <div style={{
               width: 64, height: 64, borderRadius: 22,
-              background: intentFilter === 'pendientes'
+              background: effectiveFilter === 'pendientes'
                 ? 'linear-gradient(135deg, #22E698, #4ade80)'
                 : 'rgba(255,255,255,0.06)',
               display: 'flex', alignItems: 'center', justifyContent: 'center',
               margin: '0 auto 16px',
-              boxShadow: intentFilter === 'pendientes'
+              boxShadow: effectiveFilter === 'pendientes'
                 ? '0 12px 32px rgba(34,230,152,0.45)'
                 : 'none',
             }}>
-              {intentFilter === 'pendientes'
+              {effectiveFilter === 'pendientes'
                 ? <Check size={32} color="#fff" strokeWidth={2.6} />
                 : <Sparkles size={28} color="rgba(255,255,255,0.45)" strokeWidth={1.8} />}
             </div>
             <div style={{
               fontFamily: FN, fontSize: 18, fontWeight: 900,
-              color: intentFilter === 'pendientes' ? '#22E698' : '#fff',
+              color: effectiveFilter === 'pendientes' ? '#22E698' : '#fff',
               marginBottom: 8,
               letterSpacing: '-.01em',
             }}>
-              {intentFilter === 'pendientes'
+              {effectiveFilter === 'pendientes'
                 ? '¡Felicitaciones, todo listo!'
                 : 'Nada por acá todavía'}
             </div>
             <div style={{ fontSize: 13, color: 'rgba(255,255,255,0.65)', lineHeight: 1.55, maxWidth: 320, margin: '0 auto' }}>
-              {intentFilter === 'pendientes'
+              {effectiveFilter === 'pendientes'
                 ? <>Configuraste los <strong style={{ color: '#fff', fontWeight: 800 }}>{totalCount}</strong> datos clave de tu negocio. Tus clientes te van a encontrar prolijo y listo para sumarlos al club.</>
                 : <>Todavía no completaste ninguna configuración. Empezá por las que están en <strong style={{ color: '#fff', fontWeight: 800 }}>Pendientes</strong>.</>}
             </div>
-            {intentFilter === 'listas' && pendingCount > 0 && (
+            {effectiveFilter === 'listas' && pendingCount > 0 && (
               <button
                 onClick={() => setIntentFilter('pendientes')}
                 style={{
@@ -15514,7 +15518,7 @@ function CommerceSettingsView({ user, profile, setView, onLogout, onOwnerProfile
                 vivía solo en el empty state de Pendientes; ahora se
                 muestra dentro de Completos para que el dueño la vea
                 acompañada de TODO lo que configuró. */}
-            {intentFilter === 'listas' && pendingCount === 0 && (
+            {effectiveFilter === 'listas' && pendingCount === 0 && (
               <div
                 key="celebration-100pct"
                 style={{
@@ -15639,7 +15643,7 @@ function CommerceSettingsView({ user, profile, setView, onLogout, onOwnerProfile
               // la tab donde viven, así se siente coherente con el strip
               // de pestañas. Casos especiales (isJustCompleted, isLocked)
               // mantienen sus colores propios.
-              const isPending      = intentFilter === 'pendientes'
+              const isPending      = effectiveFilter === 'pendientes'
               // Color identidad de la tab activa — se aplica a TODA la
               // card: background degradé, glow del border, icon circle,
               // CTA button. El user pidió que el color "pinte la card
@@ -16077,7 +16081,7 @@ function CommerceSettingsView({ user, profile, setView, onLogout, onOwnerProfile
 
         {/* ── Nota explicativa de las cards locked en Pendientes ──
             Debajo de todas las cards para no interrumpir el scroll. */}
-        {intentFilter === 'pendientes' && pendingCount > 0 && lockedItems.length > 0 && (
+        {effectiveFilter === 'pendientes' && pendingCount > 0 && lockedItems.length > 0 && (
           <div style={{
             margin: isMobile ? '14px 18px 4px' : '14px 28px 4px',
             padding: '10px 14px',
