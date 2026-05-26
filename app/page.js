@@ -23684,6 +23684,13 @@ export default function App() {
     // ANTES del useEffect que setea el state — durante esa ventana, el
     // state está en {view:null} y caeríamos al lastView equivocado.
     if (!consumedLoginNext && restoreView && data?.role && !_DEEP_LINK.view) {
+      // Si el usuario navegó intencionalmente a home y refrescó, quedarse ahí.
+      try {
+        if (sessionStorage.getItem('clufix:sessionView') === 'home') {
+          bootComplete.current = true
+          return
+        }
+      } catch {}
       const saved = localStorage.getItem('clufix:lastView')
       const VALID = {
         client:         ['client', 'directory'],
@@ -24029,8 +24036,15 @@ export default function App() {
   // recupera el commerce del owner y lo inyecta en estado (ver loadProfile).
   const TRANSIENT_VIEWS = new Set(['home', 'scanner', 'register-commerce'])
   useEffect(() => {
-    if (TRANSIENT_VIEWS.has(view)) return
     if (!bootComplete.current) return
+    if (view === 'home') {
+      // Navegación intencional a home (post-boot): recordarlo en sessionStorage
+      // para que un F5 desde home vuelva a home y no al panel.
+      try { sessionStorage.setItem('clufix:sessionView', 'home') } catch {}
+      return
+    }
+    if (TRANSIENT_VIEWS.has(view)) return
+    try { sessionStorage.removeItem('clufix:sessionView') } catch {}
     localStorage.setItem('clufix:lastView', view)
   }, [view])
 
