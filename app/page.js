@@ -2992,15 +2992,15 @@ function Navbar({ setView, cityName, user, profile, commerce, onLogin, onLogout,
             // lugar del gradient violeta-violeta. Misma intencion: marcar
             // el icono activo del kit duenio con glow brand, ícono blanco.
             const VIOLET_ACTIVE = {
-              background: '#6F30DF',
+              background: '#EDD5F6',
               border: 'none',
-              boxShadow: '0 2px 10px rgba(113,49,225,0.55)',
+              boxShadow: '0 2px 10px rgba(34,0,51,0.22)',
             }
             return (
               <>
                 <button title="Vista pública de mi club" onClick={onOwnerProfile}
                   style={{ ...BTN, ...(eyeActive ? VIOLET_ACTIVE : NEUTRAL), cursor: 'pointer' }}>
-                  <Eye size={16} color={eyeActive ? '#fff' : 'rgba(189,75,248,0.85)'} strokeWidth={2} />
+                  <Eye size={16} color={eyeActive ? '#220033' : 'rgba(189,75,248,0.85)'} strokeWidth={2} />
                 </button>
                 <button title="Mi Negocio"
                   onClick={() => {
@@ -3008,7 +3008,7 @@ function Navbar({ setView, cityName, user, profile, commerce, onLogin, onLogout,
                     window.dispatchEvent(new CustomEvent('clufix:merchant-intent'))
                   }}
                   style={{ ...BTN, ...(storeActive ? VIOLET_ACTIVE : NEUTRAL), cursor: 'pointer' }}>
-                  <Store size={16} color={storeActive ? '#fff' : 'rgba(189,75,248,0.85)'} strokeWidth={2} />
+                  <Store size={16} color={storeActive ? '#220033' : 'rgba(189,75,248,0.85)'} strokeWidth={2} />
                 </button>
               </>
             )
@@ -15231,11 +15231,12 @@ function CommerceSettingsView({ user, profile, setView, onLogout, onOwnerProfile
               dimBorder:    'rgba(245,166,35,0.22)',
             },
             {
-              id: 'listas', label: 'Completos', count: doneCount, color: '#22E698', symbol: '✓',
-              activeBg:     'rgba(34,230,152,0.20)',
-              activeBorder: 'rgba(34,230,152,0.55)',
-              dimBg:        'rgba(34,230,152,0.05)',
-              dimBorder:    'rgba(34,230,152,0.22)',
+              id: 'listas', label: 'Completos', count: doneCount, color: '#EDD5F6', symbol: '✓',
+              activeTextColor: '#220033',
+              activeBg:     'rgba(237,213,246,0.15)',
+              activeBorder: 'rgba(237,213,246,0.40)',
+              dimBg:        'rgba(237,213,246,0.05)',
+              dimBorder:    'rgba(237,213,246,0.18)',
             },
           ].map(t => {
             const active = effectiveFilter === t.id
@@ -15267,7 +15268,7 @@ function CommerceSettingsView({ user, profile, setView, onLogout, onOwnerProfile
                   // Texto: en la activa va blanco. En la inactiva usa el
                   // color de la tab (amarillo/verde) atenuado al 60%, así
                   // mantiene su identidad cromática.
-                  color: active ? '#fff' : `${t.color}99`,
+                  color: active ? (t.activeTextColor || '#fff') : `${t.color}99`,
                   fontFamily: FN, fontSize: 13,
                   fontWeight: active ? 800 : 600,
                   letterSpacing: '.04em',
