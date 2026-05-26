@@ -23684,42 +23684,42 @@ export default function App() {
     // ANTES del useEffect que setea el state — durante esa ventana, el
     // state está en {view:null} y caeríamos al lastView equivocado.
     if (!consumedLoginNext && restoreView && data?.role && !_DEEP_LINK.view) {
-      // Si el usuario navegó intencionalmente a home y refrescó, quedarse ahí.
-      try {
-        if (sessionStorage.getItem('clufix:sessionView') === 'home') {
-          bootComplete.current = true
-          return
+      // Si sessionStorage marca 'home', el usuario estaba en home al refrescar
+      // (ya sea por navegar ahí o porque es su primera visita sin lastView).
+      // En ese caso no redirigimos — dejamos que el view se quede en 'home'.
+      // El mount-effect inicializa esta clave cuando no hay lastView guardado.
+      const stayHome = (() => { try { return sessionStorage.getItem('clufix:sessionView') === 'home' } catch { return false } })()
+      if (!stayHome) {
+        const saved = localStorage.getItem('clufix:lastView')
+        const VALID = {
+          client:         ['client', 'directory'],
+          commerce_owner: ['commerce-settings', 'commerce', 'client', 'directory'],
+          admin:          ['admin', 'commerce', 'client', 'directory'],
         }
-      } catch {}
-      const saved = localStorage.getItem('clufix:lastView')
-      const VALID = {
-        client:         ['client', 'directory'],
-        commerce_owner: ['commerce-settings', 'commerce', 'client', 'directory'],
-        admin:          ['admin', 'commerce', 'client', 'directory'],
-      }
-      const defaults = { client: 'client', commerce_owner: 'commerce-settings', admin: 'admin' }
-      if (saved && VALID[data.role]?.includes(saved)) {
-        // Caso especial: 'commerce' (preview del ojo) requiere cargar el comercio
-        // del owner antes de renderizar; sino CommerceView se queda en blanco.
-        if (saved === 'commerce') {
-          // Eye preview ahora vive en /club/[slug]?edit=1 — redirigimos.
-          const { data: ownCommerce } = await supabase.from('commerces').select('*').eq('owner_id', userId).single()
-          if (ownCommerce?.slug && typeof window !== 'undefined') {
-            window.location.href = `/club/${ownCommerce.slug}?edit=1`
-            return
-          }
-          if (ownCommerce) {
-            setCommerce(ownCommerce)
-            setView('commerce')
+        const defaults = { client: 'client', commerce_owner: 'commerce-settings', admin: 'admin' }
+        if (saved && VALID[data.role]?.includes(saved)) {
+          // Caso especial: 'commerce' (preview del ojo) requiere cargar el comercio
+          // del owner antes de renderizar; sino CommerceView se queda en blanco.
+          if (saved === 'commerce') {
+            // Eye preview ahora vive en /club/[slug]?edit=1 — redirigimos.
+            const { data: ownCommerce } = await supabase.from('commerces').select('*').eq('owner_id', userId).single()
+            if (ownCommerce?.slug && typeof window !== 'undefined') {
+              window.location.href = `/club/${ownCommerce.slug}?edit=1`
+              return
+            }
+            if (ownCommerce) {
+              setCommerce(ownCommerce)
+              setView('commerce')
+            } else {
+              setView(defaults[data.role] || 'home')
+            }
           } else {
-            setView(defaults[data.role] || 'home')
+            setView(saved)
           }
         } else {
-          setView(saved)
+          if (saved) localStorage.removeItem('clufix:lastView')
+          setView(defaults[data.role] || 'home')
         }
-      } else {
-        if (saved) localStorage.removeItem('clufix:lastView')
-        setView(defaults[data.role] || 'home')
       }
       bootComplete.current = true
     }
@@ -24047,6 +24047,19 @@ export default function App() {
     try { sessionStorage.removeItem('clufix:sessionView') } catch {}
     localStorage.setItem('clufix:lastView', view)
   }, [view])
+
+  // Al montar: si no hay vista guardada en localStorage, el usuario estaba en
+  // home (home es transient y nunca se escribe al localStorage). Marcamos
+  // sessionStorage para que loadProfile no lo redirija al panel en el F5.
+  // sessionStorage persiste el F5 pero NO en nuevas pestañas → pestaña nueva
+  // con lastView guardado sí restaura el panel correctamente.
+  useEffect(() => {
+    try {
+      if (!localStorage.getItem('clufix:lastView')) {
+        sessionStorage.setItem('clufix:sessionView', 'home')
+      }
+    } catch {}
+  }, [])
 
   const currentCity = cities.find(c => c.slug === citySlug)
 
