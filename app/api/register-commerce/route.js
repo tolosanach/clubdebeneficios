@@ -71,7 +71,7 @@ export async function POST(request) {
         prog_min_purchase: safeProgMin,
         reward_text:  'Próximamente...',
         reward_color: '#6F30DF',
-        plan:         'free',
+        plan:         'pro',
         active:       true,
         featured:     false,
         rating:       5.0,
