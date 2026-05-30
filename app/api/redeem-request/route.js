@@ -26,16 +26,31 @@ const supabaseAdmin = createClient(
 // (sin 0/O/1/I para evitar confusiones de lectura).
 function genCode() {
   const ALPHABET = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789'
-  let s = ''
-  for (let i = 0; i < 4; i++) {
-    s += ALPHABET[Math.floor(Math.random() * ALPHABET.length)]
-  }
-  return `BNX-${s}`
+  const buf = crypto.getRandomValues(new Uint8Array(4))
+  return 'BNX-' + Array.from(buf).map(b => ALPHABET[b % ALPHABET.length]).join('')
 }
 
 export async function POST(request) {
   try {
+    // AUTH GUARD: verificar que el usuario autenticado es quien intenta hacer el canje
+    const supabaseAuth = createClient(
+      process.env.NEXT_PUBLIC_SUPABASE_URL,
+      process.env.SUPABASE_SERVICE_ROLE_KEY,
+      { auth: { persistSession: false } }
+    )
+    const { data: { user }, error: authError } = await supabaseAuth.auth.getUser(
+      request.headers.get('Authorization')?.replace('Bearer ', '')
+    )
+    if (authError || !user) {
+      return NextResponse.json({ error: 'No autenticado' }, { status: 401 })
+    }
+
     const { membership_id, prize_id, commerce_id, user_id } = await request.json()
+
+    // Validar que el usuario autenticado es el que intenta hacer el canje
+    if (user.id !== user_id) {
+      return NextResponse.json({ error: 'No autorizado' }, { status: 403 })
+    }
 
     if (!membership_id || !prize_id || !commerce_id || !user_id) {
       return NextResponse.json({ error: 'Faltan parámetros' }, { status: 400 })

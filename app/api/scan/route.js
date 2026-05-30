@@ -30,7 +30,15 @@ export async function POST(request) {
       return NextResponse.json({ error: 'Faltan parámetros' }, { status: 400 })
     }
 
-    const user_id = qr_code.replace('CLUB-', '')
+    // QR format validation — asegurar que es CLUB-<UUID válido>
+    const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
+    if (!qr_code.startsWith('CLUB-')) {
+      return NextResponse.json({ error: 'QR inválido: formato incorrecto' }, { status: 400 })
+    }
+    const user_id = qr_code.slice(5)
+    if (!uuidRegex.test(user_id)) {
+      return NextResponse.json({ error: 'QR inválido: UUID malformado' }, { status: 400 })
+    }
 
     // Verificar que el usuario existe.
     // Algunos profiles tienen el nombre en `name` (Google OAuth lo guarda
