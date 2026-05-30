@@ -64,13 +64,21 @@ export async function POST(request) {
     // Crear membership con status 'active' para que aparezca como miembro
     // efectivo desde el primer momento (bug previo: status='pending' hacía
     // que /club/[slug] siguiera mostrando el slide "Deslizá para unirte").
+    // NOTA: El trigger enforce_membership_limit_trigger en DB valida atomicamente
+    // que no se excedan los límites de plan, previniendo race conditions.
     const { data: newMem, error: memErr } = await supabaseAdmin
       .from('memberships')
       .insert({ user_id: user.id, commerce_id, points: 0, stars: 0, visits_count: 0, status: 'active' })
       .select('id')
       .single()
 
-    if (memErr) throw memErr
+    if (memErr) {
+      // Si el trigger rechazó por límite de plan, devolver 403
+      if (memErr.message?.includes('plan_limit_exceeded')) {
+        return NextResponse.json({ error: 'plan_limit_reached' }, { status: 403 })
+      }
+      throw memErr
+    }
 
     // Aplicar pending_grants si existe alguno asociado al teléfono del cliente.
     // Útil para migraciones de clientes preexistentes (ej: Enigma migrando 350

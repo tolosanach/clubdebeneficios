@@ -145,6 +145,8 @@ export async function POST(request) {
       }
       // UPSERT race-safe: si dos scans concurrentes intentan crear, uno gana via
       // UNIQUE(user_id, commerce_id) y el otro recupera la fila ganadora.
+      // NOTA: El trigger enforce_membership_limit_trigger en DB valida atomicamente
+      // que no se excedan los límites de plan durante el INSERT.
       const { data: upserted, error: memErr } = await supabaseAdmin
         .from('memberships')
         .upsert(
@@ -153,7 +155,18 @@ export async function POST(request) {
         )
         .select('id, points, stars, visits_count')
         .single()
-      if (memErr) throw memErr
+      if (memErr) {
+        // Si el trigger rechazó por límite de plan, devolver 403
+        if (memErr.message?.includes('plan_limit_exceeded')) {
+          return NextResponse.json({
+            error: 'plan_limit_reached',
+            message: 'El comercio alcanzó el límite de clientes de su plan.',
+            plan: commerce.plan || 'free',
+            limit: planLimit,
+          }, { status: 403 })
+        }
+        throw memErr
+      }
       membership = upserted
 
       // Aplicar pending_grants si el cliente fue pre-cargado (migración de
