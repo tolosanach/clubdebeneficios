@@ -820,3 +820,35 @@ input[type="week"]::-webkit-calendar-picker-indicator:hover {
   from { transform: translateX(0); }
   to   { transform: translateX(-50%); }
 }
+
+/* ── ACCESSIBILITY: Reduce Motion ─────────────────────────────────────────
+   Para usuarios con sensibilidad al movimiento (vestibular disorder, epilepsia
+   fotosensible, etc.). En estos usuarios, desactiva todas las animaciones y
+   transiciones no-críticas. Mantiene transiciones de disclosure (expand/collapse)
+   pero desactiva parallax, loops infinitos, y movimiento orgánico continuo. */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+
+  /* Desactiva animaciones inline del hero (water drift, color bloom, noise drift) */
+  [style*="animation:"] {
+    animation: none !important;
+  }
+
+  /* Feature icons: reduce 6-layer float composition a opacidad estática */
+  .feature-icon {
+    animation: none !important;
+  }
+
+  /* Marquee: convierte a scroll estático */
+  .hero-marquee,
+  .homepub-marquee {
+    animation: none !important;
+  }
+}
