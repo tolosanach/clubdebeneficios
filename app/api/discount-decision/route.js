@@ -132,7 +132,7 @@ export async function POST(request) {
         owner: {
           type:  'discount_renewed',
           title: `Renovaste el descuento de ${clientFirstName}`,
-          body:  `Le queda ${valueTxt} listo para su próxima visita.`,
+          body:  `Le queda ${valueTxt} listo para su próxima compra.`,
           link:  '/',
           metadata: { commerce_id, user_id: membership.user_id, promotion_id, kind: 'discount_renewed' },
         },
@@ -155,7 +155,7 @@ export async function POST(request) {
       owner: {
         type:  'discount_declined',
         title: `No le renovaste el descuento a ${clientFirstName}`,
-        body:  `${clientFirstName} ya no tiene cupón pendiente para su próxima visita.`,
+        body:  `${clientFirstName} ya no tiene cupón pendiente para su próxima compra.`,
         link:  '/',
         metadata: { commerce_id, user_id: membership.user_id, promotion_id, kind: 'discount_declined' },
       },

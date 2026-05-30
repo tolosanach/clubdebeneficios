@@ -6511,7 +6511,7 @@ function CommerceView({ commerce:c, setView, user, onLoginRequired, onCommerceUp
                     <div key={i} style={{ display:'flex', alignItems:'center', gap:10, background:'rgba(254,80,0,0.08)', border:'1px solid rgba(254,80,0,0.22)', borderRadius:11, padding:'10px 13px' }}>
                       <Percent size={15} color={C.pink} strokeWidth={2} style={{ flexShrink:0 }} />
                       <span style={{ fontSize:13, color:C.pearl }}>
-                        <strong style={{ color:C.white }}>{d.value}% OFF</strong> en tu próxima visita
+                        <strong style={{ color:C.white }}>{d.value}% OFF</strong> en tu próxima compra
                       </span>
                     </div>
                   ))}
@@ -7230,7 +7230,7 @@ function WalletCardFront({ club, colors, onFlip, visible }) {
     : null
   const showDiscountBadge = activePromo?.type === 'discount_next' && !!clientPromo
   const promoBadge  = showDiscountBadge ? `${activePromo.value}% OFF` : null
-  const promoSub    = showDiscountBadge ? 'PRÓX. VISITA' : null
+  const promoSub    = showDiscountBadge ? 'PRÓX. COMPRA' : null
   const doublePromo = (commerce?.promotions || []).find(p => {
     if (!p.active || p.type !== 'double_points') return false
     if (p.expires_at && new Date(p.expires_at) <= now) return false
@@ -7490,7 +7490,7 @@ function WalletCardBack({ club, colors, onFlip, userId }) {
     ? (activePromo.type === 'discount_next' ? `${activePromo.value}% OFF` : '×2 PTS')
     : null
   const promoSub = showPromoBadge
-    ? (activePromo.type === 'discount_next' ? 'PRÓX. VISITA' : 'SUMA DOBLE')
+    ? (activePromo.type === 'discount_next' ? 'PRÓX. COMPRA' : 'SUMA DOBLE')
     : null
 
   const toNext = commerce?.prog_goal > 0 ? Math.max(0, commerce.prog_goal - bal) : null
@@ -13062,7 +13062,7 @@ function CommerceSettingsView({ user, profile, setView, onLogout, onOwnerProfile
   }
 
   function promoLabel(type, value) {
-    if (type === 'discount_next') return `${value}% OFF próxima visita`
+    if (type === 'discount_next') return `${value}% OFF en tu próxima compra`
     return 'Suma doble'
   }
 
@@ -18856,8 +18856,8 @@ function CommerceSettingsView({ user, profile, setView, onLogout, onOwnerProfile
           const previewDate    = previewExpires ? fmtDate(previewExpires) : '–'
           const previewText    = newPromo.type === 'discount_next'
             ? (newPromo.expiration_type === 'relative'
-              ? `El cliente recibirá un ${newPromo.value || '?'}% de descuento en su próxima visita. Tiene ${newPromo.expiration_days || '?'} días para usarlo desde que se le otorga.`
-              : `El cliente recibirá un ${newPromo.value || '?'}% de descuento en su próxima visita al escanear su QR (válido hasta el ${previewDate})`)
+              ? `El cliente recibirá un ${newPromo.value || '?'}% de descuento en su próxima compra. Tiene ${newPromo.expiration_days || '?'} días para usarlo desde que se le otorga.`
+              : `El cliente recibirá un ${newPromo.value || '?'}% de descuento en su próxima compra al escanear su QR (válido hasta el ${previewDate})`)
             : `El cliente recibirá el doble de ${unitLabel} al escanear su QR hasta el ${previewDate}`
 
           // Filtramos a SOLO discount_next porque esta tab ya no maneja
@@ -22206,7 +22206,7 @@ function ScannerView({ user, profile, setView }) {
             <div style={{ fontFamily:FN, fontSize:18, fontWeight:900, color:C.white, lineHeight:1.3, marginBottom:10 }}>
               No suma estrella, pero el cliente igual puede sumar el <span style={{ color:C.pink }}>descuento de próxima compra</span>
             </div>
-            <div style={{ fontSize:12, color:C.mist, marginBottom:18, lineHeight:1.55 }}>Al escanear, no se le va a sumar estrella, pero sí va a quedar el cupón de descuento activo en su próxima visita.</div>
+            <div style={{ fontSize:12, color:C.mist, marginBottom:18, lineHeight:1.55 }}>Al escanear, no se le va a sumar estrella, pero sí va a quedar el cupón de descuento activo en su próxima compra.</div>
             <button onClick={handleApplyDiscountOnly}
               style={{ width:'100%', padding:'13px', background:`linear-gradient(135deg, ${C.pink}, #f97316)`, border:'none', borderRadius:12, color:'#fff', fontFamily:FN, fontSize:14, fontWeight:700, cursor:'pointer', boxShadow:`0 6px 22px rgba(254,80,0,0.40)` }}>
               Continuar y aplicar descuento

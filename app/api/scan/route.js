@@ -337,7 +337,7 @@ export async function POST(request) {
       // dueño le renueve.
       const nextCoupon = activeCoupons[0] || null
       const discountTxt = nextCoupon
-        ? `Tiene ${nextCoupon.value}% OFF para su próxima visita.`
+        ? `Tiene ${nextCoupon.value}% OFF para su próxima compra.`
         : 'No tiene descuento pendiente.'
 
       // Link a la ficha del cliente en el panel comerciante. El ID que
