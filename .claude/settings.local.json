@@ -64,7 +64,11 @@
       "Bash(xargs grep -l \"description:\")",
       "Bash(awk '{print $2}')",
       "Bash(xargs kill)",
-      "mcp__claude_ai_Supabase__list_tables"
+      "mcp__claude_ai_Supabase__list_tables",
+      "Bash(Get-ChildItem -Path \"C:\\\\club-beneficios\" -Recurse -Include \"*.js\", \"*.ts\", \"*.tsx\", \"*.json\")",
+      "Bash(Measure-Object)",
+      "Bash(Select-Object -ExpandProperty Count)",
+      "Bash(grep -n \"^[[:space:]]*//.*CinematicSplashSection\\\\|^[[:space:]]*//.*legacy\\\\|^[[:space:]]*//.*deprecated\\\\|^[[:space:]*//\" C:\\\\club-beneficios\\\\app\\\\page.js)"
     ]
   }
 }

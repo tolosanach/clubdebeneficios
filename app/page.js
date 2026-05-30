@@ -12294,41 +12294,39 @@ function CommerceSettingsView({ user, profile, setView, onLogout, onOwnerProfile
         if (data && !data.onboarding_done) setShowOnboardingBanner(true)
         setLoading(false)
         if (data) {
-          supabase.from('prizes').select('*').eq('commerce_id', data.id).order('created_at').then(r => {
-            const fetched = r.data || []
-            setPrizes(fetched)
-            // Auto-trigger del modal de premios sugeridos por rubro la PRIMERA
-            // vez que el dueño entra al panel y no tiene premios activos en
-            // el sistema actual (stars/points). Flag por commerce_id en
-            // localStorage para no volver a abrirlo. Capa 1 del sistema de
-            // premios obligatorios — antes solo se abría desde el botón del
-            // estado vacío de la pestaña Premios, lo que dejaba al user
-            // dueño sin descubrirlo si nunca entraba a esa tab.
+          // ── OPTIMIZACIÓN: Combina 4 queries independientes en Promise.all() ──
+          // Antes: waterfalling secuencial (cada .then() esperaba al anterior).
+          // Ahora: paralelo → múltiples request al backend simultáneamente.
+          Promise.all([
+            supabase.from('prizes').select('*').eq('commerce_id', data.id).order('created_at'),
+            supabase.from('promotions').select('*').eq('commerce_id', data.id).order('created_at', {ascending:false}),
+            supabase.from('commerce_activity').select('*').eq('commerce_id', data.id).order('created_at', {ascending:false}).limit(60),
+            supabase.from('redemptions').select('prize_id').eq('commerce_id', data.id),
+          ]).then(([{ data:prizes }, { data:promos }, { data:activity }, { data:redemps }]) => {
+            setPrizes(prizes || [])
+            setPromos(promos || [])
+            setActivity(activity || [])
+            // Agregar contador de canjes por premio
+            const map = {}
+            ;(redemps || []).forEach(row => { if (row.prize_id) map[row.prize_id] = (map[row.prize_id] || 0) + 1 })
+            setPrizeCanjes(map)
+
+            // Auto-trigger del modal de premios sugeridos (si no hay premios activos)
             try {
               const sys = data?.prog_type || 'stars'
               const flagKey = `clufix:welcome-prizes-shown-${data.id}`
               if (!localStorage.getItem(flagKey)) {
-                const activeForSys = fetched.filter(p =>
+                const activeForSys = (prizes || []).filter(p =>
                   p.active && (p.system_type || sys) === sys
                 )
                 if (activeForSys.length === 0) {
-                  // Cambiar a la pestaña Premios para que cuando el modal
-                  // cierre el user se quede en el contexto correcto.
                   setTab('premios')
                   setSuggestedPrizesModalOpen(true)
                   setAddedSuggestedNames(new Set())
                 }
                 localStorage.setItem(flagKey, '1')
               }
-            } catch (_) { /* localStorage puede fallar en SSR/private */ }
-          })
-          supabase.from('promotions').select('*').eq('commerce_id', data.id).order('created_at', {ascending:false}).then(r => setPromos(r.data||[]))
-          supabase.from('commerce_activity').select('*').eq('commerce_id', data.id).order('created_at', {ascending:false}).limit(60).then(r => setActivity(r.data||[]))
-          // Canjes por premio (para mostrar contador en cada card)
-          supabase.from('redemptions').select('prize_id').eq('commerce_id', data.id).then(r => {
-            const map = {}
-            ;(r.data || []).forEach(row => { if (row.prize_id) map[row.prize_id] = (map[row.prize_id] || 0) + 1 })
-            setPrizeCanjes(map)
+            } catch (_) { /* localStorage puede fallar en SSR */ }
           })
         }
       })
@@ -12369,18 +12367,20 @@ function CommerceSettingsView({ user, profile, setView, onLogout, onOwnerProfile
     } catch {}
     const monthStart = new Date(); monthStart.setDate(1); monthStart.setHours(0,0,0,0)
     const weekAgo    = new Date(Date.now() - 7*24*60*60*1000)
+
+    // ── OPTIMIZACIÓN: Combina visits + redemptions en una sola Promise.all() ──
     Promise.all([
       supabase.from('visits').select('id').eq('commerce_id', commerce.id).gte('scanned_at', monthStart.toISOString()),
       supabase.from('visits').select('user_id').eq('commerce_id', commerce.id).gte('scanned_at', weekAgo.toISOString()),
-    ]).then(([{ data:mv }, { data:wv }]) => {
+      supabase.from('redemptions')
+        .select('id, created_at, points_spent, kind, discount_value, prize:prizes(name), promotion:promotions(value, description), user:profiles(name, full_name)')
+        .eq('commerce_id', commerce.id)
+        .order('created_at', { ascending:false })
+        .limit(5),
+    ]).then(([{ data:mv }, { data:wv }, { data:canjes }]) => {
       setDashStats({ monthVisits:(mv||[]).length, activeThisWeek: new Set((wv||[]).map(v=>v.user_id)).size })
+      setRecentCanjes(canjes || [])
     })
-    supabase.from('redemptions')
-      .select('id, created_at, points_spent, kind, discount_value, prize:prizes(name), promotion:promotions(value, description), user:profiles(name, full_name)')
-      .eq('commerce_id', commerce.id)
-      .order('created_at', { ascending:false })
-      .limit(5)
-      .then(({ data }) => setRecentCanjes(data || []))
   }, [commerce])
 
   // Load reports data when tab changes to reportes
