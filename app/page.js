@@ -6517,6 +6517,19 @@ function CommerceView({ commerce:c, setView, user, onLoginRequired, onCommerceUp
                   ))}
                 </div>
               )}
+              {typeof window !== 'undefined' && 'Notification' in window && 'PushManager' in window && Notification.permission === 'default' && !view.includes('standalone') && (
+                <div style={{ background:'rgba(189,75,248,0.08)', border:'1px solid rgba(189,75,248,0.30)', borderRadius:12, padding:'12px 14px', marginBottom:16, display:'flex', alignItems:'center', gap:12 }}>
+                  <Bell size={18} color={C.v} strokeWidth={2} style={{ flexShrink:0 }} />
+                  <div style={{ textAlign:'left', flex:1 }}>
+                    <div style={{ fontSize:13, fontWeight:600, color:C.white, marginBottom:2 }}>¿Querés que te avisemos?</div>
+                    <div style={{ fontSize:12, color:C.mist }}>Cuando puedas canjear puntos o haya nuevas promos.</div>
+                  </div>
+                  <button onClick={async () => {
+                    const { requestPushPermissionAndSubscribe } = await import('@/lib/push-client')
+                    await requestPushPermissionAndSubscribe()
+                  }} style={{ background:C.v, border:'none', borderRadius:8, padding:'8px 14px', color:'#fff', fontFamily:FN, fontSize:12, fontWeight:600, cursor:'pointer', whiteSpace:'nowrap', flexShrink:0 }}>Activar</button>
+                </div>
+              )}
               <GBtn onClick={()=>setView('client')} style={{ background:C.ok, boxShadow:`0 4px 16px ${C.ok}44`, color:'#000' }}>Ver mi QR y beneficios →</GBtn>
             </>
           ) : (
