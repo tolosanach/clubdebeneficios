@@ -13108,6 +13108,7 @@ function CommerceSettingsView({ user, profile, setView, onLogout, onOwnerProfile
       expiration_type,
       expiration_date,
       expiration_days,
+      applies_to_existing: true,  // Nueva promo aplica a clientes futuros (y existentes si lo editan)
       active: true,
     }).select().single()
     if (error) {
@@ -13158,8 +13159,43 @@ function CommerceSettingsView({ user, profile, setView, onLogout, onOwnerProfile
   }
 
   // Actualiza descripción y/o vencimiento de una promo activa.
+  // Si applies_to_existing=true, propaga los cambios a todos los client_promotions activos.
+  // Si applies_to_existing=false, solo actualiza la promo (congela los existentes).
   async function updatePromo(id, patch) {
-    await supabase.from('promotions').update(patch).eq('id', id)
+    const promo = promos.find(p => p.id === id)
+    if (!promo) return
+
+    // Determinar si debemos aplicar cambios a clientes existentes
+    // (si el patch cambió applies_to_existing, usar el nuevo valor; si no, usar el anterior)
+    const shouldApplyToExisting = patch.applies_to_existing !== undefined
+      ? patch.applies_to_existing
+      : promo.applies_to_existing
+
+    // Actualizar la promo en tabla promotions
+    const { error: promoError } = await supabase.from('promotions').update(patch).eq('id', id)
+    if (promoError) {
+      console.error('updatePromo error:', promoError)
+      return
+    }
+
+    // Si applies_to_existing=true y hay cambios que afecten client_promotions,
+    // propagarlos a todos los client_promotions activos
+    if (shouldApplyToExisting) {
+      const clientPromosPatch = {}
+      if (patch.expires_at !== undefined) clientPromosPatch.expires_at = patch.expires_at
+      if (patch.value !== undefined) clientPromosPatch.value = patch.value
+      if (patch.description !== undefined) clientPromosPatch.description = patch.description
+
+      if (Object.keys(clientPromosPatch).length > 0) {
+        const { error: cpError } = await supabase
+          .from('client_promotions')
+          .update(clientPromosPatch)
+          .eq('promotion_id', id)
+          .eq('status', 'active')
+        if (cpError) console.warn('Error updating client_promotions:', cpError)
+      }
+    }
+
     setPromos(p => p.map(x => x.id === id ? { ...x, ...patch } : x))
     setEditingPromo(null)
   }
@@ -18930,6 +18966,19 @@ function CommerceSettingsView({ user, profile, setView, onLogout, onOwnerProfile
                         />
                       </>
                     )}
+                    {/* Toggle: aplicar cambios a clientes que ya tienen la promo */}
+                    <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', gap:12, marginBottom:18, padding:'11px', background:C.bg3, borderRadius:8, border:`1px solid ${C.rim}` }}>
+                      <div style={{ flex:1 }}>
+                        <label style={{ display:'block', fontSize:12, fontWeight:700, color:C.white, marginBottom:4 }}>Aplicar a clientes existentes</label>
+                        <label style={{ display:'block', fontSize:10, color:C.mist, lineHeight:1.3 }}>Si desactivas, los cambios solo aplican a nuevos clientes</label>
+                      </div>
+                      <input
+                        type="checkbox"
+                        defaultChecked={ep.applies_to_existing ?? true}
+                        onChange={e => setEditingPromo(prev => ({ ...prev, _appliesToExisting: e.target.checked }))}
+                        style={{ width:18, height:18, cursor:'pointer', flexShrink:0 }}
+                      />
+                    </div>
                     <div style={{ display:'flex', gap:10 }}>
                       <button onClick={() => setEditingPromo(null)}
                         style={{ flex:1, padding:'11px', background:C.bg3, border:`1px solid ${C.rim}`, borderRadius:10, color:C.mist, fontSize:13, cursor:'pointer', fontFamily:FN, fontWeight:600 }}>
@@ -18948,6 +18997,10 @@ function CommerceSettingsView({ user, profile, setView, onLogout, onOwnerProfile
                           if (Number.isFinite(n) && n >= 1 && n <= 100 && n !== ep.value) {
                             patch.value = n
                           }
+                        }
+                        // Toggle: aplicar cambios a clientes existentes
+                        if (ep._appliesToExisting !== undefined && ep._appliesToExisting !== ep.applies_to_existing) {
+                          patch.applies_to_existing = ep._appliesToExisting
                         }
                         if (Object.keys(patch).length > 0) updatePromo(ep.id, patch)
                         else setEditingPromo(null)
