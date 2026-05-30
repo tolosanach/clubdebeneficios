@@ -7455,6 +7455,17 @@ function WalletCardBack({ club, colors, onFlip, userId }) {
   const unit    = isStars ? 'ESTRELLAS' : 'PUNTOS'
   const initial = (commerce?.name || '?')[0].toUpperCase()
 
+  // Derivar el objetivo de la barra de progreso del premio más barato
+  // (en lugar de prog_goal). Filtramos premios activos del sistema actual.
+  const allPrizes = (commerce?.prizes || []) || []
+  const activePrizesForSystem = allPrizes.filter(p =>
+    p.active && (p.system_type || commerce.prog_type) === commerce.prog_type
+  )
+  const cheapestPrize = activePrizesForSystem.length > 0
+    ? activePrizesForSystem.reduce((min, p) => (p.cost < min.cost ? p : min))
+    : null
+  const progressTarget = cheapestPrize?.cost ?? null
+
   const now = new Date()
   // Acá sí queremos cualquier promo activa porque el back de la card
   // muestra distinto info según type (descuento o ×2). Pero filtramos
@@ -7506,7 +7517,7 @@ function WalletCardBack({ club, colors, onFlip, userId }) {
     ? (activePromo.type === 'discount_next' ? 'PRÓX. COMPRA' : 'SUMA DOBLE')
     : null
 
-  const toNext = commerce?.prog_goal > 0 ? Math.max(0, commerce.prog_goal - bal) : null
+  const toNext = progressTarget && progressTarget > 0 ? Math.max(0, progressTarget - bal) : null
 
   const divider = <div style={{ height:1, background:colors.detail, margin:'5px 0 4px' }} />
 
@@ -7564,7 +7575,7 @@ function WalletCardBack({ club, colors, onFlip, userId }) {
                 <div style={{ fontFamily:FN, fontSize:10, fontWeight:700, color:colors.textSub, letterSpacing:'0.08em', marginTop:2 }}>PARA PREMIO</div>
                 {divider}
                 <div style={{ fontFamily:FN, fontSize:9, fontWeight:600, color:colors.textSub, letterSpacing:'0.08em', textTransform:'uppercase' }}>OBJETIVO</div>
-                <div style={{ fontFamily:FN, fontSize:12, fontWeight:800, color:colors.text, marginTop:2, overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>{commerce.prog_goal} {isStars ? 'est.' : 'pts'}</div>
+                <div style={{ fontFamily:FN, fontSize:12, fontWeight:800, color:colors.text, marginTop:2, overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>{progressTarget} {isStars ? 'est.' : 'pts'}</div>
               </>
             ) : null}
           </div>
