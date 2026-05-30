@@ -228,19 +228,26 @@ export async function POST(request) {
       ? updateData.stars
       : updateData.points
 
-    // ── Canje de descuento: si el cliente ya tenía un cupón discount_next
-    // activo cuando llegó a esta visita, lo marcamos como "used" (canjeado)
-    // y reportamos al frontend para que el cashier pueda renovarlo. ──
+    // ── OPTIMIZACIÓN: Cargar TODOS los client_promotions una sola vez ──
+    // Antes hacíamos 2 queries por cliente_promotions (uno para el canje de
+    // descuento activo, otro para los cupones restantes). Ahora combinamos
+    // en un solo SELECT y filtramos en el frontend.
+    let allClientPromos = []
     let discountRedeemed = null
     if (membership?.id) {
-      const { data: existingCoupons } = await supabaseAdmin
+      const { data: clientPromoData } = await supabaseAdmin
         .from('client_promotions')
-        .select('id, promotion_id, expires_at, status, granted_at, promotions:promotions(id, type, value, expires_at)')
+        .select('id, promotion_id, expires_at, status, granted_at, promotions:promotions(id, type, value, description, expires_at, active)')
         .eq('membership_id', membership.id)
-        .eq('status', 'active')
-      const activeDiscount = (existingCoupons || []).find(cp =>
+      allClientPromos = clientPromoData || []
+
+      // Buscar cupón discount_next activo para canjear
+      const nowIso = new Date().toISOString()
+      const activeDiscount = allClientPromos.find(cp =>
+        cp.status === 'active' &&
         cp.promotions?.type === 'discount_next' &&
-        (!cp.expires_at || new Date(cp.expires_at) > new Date())
+        cp.promotions?.active &&
+        (!cp.expires_at || cp.expires_at > nowIso)
       )
       if (activeDiscount) {
         await supabaseAdmin.from('client_promotions')
@@ -306,19 +313,14 @@ export async function POST(request) {
     const cheapestPrize = prizesForSystem[0] || null
 
     // ── Cupones activos restantes del cliente ──
-    // Después de marcar como `used` el cupón canjeado en este scan, traemos
-    // los cupones discount_next que le QUEDAN activos al cliente. Esto le
-    // permite al frontend contarle al cashier: "Le quedan X cupones activos"
-    // o "Ya no tiene cupones pendientes".
-    const { data: remainingCoupons } = await supabaseAdmin
-      .from('client_promotions')
-      .select('id, promotion_id, expires_at, granted_at, status, promotions:promotions(id, type, value, description, expires_at, active)')
-      .eq('membership_id', membership.id)
-      .eq('status', 'active')
+    // Reutilizamos los datos cargados en `allClientPromos` para extraer
+    // los cupones discount_next activos que le QUEDAN. Evita un segundo
+    // SELECT — los datos ya están en memoria desde arriba.
     const nowIso = new Date().toISOString()
-    const activeCoupons = (remainingCoupons || [])
+    const activeCoupons = (allClientPromos || [])
       .filter(cp =>
-        cp.promotions?.type === 'discount_next'
+        cp.status === 'active'
+        && cp.promotions?.type === 'discount_next'
         && cp.promotions?.active
         && (!cp.expires_at || cp.expires_at > nowIso)
       )
