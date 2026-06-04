@@ -4294,12 +4294,16 @@ export default function ClubProfilePage() {
                 </div>
               </div>
 
-              {/* CTA sticky al fondo */}
+              {/* CTA sticky al fondo — position sticky garantiza que siempre sea visible */}
               <div style={{
                 padding:'14px 20px calc(14px + env(safe-area-inset-bottom, 0px))',
                 background:'rgba(10,10,20,0.92)',
                 borderTop:'1px solid rgba(255,255,255,0.08)',
                 backdropFilter:'blur(20px)', WebkitBackdropFilter:'blur(20px)',
+                position: 'sticky',
+                bottom: 0,
+                flexShrink: 0,
+                zIndex: 10,
               }}>
                 {!isMember ? (
                   <div style={{ textAlign:'center', fontSize:13, color:C.mist, padding:'10px 0' }}>
