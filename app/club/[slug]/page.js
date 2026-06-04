@@ -2510,7 +2510,7 @@ export default function ClubProfilePage() {
           {/* Izquierda: siempre el logo */}
           <a href="/" style={{ display:'inline-flex', alignItems:'center', textDecoration:'none' }} aria-label="Inicio"
             onClick={(e) => { e.preventDefault(); if (typeof window !== 'undefined') window.location.href = '/' }}>
-            <Logo />
+            <Logo height={36} />
           </a>
           <div style={{ display:'flex', gap:6, alignItems:'center' }}>
             {(() => {
