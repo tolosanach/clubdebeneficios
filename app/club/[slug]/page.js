@@ -4067,7 +4067,9 @@ export default function ClubProfilePage() {
             {/* Backdrop oscuro */}
             <div onClick={() => setPrizeDetail(null)}
               style={{ position:'absolute', inset:0, background:'rgba(0,0,0,0.85)', backdropFilter:'blur(14px)', WebkitBackdropFilter:'blur(14px)' }} />
-            {/* Sheet del detalle — sube desde abajo, ocupa hasta 92vh */}
+            {/* Sheet del detalle — sube desde abajo, ocupa hasta 92vh.
+                paddingBottom: 110 deja espacio para el footer (botón canjear).
+                El footer es position:absolute al fondo. */}
             <div style={{
               position:'relative',
               width:'100%', maxWidth:520,
@@ -4079,7 +4081,8 @@ export default function ClubProfilePage() {
               display:'flex', flexDirection:'column',
               animation:'fadeUp .3s cubic-bezier(0.16,1,0.3,1)',
               boxShadow:'0 -16px 64px rgba(0,0,0,0.55)',
-            }}>
+            }}
+            className="prize-detail-sheet">
               {/* Botón X cerrar */}
               <button onClick={() => setPrizeDetail(null)}
                 aria-label="Cerrar"
@@ -4096,8 +4099,8 @@ export default function ClubProfilePage() {
                 <ChevronDown size={20} strokeWidth={2.4} />
               </button>
 
-              {/* Scrollable content */}
-              <div style={{ flex:1, overflowY:'auto' }}>
+              {/* Scrollable content — paddingBottom reserva espacio para el footer absoluto */}
+              <div style={{ flex:1, overflowY:'auto', paddingBottom:'110px' }}>
                 {/* Galería de imágenes (4:3) — carrusel horizontal con
                     scroll-snap. Si hay 1+ imágenes, las muestra en orden
                     swipeables con dots indicadores abajo. Si no hay ninguna,
@@ -4294,15 +4297,16 @@ export default function ClubProfilePage() {
                 </div>
               </div>
 
-              {/* CTA sticky al fondo — position sticky garantiza que siempre sea visible */}
+              {/* CTA fijo al fondo — position absolute garantiza que siempre sea visible */}
               <div style={{
                 padding:'14px 20px calc(14px + env(safe-area-inset-bottom, 0px))',
                 background:'rgba(10,10,20,0.92)',
                 borderTop:'1px solid rgba(255,255,255,0.08)',
                 backdropFilter:'blur(20px)', WebkitBackdropFilter:'blur(20px)',
-                position: 'sticky',
+                position: 'absolute',
                 bottom: 0,
-                flexShrink: 0,
+                left: 0,
+                right: 0,
                 zIndex: 10,
               }}>
                 {!isMember ? (
