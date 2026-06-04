@@ -4296,63 +4296,71 @@ export default function ClubProfilePage() {
                   )}
                 </div>
               </div>
-
-              {/* CTA fijo al fondo — position absolute garantiza que siempre sea visible */}
-              <div style={{
-                padding:'14px 20px calc(14px + env(safe-area-inset-bottom, 0px))',
-                background:'rgba(10,10,20,0.92)',
-                borderTop:'1px solid rgba(255,255,255,0.08)',
-                backdropFilter:'blur(20px)', WebkitBackdropFilter:'blur(20px)',
-                position: 'absolute',
-                bottom: 0,
-                left: 0,
-                right: 0,
-                zIndex: 10,
-              }}>
-                {!isMember ? (
-                  <div style={{ textAlign:'center', fontSize:13, color:C.mist, padding:'10px 0' }}>
-                    Sumate al club para poder canjear
-                  </div>
-                ) : isOos ? (
-                  <div style={{ textAlign:'center', fontSize:13, color:'#fb7185', padding:'10px 0', fontWeight:600 }}>
-                    Sin stock — el comercio repondrá pronto
-                  </div>
-                ) : !canRedeem ? (
-                  <div style={{
-                    textAlign:'center',
-                    padding:'12px',
-                    background:'rgba(255,255,255,0.04)',
-                    border:'1px solid rgba(255,255,255,0.08)',
-                    borderRadius:12,
-                  }}>
-                    <div style={{ fontSize:13, color:C.mist }}>
-                      Te faltan <strong style={{ color:C.white }}>{pointsLeft} {unitLabel}</strong> para canjear este premio
-                    </div>
-                  </div>
-                ) : (
-                  <button
-                    disabled={redeeming === p.id}
-                    onClick={() => { setPrizeDetail(null); setConfirmPrize(p) }}
-                    style={{
-                      width:'100%', padding:'14px 0',
-                      // Violeta de marca con un toque de profundidad —
-                      // mismo degradé que usamos en otros CTAs primarios
-                      // del comercio (#6F30DF → #6F30DF).
-                      background:'linear-gradient(135deg, #6F30DF, #6F30DF)',
-                      border:'none', borderRadius:14,
-                      color:'#fff', fontFamily:FN, fontSize:15, fontWeight:800,
-                      letterSpacing:'.02em',
-                      cursor: redeeming === p.id ? 'not-allowed' : 'pointer',
-                      opacity: redeeming === p.id ? 0.6 : 1,
-                      boxShadow:'0 8px 24px rgba(113,49,225,0.50)',
-                      display:'flex', alignItems:'center', justifyContent:'center', gap:8,
-                    }}>
-                    <Gift size={18} strokeWidth={2.4} />
-                    {redeeming === p.id ? 'Procesando…' : `Canjear por ${p.cost} ${unitLabel}`}
-                  </button>
-                )}
-              </div>
             </div>
+
+            {/* CTA flotante al fondo — fuera del sheet, en la modal fixed */}
+            {prizeDetail && (() => {
+              const p = prizeDetail
+              const canRedeem  = isMember && bal >= p.cost
+              const isOos      = p.stock === 0
+              const pointsLeft = Math.max(p.cost - bal, 0)
+              return (
+                <div style={{
+                  position:'absolute', bottom:16, left:16, right:16,
+                  padding:'14px 20px calc(14px + env(safe-area-inset-bottom, 0px))',
+                  background:'rgba(10,10,20,0.98)',
+                  border:'1px solid rgba(255,255,255,0.12)',
+                  borderRadius:16,
+                  backdropFilter:'blur(20px)', WebkitBackdropFilter:'blur(20px)',
+                  zIndex: 860,
+                  maxWidth:'488px',
+                  margin:'0 auto',
+                  left:'50%',
+                  transform:'translateX(-50%)',
+                  boxShadow:'0 16px 48px rgba(0,0,0,0.65)',
+                }}>
+                  {!isMember ? (
+                    <div style={{ textAlign:'center', fontSize:13, color:C.mist, padding:'10px 0' }}>
+                      Sumate al club para poder canjear
+                    </div>
+                  ) : isOos ? (
+                    <div style={{ textAlign:'center', fontSize:13, color:'#fb7185', padding:'10px 0', fontWeight:600 }}>
+                      Sin stock — el comercio repondrá pronto
+                    </div>
+                  ) : !canRedeem ? (
+                    <div style={{
+                      textAlign:'center',
+                      padding:'12px',
+                      background:'rgba(255,255,255,0.04)',
+                      border:'1px solid rgba(255,255,255,0.08)',
+                      borderRadius:12,
+                    }}>
+                      <div style={{ fontSize:13, color:C.mist }}>
+                        Te faltan <strong style={{ color:C.white }}>{pointsLeft} {unitLabel}</strong> para canjear este premio
+                      </div>
+                    </div>
+                  ) : (
+                    <button
+                      disabled={redeeming === p.id}
+                      onClick={() => { setPrizeDetail(null); setConfirmPrize(p) }}
+                      style={{
+                        width:'100%', padding:'14px 0',
+                        background:'linear-gradient(135deg, #6F30DF, #6F30DF)',
+                        border:'none', borderRadius:14,
+                        color:'#fff', fontFamily:FN, fontSize:15, fontWeight:800,
+                        letterSpacing:'.02em',
+                        cursor: redeeming === p.id ? 'not-allowed' : 'pointer',
+                        opacity: redeeming === p.id ? 0.6 : 1,
+                        boxShadow:'0 8px 24px rgba(113,49,225,0.50)',
+                        display:'flex', alignItems:'center', justifyContent:'center', gap:8,
+                      }}>
+                      <Gift size={18} strokeWidth={2.4} />
+                      {redeeming === p.id ? 'Procesando…' : `Canjear por ${p.cost} ${unitLabel}`}
+                    </button>
+                  )}
+                </div>
+              )
+            })()}
           </div>
         )
       })()}
