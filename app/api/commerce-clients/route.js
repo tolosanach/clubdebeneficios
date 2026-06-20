@@ -48,10 +48,15 @@ export async function GET(request) {
       }
     }
 
-    // Trae memberships con profile join (admin client → ignora RLS)
+    // Trae memberships con profile join (admin client → ignora RLS).
+    // También trae sus client_promotions (cupones discount_next otorgados) —
+    // necesario para que la ficha de cliente del dueño pueda mostrar CUÁNDO
+    // vence el cupón de ESE cliente puntual, ya que distintos clientes
+    // pueden tener distinta fecha de vencimiento según cuándo se les otorgó
+    // (aunque la promo del comercio sea la misma).
     const { data: memberships, error } = await supabaseAdmin
       .from('memberships')
-      .select('*, profiles(id, name, full_name, email, phone, avatar_url)')
+      .select('*, profiles(id, name, full_name, email, phone, avatar_url), client_promotions(id, promotion_id, expires_at, granted_at, status)')
       .eq('commerce_id', commerceId)
       .order('last_visit', { ascending: false, nullsLast: true })
 
@@ -61,19 +66,4 @@ export async function GET(request) {
     // full_name y name. El frontend puede leerlo directo sin tener que
     // hacer fallbacks en cada lugar.
     const items = (memberships || []).map(m => {
-      const p = m.profiles || {}
-      const display_name = (p.full_name && p.full_name.trim())
-        || (p.name && p.name.trim())
-        || null
-      return {
-        ...m,
-        profiles: p ? { ...p, display_name } : null,
-      }
-    })
-
-    return NextResponse.json({ ok: true, items })
-  } catch (err) {
-    console.error('[commerce-clients]', err)
-    return NextResponse.json({ error: err.message || 'Error interno' }, { status: 500 })
-  }
-}
+      const p = m.pr

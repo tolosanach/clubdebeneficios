@@ -16479,6 +16479,19 @@ function CommerceSettingsView({ user, profile, setView, onLogout, onOwnerProfile
           )
           const hasPromos = grantablePromos.length > 0
 
+          // Cupón vigente que YA tiene este cliente puntual. No es la fecha
+          // de la promo del comercio (esa puede haber cambiado desde que se
+          // lo otorgaron) — es el expires_at propio de su client_promotion,
+          // que es el que realmente importa porque puede variar cliente a
+          // cliente según cuándo se lo dieron.
+          const nowForCoupon = new Date()
+          const activeCoupon = (selectedMember?.client_promotions || [])
+            .filter(cp => cp.status === 'active' && cp.expires_at && new Date(cp.expires_at) > nowForCoupon)
+            .sort((a,b) => new Date(a.expires_at) - new Date(b.expires_at))[0]
+          const activeCouponPromo = activeCoupon
+            ? (promos || []).find(p => p.id === activeCoupon.promotion_id)
+            : null
+
           return (
             <PCard style={{
               padding:16, marginBottom:12,
@@ -16573,6 +16586,14 @@ function CommerceSettingsView({ user, profile, setView, onLogout, onOwnerProfile
                       <Percent size={11} color={C.v} strokeWidth={2.5} />
                       Dar % OFF próxima compra
                     </div>
+                    {activeCoupon && (
+                      <div style={{ marginBottom:10, padding:'8px 12px', background:`${C.v}14`, border:`1px solid ${C.v}44`, borderRadius:10, display:'flex', alignItems:'center', gap:8 }}>
+                        <Percent size={13} color={C.v} strokeWidth={2.5} style={{ flexShrink:0 }} />
+                        <span style={{ fontSize:12, color:C.white, fontWeight:600, lineHeight:1.4 }}>
+                          Ya tiene{activeCouponPromo?.value ? ` ${activeCouponPromo.value}% OFF` : ' un cupón'} activo — vence el {new Date(activeCoupon.expires_at).toLocaleDateString('es-AR')}
+                        </span>
+                      </div>
+                    )}
                     {grantError && (
                       <div style={{ fontSize:11, color:'#f87444', marginBottom:10, padding:'7px 10px', background:'rgba(248,116,68,0.10)', border:'1px solid rgba(248,116,68,0.30)', borderRadius:8 }}>
                         {grantError}
@@ -24357,16 +24378,4 @@ export default function App() {
           haber spacer del navbar (full-bleed), el banner se solapaba con
           el logo. El item "¿Tenés un comercio?" del menú de perfil cubre
           el caso del cliente logueado en home. */}
-      {user && profile && view !== 'client' && view !== 'home' && (
-        <div style={{ maxWidth: 1120, margin: '0 auto', padding: '0 15px' }}>
-          <BizPromptBanner profile={profile} />
-        </div>
-      )}
-      {view === 'home'      && <HomePublic onLoginClick={handleLogin} onLogoClick={() => navigate('home')} onGoPanel={() => navigate(profile?.role === 'commerce_owner' ? 'commerce-settings' : 'client')} user={user} />}
-      {view === 'directory'          && <DirectoryView citySlug={citySlug} cities={cities} setView={navigate} setCommerce={setCommerce} />}
-      {view === 'commerce'           && <CommerceView commerce={commerce} setView={navigate} user={user} onLoginRequired={handleLogin} onCommerceUpdate={updates => setCommerce(prev => ({ ...prev, ...updates }))} />}
-      {view === 'client'             && <ClientView setView={navigate} user={user} profile={profile} onLogout={handleLogout} initialTab={deepLink.tab} />}
-      {view === 'scanner'            && <ScannerView user={user} profile={profile} setView={navigate} />}
-      {view === 'admin'              && <AdminView cities={cities} profile={profile} />}
-      {view === 'register-commerce'  && <RegisterCommerceView setView={navigate} cities={cities} user={user} onLoginRequired={() => handleLogin({ nextView: 'register-commerce' })} onProfileRefresh={() => loadProfile(user.id)} />}
-      {view === 'commerce-settings'  && <CommerceSettingsView user={user} profile={profile} setView={navigate} onLogout={handleLogout} onOwnerProfile={handleOwnerProfile} initialTab={deepLink.tab} 
+      {user && profile && view !== 'client' && view 
