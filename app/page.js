@@ -11716,6 +11716,7 @@ function CommerceSettingsView({ user, profile, setView, onLogout, onOwnerProfile
   // Otorgar balance manual (estrellas/puntos)
   const [grantBalanceOpen, setGrantBalanceOpen]   = useState(false)
   const [grantBalanceAmount, setGrantBalanceAmount] = useState('')
+  const [grantBalanceDirection, setGrantBalanceDirection] = useState('add') // 'add' | 'subtract'
   const [grantingBalance, setGrantingBalance]     = useState(false)
   const [grantBalanceError, setGrantBalanceError] = useState('')
   // Registrar visita manual desde la ficha del cliente
@@ -11730,6 +11731,7 @@ function CommerceSettingsView({ user, profile, setView, onLogout, onOwnerProfile
     setGrantError('')
     setGrantBalanceOpen(false)
     setGrantBalanceAmount('')
+    setGrantBalanceDirection('add')
     setGrantBalanceError('')
     setAddVisitOpen(false)
     setAddVisitAmount('')
@@ -13420,6 +13422,7 @@ function CommerceSettingsView({ user, profile, setView, onLogout, onOwnerProfile
           commerce_id:   commerce.id,
           membership_id: selectedMember.id,
           amount:        parsed,
+          direction:     grantBalanceDirection,
         }),
       })
       const data = await res.json()
@@ -13427,14 +13430,16 @@ function CommerceSettingsView({ user, profile, setView, onLogout, onOwnerProfile
         const isStars  = form?.prog_type === 'stars'
         const unitWord = isStars ? (parsed === 1 ? 'estrella' : 'estrellas') : (parsed === 1 ? 'punto' : 'puntos')
         const clientFirst = (selectedMember.profiles?.display_name || selectedMember.profiles?.full_name || selectedMember.profiles?.name)?.split(' ')[0] || 'el cliente'
-        showToast('success', `Le sumaste ${parsed} ${unitWord} a ${clientFirst}`)
+        const verb = grantBalanceDirection === 'subtract' ? 'restaste' : 'sumaste'
+        showToast('success', `Le ${verb} ${data.applied} ${unitWord} a ${clientFirst}`)
         // Actualizar el balance en el state local para que la ficha refleje el cambio al instante
         const col = data.col
         setSelectedMember(prev => ({ ...prev, [col]: data.new_value }))
         setGrantBalanceAmount('')
+        setGrantBalanceDirection('add')
         setGrantBalanceOpen(false)
       } else {
-        setGrantBalanceError(data.error || 'No se pudo sumar el balance')
+        setGrantBalanceError(data.error || 'No se pudo actualizar el balance')
       }
     } catch (e) {
       setGrantBalanceError(e?.message || 'Error de red')
@@ -13589,9 +13594,17 @@ function CommerceSettingsView({ user, profile, setView, onLogout, onOwnerProfile
           return bal > 0 && bal >= cheapestActive.cost * 0.8 && bal < cheapestActive.cost
         })
       : [],
-    primeraVisita: members.filter(m =>
-      m.created_at && m.created_at >= firstVisitCutoff
-    ),
+    // joined_at es la columna real de memberships (created_at no existe —
+    // ese era el bug por el que nunca se detectaban clientes nuevos).
+    // A diferencia de las otras automatizaciones, "Bienvenida nuevos socios"
+    // no se filtra por ventana de días: el dueño quiere ver a TODOS sus
+    // clientes acá, ordenados de más nuevo a más antiguo, para poder
+    // mandarle la bienvenida a cualquiera (no solo a quien se sumó esta
+    // semana). El filtrado real pasa a ser "¿ya le mandé el mensaje?"
+    // (ver wasWelcomeSent más abajo), no la fecha de alta.
+    primeraVisita: members
+      .slice()
+      .sort((a,b) => new Date(b.joined_at || 0) - new Date(a.joined_at || 0)),
   }
 
   // El bloque viejo de `mockAutoClients` (Carlos Rodríguez, Ana Martínez,
@@ -16240,6 +16253,12 @@ function CommerceSettingsView({ user, profile, setView, onLogout, onOwnerProfile
   }
   function wasSentRecently(type, userId) {
     const ts = sentLog[`${type}_${userId}`]
+    // "Bienvenida nuevos socios" es de una sola vez: una vez que se le
+    // manda al cliente, no tiene sentido que vuelva a aparecer 48hs
+    // después (a diferencia de reactivación/cerca de premio, que son
+    // condiciones recurrentes). Por eso el envío queda marcado para
+    // siempre para este tipo.
+    if (type === 'primeraVisita') return !!ts
     return ts && (Date.now() - ts) < 48 * 3600 * 1000
   }
   function buildAutoMessage(type, member) {
@@ -16495,17 +16514,32 @@ function CommerceSettingsView({ user, profile, setView, onLogout, onOwnerProfile
               {grantPanelOpen && (
                 <div style={{ marginTop:14, paddingTop:14, borderTop:`1px solid ${C.rim}`, display:'flex', flexDirection:'column', gap:16 }}>
 
-                  {/* Sub-sección 1: Sumar balance */}
+                  {/* Sub-sección 1: Sumar/restar balance */}
                   <div>
                     <div style={{ fontSize:10, color:C.dust, fontWeight:700, letterSpacing:'.07em', textTransform:'uppercase', marginBottom:10, display:'flex', alignItems:'center', gap:6 }}>
                       {isStars ? <Star size={11} color={sysColor} strokeWidth={2} /> : <Gem size={11} color={sysColor} strokeWidth={2} />}
-                      Sumar {unitWord}
+                      Ajustar {unitWord}
                     </div>
                     {grantBalanceError && (
                       <div style={{ fontSize:11, color:'#f87444', marginBottom:10, padding:'7px 10px', background:'rgba(248,116,68,0.10)', border:'1px solid rgba(248,116,68,0.30)', borderRadius:8 }}>
                         {grantBalanceError}
                       </div>
                     )}
+                    {/* Toggle Sumar / Restar */}
+                    <div style={{ display:'flex', gap:6, marginBottom:10, background:C.bg3, border:`1px solid ${C.rim}`, borderRadius:10, padding:3 }}>
+                      <button onClick={() => setGrantBalanceDirection('add')}
+                        style={{ flex:1, padding:'8px', borderRadius:8, border:'none', cursor:'pointer', fontFamily:FN, fontSize:12, fontWeight:700,
+                          background: grantBalanceDirection === 'add' ? sysColor : 'transparent',
+                          color: grantBalanceDirection === 'add' ? '#fff' : C.mist }}>
+                        + Sumar
+                      </button>
+                      <button onClick={() => setGrantBalanceDirection('subtract')}
+                        style={{ flex:1, padding:'8px', borderRadius:8, border:'none', cursor:'pointer', fontFamily:FN, fontSize:12, fontWeight:700,
+                          background: grantBalanceDirection === 'subtract' ? '#E0413B' : 'transparent',
+                          color: grantBalanceDirection === 'subtract' ? '#fff' : C.mist }}>
+                        − Restar
+                      </button>
+                    </div>
                     <div style={{ display:'flex', alignItems:'center', gap:8, marginBottom:10 }}>
                       <button onClick={dec} disabled={cur <= step}
                         style={{ width:44, height:44, borderRadius:12, background:'rgba(255,255,255,0.08)', border:`1px solid ${C.rim}`, color:C.white, fontSize:22, fontWeight:300, cursor: cur <= step ? 'not-allowed' : 'pointer', opacity: cur <= step ? 0.4 : 1, display:'flex', alignItems:'center', justifyContent:'center', flexShrink:0 }}>
@@ -16523,8 +16557,10 @@ function CommerceSettingsView({ user, profile, setView, onLogout, onOwnerProfile
                       </button>
                     </div>
                     <button onClick={grantBalanceToMember} disabled={grantingBalance || !cur}
-                      style={{ width:'100%', padding:'10px', background: grantingBalance ? `${sysColor}55` : sysColor, border:'none', borderRadius:10, color:'#fff', fontFamily:FN, fontSize:13, fontWeight:700, cursor: grantingBalance ? 'wait' : 'pointer' }}>
-                      {grantingBalance ? 'Sumando...' : `Sumar ${cur || step} ${unitWord}`}
+                      style={{ width:'100%', padding:'10px', background: grantingBalance ? `${sysColor}55` : (grantBalanceDirection === 'subtract' ? '#E0413B' : sysColor), border:'none', borderRadius:10, color:'#fff', fontFamily:FN, fontSize:13, fontWeight:700, cursor: grantingBalance ? 'wait' : 'pointer' }}>
+                      {grantingBalance
+                        ? (grantBalanceDirection === 'subtract' ? 'Restando...' : 'Sumando...')
+                        : (grantBalanceDirection === 'subtract' ? `Restar ${cur || step} ${unitWord}` : `Sumar ${cur || step} ${unitWord}`)}
                     </button>
                   </div>
 
@@ -20740,7 +20776,11 @@ function CommerceSettingsView({ user, profile, setView, onLogout, onOwnerProfile
           if (autoDetail) {
             const meta    = AUTO_META[autoDetail]
             const cfg     = autoConfigs[autoDetail]
-            const clients = displayAutoClients[autoDetail]
+            // Bienvenida nuevos socios: a quien ya se le mandó el mensaje
+            // no se le vuelve a mostrar (envío de una sola vez por cliente).
+            const clients = autoDetail === 'primeraVisita'
+              ? displayAutoClients[autoDetail].filter(m => !wasSentRecently('primeraVisita', m.user_id))
+              : displayAutoClients[autoDetail]
             return (
               <div>
                 <button onClick={() => setAutoDetail(null)}
@@ -20752,10 +20792,10 @@ function CommerceSettingsView({ user, profile, setView, onLogout, onOwnerProfile
                   <div style={{ fontFamily:FN, fontSize:20, fontWeight:900, color:C.white }}>{meta.label}</div>
                 </div>
                 <div style={{ fontSize:12, color:C.mist, marginBottom:20 }}>
-                  {clients.length} cliente{clients.length !== 1 ? 's' : ''} detectado{clients.length !== 1 ? 's' : ''}
+                  {clients.length} cliente{clients.length !== 1 ? 's' : ''} {autoDetail === 'primeraVisita' ? 'por contactar' : 'detectado' + (clients.length !== 1 ? 's' : '')}
                   {autoDetail === 'reactivacion' && ` · sin visitar hace más de ${cfg.days} días`}
                   {autoDetail === 'cercaPremio' && mockCheapestActive && ` · ≥80% hacia "${mockCheapestActive.name}" (${mockCheapestActive.cost} ${isAutoStars?'estrellas':'puntos'})`}
-                  {autoDetail === 'primeraVisita' && ` · se unieron en los últimos ${cfg.days || 7} días`}
+                  {autoDetail === 'primeraVisita' && ' · todos tus clientes, de más nuevo a más antiguo'}
                 </div>
                 {clients.length === 0 && (
                   <PCard style={{ padding:16, textAlign:'center' }}>
@@ -20768,7 +20808,7 @@ function CommerceSettingsView({ user, profile, setView, onLogout, onOwnerProfile
                     <div style={{ fontSize:12, color:C.mist }}>
                       {autoDetail === 'reactivacion' && 'Todos tus clientes visitaron recientemente.'}
                       {autoDetail === 'cercaPremio'   && 'Ningún cliente está cerca de canjear aún.'}
-                      {autoDetail === 'primeraVisita' && 'No hubo nuevos socios en los últimos días.'}
+                      {autoDetail === 'primeraVisita' && 'Ya le mandaste la bienvenida a todos tus clientes.'}
                     </div>
                   </PCard>
                 )}
@@ -20791,7 +20831,9 @@ function CommerceSettingsView({ user, profile, setView, onLogout, onOwnerProfile
                             <div style={{ fontSize:11, color:C.mist, marginTop:2 }}>
                               {autoDetail === 'reactivacion' && daysSince !== null && `Última visita: hace ${daysSince} días`}
                               {autoDetail === 'cercaPremio'   && mockCheapestActive && `${Math.round(bal)} / ${mockCheapestActive.cost} ${isAutoStars?'⭐':'💎'} (falta ${Math.max(1, Math.round(mockCheapestActive.cost - bal))})`}
-                              {autoDetail === 'primeraVisita' && 'Nuevo socio'}
+                              {autoDetail === 'primeraVisita' && (m.joined_at
+                                ? `Se unió el ${new Date(m.joined_at).toLocaleDateString('es-AR')}`
+                                : 'Fecha de alta no disponible')}
                             </div>
                           </div>
                           {sent && (
@@ -20807,7 +20849,15 @@ function CommerceSettingsView({ user, profile, setView, onLogout, onOwnerProfile
                             style={{ flex:1, padding:'8px 10px', background:C.bg3, border:`1px solid ${C.rim}`, borderRadius:9, color:C.mist, fontFamily:FN, fontSize:11, fontWeight:700, cursor:'pointer' }}>
                             {copiedMsg === m.user_id ? '✓ Copiado!' : 'Copiar mensaje'}
                           </button>
-                          <a href={`https://wa.me/?text=${encodeURIComponent(msg)}`} target="_blank" rel="noopener noreferrer"
+                          <a href={(() => {
+                              // Si tenemos el teléfono del cliente, abrimos el chat
+                              // directo con esa persona (igual que en su ficha).
+                              // Si no, queda el wa.me genérico de siempre.
+                              const phone = (m.profiles?.phone || '').replace(/\D/g, '')
+                              return phone
+                                ? `https://wa.me/${phone}?text=${encodeURIComponent(msg)}`
+                                : `https://wa.me/?text=${encodeURIComponent(msg)}`
+                            })()} target="_blank" rel="noopener noreferrer"
                             onClick={() => markSent(autoDetail, m.user_id)}
                             style={{ flex:1, padding:'8px 10px', background:'#25D36622', border:'1px solid #25D36644', borderRadius:9, color:'#25D366', fontFamily:FN, fontSize:11, fontWeight:700, cursor:'pointer', textDecoration:'none', textAlign:'center' }}>
                             WA
@@ -20959,7 +21009,9 @@ function CommerceSettingsView({ user, profile, setView, onLogout, onOwnerProfile
               <div style={{ display:'flex', flexDirection:'column', gap:10 }}>
                 {Object.entries(AUTO_META).map(([key, meta]) => {
                   const cfg   = autoConfigs[key]
-                  const count = displayAutoClients[key].length
+                  const count = key === 'primeraVisita'
+                    ? displayAutoClients[key].filter(m => !wasSentRecently('primeraVisita', m.user_id)).length
+                    : displayAutoClients[key].length
                   return (
                     <AutoCard key={key} id={key} meta={meta} count={count}>
                       {/* Mensaje preview — usamos un placeholder explícito
@@ -24317,77 +24369,4 @@ export default function App() {
       {view === 'scanner'            && <ScannerView user={user} profile={profile} setView={navigate} />}
       {view === 'admin'              && <AdminView cities={cities} profile={profile} />}
       {view === 'register-commerce'  && <RegisterCommerceView setView={navigate} cities={cities} user={user} onLoginRequired={() => handleLogin({ nextView: 'register-commerce' })} onProfileRefresh={() => loadProfile(user.id)} />}
-      {view === 'commerce-settings'  && <CommerceSettingsView user={user} profile={profile} setView={navigate} onLogout={handleLogout} onOwnerProfile={handleOwnerProfile} initialTab={deepLink.tab} initialMember={deepLink.member} />}
-      {view === 'notifications' && (
-        <div className="with-bottom-nav-v2" style={{ width: '100%' }}>
-          <NotificationsBell mode="view" role={activeContext === 'merchant' ? 'merchant' : 'client'} hideButton />
-        </div>
-      )}
-      {/* Chat de soporte con IA — visible cuando hay sesión. Pasa role según
-          la vista activa: comerciante en commerce-settings, cliente en el resto.
-          El buzón de sugerencias va apilado encima del botón del chat. */}
-      {user && view !== 'home' && view !== 'directory' && (
-        <>
-          {/* FloatingActionsTab — solapa flotante violeta sobre el borde
-              derecho que agrupa los dos atajos del usuario en una sola
-              pill (campana de notifs + chat de soporte). Los componentes
-              NotificationsBell y SupportChat se siguen montando para que
-              sus drawers existan, pero con `hideButton` para que no
-              dupliquen botones flotantes. La interacción se delega vía eventos `clufix:open-notifications` y `clufix:open-support`. */}
-          {/* FloatingActionsTab OCULTADO el 2026-05-03: redundante con el slot Notificaciones del BottomNavV2. */}
-          {false && <FloatingActionsTab />}
-          <NotificationsBell hideButton role={view === 'commerce-settings' ? 'merchant' : 'client'} />
-          <SupportChat hideButton role={view === 'commerce-settings' ? 'merchant' : 'client'} />
-          {/* Banner para activar push del navegador. */}
-          <EnablePushPrompt />
-          {/* Nudges cross-rol temporizados:
-              • 10s — si es cliente sin respuesta, sugerir registrar negocio.
-              • 15s —si es dueño, recordar que tiene QR personal de cliente. */}
-          <CrossRoleNudges profile={profile} />
-          {/* BottomNavV2 — nav contextual estilo Mercado Pago. Reemplaza
-              el role-aware kit del navbar viejo. El boton QR central abre
-              ClientQRSheet (modo cliente) o MerchantQRSheet (modo merchant).
-              El slot Mas (solo merchant) abre MoreSheet con todos los
-              accesos secundarios.
-              En la vista 'admin' lo escondemos: el panel admin tiene su
-              propio sub-nav (Overview / Comercios / Usuarios / Ciudades /
-              Actividad / Config) y el contexto cliente/merchant no aplica
-              ahí — mostrar el bottom-nav genera ruido. */}
-          {view !== 'admin' && view !== 'home' && (
-            <BottomNavV2
-              activeContext={activeContext}
-              currentView={view}
-              currentTab={view === 'commerce-settings' ? merchantTab : (view === 'client' ? clientTab : '')}
-              onNavigate={handleNavGo}
-              unreadCount={unreadNotifsCount}
-              onQRTap={handleQRTap}
-              onMoreTap={() => setMoreSheetOpen(true)}
-            />
-          )}
-          <ClientQRSheet
-            open={clientQRSheetOpen}
-            onClose={() => setClientQRSheetOpen(false)}
-            profile={profile}
-          />
-          <MerchantQRSheet
-            open={merchantQRSheetOpen}
-            onClose={() => setMerchantQRSheetOpen(false)}
-            commerceName={commerce?.name}
-            onShowCommerceQR={() => {
-              if (view !== 'scanner') navigate('scanner')
-              setTimeout(() => {
-                window.dispatchEvent(new CustomEvent('clufix:scan-mode', { detail: { mode: 'show-business-qr' } }))
-              }, 80)
-            }}
-            onScanClient={() => {
-              if (view !== 'scanner') navigate('scanner')
-              setTimeout(() => {
-                window.dispatchEvent(new CustomEvent('clufix:scan-mode', { detail: { mode: 'register-visit' } }))
-              }, 80)
-            }}
-          />
-          <MoreSheet
-            open={moreSheetOpen}
-            onClose={() => setMoreSheetOpen(false)}
-            onNavigate={handleNavGo}
-            onLogout={h
+      {view === 'commerce-settings'  && <CommerceSettingsView user={user} profile={profile} setView={navigate} onLogout={handleLogout} onOwnerProfile={handleOwnerProfile} initialTab={deepLink.tab} 

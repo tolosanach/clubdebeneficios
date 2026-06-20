@@ -1,9 +1,12 @@
 // POST /api/grant-balance
-// Body: { commerce_id, membership_id, amount }
+// Body: { commerce_id, membership_id, amount, direction: 'add'|'subtract' }
 //
-// Permite al dueño sumar estrellas o puntos manualmente al balance
+// Permite al dueño sumar o restar estrellas o puntos manualmente al balance
 // de un cliente. El sistema activo (stars/points) lo determina el
 // campo prog_type del comercio — el cliente solo tiene uno activo.
+// direction='subtract' clampea en 0 (no permite balance negativo); el monto
+// efectivamente aplicado se devuelve en `applied` (puede ser menor al
+// solicitado si el balance actual no alcanza).
 
 import { NextResponse } from 'next/server'
 import { createClient } from '@supabase/supabase-js'
@@ -24,10 +27,11 @@ export async function POST(request) {
       return NextResponse.json({ error: 'No autenticado' }, { status: 401 })
     }
 
-    const { commerce_id, membership_id, amount } = await request.json()
+    const { commerce_id, membership_id, amount, direction } = await request.json()
     if (!commerce_id || !membership_id || !amount) {
       return NextResponse.json({ error: 'Faltan parámetros' }, { status: 400 })
     }
+    const dir = direction === 'subtract' ? 'subtract' : 'add'
     const parsed = parseInt(amount, 10)
     if (!Number.isFinite(parsed) || parsed < 1 || parsed > 9999) {
       return NextResponse.json({ error: 'Cantidad inválida (1–9999)' }, { status: 400 })
@@ -58,9 +62,11 @@ export async function POST(request) {
       return NextResponse.json({ error: 'Membership inválida' }, { status: 400 })
     }
 
-    const isStars = commerce.prog_type === 'stars'
-    const col     = isStars ? 'stars' : 'points'
-    const newVal  = (membership[col] || 0) + parsed
+    const isStars  = commerce.prog_type === 'stars'
+    const col      = isStars ? 'stars' : 'points'
+    const curVal   = membership[col] || 0
+    const newVal   = dir === 'subtract' ? Math.max(0, curVal - parsed) : curVal + parsed
+    const applied  = dir === 'subtract' ? (curVal - newVal) : (newVal - curVal)
 
     const { error: upErr } = await supabaseAdmin
       .from('memberships')
@@ -73,34 +79,20 @@ export async function POST(request) {
       const { data: clientProfile } = await supabaseAdmin
         .from('profiles').select('full_name, name').eq('id', membership.user_id).single()
       const clientName = (clientProfile?.full_name || clientProfile?.name || 'Cliente').split(' ')[0]
-      const unitLabel  = isStars ? (parsed === 1 ? 'estrella' : 'estrellas') : (parsed === 1 ? 'punto' : 'puntos')
+      const unitLabel  = isStars ? (applied === 1 ? 'estrella' : 'estrellas') : (applied === 1 ? 'punto' : 'puntos')
       const clubLink   = commerce.slug ? `/club/${commerce.slug}` : '/'
+      const verbClient = dir === 'subtract' ? 'te restó' : 'te sumó'
+      const verbOwner  = dir === 'subtract' ? 'restaste' : 'sumaste'
 
       await notifyBoth({
         clientUserId: membership.user_id,
         ownerUserId:  commerce.owner_id,
         client: {
           type:  'visit',
-          title: `${commerce.name} te sumó ${parsed} ${unitLabel}`,
+          title: `${commerce.name} ${verbClient} ${applied} ${unitLabel}`,
           body:  `Tu saldo actualizado: ${newVal} ${unitLabel}.`,
           link:  clubLink,
-          metadata: { commerce_id, membership_id, amount: parsed, kind: 'manual_grant' },
+          metadata: { commerce_id, membership_id, amount: applied, direction: dir, kind: 'manual_grant' },
         },
         owner: {
-          type:  'visit',
-          title: `Le sumaste ${parsed} ${unitLabel} a ${clientName}`,
-          body:  `Saldo nuevo de ${clientName}: ${newVal} ${unitLabel}.`,
-          link:  '/',
-          metadata: { commerce_id, membership_id, user_id: membership.user_id, amount: parsed, kind: 'manual_grant' },
-        },
-      })
-    } catch (e) {
-      console.error('[grant-balance] error notifs:', e)
-    }
-
-    return NextResponse.json({ ok: true, new_value: newVal, col })
-  } catch (err) {
-    console.error('[grant-balance]', err)
-    return NextResponse.json({ error: err.message || 'Error interno' }, { status: 500 })
-  }
-}
+ 
