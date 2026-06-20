@@ -16558,7 +16558,10 @@ function CommerceSettingsView({ user, profile, setView, onLogout, onOwnerProfile
                           const valueTxt   = p.value ? `${p.value}% OFF` : 'Descuento'
                           const expiresTxt = p.expiration_type === 'relative'
                             ? `Vale ${p.expiration_days || 7} día${(p.expiration_days||7) === 1 ? '' : 's'} desde que lo regales`
-                            : (p.expiration_date ? `Vence el ${new Date(p.expiration_date).toLocaleDateString('es-AR')}` : 'Sin vencimiento')
+                            // p.expires_at es el campo vivo (se actualiza al editar la promo).
+                            // p.expiration_date es el valor del form al crearla y nunca se
+                            // actualiza después — mostrarlo hacía aparecer fechas viejas.
+                            : (p.expires_at ? `Vence el ${new Date(p.expires_at).toLocaleDateString('es-AR')}` : 'Sin vencimiento')
                           const busy = grantingPromoId === p.id
                           return (
                             <div key={p.id} style={{ display:'flex', alignItems:'center', justifyContent:'space-between', background:C.bg3, borderRadius:10, padding:'10px 14px', gap:10 }}>
@@ -24387,10 +24390,4 @@ export default function App() {
             open={moreSheetOpen}
             onClose={() => setMoreSheetOpen(false)}
             onNavigate={handleNavGo}
-            onLogout={handleLogout}
-            profile={profile}
-            onDeleteBusiness={async () => {
-              setMoreSheetOpen(false)
-              const res = await fetch('/api/user/delete-commerce', { method: 'DELETE' })
-              if (res.ok) {
-                await loadProfi
+            onLogout={h

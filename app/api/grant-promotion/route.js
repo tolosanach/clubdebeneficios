@@ -92,7 +92,11 @@ export async function POST(request) {
       d.setHours(23, 59, 59, 999)
       expiresAt = d.toISOString()
     } else {
-      expiresAt = promo.expiration_date || promo.expires_at
+      // expires_at es el campo vivo (se actualiza al editar la promo desde
+      // el panel). expiration_date es el valor del form al crearla y nunca
+      // se actualiza después — priorizarlo otorgaba cupones con la fecha
+      // vieja aunque el dueño ya hubiera cambiado la vigencia.
+      expiresAt = promo.expires_at || promo.expiration_date
     }
     if (!expiresAt) {
       return NextResponse.json({ error: 'La promo no tiene fecha de vencimiento configurada.' }, { status: 400 })
@@ -138,13 +142,4 @@ export async function POST(request) {
           metadata: { commerce_id, user_id: membership.user_id, promotion_id, kind: 'discount_granted' },
         },
       })
-    } catch (e) {
-      console.error('[grant-promotion] error notifs:', e)
-    }
-
-    return NextResponse.json({ ok: true, expires_at: expiresAt })
-  } catch (err) {
-    console.error('[grant-promotion]', err)
-    return NextResponse.json({ error: err.message || 'Error interno' }, { status: 500 })
-  }
-}
+    } catch 

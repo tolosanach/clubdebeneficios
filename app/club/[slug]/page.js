@@ -1451,7 +1451,10 @@ function LimitedTimeBenefitsSlider({ promos, unitLabel, editMode = false, onEdit
         pulse:    false,
       }
     }
-    const target = promo.expiration_date || promo.expires_at
+    // expires_at es el campo vivo (se actualiza al editar la promo).
+    // expiration_date es el valor del form al crearla y nunca se actualiza
+    // después — priorizarlo mostraba cuentas atrás con la fecha vieja.
+    const target = promo.expires_at || promo.expiration_date
     if (!target) return null
     const now      = Date.now()
     const expMs    = new Date(target).getTime()
@@ -4559,14 +4562,4 @@ export default function ClubProfilePage() {
             setMoreSheetOpen(false)
             const res = await fetch('/api/user/delete-commerce', { method: 'DELETE' })
             if (res.ok) {
-              if (typeof window !== 'undefined') window.location.href = '/?view=client'
-            } else {
-              const body = await res.json().catch(() => ({}))
-              alert(body.error || 'No se pudo eliminar el comercio')
-            }
-          }}
-        />
-      )}
-    </div>
-  )
-}
+              if (typeof window !== 'undefined') window.location.href = '/?view=cl

@@ -101,7 +101,10 @@ export async function POST(request) {
         d.setHours(23, 59, 59, 999)
         expiresAt = d.toISOString()
       } else {
-        expiresAt = promo.expiration_date || promo.expires_at
+        // expires_at es el campo vivo (se actualiza al editar la promo).
+        // expiration_date es el valor del form al crearla y nunca se
+        // actualiza después.
+        expiresAt = promo.expires_at || promo.expiration_date
       }
       if (!expiresAt) {
         return NextResponse.json({ error: 'Promo sin fecha de vencimiento' }, { status: 400 })
@@ -161,9 +164,4 @@ export async function POST(request) {
       },
     })
 
-    return NextResponse.json({ ok: true, decision: 'decline' })
-  } catch (err) {
-    console.error('[discount-decision]', err)
-    return NextResponse.json({ error: err.message || 'Error interno' }, { status: 500 })
-  }
-}
+    return NextResponse.json({ ok: true, decisio
