@@ -7506,8 +7506,16 @@ function WalletCardBack({ club, colors, onFlip, userId }) {
   const showPromoBadge = activePromo && (
     activePromo.type === 'discount_next' ? !!clientPromo : true
   )
-  const promoExpiry = showPromoBadge && (clientPromo?.expires_at || activePromo?.expires_at)
-    ? new Date(clientPromo?.expires_at || activePromo.expires_at).toLocaleDateString('es-AR', { day:'2-digit', month:'2-digit', year:'2-digit' })
+  // Si la vigencia es 'fixed', la fuente de verdad es la fecha viva de la
+  // promoción (activePromo.expires_at) — el snapshot en client_promotions
+  // puede haber quedado desactualizado si el dueño editó la fecha después
+  // de otorgar el cupón. Si es 'relative', cada cliente tiene su propio
+  // plazo desde que se le otorgó, así que ahí sí vale el snapshot.
+  const effectivePromoExpiry = activePromo?.expiration_type === 'relative'
+    ? (clientPromo?.expires_at || activePromo?.expires_at)
+    : (activePromo?.expires_at || clientPromo?.expires_at)
+  const promoExpiry = showPromoBadge && effectivePromoExpiry
+    ? new Date(effectivePromoExpiry).toLocaleDateString('es-AR', { day:'2-digit', month:'2-digit', year:'2-digit' })
     : null
 
   const promoBadge = showPromoBadge
@@ -24385,19 +24393,4 @@ export default function App() {
               setMoreSheetOpen(false)
               const res = await fetch('/api/user/delete-commerce', { method: 'DELETE' })
               if (res.ok) {
-                await loadProfile(user.id)
-                setActiveContext('client')
-                try { localStorage.setItem('clufix:active-context', 'client') } catch {}
-                navigate('client')
-              } else {
-                const body = await res.json().catch(() => ({}))
-                alert(body.error || 'No se pudo eliminar el comercio')
-              }
-            }}
-          />
-        </>
-      )}
-      <DevToolbar user={user} profile={profile} onRoleChange={() => loadProfile(user.id)} />
-    </>
-  )
-}
+                await loadProfi
