@@ -131,7 +131,13 @@ export async function POST(request) {
             d.setHours(23, 59, 59, 999)
             expiresAt = d.toISOString()
           } else {
-            expiresAt = promo.expiration_date || promo.expires_at
+            // expires_at es el campo vivo (se actualiza cuando el dueño edita
+            // la vigencia desde el panel). expiration_date es el valor del
+            // form al momento de crear la promo y NUNCA se actualiza en
+            // ediciones posteriores — usarlo como prioridad hacía que los
+            // clientes nuevos siguieran recibiendo la fecha vieja aunque el
+            // dueño ya hubiera extendido/cambiado la vigencia.
+            expiresAt = promo.expires_at || promo.expiration_date
           }
           if (!expiresAt) continue
 
@@ -183,13 +189,4 @@ export async function POST(request) {
       already_member:    false,
       commerce_name:     commerce.name,
       membership_id:     newMem?.id,
-      grant_applied:     grantApplied,      // { grant_id, points_applied, promo_applied } o null
-      prog_type:         commerce.prog_type, // 'stars' | 'points'
-      granted_discounts: grantedDiscounts,   // [{ promotion_id, value, expires_at }]
-      has_double_today:  hasDoubleToday,     // boolean
-    })
-  } catch (err) {
-    console.error('join error:', err)
-    return NextResponse.json({ error: err.message || 'Error interno' }, { status: 500 })
-  }
-}
+      grant_appl
