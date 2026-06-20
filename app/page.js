@@ -24378,4 +24378,110 @@ export default function App() {
           haber spacer del navbar (full-bleed), el banner se solapaba con
           el logo. El item "¿Tenés un comercio?" del menú de perfil cubre
           el caso del cliente logueado en home. */}
-      {user && profile && view !== 'client' && view 
+      {user && profile && view !== 'client' && view !== 'home' && (
+        <div style={{ maxWidth: 1120, margin: '0 auto', padding: '0 15px' }}>
+          <BizPromptBanner profile={profile} />
+        </div>
+      )}
+      {view === 'home'      && <HomePublic onLoginClick={handleLogin} onLogoClick={() => navigate('home')} onGoPanel={() => navigate(profile?.role === 'commerce_owner' ? 'commerce-settings' : 'client')} user={user} />}
+      {view === 'directory'          && <DirectoryView citySlug={citySlug} cities={cities} setView={navigate} setCommerce={setCommerce} />}
+      {view === 'commerce'           && <CommerceView commerce={commerce} setView={navigate} user={user} onLoginRequired={handleLogin} onCommerceUpdate={updates => setCommerce(prev => ({ ...prev, ...updates }))} />}
+      {view === 'client'             && <ClientView setView={navigate} user={user} profile={profile} onLogout={handleLogout} initialTab={deepLink.tab} />}
+      {view === 'scanner'            && <ScannerView user={user} profile={profile} setView={navigate} />}
+      {view === 'admin'              && <AdminView cities={cities} profile={profile} />}
+      {view === 'register-commerce'  && <RegisterCommerceView setView={navigate} cities={cities} user={user} onLoginRequired={() => handleLogin({ nextView: 'register-commerce' })} onProfileRefresh={() => loadProfile(user.id)} />}
+      {view === 'commerce-settings'  && <CommerceSettingsView user={user} profile={profile} setView={navigate} onLogout={handleLogout} onOwnerProfile={handleOwnerProfile} initialTab={deepLink.tab} initialMember={deepLink.member} />}
+      {view === 'notifications' && (
+        <div className="with-bottom-nav-v2" style={{ width: '100%' }}>
+          <NotificationsBell mode="view" role={activeContext === 'merchant' ? 'merchant' : 'client'} hideButton />
+        </div>
+      )}
+      {/* Chat de soporte con IA — visible cuando hay sesión. Pasa role según
+          la vista activa: comerciante en commerce-settings, cliente en el resto.
+          El buzón de sugerencias va apilado encima del botón del chat. */}
+      {user && view !== 'home' && view !== 'directory' && (
+        <>
+          {/* FloatingActionsTab — solapa flotante violeta sobre el borde
+              derecho que agrupa los dos atajos del usuario en una sola
+              pill (campana de notifs + chat de soporte). Los componentes
+              NotificationsBell y SupportChat se siguen montando para que
+              sus drawers existan, pero con `hideButton` para que no
+              dupliquen botones flotantes. La interacción se delega vía eventos `clufix:open-notifications` y `clufix:open-support`. */}
+          {/* FloatingActionsTab OCULTADO el 2026-05-03: redundante con el slot Notificaciones del BottomNavV2. */}
+          {false && <FloatingActionsTab />}
+          <NotificationsBell hideButton role={view === 'commerce-settings' ? 'merchant' : 'client'} />
+          <SupportChat hideButton role={view === 'commerce-settings' ? 'merchant' : 'client'} />
+          {/* Banner para activar push del navegador. */}
+          <EnablePushPrompt />
+          {/* Nudges cross-rol temporizados:
+              • 10s — si es cliente sin respuesta, sugerir registrar negocio.
+              • 15s —si es dueño, recordar que tiene QR personal de cliente. */}
+          <CrossRoleNudges profile={profile} />
+          {/* BottomNavV2 — nav contextual estilo Mercado Pago. Reemplaza
+              el role-aware kit del navbar viejo. El boton QR central abre
+              ClientQRSheet (modo cliente) o MerchantQRSheet (modo merchant).
+              El slot Mas (solo merchant) abre MoreSheet con todos los
+              accesos secundarios.
+              En la vista 'admin' lo escondemos: el panel admin tiene su
+              propio sub-nav (Overview / Comercios / Usuarios / Ciudades /
+              Actividad / Config) y el contexto cliente/merchant no aplica
+              ahí — mostrar el bottom-nav genera ruido. */}
+          {view !== 'admin' && view !== 'home' && (
+            <BottomNavV2
+              activeContext={activeContext}
+              currentView={view}
+              currentTab={view === 'commerce-settings' ? merchantTab : (view === 'client' ? clientTab : '')}
+              onNavigate={handleNavGo}
+              unreadCount={unreadNotifsCount}
+              onQRTap={handleQRTap}
+              onMoreTap={() => setMoreSheetOpen(true)}
+            />
+          )}
+          <ClientQRSheet
+            open={clientQRSheetOpen}
+            onClose={() => setClientQRSheetOpen(false)}
+            profile={profile}
+          />
+          <MerchantQRSheet
+            open={merchantQRSheetOpen}
+            onClose={() => setMerchantQRSheetOpen(false)}
+            commerceName={commerce?.name}
+            onShowCommerceQR={() => {
+              if (view !== 'scanner') navigate('scanner')
+              setTimeout(() => {
+                window.dispatchEvent(new CustomEvent('clufix:scan-mode', { detail: { mode: 'show-business-qr' } }))
+              }, 80)
+            }}
+            onScanClient={() => {
+              if (view !== 'scanner') navigate('scanner')
+              setTimeout(() => {
+                window.dispatchEvent(new CustomEvent('clufix:scan-mode', { detail: { mode: 'register-visit' } }))
+              }, 80)
+            }}
+          />
+          <MoreSheet
+            open={moreSheetOpen}
+            onClose={() => setMoreSheetOpen(false)}
+            onNavigate={handleNavGo}
+            onLogout={handleLogout}
+            profile={profile}
+            onDeleteBusiness={async () => {
+              setMoreSheetOpen(false)
+              const res = await fetch('/api/user/delete-commerce', { method: 'DELETE' })
+              if (res.ok) {
+                await loadProfile(user.id)
+                setActiveContext('client')
+                try { localStorage.setItem('clufix:active-context', 'client') } catch {}
+                navigate('client')
+              } else {
+                const body = await res.json().catch(() => ({}))
+                alert(body.error || 'No se pudo eliminar el comercio')
+              }
+            }}
+          />
+        </>
+      )}
+      <DevToolbar user={user} profile={profile} onRoleChange={() => loadProfile(user.id)} />
+    </>
+  )
+}

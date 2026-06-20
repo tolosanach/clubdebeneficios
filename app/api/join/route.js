@@ -189,4 +189,13 @@ export async function POST(request) {
       already_member:    false,
       commerce_name:     commerce.name,
       membership_id:     newMem?.id,
-      grant_appl
+      grant_applied:     grantApplied,      // { grant_id, points_applied, promo_applied } o null
+      prog_type:         commerce.prog_type, // 'stars' | 'points'
+      granted_discounts: grantedDiscounts,   // [{ promotion_id, value, expires_at }]
+      has_double_today:  hasDoubleToday,     // boolean
+    })
+  } catch (err) {
+    console.error('join error:', err)
+    return NextResponse.json({ error: err.message || 'Error interno' }, { status: 500 })
+  }
+}

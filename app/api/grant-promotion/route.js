@@ -142,4 +142,13 @@ export async function POST(request) {
           metadata: { commerce_id, user_id: membership.user_id, promotion_id, kind: 'discount_granted' },
         },
       })
-    } catch 
+    } catch (e) {
+      console.error('[grant-promotion] error notifs:', e)
+    }
+
+    return NextResponse.json({ ok: true, expires_at: expiresAt })
+  } catch (err) {
+    console.error('[grant-promotion]', err)
+    return NextResponse.json({ error: err.message || 'Error interno' }, { status: 500 })
+  }
+}

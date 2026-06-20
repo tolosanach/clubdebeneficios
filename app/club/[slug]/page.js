@@ -4562,4 +4562,14 @@ export default function ClubProfilePage() {
             setMoreSheetOpen(false)
             const res = await fetch('/api/user/delete-commerce', { method: 'DELETE' })
             if (res.ok) {
-              if (typeof window !== 'undefined') window.location.href = '/?view=cl
+              if (typeof window !== 'undefined') window.location.href = '/?view=client'
+            } else {
+              const body = await res.json().catch(() => ({}))
+              alert(body.error || 'No se pudo eliminar el comercio')
+            }
+          }}
+        />
+      )}
+    </div>
+  )
+}

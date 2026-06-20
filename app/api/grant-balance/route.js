@@ -95,4 +95,20 @@ export async function POST(request) {
           metadata: { commerce_id, membership_id, amount: applied, direction: dir, kind: 'manual_grant' },
         },
         owner: {
- 
+          type:  'visit',
+          title: `Le ${verbOwner} ${applied} ${unitLabel} a ${clientName}`,
+          body:  `Saldo nuevo de ${clientName}: ${newVal} ${unitLabel}.`,
+          link:  '/',
+          metadata: { commerce_id, membership_id, user_id: membership.user_id, amount: applied, direction: dir, kind: 'manual_grant' },
+        },
+      })
+    } catch (e) {
+      console.error('[grant-balance] error notifs:', e)
+    }
+
+    return NextResponse.json({ ok: true, new_value: newVal, col, applied })
+  } catch (err) {
+    console.error('[grant-balance]', err)
+    return NextResponse.json({ error: err.message || 'Error interno' }, { status: 500 })
+  }
+}

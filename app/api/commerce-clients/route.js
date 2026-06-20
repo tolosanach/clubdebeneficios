@@ -66,4 +66,19 @@ export async function GET(request) {
     // full_name y name. El frontend puede leerlo directo sin tener que
     // hacer fallbacks en cada lugar.
     const items = (memberships || []).map(m => {
-      const p = m.pr
+      const p = m.profiles || {}
+      const display_name = (p.full_name && p.full_name.trim())
+        || (p.name && p.name.trim())
+        || null
+      return {
+        ...m,
+        profiles: p ? { ...p, display_name } : null,
+      }
+    })
+
+    return NextResponse.json({ ok: true, items })
+  } catch (err) {
+    console.error('[commerce-clients]', err)
+    return NextResponse.json({ error: err.message || 'Error interno' }, { status: 500 })
+  }
+}

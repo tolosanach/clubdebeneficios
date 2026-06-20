@@ -164,4 +164,9 @@ export async function POST(request) {
       },
     })
 
-    return NextResponse.json({ ok: true, decisio
+    return NextResponse.json({ ok: true, decision: 'decline' })
+  } catch (err) {
+    console.error('[discount-decision]', err)
+    return NextResponse.json({ error: err.message || 'Error interno' }, { status: 500 })
+  }
+}
