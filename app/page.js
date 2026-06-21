@@ -15628,6 +15628,11 @@ function CommerceSettingsView({ user, profile, setView, onLogout, onOwnerProfile
                   background: 'linear-gradient(180deg, #091F14 0%, #0F2A1C 50%, #0E3A24 100%)',
                   border: 'none',
                   borderRadius: 24,
+                  // Misma razón que en las cards regulares: es la primera
+                  // card del slider, pegada debajo del strip de tabs —
+                  // esquina recta arriba-izquierda para que no choque
+                  // contra la esquina recta de la solapa.
+                  borderTopLeftRadius: 0,
                   padding: '28px 24px 24px',
                   display: 'flex', flexDirection: 'column',
                   minHeight: 320,
@@ -15778,6 +15783,15 @@ function CommerceSettingsView({ user, profile, setView, onLogout, onOwnerProfile
                     background: `linear-gradient(180deg, ${themeBgStart} 0%, ${themeBgMid} 50%, ${themeBgEnd} 100%)`,
                     border: 'none',
                     borderRadius: 24,
+                    // La primera card (idx 0) queda pegada justo debajo de
+                    // la solapa activa del strip de tabs — si su esquina
+                    // superior-izquierda fuera redondeada, el corte curvo
+                    // chocaba contra la esquina recta de la solapa activa
+                    // (que no tiene border-radius abajo), dando la sensación
+                    // óptica de que la card "flota" separada del tab en vez
+                    // de fundirse con él. Esquina recta acá = continuidad
+                    // visual perfecta con la solapa de arriba.
+                    borderTopLeftRadius: idx === 0 ? 0 : 24,
                     padding: '22px 22px 0',
                     textAlign: 'left',
                     cursor: 'pointer',
