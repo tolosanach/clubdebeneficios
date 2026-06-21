@@ -15282,7 +15282,7 @@ function CommerceSettingsView({ user, profile, setView, onLogout, onOwnerProfile
             Recompensas): bg violeta 0.07, border 0.32, sombra hacia abajo
             para "elevar" la carpeta del fondo de la página. */}
         <div style={{
-          margin: isMobile ? '8px 14px 0' : '8px 22px 0',
+          margin: isMobile ? '8px 18px 0' : '8px 28px 0',
           background: 'rgba(189,75,248,0.07)',
           border: '1px solid rgba(189,75,248,0.32)',
           borderRadius: 22,
