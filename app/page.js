@@ -15305,7 +15305,13 @@ function CommerceSettingsView({ user, profile, setView, onLogout, onOwnerProfile
         <div style={{
           display: 'flex', gap: 4,
           borderBottom: '1px solid rgba(189,75,248,0.32)',
-          padding: '6px 6px 0',
+          // Padding horizontal alineado con el inset de las cards de abajo
+          // (paddingLeft/Right del slider: 16px mobile / 28px desktop).
+          // Antes era un fijo '6px' que no coincidía con el inset real de
+          // las cards, generando un desalineamiento visual entre las
+          // solapas y el contenido (el borde de la solapa activa quedaba
+          // más adentro/afuera que el borde de la card de abajo).
+          padding: isDesktop ? '6px 28px 0' : '6px 16px 0',
         }}>
           {[
             // Cada tab define DOS paletas: activa (saturada, con glow) y
