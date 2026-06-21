@@ -2858,7 +2858,7 @@ function Navbar({ setView, cityName, user, profile, commerce, onLogin, onLogout,
   if (!user) return (
     <>
       <nav className="navbar-glass" style={{ ...NAV, ...NAV_TRANSITION, ...NAV_OPAQUE, padding:'0 20px' }}>
-        <div style={{ cursor:'pointer' }} onClick={() => setView('home')}><Logo /></div>
+        <div style={{ cursor:'pointer' }} onClick={() => setView('home')}><Logo height={44} /></div>
         <div style={{ display:'flex', gap:8, alignItems:'center' }}>
           {cityName && <span style={{ fontSize:11, color:C.mist, padding:'4px 10px', borderRadius:99, background:C.bg3, border:`1px solid ${C.rim}`, display:'inline-flex', alignItems:'center', gap:4 }}><MapPin size={10} color={C.mist} strokeWidth={2} />{cityName}</span>}
           {/* Link "Registrarse" — texto plano sin botón visual. Dispara el
@@ -2910,7 +2910,7 @@ function Navbar({ setView, cityName, user, profile, commerce, onLogin, onLogout,
   return (
     <>
     <nav className="navbar-glass" style={{ ...NAV, ...NAV_TRANSITION, ...NAV_SCROLL_STATE, padding:'0 16px' }}>
-      <div style={{ cursor:'pointer' }} onClick={() => setView('home')}><Logo /></div>
+      <div style={{ cursor:'pointer' }} onClick={() => setView('home')}><Logo height={44} /></div>
       {/* LEGACY NAVBAR — reemplazado por BottomNavV2 el 2026-05-03.
           Borrar despues de validar 1 sprint. Bloque original con kit
           dueno (Eye + Store + Scan + User + LogOut) movido al final del
@@ -11950,7 +11950,10 @@ function CommerceSettingsView({ user, profile, setView, onLogout, onOwnerProfile
   const [autoConfigs, setAutoConfigs]     = useState({
     reactivacion:  { active: true, days: 7  },
     cercaPremio:   { active: true           },
-    primeraVisita: { active: true, days: 7  },
+    // template: 'default' | 'instagram' — 'instagram' agrega la condición
+    // de seguir al negocio en Instagram y pega el link/handle cargado en
+    // el perfil del negocio. Solo seleccionable si commerce.instagram existe.
+    primeraVisita: { active: true, days: 7, template: 'default' },
   })
   const [sentLog, setSentLog]             = useState({})
   const [copiedMsg, setCopiedMsg]         = useState(null)  // userId | null
@@ -12363,7 +12366,12 @@ function CommerceSettingsView({ user, profile, setView, onLogout, onOwnerProfile
     try {
       const saved = localStorage.getItem(`cb_auto_${commerce.id}`)
       if (saved) {
-        setAutoConfigs(JSON.parse(saved))
+        const parsed = JSON.parse(saved)
+        setAutoConfigs(prev => ({
+          ...prev,
+          ...parsed,
+          primeraVisita: { ...prev.primeraVisita, ...(parsed.primeraVisita || {}) },
+        }))
       }
       // messagesConfigured ahora se rige por una clave SEPARADA
       // (`cb_msg_active_*`) que el dueño activa explícitamente con el
@@ -16272,8 +16280,15 @@ function CommerceSettingsView({ user, profile, setView, onLogout, onOwnerProfile
       const faltante = cheapestActive ? Math.max(1, Math.round(cheapestActive.cost - bal)) : 0
       return `Hola ${firstName}! Estás a solo ${faltante} ${unit} de tu recompensa 🎁\n¡Vení a ${biz} y aprovechala!`
     }
-    if (type === 'primeraVisita')
+    if (type === 'primeraVisita') {
+      const useInstagram = autoConfigs.primeraVisita?.template === 'instagram' && !!commerce?.instagram?.trim()
+      if (useInstagram) {
+        const raw = commerce.instagram.trim()
+        const igLink = /^https?:\/\//i.test(raw) ? raw : `https://instagram.com/${raw.replace(/^@/, '')}`
+        return `Hola ${firstName}! Gracias por sumarte al club de ${biz} 🙌\nPara que tu bienvenida quede confirmada, seguinos en Instagram: ${igLink}\n¡Te esperamos pronto!`
+      }
       return `Hola ${firstName}! Gracias por tu primera visita 🙌\nYa empezaste a sumar beneficios en ${biz}. ¡Te esperamos pronto!`
+    }
     return ''
   }
 
@@ -21057,6 +21072,40 @@ function CommerceSettingsView({ user, profile, setView, onLogout, onOwnerProfile
                           ))}
                         </div>
                       )}
+                      {/* Selector de template (solo bienvenida nuevos socios):
+                          'default' = mensaje actual, 'instagram' = agrega
+                          la condición de seguir al negocio en Instagram y
+                          pega el link cargado en el perfil. Si el negocio
+                          no cargó su Instagram, el template 2 queda
+                          deshabilitado con un aviso para que lo complete. */}
+                      {key === 'primeraVisita' && (() => {
+                        const hasInstagram = !!commerce?.instagram?.trim()
+                        const selected = cfg.template || 'default'
+                        return (
+                          <div style={{ marginBottom:12 }}>
+                            <div style={{ fontSize:11, color:C.mist, marginBottom:8 }}>Mensaje a usar:</div>
+                            <div style={{ display:'flex', flexDirection:'column', gap:8 }}>
+                              <button
+                                onClick={() => saveAutoConfigs({ ...autoConfigs, primeraVisita: { ...cfg, template: 'default' } })}
+                                style={{ textAlign:'left', padding:'10px 12px', borderRadius:10, border:`1px solid ${selected==='default' ? meta.color : C.rim}`, background: selected==='default' ? `${meta.color}18` : 'transparent', color: C.white, cursor:'pointer', fontFamily:FN }}>
+                                <div style={{ fontSize:12, fontWeight:700, marginBottom:2 }}>Bienvenida simple</div>
+                                <div style={{ fontSize:11, color:C.mist, fontWeight:400 }}>El mensaje actual, sin condiciones.</div>
+                              </button>
+                              <button
+                                onClick={() => hasInstagram && saveAutoConfigs({ ...autoConfigs, primeraVisita: { ...cfg, template: 'instagram' } })}
+                                disabled={!hasInstagram}
+                                style={{ textAlign:'left', padding:'10px 12px', borderRadius:10, border:`1px solid ${selected==='instagram' && hasInstagram ? meta.color : C.rim}`, background: selected==='instagram' && hasInstagram ? `${meta.color}18` : 'transparent', color: hasInstagram ? C.white : C.dust, cursor: hasInstagram ? 'pointer' : 'not-allowed', opacity: hasInstagram ? 1 : 0.6, fontFamily:FN }}>
+                                <div style={{ fontSize:12, fontWeight:700, marginBottom:2 }}>Pedir que sigan en Instagram</div>
+                                <div style={{ fontSize:11, color:C.mist, fontWeight:400 }}>
+                                  {hasInstagram
+                                    ? 'Agrega la condición de seguirte en Instagram y pega tu link automáticamente.'
+                                    : 'Cargá tu Instagram en "Mi Negocio" para poder usar este template.'}
+                                </div>
+                              </button>
+                            </div>
+                          </div>
+                        )
+                      })()}
                       {/* Footer: toggle + CTA */}
                       <div style={{ display:'flex', alignItems:'center', gap:10 }}>
                         <button
