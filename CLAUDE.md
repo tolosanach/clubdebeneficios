@@ -2,7 +2,7 @@
 
 # Benefix — contexto del proyecto
 
-App argentina de fidelización para comercios. Cada comercio crea un "club" donde sus clientes acumulan recompensas al escanear su QR. Producción: **benefix.com.ar**.
+App argentina de fidelización para comercios. Cada comercio crea un "club" donde sus clientes acumulan recompensas al escanear su QR. Producción: **clufix.com.ar**.
 
 ## Stack
 
@@ -353,7 +353,7 @@ Index por `(user_id, created_at DESC)` y partial por `session_token` cuando no e
 3. Redeploy (o esperar al próximo push).
 
 ### Restricciones de seguridad
-- La API key NUNCA viaja al cliente. Si en algún momento querés usar el SDK JS de Google directo (caso raro), generá una key separada con HTTP referrer restrictions a `*.benefix.com.ar` — pero hoy todo va por backend.
+- La API key NUNCA viaja al cliente. Si en algún momento querés usar el SDK JS de Google directo (caso raro), generá una key separada con HTTP referrer restrictions a `*.clufix.com.ar` — pero hoy todo va por backend.
 - El rate-limit es por user (no por IP) y vive en memoria del proceso. En multi-instancia conviene migrar a Redis o a una tabla en Postgres con TTL.
 - Si Google está caído, el wizard sigue funcionando sin importar (degradación graceful).
 
@@ -488,7 +488,7 @@ Schedule: todos los días a las 14:00 UTC (11:00 ART). Vercel garantiza ejecuci�
 ### Env vars y deploy
 - Setear `CRON_SECRET` en Vercel (production). Sin ella el endpoint devuelve 401 y el cron no ejecuta nada.
 - Después del primer deploy, Vercel registra el cron automáticamente. Verificación: `vercel.com/dashboard` → proyecto → Cron Jobs.
-- Para correr manualmente: `curl -X POST https://benefix.com.ar/api/admin/check-empty-prize-clubs -H "Authorization: Bearer $CRON_SECRET"`.
+- Para correr manualmente: `curl -X POST https://clufix.com.ar/api/admin/check-empty-prize-clubs -H "Authorization: Bearer $CRON_SECRET"`.
 
 ### Lo que NO hace (intencional)
 - No envía push del navegador (solo notif in-app). El push se dispara desde el componente `NotificationsBell` cuando renderea — el cron NO llama `web-push` directamente. Si querés push, hay que agregarlo al final del insert.

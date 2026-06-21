@@ -48,7 +48,7 @@ export default function ImportClientsPage() {
   const [grantsLoading, setGrantsLoading] = useState(false)
   const [waMessage, setWaMessage] = useState(
     'Hola {nombre} 👋 Te escribo de {comercio}. Renovamos el sistema de fidelización, ahora usamos Clufix.\n\n' +
-    'Sumate al club acá 👉 https://benefix.com.ar/join/{slug}\n\n' +
+    'Sumate al club acá 👉 https://clufix.com.ar/join/{slug}\n\n' +
     'Te regalo 200 puntos de bienvenida 🎁 y un 30% OFF en tu próxima visita (válido hasta el 31/05).\n\n' +
     'Cualquier duda me decís!'
   )

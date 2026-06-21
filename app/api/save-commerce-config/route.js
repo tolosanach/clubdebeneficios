@@ -60,7 +60,7 @@ export async function POST(request) {
       const geoRes = await fetch(
         `https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(q)}&format=json&limit=1`,
         {
-          headers: { 'User-Agent': 'Benefix/1.0 (contacto@benefix.app)' },
+          headers: { 'User-Agent': 'Benefix/1.0 (contacto@clufix.app)' },
           signal: AbortSignal.timeout(5000),
         }
       )

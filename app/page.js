@@ -1645,7 +1645,7 @@ function QrFullscreen({ open, onClose, qrValue, audience = 'client', shareUrl = 
     ctx.fillStyle    = 'rgba(255,255,255,0.30)'
     ctx.textAlign    = 'center'
     ctx.textBaseline = 'bottom'
-    ctx.fillText('benefix.com.ar', W / 2, H - 70)
+    ctx.fillText('clufix.com.ar', W / 2, H - 70)
 
     return new Promise(resolve => canvas.toBlob(b => resolve(b), 'image/png', 1))
   }
@@ -4866,7 +4866,7 @@ function Footer({ setView }) {
               WhatsApp · 230 235-1158
             </a>
             {[
-              { label:'hola@benefix.app',  href:'mailto:hola@benefix.app' },
+              { label:'hola@clufix.app',  href:'mailto:hola@clufix.app' },
               { label:'Centro de ayuda',   href:'#' },
               { label:'Soporte',           href:'#' },
             ].map(({ label, href }) => (
@@ -10565,7 +10565,7 @@ function TermsAcceptance({ user, onAccept }) {
               <p style={{ marginBottom:16 }}>Podés eliminar tu cuenta en cualquier momento desde la sección "Mi Cuenta". Al hacerlo, se eliminarán tus datos y puntos acumulados de forma permanente.</p>
 
               <p style={{ fontFamily:FN, fontWeight:700, color:'#fff', marginBottom:6 }}>9. Contacto</p>
-              <p style={{ marginBottom:16 }}>Para consultas sobre estos términos, escribinos a soporte@benefix.app</p>
+              <p style={{ marginBottom:16 }}>Para consultas sobre estos términos, escribinos a soporte@clufix.app</p>
 
               <p style={{ fontSize:11, color:'rgba(255,255,255,0.35)', marginTop:8 }}>Última actualización: Abril 2026</p>
             </div>
@@ -21595,7 +21595,7 @@ function ScannerView({ user, profile, setView }) {
     //   • QR de OTRO comercio Clufix: el cliente está mostrando el QR
     //     del LOCAL en vez de su QR personal — es un error común.
     //   • QR completamente distinto (no Clufix): no contiene 'CLUB-'
-    //     ni la URL de benefix.com.ar/club/.
+    //     ni la URL de clufix.com.ar/club/.
     if (!qrCode.startsWith('CLUB-')) {
       const isBusinessQr = /clufix\.com\.ar\/club\//i.test(qrCode) || qrCode.startsWith('http')
       if (isBusinessQr && /clufix/i.test(qrCode)) {
