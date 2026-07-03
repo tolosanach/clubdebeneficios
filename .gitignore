@@ -45,3 +45,6 @@ next-env.d.ts
 .env.local
 .env*.local
 *.broken.bak
+
+# Config local del agente (no debe servirse desde public/)
+public/.claude/

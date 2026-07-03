@@ -42,7 +42,7 @@ export default function RootLayout({ children }) {
     <html lang="es">
       <head>
         <link
-          href="https://fonts.googleapis.com/css2?family=Lato:wght@900&family=Mulish:wght@400;500;700;800;900&family=Space+Grotesk:wght@500;600;700&family=Inter:wght@400;500;600;700;900&family=Tilt+Warp&display=swap"
+          href="https://fonts.googleapis.com/css2?family=Lato:wght@900&family=Mulish:wght@400;500;700;800;900&family=Space+Grotesk:wght@500;600;700&family=Inter:wght@400;500;600;700;900&family=Tilt+Warp&family=Instrument+Sans:ital,wght@0,400;0,500;0,600;0,700;1,400&family=Instrument+Serif:ital@0;1&family=Bricolage+Grotesque:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap"
           rel="stylesheet"
         />
         <link rel="manifest" href="/manifest.json" />

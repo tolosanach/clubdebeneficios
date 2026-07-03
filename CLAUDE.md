@@ -495,6 +495,43 @@ Schedule: todos los días a las 14:00 UTC (11:00 ART). Vercel garantiza ejecuci�
 - No insiste todos los días: throttle de 7 días por owner. Si el dueño ignora la primera notif, espera una semana antes de la próxima.
 - No bloquea la operación del comercio. El sistema sigue activo y los clientes siguen acumulando — la notif es un nudge.
 
+## Cambios recientes (sprint jul 2026 — restyling landing)
+
+Restyling completo de la landing pública (`lib/HomePublic.js`, rewrite total). Referencias: templates Optimus (estética general) y Homie (mecánica del hero), en `E:\clufix template web`.
+
+### Sistema de diseño claro (tokens `--lx-*` en `app/globals.css`)
+- Giro a **fondo claro**: crema `#FAF7F2`, cards blancas, lavanda `#F0E8FF` en secciones alternas. Violeta `#6F30DF` como color de acción, magenta `#FF199F` solo micro-acentos. El violeta profundo `#1A0050` queda reservado a 2 momentos: oferta fundador y CTA final + footer.
+- Tipografía: **Bricolage Grotesque** (headlines, weights 600-800 — Nacho descartó el serif por falta de personalidad; OJO: no tiene itálica, los acentos van por color o `.lx-grad-text`) + **Instrument Sans** (cuerpo) + **JetBrains Mono** (eyebrows/labels). El token `--lx-serif` apunta a Bricolage (nombre legacy). Cargadas en `app/layout.js` junto a las fuentes legacy. Fin del all-caps condensed.
+- Patrones Optimus: radius chico (6px), grid-lines sutiles, noise overlay (`.lx-noise`), eyebrows mono con guión, hover-lift, marquee. Keyframes: `lx-char-in`, `lx-fade-up`, `lx-rise`, `lx-marquee`, `lx-progress` (con bloque `prefers-reduced-motion`).
+
+### Hero (mecánica Homie LITERAL — iterado con Nacho, v2)
+- **Media full-bleed** que ocupa todo el viewport y se achica al scroll con los MISMOS valores de Homie: scale 1→0.85, borderRadius 0→48px, height 100svh→62.5svh (easing quad/cubic + rAF suavizado). Hoy es gradiente violeta de marca + noise; hay const **`HERO_VIDEO_URL`** (vacía) esperando el clip definitivo — al llenarla renderea `<video>` full-bleed con overlay de contraste.
+- Headline blanco encima del media: "La tarjeta de fidelidad, / sin tarjeta." (acento en magenta) + línea mono con rubro rotativo (char-in por letra) + CTAs (blanco sólido + ghost).
+- **Wordmark "clufix" gigante** (Bricolage 800, ~24vw) anclado al fondo del viewport, z entre el media y el contenido: cae (`translateY(p*150)`) y se apaga (`opacity 1-p*0.8`) al scrollear — calcado de Homie.
+- **PhoneMock** (CSS puro: wallet card + ticket troquelado con QR falso determinístico `FakeQR`, seed fija para SSR) entra elevándose (`lx-rise`) por DELANTE del wordmark.
+- Nav adaptable: texto claro sobre el hero violeta, pasa a tinta + fondo crema blur al scrollear.
+- `StatsMarquee` como strip separado después del hero (+240 membresías, +100 canjes...). Actualizar números de vez en cuando.
+
+### Estructura nueva de secciones
+hero → producto en pantalla (`PanelMock` + `PhoneMock`) → cómo funciona comercio (3 pasos I/II/III) → strip cliente (lavanda, compacto) → funcionalidades (6 cards) → rubros → **fundador (oscura)** → planes → testimonios → CTA final (oscura) → footer completo.
+
+### Fixes de conversión
+- **Bug pricing anónimo arreglado**: la card Pro ya no dice "Estás en este plan / Tu plan actual" a visitantes. CTAs por plan: "Crear mi club gratis" / "Empezar con Starter" / "Empezar con Pro".
+- WhatsApp real (5492302351158) como CTA secundario en hero, CTA final y footer (`WA_URL`).
+- Footer completo: producto / ayuda / legal (términos, privacidad) / demo + "Hecho en La Pampa".
+- **`app/not-found.js` nuevo**: 404 diseñada con el sistema de la landing (server component).
+- **`InstallPrompt` diferido en home**: acepta prop `currentView`; en `home` no aparece hasta scrollear > 1.2 viewports (state `engaged`). En el resto de las vistas, comportamiento de siempre.
+- El preloader `LoadingScreen` ya estaba desactivado (`isAppLoading` arranca en `false`) — no se tocó.
+
+### ⚠️ Escritura de archivos desde el agent (Windows mount)
+Los writes largos con las file-tools del agent sobre este mount **truncan archivos** (pasó con `page.js`, `layout.js` y `HomePublic.js` en este sprint, y ya había pasado antes — ver commit 0ed872f). Workaround confiable: escribir a `/tmp` del sandbox (heredoc/python) y copiar con `cp` desde el mount de bash, verificando con `cmp`. SIEMPRE verificar `wc -l` / parse después de escribir archivos grandes.
+
+### Pendientes del restyling
+- El logo script (`/clufix_logo.svg`, blanco+magenta) no lee sobre claro — en nav va dentro de un chip oscuro. Considerar variante del logo para fondo claro.
+- Fotos reales para testimonios si se consiguen.
+- La app interna (panel/cliente) sigue con la identidad oscura — la migración de la app al sistema claro es un sprint aparte (los tokens `--lx-*` ya quedan disponibles).
+- QA visual responsive pendiente de correr en local (`npm run dev`) — el sandbox del agent no pudo ejecutar el build de Next (binario SWC de Windows).
+
 ## Cómo trabaja el dueño (Nacho)
 
 - Itera mucho sobre UX, le gusta debatir antes de codear cuando el cambio es estructural

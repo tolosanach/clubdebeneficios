@@ -852,3 +852,106 @@ input[type="week"]::-webkit-calendar-picker-indicator:hover {
     animation: none !important;
   }
 }
+
+/* ══════════════════════════════════════════════════════════════════════════
+   LANDING 2026 — sistema de diseño claro (restyling jul 2026)
+   Prefijo lx- para no colisionar con la app. Tokens compartidos landing/app.
+   ══════════════════════════════════════════════════════════════════════════ */
+
+:root {
+  /* Fondos */
+  --lx-bg:          #FAF7F2;   /* crema cálido — fondo base */
+  --lx-surface:     #FFFFFF;   /* cards */
+  --lx-tint:        #F0E8FF;   /* lavanda suave — secciones alternas */
+  --lx-dark:        #1A0050;   /* violeta profundo — fundador + CTA final */
+
+  /* Tinta */
+  --lx-ink:         #17102A;   /* texto principal (violeta-negro cálido) */
+  --lx-ink-2:       rgba(23,16,42,0.62);
+  --lx-ink-3:       rgba(23,16,42,0.42);
+  --lx-line:        rgba(23,16,42,0.12);
+
+  /* Marca */
+  --lx-violet:      #6F30DF;   /* color de acción */
+  --lx-violet-deep: #3D0A9E;   /* hover / énfasis */
+  --lx-pink:        #FF199F;   /* micro-acentos */
+
+  /* Sobre oscuro */
+  --lx-cream:       #F5EFFF;
+  --lx-cream-2:     rgba(245,239,255,0.65);
+  --lx-cream-3:     rgba(245,239,255,0.38);
+  --lx-line-dark:   rgba(245,239,255,0.14);
+
+  /* Tipografía */
+  --lx-sans:    'Instrument Sans', system-ui, sans-serif;
+  --lx-serif:   'Bricolage Grotesque', 'Instrument Serif', Georgia, serif;  /* display/headlines */
+  --lx-mono:    'JetBrains Mono', 'Courier New', monospace;
+
+  --lx-radius:  6px;
+}
+
+/* Ruido sutil (Optimus) */
+.lx-noise { position: relative; }
+.lx-noise::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+  opacity: 0.035;
+  pointer-events: none;
+  z-index: 1;
+}
+
+/* Entrada por caracteres (rubro rotativo del hero) */
+@keyframes lx-char-in {
+  0%   { opacity: 0; filter: blur(18px); transform: translateY(60%); }
+  100% { opacity: 1; filter: blur(0);    transform: translateY(0); }
+}
+.lx-char-in {
+  display: inline-block;
+  opacity: 0;
+  animation: lx-char-in 0.5s cubic-bezier(0.22, 1, 0.36, 1) forwards;
+}
+
+/* Fade-up de secciones */
+@keyframes lx-fade-up {
+  from { opacity: 0; transform: translateY(22px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+.lx-fade-up { animation: lx-fade-up 0.7s cubic-bezier(0.22, 1, 0.36, 1) both; }
+
+/* Celular del hero: entra elevándose */
+@keyframes lx-rise {
+  from { opacity: 0; transform: translateY(340px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+.lx-rise { animation: lx-rise 1.4s cubic-bezier(0.16, 1, 0.3, 1) 0.35s both; }
+
+/* Marquee de stats */
+@keyframes lx-marquee {
+  from { transform: translateX(0); }
+  to   { transform: translateX(-50%); }
+}
+.lx-marquee { animation: lx-marquee 32s linear infinite; }
+
+/* Hover-lift de cards */
+.lx-lift { transition: transform 0.4s cubic-bezier(0.34, 1.56, 0.64, 1), box-shadow 0.4s ease; }
+.lx-lift:hover { transform: translateY(-4px); box-shadow: 0 14px 34px rgba(23,16,42,0.10); }
+
+/* Progreso de la wallet-card del mock */
+@keyframes lx-progress { from { width: 8%; } to { width: 70%; } }
+
+@media (prefers-reduced-motion: reduce) {
+  .lx-char-in, .lx-fade-up, .lx-rise { animation: none !important; opacity: 1 !important; transform: none !important; filter: none !important; }
+  .lx-marquee { animation: none !important; }
+  .lx-lift, .lx-lift:hover { transform: none !important; }
+}
+
+/* Texto con gradiente de marca (acentos en headlines de secciones claras) */
+.lx-grad-text {
+  background: linear-gradient(90deg, var(--lx-violet), var(--lx-pink));
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-text-fill-color: transparent;
+  color: transparent;
+}

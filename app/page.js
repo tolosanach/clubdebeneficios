@@ -548,11 +548,28 @@ function PullToRefresh({ onRefresh, children }) {
 //
 // Si el user ya está corriendo la app instalada (display-mode standalone),
 // no mostramos nada — ya está instalada.
-function InstallPrompt() {
+function InstallPrompt({ currentView }) {
   const [deferredPrompt, setDeferredPrompt] = useState(null)
   const [visible,        setVisible]        = useState(false)
   const [iosMode,        setIosMode]        = useState(false)
   const [showIosHelp,    setShowIosHelp]    = useState(false)
+  // En la landing pública el banner NO aparece hasta que el visitante
+  // scrolleó más de un viewport — primero tiene que enterarse de qué es
+  // Clufix, después le ofrecemos instalar. En el resto de las vistas
+  // (usuario ya logueado / navegando la app) se muestra como siempre.
+  const [engaged, setEngaged] = useState(currentView !== 'home')
+  useEffect(() => {
+    if (currentView !== 'home') { setEngaged(true); return }
+    setEngaged(false)
+    const onScroll = () => {
+      if (window.scrollY > window.innerHeight * 1.2) {
+        setEngaged(true)
+        window.removeEventListener('scroll', onScroll)
+      }
+    }
+    window.addEventListener('scroll', onScroll, { passive: true })
+    return () => window.removeEventListener('scroll', onScroll)
+  }, [currentView])
 
   useEffect(() => {
     if (typeof window === 'undefined') return
@@ -595,7 +612,7 @@ function InstallPrompt() {
     }
   }, [])
 
-  if (!visible) return null
+  if (!visible || !engaged) return null
   if (!iosMode && !deferredPrompt) return null
 
   function dismiss() { sessionStorage.setItem('install_dismissed', '1'); setVisible(false); setShowIosHelp(false) }
@@ -24258,7 +24275,7 @@ export default function App() {
       <ToastContainer />
       <ConfirmModal />
       <SwRegister />
-      <InstallPrompt />
+      <InstallPrompt currentView={view} />
       {/* Modal de resultado del checkout de Mercado Pago — se muestra cuando
           la URL trae ?upgrade=success|pending|failure. MP redirige acá tras
           el flujo de suscripción. La activación real del plan la hace el
