@@ -1662,7 +1662,7 @@ function QrFullscreen({ open, onClose, qrValue, audience = 'client', shareUrl = 
     ctx.fillStyle    = 'rgba(255,255,255,0.30)'
     ctx.textAlign    = 'center'
     ctx.textBaseline = 'bottom'
-    ctx.fillText('benefix.com.ar', W / 2, H - 70)
+    ctx.fillText('clufix.com.ar', W / 2, H - 70)
 
     return new Promise(resolve => canvas.toBlob(b => resolve(b), 'image/png', 1))
   }
@@ -2875,7 +2875,7 @@ function Navbar({ setView, cityName, user, profile, commerce, onLogin, onLogout,
   if (!user) return (
     <>
       <nav className="navbar-glass" style={{ ...NAV, ...NAV_TRANSITION, ...NAV_OPAQUE, padding:'0 20px' }}>
-        <div style={{ cursor:'pointer' }} onClick={() => setView('home')}><Logo /></div>
+        <div style={{ cursor:'pointer' }} onClick={() => setView('home')}><Logo height={44} /></div>
         <div style={{ display:'flex', gap:8, alignItems:'center' }}>
           {cityName && <span style={{ fontSize:11, color:C.mist, padding:'4px 10px', borderRadius:99, background:C.bg3, border:`1px solid ${C.rim}`, display:'inline-flex', alignItems:'center', gap:4 }}><MapPin size={10} color={C.mist} strokeWidth={2} />{cityName}</span>}
           {/* Link "Registrarse" — texto plano sin botón visual. Dispara el
@@ -2927,7 +2927,7 @@ function Navbar({ setView, cityName, user, profile, commerce, onLogin, onLogout,
   return (
     <>
     <nav className="navbar-glass" style={{ ...NAV, ...NAV_TRANSITION, ...NAV_SCROLL_STATE, padding:'0 16px' }}>
-      <div style={{ cursor:'pointer' }} onClick={() => setView('home')}><Logo /></div>
+      <div style={{ cursor:'pointer' }} onClick={() => setView('home')}><Logo height={44} /></div>
       {/* LEGACY NAVBAR — reemplazado por BottomNavV2 el 2026-05-03.
           Borrar despues de validar 1 sprint. Bloque original con kit
           dueno (Eye + Store + Scan + User + LogOut) movido al final del
@@ -4883,7 +4883,7 @@ function Footer({ setView }) {
               WhatsApp · 230 235-1158
             </a>
             {[
-              { label:'hola@benefix.app',  href:'mailto:hola@benefix.app' },
+              { label:'hola@clufix.app',  href:'mailto:hola@clufix.app' },
               { label:'Centro de ayuda',   href:'#' },
               { label:'Soporte',           href:'#' },
             ].map(({ label, href }) => (
@@ -10582,7 +10582,7 @@ function TermsAcceptance({ user, onAccept }) {
               <p style={{ marginBottom:16 }}>Podés eliminar tu cuenta en cualquier momento desde la sección "Mi Cuenta". Al hacerlo, se eliminarán tus datos y puntos acumulados de forma permanente.</p>
 
               <p style={{ fontFamily:FN, fontWeight:700, color:'#fff', marginBottom:6 }}>9. Contacto</p>
-              <p style={{ marginBottom:16 }}>Para consultas sobre estos términos, escribinos a soporte@benefix.app</p>
+              <p style={{ marginBottom:16 }}>Para consultas sobre estos términos, escribinos a soporte@clufix.app</p>
 
               <p style={{ fontSize:11, color:'rgba(255,255,255,0.35)', marginTop:8 }}>Última actualización: Abril 2026</p>
             </div>
@@ -11967,7 +11967,10 @@ function CommerceSettingsView({ user, profile, setView, onLogout, onOwnerProfile
   const [autoConfigs, setAutoConfigs]     = useState({
     reactivacion:  { active: true, days: 7  },
     cercaPremio:   { active: true           },
-    primeraVisita: { active: true, days: 7  },
+    // template: 'default' | 'instagram' — 'instagram' agrega la condición
+    // de seguir al negocio en Instagram y pega el link/handle cargado en
+    // el perfil del negocio. Solo seleccionable si commerce.instagram existe.
+    primeraVisita: { active: true, days: 7, template: 'default' },
   })
   const [sentLog, setSentLog]             = useState({})
   const [copiedMsg, setCopiedMsg]         = useState(null)  // userId | null
@@ -12380,7 +12383,12 @@ function CommerceSettingsView({ user, profile, setView, onLogout, onOwnerProfile
     try {
       const saved = localStorage.getItem(`cb_auto_${commerce.id}`)
       if (saved) {
-        setAutoConfigs(JSON.parse(saved))
+        const parsed = JSON.parse(saved)
+        setAutoConfigs(prev => ({
+          ...prev,
+          ...parsed,
+          primeraVisita: { ...prev.primeraVisita, ...(parsed.primeraVisita || {}) },
+        }))
       }
       // messagesConfigured ahora se rige por una clave SEPARADA
       // (`cb_msg_active_*`) que el dueño activa explícitamente con el
@@ -15291,7 +15299,7 @@ function CommerceSettingsView({ user, profile, setView, onLogout, onOwnerProfile
             Recompensas): bg violeta 0.07, border 0.32, sombra hacia abajo
             para "elevar" la carpeta del fondo de la página. */}
         <div style={{
-          margin: isMobile ? '8px 14px 0' : '8px 22px 0',
+          margin: isMobile ? '8px 18px 0' : '8px 28px 0',
           background: 'rgba(189,75,248,0.07)',
           border: '1px solid rgba(189,75,248,0.32)',
           borderRadius: 22,
@@ -15314,7 +15322,13 @@ function CommerceSettingsView({ user, profile, setView, onLogout, onOwnerProfile
         <div style={{
           display: 'flex', gap: 4,
           borderBottom: '1px solid rgba(189,75,248,0.32)',
-          padding: '6px 6px 0',
+          // Padding horizontal alineado con el inset de las cards de abajo
+          // (paddingLeft/Right del slider: 16px mobile / 28px desktop).
+          // Antes era un fijo '6px' que no coincidía con el inset real de
+          // las cards, generando un desalineamiento visual entre las
+          // solapas y el contenido (el borde de la solapa activa quedaba
+          // más adentro/afuera que el borde de la card de abajo).
+          padding: isDesktop ? '6px 28px 0' : '6px 16px 0',
         }}>
           {[
             // Cada tab define DOS paletas: activa (saturada, con glow) y
@@ -15631,6 +15645,11 @@ function CommerceSettingsView({ user, profile, setView, onLogout, onOwnerProfile
                   background: 'linear-gradient(180deg, #091F14 0%, #0F2A1C 50%, #0E3A24 100%)',
                   border: 'none',
                   borderRadius: 24,
+                  // Misma razón que en las cards regulares: es la primera
+                  // card del slider, pegada debajo del strip de tabs —
+                  // esquina recta arriba-izquierda para que no choque
+                  // contra la esquina recta de la solapa.
+                  borderTopLeftRadius: 0,
                   padding: '28px 24px 24px',
                   display: 'flex', flexDirection: 'column',
                   minHeight: 320,
@@ -15781,6 +15800,15 @@ function CommerceSettingsView({ user, profile, setView, onLogout, onOwnerProfile
                     background: `linear-gradient(180deg, ${themeBgStart} 0%, ${themeBgMid} 50%, ${themeBgEnd} 100%)`,
                     border: 'none',
                     borderRadius: 24,
+                    // La primera card (idx 0) queda pegada justo debajo de
+                    // la solapa activa del strip de tabs — si su esquina
+                    // superior-izquierda fuera redondeada, el corte curvo
+                    // chocaba contra la esquina recta de la solapa activa
+                    // (que no tiene border-radius abajo), dando la sensación
+                    // óptica de que la card "flota" separada del tab en vez
+                    // de fundirse con él. Esquina recta acá = continuidad
+                    // visual perfecta con la solapa de arriba.
+                    borderTopLeftRadius: idx === 0 ? 0 : 24,
                     padding: '22px 22px 0',
                     textAlign: 'left',
                     cursor: 'pointer',
@@ -16289,8 +16317,15 @@ function CommerceSettingsView({ user, profile, setView, onLogout, onOwnerProfile
       const faltante = cheapestActive ? Math.max(1, Math.round(cheapestActive.cost - bal)) : 0
       return `Hola ${firstName}! Estás a solo ${faltante} ${unit} de tu recompensa 🎁\n¡Vení a ${biz} y aprovechala!`
     }
-    if (type === 'primeraVisita')
+    if (type === 'primeraVisita') {
+      const useInstagram = autoConfigs.primeraVisita?.template === 'instagram' && !!commerce?.instagram?.trim()
+      if (useInstagram) {
+        const raw = commerce.instagram.trim()
+        const igLink = /^https?:\/\//i.test(raw) ? raw : `https://instagram.com/${raw.replace(/^@/, '')}`
+        return `Hola ${firstName}! Gracias por sumarte al club de ${biz} 🙌\nPara que tu bienvenida quede confirmada, seguinos en Instagram: ${igLink}\n¡Te esperamos pronto!`
+      }
       return `Hola ${firstName}! Gracias por tu primera visita 🙌\nYa empezaste a sumar beneficios en ${biz}. ¡Te esperamos pronto!`
+    }
     return ''
   }
 
@@ -21074,6 +21109,40 @@ function CommerceSettingsView({ user, profile, setView, onLogout, onOwnerProfile
                           ))}
                         </div>
                       )}
+                      {/* Selector de template (solo bienvenida nuevos socios):
+                          'default' = mensaje actual, 'instagram' = agrega
+                          la condición de seguir al negocio en Instagram y
+                          pega el link cargado en el perfil. Si el negocio
+                          no cargó su Instagram, el template 2 queda
+                          deshabilitado con un aviso para que lo complete. */}
+                      {key === 'primeraVisita' && (() => {
+                        const hasInstagram = !!commerce?.instagram?.trim()
+                        const selected = cfg.template || 'default'
+                        return (
+                          <div style={{ marginBottom:12 }}>
+                            <div style={{ fontSize:11, color:C.mist, marginBottom:8 }}>Mensaje a usar:</div>
+                            <div style={{ display:'flex', flexDirection:'column', gap:8 }}>
+                              <button
+                                onClick={() => saveAutoConfigs({ ...autoConfigs, primeraVisita: { ...cfg, template: 'default' } })}
+                                style={{ textAlign:'left', padding:'10px 12px', borderRadius:10, border:`1px solid ${selected==='default' ? meta.color : C.rim}`, background: selected==='default' ? `${meta.color}18` : 'transparent', color: C.white, cursor:'pointer', fontFamily:FN }}>
+                                <div style={{ fontSize:12, fontWeight:700, marginBottom:2 }}>Bienvenida simple</div>
+                                <div style={{ fontSize:11, color:C.mist, fontWeight:400 }}>El mensaje actual, sin condiciones.</div>
+                              </button>
+                              <button
+                                onClick={() => hasInstagram && saveAutoConfigs({ ...autoConfigs, primeraVisita: { ...cfg, template: 'instagram' } })}
+                                disabled={!hasInstagram}
+                                style={{ textAlign:'left', padding:'10px 12px', borderRadius:10, border:`1px solid ${selected==='instagram' && hasInstagram ? meta.color : C.rim}`, background: selected==='instagram' && hasInstagram ? `${meta.color}18` : 'transparent', color: hasInstagram ? C.white : C.dust, cursor: hasInstagram ? 'pointer' : 'not-allowed', opacity: hasInstagram ? 1 : 0.6, fontFamily:FN }}>
+                                <div style={{ fontSize:12, fontWeight:700, marginBottom:2 }}>Pedir que sigan en Instagram</div>
+                                <div style={{ fontSize:11, color:C.mist, fontWeight:400 }}>
+                                  {hasInstagram
+                                    ? 'Agrega la condición de seguirte en Instagram y pega tu link automáticamente.'
+                                    : 'Cargá tu Instagram en "Mi Negocio" para poder usar este template.'}
+                                </div>
+                              </button>
+                            </div>
+                          </div>
+                        )
+                      })()}
                       {/* Footer: toggle + CTA */}
                       <div style={{ display:'flex', alignItems:'center', gap:10 }}>
                         <button
@@ -21612,7 +21681,7 @@ function ScannerView({ user, profile, setView }) {
     //   • QR de OTRO comercio Clufix: el cliente está mostrando el QR
     //     del LOCAL en vez de su QR personal — es un error común.
     //   • QR completamente distinto (no Clufix): no contiene 'CLUB-'
-    //     ni la URL de benefix.com.ar/club/.
+    //     ni la URL de clufix.com.ar/club/.
     if (!qrCode.startsWith('CLUB-')) {
       const isBusinessQr = /clufix\.com\.ar\/club\//i.test(qrCode) || qrCode.startsWith('http')
       if (isBusinessQr && /clufix/i.test(qrCode)) {

@@ -1,5 +1,5 @@
 export const metadata = {
-  metadataBase: new URL(process.env.NEXT_PUBLIC_URL || 'https://benefix.com.ar'),
+  metadataBase: new URL(process.env.NEXT_PUBLIC_URL || 'https://clufix.com.ar'),
   title: 'Clufix — Tu club de beneficios',
   description: 'El sistema de fidelización más simple del país. Escaneá, acumulá, canjeá.',
   keywords: ['fidelización', 'puntos', 'recompensas', 'comercios', 'beneficios', 'QR', 'premios'],
@@ -18,8 +18,8 @@ export const metadata = {
     images: ['/opengraph-image'],
   },
   icons: {
-    icon: '/benefix-icon.svg',
-    apple: '/benefix-icon.svg',
+    icon: '/clufix-icon.svg',
+    apple: '/clufix-icon.svg',
   },
   manifest: '/manifest.json',
   appleWebApp: {
@@ -50,8 +50,8 @@ export default function RootLayout({ children }) {
         <meta name="apple-mobile-web-app-capable" content="yes" />
         <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
         <meta name="apple-mobile-web-app-title" content="Clufix" />
-        <link rel="apple-touch-icon" href="/benefix-icon.svg" />
-        <link rel="icon" type="image/svg+xml" href="/benefix-icon.svg" />
+        <link rel="apple-touch-icon" href="/clufix-icon.svg" />
+        <link rel="icon" type="image/svg+xml" href="/clufix-icon.svg" />
       </head>
       {/* suppressHydrationWarning silencia los mismatches que vienen de
           extensiones del browser (ColorZilla agrega `cz-shortcut-listen`,

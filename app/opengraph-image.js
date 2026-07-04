@@ -1,7 +1,7 @@
 import { ImageResponse } from 'next/og'
 
 // Open Graph image (1200x630). Se sirve cuando alguien comparte
-// benefix.com.ar en WhatsApp, Twitter, Facebook, etc.
+// clufix.com.ar en WhatsApp, Twitter, Facebook, etc.
 // Rebrand mayo 2026: violeta sólido + wordmark "Clufix" grande blanco
 // + tagline. Sin gradient orange-fucsia, sin blobs rosa.
 export const runtime = 'edge'
@@ -42,7 +42,7 @@ export default function OgImage() {
 
         {/* Badge URL */}
         <div style={{ display:'flex', marginTop:44, padding:'10px 28px', borderRadius:9999, border:'1.5px solid rgba(255,255,255,0.40)', background:'rgba(255,255,255,0.10)', fontSize:18, color:'rgba(255,255,255,0.85)', letterSpacing:'0.06em' }}>
-          benefix.com.ar
+          clufix.com.ar
         </div>
       </div>
     ),

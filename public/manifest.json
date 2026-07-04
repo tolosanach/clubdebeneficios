@@ -10,7 +10,7 @@
   "lang": "es-AR",
   "categories": ["lifestyle", "shopping"],
   "icons": [
-    { "src": "/benefix-icon.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "any maskable" }
+    { "src": "/clufix-icon.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "any maskable" }
   ],
   "shortcuts": [
     {
@@ -18,14 +18,14 @@
       "short_name": "Clubs",
       "description": "Ver tus clubs y puntos",
       "url": "/?view=client",
-      "icons": [{ "src": "/benefix-icon.svg", "sizes": "any", "type": "image/svg+xml" }]
+      "icons": [{ "src": "/clufix-icon.svg", "sizes": "any", "type": "image/svg+xml" }]
     },
     {
       "name": "Mi QR",
       "short_name": "Mi QR",
       "description": "Mostrar mi código QR",
       "url": "/?view=client&tab=qr",
-      "icons": [{ "src": "/benefix-icon.svg", "sizes": "any", "type": "image/svg+xml" }]
+      "icons": [{ "src": "/clufix-icon.svg", "sizes": "any", "type": "image/svg+xml" }]
     }
   ],
   "screenshots": [],

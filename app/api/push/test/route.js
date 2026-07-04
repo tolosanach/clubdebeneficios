@@ -44,7 +44,7 @@ export async function POST() {
     // Diagnostico de configuracion
     const vapidPub  = process.env.VAPID_PUBLIC_KEY
     const vapidPriv = process.env.VAPID_PRIVATE_KEY
-    const vapidSub  = process.env.VAPID_SUBJECT || 'mailto:soporte@benefix.com.ar'
+    const vapidSub  = process.env.VAPID_SUBJECT || 'mailto:soporte@clufix.com.ar'
 
     if (!vapidPub || !vapidPriv) {
       return NextResponse.json({

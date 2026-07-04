@@ -1,7 +1,7 @@
 // GET /api/auth/google
 //
 // Inicia el flujo OAuth de Google directamente (sin pasar por el endpoint
-// de Supabase), de modo que Google muestre "Ir a benefix.com.ar" en vez
+// de Supabase), de modo que Google muestre "Ir a clufix.com.ar" en vez
 // del dominio interno de Supabase.
 //
 // Query params:

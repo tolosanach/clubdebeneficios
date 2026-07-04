@@ -8,7 +8,7 @@ const supabase = createClient(
   process.env.SUPABASE_SERVICE_ROLE_KEY
 )
 
-const BASE = process.env.NEXT_PUBLIC_URL || 'https://benefix.com.ar'
+const BASE = process.env.NEXT_PUBLIC_URL || 'https://clufix.com.ar'
 
 export async function generateMetadata({ params }) {
   const { slug } = await params
