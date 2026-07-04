@@ -1575,7 +1575,7 @@ function QrFullscreen({ open, onClose, qrValue, audience = 'client', shareUrl = 
     const LOGO_Y  = 130   // distancia desde el tope
     try {
       const logoImg = new Image()
-      logoImg.src = `${window.location.origin}/brand/logo-clufix-wordmark-white.svg`
+      logoImg.src = `${window.location.origin}/clufix_logo.svg`
       await new Promise(r => { logoImg.onload = r; logoImg.onerror = r })
       if (logoImg.naturalWidth > 0) {
         const logoW = logoImg.naturalWidth * (LOGO_H / logoImg.naturalHeight)
