@@ -148,6 +148,11 @@ const C = {
 }
 const FN = "'Space Grotesk', system-ui, sans-serif"
 const FI = "'Inter', system-ui, sans-serif"
+// TITLE: tipografía "vieja" de los H1 de pestaña del panel comerciante,
+// alineada de vuelta a Tilt Warp (jul 2026) — la misma que sigue usando
+// lib/RubroPage.js y que ahora también usa lib/HomePublic.js para sus
+// títulos, tras revertir el restyling de Fable5. Solo peso 400 disponible.
+const TITLE = "'Tilt Warp', sans-serif"
 // FCC = familia tipográfica estilo "tarjeta de crédito": monospace robusta
 // con buen renderizado de números y mayúsculas. Usamos OCR-B Std cuando el
 // SO la tiene (común en linux/mac) y caemos a Andale Mono / Courier en el
@@ -17304,7 +17309,7 @@ function CommerceSettingsView({ user, profile, setView, onLogout, onOwnerProfile
               {/* Header */}
               <div style={{ display:'flex', alignItems:'flex-start', justifyContent:'space-between', gap:10, marginBottom: hasClients ? 10 : 6 }}>
                 <div>
-                  <div style={{ fontFamily:FN, fontSize:18, fontWeight:900, color:C.white, letterSpacing:'.08em', textTransform:'uppercase' }}>Clientes</div>
+                  <div style={{ fontFamily:TITLE, fontWeight:400, fontSize:18, color:C.white, letterSpacing:'.08em', textTransform:'uppercase' }}>Clientes</div>
                   {hasClients && (
                     <div style={{ fontSize:12, color:C.mist, marginTop:2 }}>
                       {clientCount === 1 ? '1 cliente registrado' : `${clientCount} clientes registrados`}
@@ -17746,7 +17751,7 @@ function CommerceSettingsView({ user, profile, setView, onLogout, onOwnerProfile
                   directos pastel violeta arriba ya cuentan la historia, y
                   el ícono extra en el header se sentía redundante. */}
               <div style={{ display:'flex', alignItems:'center', gap:8 }}>
-                <div style={{ fontFamily:FN, fontSize:18, fontWeight:900, color:C.white, letterSpacing:'.08em', textTransform:'uppercase' }}>Sistema para sumar</div>
+                <div style={{ fontFamily:TITLE, fontWeight:400, fontSize:18, color:C.white, letterSpacing:'.08em', textTransform:'uppercase' }}>Sistema para sumar</div>
                 <InfoHint align="left" text={
                   'Es el sistema base con el que tus clientes acumulan recompensas al escanear su QR.\n\n' +
                   '• Estrellas: 1 estrella por compra. Simple, ideal para tickets parecidos.\n\n' +
@@ -18422,7 +18427,7 @@ function CommerceSettingsView({ user, profile, setView, onLogout, onOwnerProfile
                 etc.) sigue siendo útil pero discreto. */}
             <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', marginBottom: prizes.filter(p => p.active && (p.system_type || (commerce?.prog_type || 'stars')) === (commerce?.prog_type || 'stars')).length > 0 ? 8 : 18, gap:10 }}>
               <div style={{ display:'flex', alignItems:'center', gap:8 }}>
-                <div style={{ fontFamily:FN, fontSize:18, fontWeight:900, color:C.white, letterSpacing:'.08em', textTransform:'uppercase' }}>Premios</div>
+                <div style={{ fontFamily:TITLE, fontWeight:400, fontSize:18, color:C.white, letterSpacing:'.08em', textTransform:'uppercase' }}>Premios</div>
                 <InfoHint align="left" text={
                   'Cargá los premios que tus clientes pueden canjear con sus estrellas o puntos acumulados.\n\n' +
                   'Cada premio tiene un costo, nombre, imagen opcional y stock opcional. Pausá sin borrar para esconderlos sin perder el historial.\n\n' +
@@ -19540,7 +19545,7 @@ function CommerceSettingsView({ user, profile, setView, onLogout, onOwnerProfile
             <div>
               <div style={{ marginBottom:24 }}>
                 <div style={{ display:'flex', alignItems:'center', gap:8, marginBottom:10 }}>
-                  <div style={{ fontFamily:FN, fontSize:18, fontWeight:900, color:C.white, letterSpacing:'.08em', textTransform:'uppercase' }}>Reportes</div>
+                  <div style={{ fontFamily:TITLE, fontWeight:400, fontSize:18, color:C.white, letterSpacing:'.08em', textTransform:'uppercase' }}>Reportes</div>
                   <InfoHint align="left" text={
                     'Datos crudos de tu actividad: cada visita registrada, cada canje y la lista completa de tus clientes.\n\n' +
                     'Útil para revisar el día a día (ej. ver qué clientes vinieron hoy), exportar tu base, o cruzar números a fin de mes.\n\n' +
@@ -19801,7 +19806,7 @@ function CommerceSettingsView({ user, profile, setView, onLogout, onOwnerProfile
             <div>
               <div style={{ marginBottom:24 }}>
                 <div style={{ display:'flex', alignItems:'center', gap:8, marginBottom:10 }}>
-                  <div style={{ fontFamily:FN, fontSize:18, fontWeight:900, color:C.white, letterSpacing:'.08em', textTransform:'uppercase' }}>Segmentación de clientes</div>
+                  <div style={{ fontFamily:TITLE, fontWeight:400, fontSize:18, color:C.white, letterSpacing:'.08em', textTransform:'uppercase' }}>Segmentación de clientes</div>
                   <InfoHint align="left" text={
                     'Tus clientes se agrupan automáticamente en 4 segmentos según su comportamiento:\n\n' +
                     '• Nuevos: clientes con menos de 14 días desde su primera visita.\n\n' +
@@ -19937,7 +19942,7 @@ function CommerceSettingsView({ user, profile, setView, onLogout, onOwnerProfile
           }
           return (
             <div>
-              <div style={{ fontFamily:FN, fontSize:18, fontWeight:900, color:C.white, marginBottom:10, letterSpacing:'.08em', textTransform:'uppercase' }}>Historial</div>
+              <div style={{ fontFamily:TITLE, fontWeight:400, fontSize:18, color:C.white, marginBottom:10, letterSpacing:'.08em', textTransform:'uppercase' }}>Historial</div>
               <div style={{ fontSize:12, color:C.mist, marginBottom:20 }}>Cambios recientes en tu negocio.</div>
               <HelpBanner
                 id="merchant-historial"
@@ -19981,7 +19986,7 @@ function CommerceSettingsView({ user, profile, setView, onLogout, onOwnerProfile
         {tab === 'planes' && (
           <div>
             <div style={{ display:'flex', alignItems:'center', gap:8, marginBottom:10 }}>
-              <div style={{ fontFamily:FN, fontSize:18, fontWeight:900, color:C.white, letterSpacing:'.08em', textTransform:'uppercase' }}>Planes</div>
+              <div style={{ fontFamily:TITLE, fontWeight:400, fontSize:18, color:C.white, letterSpacing:'.08em', textTransform:'uppercase' }}>Planes</div>
               <InfoHint align="left" text={
                 'FREE: gratis, hasta 30 clientes, sin promociones extra ni mensajes automáticos.\n\n' +
                 'STARTER: hasta 60 clientes y desbloqueás Recompensas extra (cupón próxima visita y días con bonus ×2).\n\n' +
@@ -20731,7 +20736,7 @@ function CommerceSettingsView({ user, profile, setView, onLogout, onOwnerProfile
                   <ArrowLeft size={13} strokeWidth={2.5} /> Volver a recompensas
                 </button>
               )}
-              <div style={{ fontFamily:FN, fontSize:18, fontWeight:900, color:C.white, marginBottom:4, display:'flex', alignItems:'center', gap:10, letterSpacing:'.08em', textTransform:'uppercase' }}>
+              <div style={{ fontFamily:TITLE, fontWeight:400, fontSize:18, color:C.white, marginBottom:4, display:'flex', alignItems:'center', gap:10, letterSpacing:'.08em', textTransform:'uppercase' }}>
                 Automatizaciones
                 <span style={{ fontSize:10, fontWeight:700, color:PLANS.pro.color, background:`${PLANS.pro.color}22`, borderRadius:99, padding:'2px 10px', fontFamily:FN, letterSpacing:'.06em' }}>SOLO PRO</span>
               </div>
@@ -20961,7 +20966,7 @@ function CommerceSettingsView({ user, profile, setView, onLogout, onOwnerProfile
                 </button>
               )}
               <div style={{ display:'flex', alignItems:'center', gap:8, marginBottom:10 }}>
-                <div style={{ fontFamily:FN, fontSize:18, fontWeight:900, color:C.white, letterSpacing:'.08em', textTransform:'uppercase' }}>Automatizaciones</div>
+                <div style={{ fontFamily:TITLE, fontWeight:400, fontSize:18, color:C.white, letterSpacing:'.08em', textTransform:'uppercase' }}>Automatizaciones</div>
                 <InfoHint align="left" text={
                   'Mensajes de WhatsApp que la app te ayuda a enviar a clientes específicos sin que tengas que pensarlo.\n\n' +
                   'La app detecta los clientes que cumplen una condición (ej. "no vinieron hace 30 días") y te muestra el mensaje listo para enviar. Vos lo revisás y lo despachás con un click.\n\n' +
