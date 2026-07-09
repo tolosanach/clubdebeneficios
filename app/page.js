@@ -2850,6 +2850,14 @@ function Navbar({ setView, cityName, user, profile, commerce, onLogin, onLogout,
         borderBottom: '1px solid rgba(237,213,246,0.08)',
       }
 
+  // Tinte del nav según el contexto activo (solo cuando se ve el switch):
+  // Comercio = violeta oscuro; Cliente = magenta oscuro. Mismo bar, color
+  // del modo pero apagado, para no competir con el switch vibrante.
+  const NAV_CTX_TINT = !showContextSwitch ? null
+    : activeContext === 'client'
+      ? { background: scrolled ? 'rgba(58, 4, 38, 0.96)' : 'rgba(58, 4, 38, 0.82)', borderBottom: '1px solid rgba(244,114,182,0.16)' }
+      : { background: scrolled ? 'rgba(40, 6, 66, 0.96)' : 'rgba(40, 6, 66, 0.82)', borderBottom: '1px solid rgba(167,139,250,0.16)' }
+
   // ── Shared style helpers ──────────────────────────────────────────────────
   // Botones dentro del contenedor glass: transparentes por defecto,
   // gradient G como "indicador" en el botón activo (mismo patrón que ClientBottomNav).
@@ -2964,7 +2972,7 @@ function Navbar({ setView, cityName, user, profile, commerce, onLogin, onLogout,
 
   return (
     <>
-    <nav className="navbar-glass" style={{ ...NAV, ...NAV_TRANSITION, ...NAV_SCROLL_STATE, padding:'0 16px' }}>
+    <nav className="navbar-glass" style={{ ...NAV, ...NAV_TRANSITION, ...NAV_SCROLL_STATE, ...(NAV_CTX_TINT || {}), padding:'0 16px' }}>
       <div style={{ cursor:'pointer' }} onClick={() => setView('home')}><Logo height={44} /></div>
       {/* LEGACY NAVBAR — reemplazado por BottomNavV2 el 2026-05-03.
           Borrar despues de validar 1 sprint. Bloque original con kit
@@ -3046,24 +3054,16 @@ function Navbar({ setView, cityName, user, profile, commerce, onLogin, onLogout,
             // Rebrand mayo 2026: violeta brand sólido (#6F30DF) en
             // lugar del gradient violeta-violeta. Misma intencion: marcar
             // el icono activo del kit duenio con glow brand, ícono blanco.
-            // Cada botón toma el COLOR DE SU MODO cuando está activo:
-            // Eye (vista cliente/pública) = fucsia; Store (negocio) = violeta.
-            // Inactivos: fondo neutro, ícono con un dejo del color del modo.
-            const FUCHSIA_ACTIVE = {
-              background: '#D6198C',
-              border: 'none',
-              boxShadow: '0 2px 10px rgba(214,25,140,0.45)',
-            }
             const VIOLET_ACTIVE = {
-              background: '#6F30DF',
+              background: '#EDD5F6',
               border: 'none',
-              boxShadow: '0 2px 10px rgba(111,48,223,0.45)',
+              boxShadow: '0 2px 10px rgba(34,0,51,0.22)',
             }
             return (
               <>
                 <button title="Vista pública de mi club" onClick={onOwnerProfile}
-                  style={{ ...BTN, ...(eyeActive ? FUCHSIA_ACTIVE : NEUTRAL), cursor: 'pointer' }}>
-                  <Eye size={16} color={eyeActive ? '#fff' : 'rgba(214,25,140,0.85)'} strokeWidth={2} />
+                  style={{ ...BTN, ...(eyeActive ? VIOLET_ACTIVE : NEUTRAL), cursor: 'pointer' }}>
+                  <Eye size={16} color={eyeActive ? '#220033' : 'rgba(189,75,248,0.85)'} strokeWidth={2} />
                 </button>
                 <button title="Mi Negocio"
                   onClick={() => {
@@ -3071,7 +3071,7 @@ function Navbar({ setView, cityName, user, profile, commerce, onLogin, onLogout,
                     window.dispatchEvent(new CustomEvent('clufix:merchant-intent'))
                   }}
                   style={{ ...BTN, ...(storeActive ? VIOLET_ACTIVE : NEUTRAL), cursor: 'pointer' }}>
-                  <Store size={16} color={storeActive ? '#fff' : 'rgba(189,75,248,0.85)'} strokeWidth={2} />
+                  <Store size={16} color={storeActive ? '#220033' : 'rgba(189,75,248,0.85)'} strokeWidth={2} />
                 </button>
               </>
             )
