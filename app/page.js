@@ -1533,9 +1533,14 @@ function QrFullscreen({ open, onClose, qrValue, audience = 'client', shareUrl = 
   const topLabel = audience === 'merchant'
     ? `QR DE ${(shareTitle && shareTitle !== 'Clufix' ? shareTitle : 'MI NEGOCIO').toUpperCase()}`
     : 'QR PERSONAL'
+  // Título grande y claro en pantalla, según a quién le hablamos.
+  const screenTitle = audience === 'merchant'
+    ? 'Mostrá este QR para que tus clientes se sumen a tu club'
+    : 'Mostrá tu QR en cada negocio para sumar y canjear premios'
   const ticketInstruction = audience === 'merchant'
     ? 'ESCANEÁ PARA UNIRTE AL CLUB'
-    : 'ESCANEÁ ESTE QR EN EL NEGOCIO'
+    : 'ESCANEÁ ESTE QR EN CAJA'
+  const nameKicker = audience === 'merchant' ? 'TU NEGOCIO' : 'TU NOMBRE'
   const bottomName = displayName || (shareTitle && shareTitle !== 'Clufix' ? shareTitle : '')
 
   // kept for buildShareImage
@@ -1752,14 +1757,14 @@ function QrFullscreen({ open, onClose, qrValue, audience = 'client', shareUrl = 
         <Logo size="sm" style={{ height: 60 }} />
       </div>
 
-      {/* Label superior */}
-      <div style={{
-        fontFamily: FN, fontSize: 11, fontWeight: 700,
-        letterSpacing: '.14em', textTransform: 'uppercase',
-        color: 'rgba(255,255,255,0.55)', marginBottom: 24,
-        textAlign: 'center',
-      }}>
-        {topLabel}
+      {/* Título — subtítulo claro, más chico que el logo para no competir */}
+      <div style={{ maxWidth: 280, textAlign: 'center', marginBottom: 22 }}>
+        <div style={{
+          fontFamily: FN, fontSize: 15, fontWeight: 600,
+          color: 'rgba(255,255,255,0.92)', lineHeight: 1.35, letterSpacing: '0',
+        }}>
+          {screenTitle}
+        </div>
       </div>
 
       {/* Ticket */}
@@ -1797,15 +1802,23 @@ function QrFullscreen({ open, onClose, qrValue, audience = 'client', shareUrl = 
         }} />
       </div>
 
-      {/* Nombre debajo del ticket */}
+      {/* Nombre debajo del ticket — kicker + nombre en TEXTO (no estilo botón,
+          para que no compita con Compartir/Copiar). */}
       {bottomName && (
-        <div style={{
-          marginTop: 28,
-          fontFamily: FN, fontSize: 16, fontWeight: 700,
-          color: 'rgba(255,255,255,0.90)', textAlign: 'center',
-          letterSpacing: '-.01em',
-        }}>
-          {bottomName}
+        <div style={{ marginTop: 22, textAlign: 'center' }}>
+          <div style={{
+            fontFamily: FN, fontSize: 10, fontWeight: 700,
+            letterSpacing: '.16em', textTransform: 'uppercase',
+            color: 'rgba(255,255,255,0.50)', marginBottom: 3,
+          }}>
+            {nameKicker}
+          </div>
+          <div style={{
+            fontFamily: FN, fontSize: 22, fontWeight: 800,
+            color: '#fff', letterSpacing: '-.01em',
+          }}>
+            {bottomName}
+          </div>
         </div>
       )}
 
@@ -20618,10 +20631,10 @@ function CommerceSettingsView({ user, profile, setView, onLogout, onOwnerProfile
                   viewport que aparece SOLO cuando hay cambios sin guardar
                   (isDirty=true). Animación slide-up al aparecer. Cuando
                   el dueño guarda y todo queda clean, se oculta solo. */}
-              {isDirty && (
+              {(
                 <div style={{
                   position: 'fixed',
-                  bottom: 16, left: 0, right: 0,
+                  bottom: 'calc(84px + env(safe-area-inset-bottom, 0px))', left: 0, right: 0,
                   zIndex: 180,
                   display: 'flex', justifyContent: 'center',
                   padding: '0 16px',
@@ -20648,20 +20661,20 @@ function CommerceSettingsView({ user, profile, setView, onLogout, onOwnerProfile
                     }}>
                       <span style={{
                         display: 'inline-block', width: 6, height: 6, borderRadius: '50%',
-                        background: '#FF199F', marginRight: 8, verticalAlign: 'middle',
-                        boxShadow: '0 0 6px rgba(245,166,35,0.85)',
+                        background: isDirty ? '#FF199F' : '#22C55E', marginRight: 8, verticalAlign: 'middle',
+                        boxShadow: isDirty ? '0 0 6px rgba(245,166,35,0.85)' : '0 0 6px rgba(34,197,94,0.7)',
                       }} />
-                      Cambios sin guardar
+                      {isDirty ? 'Cambios sin guardar' : 'Todo guardado'}
                     </div>
-                    <button onClick={saveConfiguracion} disabled={saving || Object.values(configErrors || {}).some(Boolean)}
+                    <button onClick={saveConfiguracion} disabled={saving || !isDirty || Object.values(configErrors || {}).some(Boolean)}
                       style={{
                         padding: '9px 18px', borderRadius: 99,
-                        background: (saving || Object.values(configErrors || {}).some(Boolean)) ? 'rgba(255,255,255,0.10)' : G,
+                        background: (saving || !isDirty || Object.values(configErrors || {}).some(Boolean)) ? 'rgba(255,255,255,0.10)' : G,
                         border: 'none',
                         color: '#fff',
                         fontFamily: FN, fontSize: 12.5, fontWeight: 800,
-                        cursor: (saving || Object.values(configErrors || {}).some(Boolean)) ? 'wait' : 'pointer',
-                        boxShadow: (saving || Object.values(configErrors || {}).some(Boolean)) ? 'none' : '0 6px 18px rgba(254,80,0,0.40)',
+                        cursor: (saving || !isDirty || Object.values(configErrors || {}).some(Boolean)) ? 'wait' : 'pointer',
+                        boxShadow: (saving || !isDirty || Object.values(configErrors || {}).some(Boolean)) ? 'none' : '0 6px 18px rgba(254,80,0,0.40)',
                         transition: 'background 160ms ease',
                         whiteSpace: 'nowrap',
                         flexShrink: 0,
