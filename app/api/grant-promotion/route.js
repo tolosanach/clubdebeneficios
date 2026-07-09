@@ -14,6 +14,7 @@ import { NextResponse } from 'next/server'
 import { createClient } from '@supabase/supabase-js'
 import { createSupabaseServer } from '../../../lib/supabase-server'
 import { notifyBoth } from '../../../lib/notify-server'
+import { argentinaEndOfDayISO } from '../../../lib/tz'
 
 const supabaseAdmin = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL,
@@ -87,10 +88,7 @@ export async function POST(request) {
     // Calcular expires_at del cupón otorgado
     let expiresAt
     if (promo.expiration_type === 'relative') {
-      const d = new Date()
-      d.setDate(d.getDate() + (promo.expiration_days || 7))
-      d.setHours(23, 59, 59, 999)
-      expiresAt = d.toISOString()
+      expiresAt = argentinaEndOfDayISO(promo.expiration_days || 7)
     } else {
       // expires_at es el campo vivo (se actualiza al editar la promo desde
       // el panel). expiration_date es el valor del form al crearla y nunca

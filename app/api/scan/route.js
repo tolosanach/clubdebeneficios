@@ -6,6 +6,7 @@ import { createClient } from '@supabase/supabase-js'
 import { createSupabaseServer } from '../../../lib/supabase-server'
 import { applyPendingGrant } from '../../../lib/applyPendingGrant'
 import { notifyBoth } from '../../../lib/notify-server'
+import { argentinaDow } from '../../../lib/tz'
 
 const supabaseAdmin = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL,
@@ -111,7 +112,7 @@ export async function POST(request) {
     //   (b) days incluye el dia de hoy  → lo aplicamos
     // Normalizamos a numero porque la DB puede tener strings ("0", "1")
     // o ints (0, 1) segun version del codigo que escribio la fila.
-    const todayDow = new Date().getDay()  // 0=domingo, 1=lunes, ...
+    const todayDow = argentinaDow()  // 0=domingo … 6=sábado, en horario AR
     const hasDouble = validPromos.some(p => {
       if (p.type !== 'double_points') return false
       if (!Array.isArray(p.days) || p.days.length === 0) return true

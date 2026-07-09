@@ -121,14 +121,13 @@ export async function POST(request) {
       .eq('id', redemption_id)
     if (updErr) throw updErr
 
-    // Stock: -1, y si llega a 0 lo desactivamos automáticamente.
+    // Stock: -1 atómico (RPC), y si llega a 0 lo desactivamos automáticamente.
+    // El UPDATE con guard `stock > 0` evita oversell y decrementos perdidos
+    // cuando el dueño confirma varios canjes del mismo premio en paralelo.
     let stockDepleted = false
     if (prize.stock !== null) {
-      const newStock = prize.stock - 1
-      stockDepleted = newStock === 0
-      await supabaseAdmin.from('prizes')
-        .update({ stock: newStock, ...(stockDepleted ? { active: false } : {}) })
-        .eq('id', prize.id)
+      const { data: dec } = await supabaseAdmin.rpc('decrement_prize_stock', { p_prize_id: prize.id })
+      stockDepleted = (dec && dec.length) ? !!dec[0].depleted : true
     }
 
     // Notif al cliente — su canje quedó confirmado. Lo llevamos a su

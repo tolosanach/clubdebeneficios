@@ -49,6 +49,12 @@ export async function GET(request) {
         prizes:prize_id(id, name, cost)
       `)
       .eq('commerce_id', commerce_id)
+      // Solo canjes de PREMIO efectivamente concretados. Antes el reporte
+      // incluía filas kind='discount' (cupones de descuento, sin prize → se
+      // mostraban como "Desconocido") y filas cancelled (canjes rechazados
+      // cuyo saldo se devolvió), inflando el listado de premios canjeados.
+      .eq('kind', 'prize')
+      .neq('status', 'cancelled')
       .order('created_at', { ascending: false })
 
     // Filtrar por fechas si se proporcionan

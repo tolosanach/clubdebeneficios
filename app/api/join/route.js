@@ -4,6 +4,7 @@ import { createClient } from '@supabase/supabase-js'
 import { createSupabaseServer } from '../../../lib/supabase-server'
 import { applyPendingGrant } from '../../../lib/applyPendingGrant'
 import { notifyBoth } from '../../../lib/notify-server'
+import { argentinaDow, argentinaEndOfDayISO } from '../../../lib/tz'
 
 const supabaseAdmin = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL,
@@ -107,7 +108,7 @@ export async function POST(request) {
     if (newMem?.id) {
       try {
         const nowIso   = new Date().toISOString()
-        const todayDow = new Date().getDay()  // 0=domingo … 6=sábado
+        const todayDow = argentinaDow()  // 0=domingo … 6=sábado, en horario AR
         const { data: promos } = await supabaseAdmin
           .from('promotions')
           .select('id, type, value, days, expiration_type, expiration_date, expiration_days, expires_at')
@@ -126,10 +127,7 @@ export async function POST(request) {
         for (const promo of validPromos.filter(p => p.type === 'discount_next')) {
           let expiresAt
           if (promo.expiration_type === 'relative') {
-            const d = new Date()
-            d.setDate(d.getDate() + (promo.expiration_days || 7))
-            d.setHours(23, 59, 59, 999)
-            expiresAt = d.toISOString()
+            expiresAt = argentinaEndOfDayISO(promo.expiration_days || 7)
           } else {
             // expires_at es el campo vivo (se actualiza cuando el dueño edita
             // la vigencia desde el panel). expiration_date es el valor del

@@ -2,11 +2,10 @@
 import './globals.css'
 import React, { useState, useEffect, useCallback, useRef, useMemo } from 'react'
 import Cropper from 'react-easy-crop'
-import { HexColorPicker } from 'react-colorful'
 import { createPortal } from 'react-dom'
 import { getSupabase } from '../lib/supabase'
 import { exportToCSV, exportToExcel } from '../lib/export'
-import { hashToCardColor, cardColors } from '../lib/cardColors'
+import { hashToCardColor, cardColors, hueToSafeColor, hexToHue } from '../lib/cardColors'
 import { FAMILIES_DATA } from '../lib/commerce-families-data'
 import PhoneInput from '../lib/PhoneInput'
 import SupportChat from '../lib/SupportChat'
@@ -633,11 +632,12 @@ function InstallPrompt({ currentView }) {
 
   return (
     <>
-      {/* El banner ocupa el ancho de pantalla con margen lateral simétrico
-          (left:16 / right:16). Visualmente queda detrás de los botones
-          flotantes (chat + campana a right:18) — está bien porque el banner
-          es transitorio y se cierra con la X arriba-izquierda. */}
-      <div className="modal-in" style={{ position:'fixed', bottom:88, left:16, right:16, zIndex:190, background:'rgba(18,10,32,0.97)', backdropFilter:'blur(24px)', WebkitBackdropFilter:'blur(24px)', border:'1px solid rgba(189,75,248,0.35)', borderRadius:18, padding:'14px 16px', boxShadow:'0 8px 40px rgba(0,0,0,0.5)', display:'flex', alignItems:'center', gap:12 }}>
+      {/* Tarjeta compacta anclada abajo-izquierda. En mobile toma el ancho
+          disponible con márgenes (calc(100% - 32px)); en escritorio queda
+          topeada a 380px (right:auto) para no estirarse a toda la pantalla.
+          Anclada a la izquierda para no chocar con los botones flotantes
+          (chat + campana) que viven abajo-derecha. Se cierra con la X. */}
+      <div className="modal-in" style={{ position:'fixed', bottom:88, left:16, right:'auto', width:'calc(100% - 32px)', maxWidth:380, zIndex:190, background:'rgba(18,10,32,0.97)', backdropFilter:'blur(24px)', WebkitBackdropFilter:'blur(24px)', border:'1px solid rgba(189,75,248,0.35)', borderRadius:18, padding:'14px 16px', boxShadow:'0 8px 40px rgba(0,0,0,0.5)', display:'flex', alignItems:'center', gap:12 }}>
         {/* X de cerrar — esquina superior izquierda, lejos de los botones
             flotantes que están a la derecha. */}
         <button onClick={dismiss} aria-label="Cerrar"
@@ -1321,8 +1321,10 @@ function _luminance(hex) {
 }
 
 function ColorPickerModal({ initialColor, onApply, onClose }) {
-  const [draft, setDraft] = useState(initialColor || '#7D5C8A')
-  const [hex,   setHex]   = useState(initialColor || '#7D5C8A')
+  // El slider trabaja sobre el TONO (0–360). El color final se deriva del tono
+  // a una luminosidad segura, así el control jamás produce algo ilegible.
+  const [hue, setHue] = useState(() => hexToHue(initialColor || '#7C3AED'))
+  const draft = hueToSafeColor(hue)
   const modalRef  = useRef(null)
   const [mobile, setMobile] = useState(false)
 
@@ -1343,16 +1345,7 @@ function ColorPickerModal({ initialColor, onApply, onClose }) {
     return () => document.removeEventListener('keydown', onKey)
   }, [onClose])
 
-  function onPickerChange(val) { setDraft(val); setHex(val) }
-  function onHexInput(val) {
-    setHex(val)
-    if (/^#[0-9A-Fa-f]{6}$/.test(val)) setDraft(val)
-  }
-
   const pc = cardColors(draft)
-  const lBg   = _luminance(draft)
-  const lText = _luminance(pc.text)
-  const ratio = (Math.max(lBg,lText)+0.05)/(Math.min(lBg,lText)+0.05)
 
   return createPortal(
     <div
@@ -1367,19 +1360,33 @@ function ColorPickerModal({ initialColor, onApply, onClose }) {
         style={{ width:'100%', maxWidth:340, background:'#0E0B18', border:`1px solid rgba(255,255,255,0.12)`, boxShadow:'0 24px 64px rgba(0,0,0,0.7)', borderRadius: mobile ? '20px 20px 0 0' : 20, padding: mobile ? '24px 20px 32px' : '24px 20px 20px', display:'flex', flexDirection:'column', gap:14 }}
       >
         <div style={{ fontFamily:FN, fontSize:16, fontWeight:800, color:C.white }}>Elegí el color de tu tarjeta</div>
-
-        <HexColorPicker color={draft} onChange={onPickerChange} style={{ width:'100%', height:180 }} />
-
-        <div style={{ display:'flex', alignItems:'center', gap:8 }}>
-          <div style={{ width:28, height:28, borderRadius:6, background:draft, border:`1px solid rgba(255,255,255,0.18)`, flexShrink:0 }} />
-          <input
-            value={hex}
-            onChange={e => onHexInput(e.target.value)}
-            maxLength={7}
-            spellCheck={false}
-            style={{ flex:1, background:'rgba(255,255,255,0.06)', border:`1px solid ${C.rim}`, borderRadius:8, padding:'7px 10px', fontSize:13, fontFamily:'monospace', color:C.white, outline:'none', letterSpacing:'0.05em' }}
-          />
+        <div style={{ fontFamily:FI, fontSize:12, color:C.dust, marginTop:-6, lineHeight:1.4 }}>
+          Deslizá para elegir tu tono. Cualquiera que elijas se ve bien con el texto en blanco.
         </div>
+
+        {/* Slider de TONO acotado. La barra recorre todo el espectro pero cada
+            punto ya está a una luminosidad segura (hueToSafeColor), así el
+            control es incapaz de generar un color donde el blanco no se lea.
+            Un <input range> nativo (invisible) maneja drag/touch/teclado; la
+            barra de gradiente y el thumb se pintan según `hue`. */}
+        {(() => {
+          const pct = (hue / 360) * 100
+          const stops = []
+          for (let h = 0; h <= 360; h += 20) stops.push(hueToSafeColor(h))
+          const trackGradient = `linear-gradient(90deg, ${stops.join(',')})`
+          return (
+            <div style={{ position:'relative', height:44, display:'flex', alignItems:'center' }}>
+              <div style={{ position:'absolute', left:0, right:0, height:22, borderRadius:11, background:trackGradient, border:'1px solid rgba(255,255,255,0.16)' }} />
+              <div style={{ position:'absolute', left:`${pct}%`, transform:`translateX(-${pct}%)`, width:26, height:26, borderRadius:'50%', background:draft, border:'3px solid #FFFFFF', boxShadow:'0 2px 8px rgba(0,0,0,0.55)', pointerEvents:'none' }} />
+              <input
+                type="range" min="0" max="360" value={hue}
+                onChange={e => setHue(Number(e.target.value))}
+                aria-label="Tono del color de la tarjeta"
+                style={{ position:'absolute', left:0, right:0, width:'100%', height:44, margin:0, opacity:0, cursor:'pointer' }}
+              />
+            </div>
+          )
+        })()}
 
         <div style={{ borderRadius:10, overflow:'hidden', background: pc.bg, padding:'12px 14px', display:'flex', alignItems:'center', justifyContent:'space-between', border:`1px solid ${pc.detail}` }}>
           <div>
@@ -1388,13 +1395,6 @@ function ColorPickerModal({ initialColor, onApply, onClose }) {
           </div>
           <div style={{ fontFamily:FN, fontSize:10, fontWeight:700, color: pc.text, opacity:0.75, letterSpacing:'0.06em' }}>VISTA PREVIA</div>
         </div>
-
-        {ratio < 4.5 && (
-          <div style={{ fontSize:11, color:'#F59E0B', display:'flex', alignItems:'center', gap:5, background:'rgba(245,158,11,0.10)', borderRadius:7, padding:'6px 10px' }}>
-            <AlertTriangle size={12} strokeWidth={2} color="#F59E0B" />
-            Este color puede dificultar la lectura del texto.
-          </div>
-        )}
 
         <div style={{ display:'flex', gap:10, marginTop:2 }}>
           <button onClick={onClose}
@@ -7344,8 +7344,8 @@ function WalletCardFront({ club, colors, onFlip, visible }) {
         <div style={{ display:'flex', justifyContent:'space-between', alignItems:'flex-start', flexShrink:0 }}>
           <CommerceLogo commerce={commerce} size={52} radius={11} />
           <div style={{ textAlign:'right' }}>
-            <div style={{ fontFamily:FN, fontSize:38, fontWeight:900, color:colors.text, lineHeight:1, letterSpacing:'-0.03em', opacity:0.85 }}>+{displayBal}</div>
-            <div style={{ fontFamily:FN, fontSize:11, fontWeight:700, color:colors.textSub, letterSpacing:'0.12em', marginTop:2, textTransform:'uppercase' }}>{unit}</div>
+            <div style={{ fontFamily:FN, fontSize:38, fontWeight:900, color:colors.strong, lineHeight:1, letterSpacing:'-0.03em', opacity:0.96 }}>+{displayBal}</div>
+            <div style={{ fontFamily:FN, fontSize:11, fontWeight:700, color:colors.strong, opacity:0.72, letterSpacing:'0.12em', marginTop:2, textTransform:'uppercase' }}>{unit}</div>
             {(promoBadge || doublePromo) && (
               <div style={{ display:'flex', flexWrap:'wrap', justifyContent:'flex-end', gap:4, marginTop:6 }}>
                 {promoBadge && (
@@ -7382,6 +7382,24 @@ function WalletCardFront({ club, colors, onFlip, visible }) {
           </div>
         </div>
 
+        {/* Nombre del negocio — DEBAJO del logo, con la tipografía de títulos
+            de la app (FN, sans-serif) y en alto contraste (colors.strong,
+            blanco en tarjetas oscuras). Es lo que identifica la tarjeta, así
+            que es lo primero que se lee. Antes vivía abajo en monospace
+            estilo tarjeta de crédito y pasaba desapercibido. */}
+        <div style={{
+          marginTop:9, flexShrink:0, minWidth:0,
+          fontFamily:FN,
+          fontSize:19, fontWeight:800,
+          color:colors.strong,
+          letterSpacing:'-0.01em',
+          lineHeight:1.15,
+          overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap',
+          maxWidth:'86%',
+        }}>
+          {commerce?.name}
+        </div>
+
         {/* Spacer — pushes bottom group up from logo. */}
         <div style={{ flex:1, minHeight:8 }} />
 
@@ -7393,36 +7411,20 @@ function WalletCardFront({ club, colors, onFlip, visible }) {
         {/* Row 3: número de tarjeta — 16 dígitos en grupos de 4, estilo
             tarjeta de crédito real. Generado determinísticamente desde
             commerce.id así cada comercio tiene su propio número fijo
-            (mismo dueño = misma tarjeta cada vez que la abre). */}
+            (mismo dueño = misma tarjeta cada vez que la abre). Va en
+            colors.faint (un tono más oscuro del propio color de la tarjeta)
+            porque es lo MENOS importante: presente, pero apagado frente al
+            logo/nombre/saldo. El nombre del negocio ya no vive acá abajo —
+            subió al top, debajo del logo, con la tipografía de títulos. */}
         <div style={{
           marginTop:5, flexShrink:0,
           fontFamily:FCC,
           fontSize:16, fontWeight:600,
-          color:colors.text,
+          color:colors.faint,
           letterSpacing:'0.10em',
-          opacity:0.85,
           whiteSpace:'nowrap',
         }}>
           {cardNumberFromSeed(commerce?.id || commerce?.slug || commerce?.name)}
-        </div>
-
-        {/* Row 4: Nombre del negocio (estilo credit-card monospace).
-            El sub-line de rating/categoría se removió — con dos promos
-            activas la altura del card no alcanzaba para todo y el nombre
-            del comercio era lo que se cortaba. La info del rubro y rating
-            ya está en la pestaña Beneficios y en la página del club. */}
-        <div style={{ marginTop:6, flexShrink:0, minWidth:0, paddingBottom:2 }}>
-          <div style={{
-            fontFamily:FCC,
-            fontSize:16, fontWeight:700,
-            color:colors.text,
-            letterSpacing:'0.08em',
-            textTransform:'uppercase',
-            overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap',
-            lineHeight:1.2,
-          }}>
-            {commerce?.name}
-          </div>
         </div>
       </div>
 
@@ -12336,7 +12338,7 @@ function CommerceSettingsView({ user, profile, setView, onLogout, onOwnerProfile
             supabase.from('prizes').select('*').eq('commerce_id', data.id).order('created_at'),
             supabase.from('promotions').select('*').eq('commerce_id', data.id).order('created_at', {ascending:false}),
             supabase.from('commerce_activity').select('*').eq('commerce_id', data.id).order('created_at', {ascending:false}).limit(60),
-            supabase.from('redemptions').select('prize_id').eq('commerce_id', data.id),
+            supabase.from('redemptions').select('prize_id').eq('commerce_id', data.id).eq('kind', 'prize').eq('status', 'completed'),
           ]).then(([{ data:prizes }, { data:promos }, { data:activity }, { data:redemps }]) => {
             setPrizes(prizes || [])
             setPromos(promos || [])

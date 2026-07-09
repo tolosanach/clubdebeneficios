@@ -13,6 +13,12 @@ const supabaseAdmin = createClient(
 
 export async function POST(req) {
   try {
+    // Guard: utilidad admin. Solo se ejecuta con el CRON_SECRET (mismo patrón
+    // que los endpoints de cron). Sin él respondía a cualquier request anónimo.
+    if (!process.env.CRON_SECRET || req.headers.get('authorization') !== `Bearer ${process.env.CRON_SECRET}`) {
+      return Response.json({ error: 'No autorizado' }, { status: 401 })
+    }
+
     const { searchParams } = new URL(req.url)
     const commerceSlug = searchParams.get('commerce_slug')
 

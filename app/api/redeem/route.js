@@ -3,6 +3,7 @@
 
 import { NextResponse } from 'next/server'
 import { createClient } from '@supabase/supabase-js'
+import { createSupabaseServer } from '../../../lib/supabase-server'
 import { notifyBoth } from '../../../lib/notify-server'
 
 const supabaseAdmin = createClient(
@@ -12,6 +13,18 @@ const supabaseAdmin = createClient(
 
 export async function POST(request) {
   try {
+    // ── AUTH GUARD ─────────────────────────────────────────────────────────
+    // El canje directo lo ejecuta el DUEÑO (o admin) del comercio desde el
+    // panel o el escáner. Sin esta verificación, cualquier request anónimo
+    // que conozca membership_id/prize_id/commerce_id/user_id (todos derivables
+    // del QR público CLUB-<user_id> y del catálogo público de premios) podía
+    // vaciar el saldo de un cliente y agotar stock a voluntad.
+    const supabase = await createSupabaseServer()
+    const { data: { user }, error: authError } = await supabase.auth.getUser()
+    if (authError || !user) {
+      return NextResponse.json({ error: 'No autenticado' }, { status: 401 })
+    }
+
     const { membership_id, prize_id, commerce_id, user_id } = await request.json()
 
     if (!membership_id || !prize_id || !commerce_id || !user_id) {
@@ -39,6 +52,19 @@ export async function POST(request) {
     // Tipo de programa del comercio (para saber qué columna debitar)
     const { data: commerce } = await supabaseAdmin
       .from('commerces').select('prog_type, owner_id, name, slug').eq('id', commerce_id).single()
+
+    if (!commerce) {
+      return NextResponse.json({ error: 'Comercio no encontrado' }, { status: 404 })
+    }
+
+    // El caller tiene que ser el dueño del comercio (o admin global).
+    if (commerce.owner_id !== user.id) {
+      const { data: callerProfile } = await supabaseAdmin
+        .from('profiles').select('role').eq('id', user.id).single()
+      if (callerProfile?.role !== 'admin') {
+        return NextResponse.json({ error: 'No autorizado' }, { status: 403 })
+      }
+    }
 
     const isStars    = commerce?.prog_type === 'stars'
     const balanceCol = isStars ? 'stars' : 'points'
@@ -72,14 +98,12 @@ export async function POST(request) {
       points_spent: prize.cost,
     })
 
-    // Descontar stock si aplica
+    // Descontar stock si aplica — atómico vía RPC para evitar oversell y
+    // decrementos perdidos en canjes simultáneos del mismo premio.
     let stockDepleted = false
     if (prize.stock !== null) {
-      const newStock = prize.stock - 1
-      stockDepleted = newStock === 0
-      await supabaseAdmin.from('prizes')
-        .update({ stock: newStock, ...(stockDepleted ? { active: false } : {}) })
-        .eq('id', prize_id)
+      const { data: dec } = await supabaseAdmin.rpc('decrement_prize_stock', { p_prize_id: prize_id })
+      stockDepleted = (dec && dec.length) ? !!dec[0].depleted : true
     }
 
     // ─── NOTIFICACIONES ──────────────────────────────────────────────────

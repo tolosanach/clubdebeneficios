@@ -80,27 +80,21 @@ export async function POST(request) {
     }
     const cancelledByOwner = isAdmin || isOwner
 
-    // Devolver saldo reservado: sumamos points_spent al membership. Es
-    // un UPDATE simple, no necesita RPC porque sumar es seguro contra
-    // race-conditions.
+    // Devolver saldo reservado: sumamos points_spent al membership de forma
+    // ATÓMICA vía RPC. Un read-then-write (leer saldo, escribir saldo+refund)
+    // podía pisar un crédito concurrente — ej: un escaneo que suma puntos en
+    // paralelo al reembolso — perdiéndose uno de los dos.
     const isStars    = commerce.prog_type === 'stars'
     const balanceCol = isStars ? 'stars' : 'points'
     const refund     = redemption.points_spent || 0
     let refundedTo   = null
     if (refund > 0) {
-      const { data: m } = await supabaseAdmin
-        .from('memberships')
-        .select('id, stars, points')
-        .eq('id', redemption.membership_id)
-        .single()
-      if (m) {
-        const cur  = (isStars ? m.stars : m.points) || 0
-        refundedTo = cur + refund
-        await supabaseAdmin
-          .from('memberships')
-          .update({ [balanceCol]: refundedTo })
-          .eq('id', redemption.membership_id)
-      }
+      const { data: credited } = await supabaseAdmin.rpc('credit_membership_balance', {
+        p_membership_id: redemption.membership_id,
+        p_amount:        refund,
+        p_column:        balanceCol,
+      })
+      refundedTo = (credited && credited.length) ? credited[0].new_balance : null
     }
 
     // Marcamos como cancelled â saldo ya devuelto, stock nunca se toco.

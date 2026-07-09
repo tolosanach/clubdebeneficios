@@ -15,6 +15,7 @@
 
 import { NextResponse } from 'next/server'
 import { createClient } from '@supabase/supabase-js'
+import { createSupabaseServer } from '../../../lib/supabase-server'
 import { notify } from '../../../lib/notify-server'
 
 const supabaseAdmin = createClient(
@@ -32,15 +33,14 @@ function genCode() {
 
 export async function POST(request) {
   try {
-    // AUTH GUARD: verificar que el usuario autenticado es quien intenta hacer el canje
-    const supabaseAuth = createClient(
-      process.env.NEXT_PUBLIC_SUPABASE_URL,
-      process.env.SUPABASE_SERVICE_ROLE_KEY,
-      { auth: { persistSession: false } }
-    )
-    const { data: { user }, error: authError } = await supabaseAuth.auth.getUser(
-      request.headers.get('Authorization')?.replace('Bearer ', '')
-    )
+    // AUTH GUARD: verificar que el usuario autenticado es quien intenta hacer
+    // el canje. Se autentica por COOKIE de sesión (via @supabase/ssr), igual
+    // que /api/scan, /api/join, etc. Antes leía un `Authorization: Bearer`
+    // que NINGÚN caller del front enviaba (ni en /club/[slug] ni en la
+    // billetera de page.js), así que getUser() nunca encontraba usuario y el
+    // canje iniciado por el cliente devolvía 401 siempre.
+    const supabase = await createSupabaseServer()
+    const { data: { user }, error: authError } = await supabase.auth.getUser()
     if (authError || !user) {
       return NextResponse.json({ error: 'No autenticado' }, { status: 401 })
     }
@@ -171,10 +171,11 @@ export async function POST(request) {
       if (!inserted) {
         // El insert fallo despues de debitar â devolvemos el saldo para no
         // dejar al cliente sin sus puntos.
-        await supabaseAdmin
-          .from('memberships')
-          .update({ [balanceCol]: currentBalance })
-          .eq('id', membership_id)
+        await supabaseAdmin.rpc('credit_membership_balance', {
+          p_membership_id: membership_id,
+          p_amount:        prize.cost,
+          p_column:        balanceCol,
+        })
         throw lastErr || new Error('No se pudo crear la solicitud')
       }
       redemption = inserted
