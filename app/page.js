@@ -15770,7 +15770,7 @@ function CommerceSettingsView({ user, profile, setView, onLogout, onOwnerProfile
               // card: background degradé, glow del border, icon circle,
               // CTA button. El user pidió que el color "pinte la card
               // entera" en lugar de solo aparecer en detalles sutiles.
-              const themeColor     = isPending ? '#FF199F' : '#22E698'
+              const themeColor     = isPending ? '#F5A623' : '#22E698'
               const themeColorD    = isPending ? '#D97706' : '#15803D'  // Tono más oscuro para gradientes/sombras
               const themeColorL    = isPending ? '#FBBF24' : '#4ade80'  // Tono más claro/vibrante
               const themeRgba22    = isPending ? 'rgba(245,166,35,0.22)' : 'rgba(34,230,152,0.22)'
@@ -15801,7 +15801,7 @@ function CommerceSettingsView({ user, profile, setView, onLogout, onOwnerProfile
                     // así la card se siente del color identidad, no solo
                     // "tinted negra". Pendientes en gama amber/dark,
                     // Completos en gama green/dark.
-                    background: `linear-gradient(180deg, ${themeBgStart} 0%, ${themeBgMid} 50%, ${themeBgEnd} 100%)`,
+                    background: themeBgMid,
                     border: 'none',
                     borderRadius: 24,
                     // La primera card (idx 0) queda pegada justo debajo de
@@ -15819,7 +15819,7 @@ function CommerceSettingsView({ user, profile, setView, onLogout, onOwnerProfile
                     fontFamily: 'inherit',
                     transition: 'transform 180ms ease, box-shadow 280ms ease',
                     display: 'flex', flexDirection: 'column',
-                    minHeight: 320,
+                    minHeight: 190,
                     position: 'relative',
                     overflow: 'hidden',
                     // Shadow del color de la tab — antes era violeta uniforme,
@@ -15844,7 +15844,7 @@ function CommerceSettingsView({ user, profile, setView, onLogout, onOwnerProfile
                       position: 'absolute', inset: 0,
                       borderRadius: 'inherit',
                       padding: 1.4,
-                      background: `linear-gradient(180deg, rgba(255,255,255,0.06) 0%, ${themeBorderMid} 35%, ${themeBorderHi} 70%, ${themeBorderHi} 100%)`,
+                      background: themeBorderMid,
                       WebkitMask: 'linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0)',
                       WebkitMaskComposite: 'xor',
                       maskComposite: 'exclude',
@@ -15931,7 +15931,7 @@ function CommerceSettingsView({ user, profile, setView, onLogout, onOwnerProfile
                     position: 'absolute', bottom: -80, left: '50%',
                     transform: 'translateX(-50%)',
                     width: '140%', height: 200,
-                    background: `radial-gradient(ellipse at center bottom, ${themeColorL}88 0%, ${themeColor}66 32%, ${themeColorD}33 58%, transparent 100%)`,
+                    background: `radial-gradient(ellipse at center bottom, ${themeColor}22 0%, transparent 70%)`,
                     filter: 'blur(26px)',
                     pointerEvents: 'none',
                     zIndex: 0,
