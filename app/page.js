@@ -3046,16 +3046,24 @@ function Navbar({ setView, cityName, user, profile, commerce, onLogin, onLogout,
             // Rebrand mayo 2026: violeta brand sólido (#6F30DF) en
             // lugar del gradient violeta-violeta. Misma intencion: marcar
             // el icono activo del kit duenio con glow brand, ícono blanco.
-            const VIOLET_ACTIVE = {
-              background: '#EDD5F6',
+            // Cada botón toma el COLOR DE SU MODO cuando está activo:
+            // Eye (vista cliente/pública) = fucsia; Store (negocio) = violeta.
+            // Inactivos: fondo neutro, ícono con un dejo del color del modo.
+            const FUCHSIA_ACTIVE = {
+              background: '#D6198C',
               border: 'none',
-              boxShadow: '0 2px 10px rgba(34,0,51,0.22)',
+              boxShadow: '0 2px 10px rgba(214,25,140,0.45)',
+            }
+            const VIOLET_ACTIVE = {
+              background: '#6F30DF',
+              border: 'none',
+              boxShadow: '0 2px 10px rgba(111,48,223,0.45)',
             }
             return (
               <>
                 <button title="Vista pública de mi club" onClick={onOwnerProfile}
-                  style={{ ...BTN, ...(eyeActive ? VIOLET_ACTIVE : NEUTRAL), cursor: 'pointer' }}>
-                  <Eye size={16} color={eyeActive ? '#220033' : 'rgba(189,75,248,0.85)'} strokeWidth={2} />
+                  style={{ ...BTN, ...(eyeActive ? FUCHSIA_ACTIVE : NEUTRAL), cursor: 'pointer' }}>
+                  <Eye size={16} color={eyeActive ? '#fff' : 'rgba(214,25,140,0.85)'} strokeWidth={2} />
                 </button>
                 <button title="Mi Negocio"
                   onClick={() => {
@@ -3063,7 +3071,7 @@ function Navbar({ setView, cityName, user, profile, commerce, onLogin, onLogout,
                     window.dispatchEvent(new CustomEvent('clufix:merchant-intent'))
                   }}
                   style={{ ...BTN, ...(storeActive ? VIOLET_ACTIVE : NEUTRAL), cursor: 'pointer' }}>
-                  <Store size={16} color={storeActive ? '#220033' : 'rgba(189,75,248,0.85)'} strokeWidth={2} />
+                  <Store size={16} color={storeActive ? '#fff' : 'rgba(189,75,248,0.85)'} strokeWidth={2} />
                 </button>
               </>
             )
