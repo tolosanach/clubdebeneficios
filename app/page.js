@@ -1542,6 +1542,12 @@ function QrFullscreen({ open, onClose, qrValue, audience = 'client', shareUrl = 
     : 'ESCANEÁ ESTE QR EN CAJA'
   const nameKicker = audience === 'merchant' ? 'TU NEGOCIO' : 'TU NOMBRE'
   const bottomName = displayName || (shareTitle && shareTitle !== 'Clufix' ? shareTitle : '')
+  // Diferenciación por modo: color de fondo + ícono. Negocio = violeta de
+  // marca; cliente = fucsia. Se lee de un vistazo sin leer nada.
+  const isMerchantQr = audience === 'merchant'
+  const qrBg      = isMerchantQr ? '#6F30DF' : '#D6198C'
+  const ModeIcon  = isMerchantQr ? Store : User
+  const modeLabel = isMerchantQr ? 'MODO NEGOCIO' : 'TU PASE'
 
   // kept for buildShareImage
   const title    = audience === 'merchant' ? 'QR NEGOCIO' : 'QR PERSONAL'
@@ -1568,7 +1574,7 @@ function QrFullscreen({ open, onClose, qrValue, audience = 'client', shareUrl = 
     const ctx = canvas.getContext('2d')
     if (!ctx) return null
 
-    const VIOLET = '#6F30DF'
+    const VIOLET = qrBg
     const FONT   = "'Space Grotesk', system-ui, sans-serif"
 
     // ── 1. Fondo violeta ─────────────────────────────────────────────────
@@ -1732,7 +1738,7 @@ function QrFullscreen({ open, onClose, qrValue, audience = 'client', shareUrl = 
   return (
     <div role="dialog" aria-modal="true" style={{
       position: 'fixed', inset: 0, zIndex: 99999,
-      background: '#6F30DF',
+      background: qrBg,
       display: 'flex', flexDirection: 'column',
       alignItems: 'center', justifyContent: 'center',
       padding: `64px 24px calc(32px + env(safe-area-inset-bottom, 0px))`,
@@ -1755,6 +1761,20 @@ function QrFullscreen({ open, onClose, qrValue, audience = 'client', shareUrl = 
         display: 'flex', justifyContent: 'center', pointerEvents: 'none',
       }}>
         <Logo size="sm" style={{ height: 60 }} />
+      </div>
+
+      {/* Badge de modo — color + ícono para saber de un vistazo si es
+          pantalla de cliente o de negocio */}
+      <div style={{
+        display: 'inline-flex', alignItems: 'center', gap: 8,
+        padding: '7px 16px 7px 13px', marginBottom: 16,
+        background: 'rgba(0,0,0,0.20)', borderRadius: 99,
+      }}>
+        <ModeIcon size={16} strokeWidth={2.4} color="#fff" />
+        <span style={{
+          fontFamily: FN, fontSize: 11, fontWeight: 800,
+          letterSpacing: '.12em', textTransform: 'uppercase', color: '#fff',
+        }}>{modeLabel}</span>
       </div>
 
       {/* Título — subtítulo claro, más chico que el logo para no competir */}
@@ -1796,7 +1816,7 @@ function QrFullscreen({ open, onClose, qrValue, audience = 'client', shareUrl = 
         {/* Borde dentado inferior — semicírculos violeta que muerden el blanco */}
         <div style={{
           width: '100%', height: 10,
-          backgroundImage: 'radial-gradient(circle at 50% 100%, #6F30DF 6px, #fff 7px)',
+          backgroundImage: `radial-gradient(circle at 50% 100%, ${qrBg} 6px, #fff 7px)`,
           backgroundSize: '16px 10px',
           backgroundRepeat: 'repeat-x',
         }} />
