@@ -20148,17 +20148,17 @@ function CommerceSettingsView({ user, profile, setView, onLogout, onOwnerProfile
                         <div style={{ fontSize: 11, color: saved ? C.ok : isDirty ? C.mist : C.dust, lineHeight: 1.4 }}>
                           {saved ? '✓ Cambios guardados' : isDirty ? 'Cambios sin guardar' : 'Sin cambios pendientes'}
                         </div>
-                        <button onClick={saveConfiguracion} disabled={saving || !isDirty || Object.keys(configErrors || {}).length > 0}
+                        <button onClick={saveConfiguracion} disabled={saving || !isDirty || Object.values(configErrors || {}).some(Boolean)}
                           style={{
                             padding: '10px 18px', borderRadius: 12,
-                            background: (saving || !isDirty || Object.keys(configErrors || {}).length > 0)
+                            background: (saving || !isDirty || Object.values(configErrors || {}).some(Boolean))
                               ? 'rgba(255,255,255,0.06)'
                               : G,
-                            border: (saving || !isDirty || Object.keys(configErrors || {}).length > 0) ? '1px solid rgba(255,255,255,0.10)' : 'none',
-                            color: (saving || !isDirty || Object.keys(configErrors || {}).length > 0) ? 'rgba(255,255,255,0.45)' : '#fff',
+                            border: (saving || !isDirty || Object.values(configErrors || {}).some(Boolean)) ? '1px solid rgba(255,255,255,0.10)' : 'none',
+                            color: (saving || !isDirty || Object.values(configErrors || {}).some(Boolean)) ? 'rgba(255,255,255,0.45)' : '#fff',
                             fontFamily: FN, fontSize: 13, fontWeight: 700,
-                            cursor: (saving || !isDirty || Object.keys(configErrors || {}).length > 0) ? 'default' : 'pointer',
-                            boxShadow: (saving || !isDirty || Object.keys(configErrors || {}).length > 0) ? 'none' : '0 6px 18px rgba(189,75,248,0.40)',
+                            cursor: (saving || !isDirty || Object.values(configErrors || {}).some(Boolean)) ? 'default' : 'pointer',
+                            boxShadow: (saving || !isDirty || Object.values(configErrors || {}).some(Boolean)) ? 'none' : '0 6px 18px rgba(189,75,248,0.40)',
                             transition: 'background 180ms ease, color 180ms ease, box-shadow 180ms ease',
                             whiteSpace: 'nowrap',
                           }}>
@@ -20653,15 +20653,15 @@ function CommerceSettingsView({ user, profile, setView, onLogout, onOwnerProfile
                       }} />
                       Cambios sin guardar
                     </div>
-                    <button onClick={saveConfiguracion} disabled={saving || Object.keys(configErrors || {}).length > 0}
+                    <button onClick={saveConfiguracion} disabled={saving || Object.values(configErrors || {}).some(Boolean)}
                       style={{
                         padding: '9px 18px', borderRadius: 99,
-                        background: (saving || Object.keys(configErrors || {}).length > 0) ? 'rgba(255,255,255,0.10)' : G,
+                        background: (saving || Object.values(configErrors || {}).some(Boolean)) ? 'rgba(255,255,255,0.10)' : G,
                         border: 'none',
                         color: '#fff',
                         fontFamily: FN, fontSize: 12.5, fontWeight: 800,
-                        cursor: (saving || Object.keys(configErrors || {}).length > 0) ? 'wait' : 'pointer',
-                        boxShadow: (saving || Object.keys(configErrors || {}).length > 0) ? 'none' : '0 6px 18px rgba(254,80,0,0.40)',
+                        cursor: (saving || Object.values(configErrors || {}).some(Boolean)) ? 'wait' : 'pointer',
+                        boxShadow: (saving || Object.values(configErrors || {}).some(Boolean)) ? 'none' : '0 6px 18px rgba(254,80,0,0.40)',
                         transition: 'background 160ms ease',
                         whiteSpace: 'nowrap',
                         flexShrink: 0,
