@@ -3444,16 +3444,11 @@ export default function ClubProfilePage() {
             {/* ── MEMBERSHIP CARD ── (solo miembros) */}
             {isMember && (
               <div style={{
-                background: 'linear-gradient(135deg, rgba(113,49,225,0.15) 0%, rgba(113,49,225,0.05) 100%)',
-                border: '1px solid rgba(113,49,225,0.35)',
-                borderRadius: 20,
+                background: 'rgba(255,255,255,0.04)',
+                border: '1px solid rgba(255,255,255,0.09)',
+                borderRadius: 16,
                 padding: '20px',
-                position: 'relative',
-                overflow: 'hidden',
               }}>
-                {/* Glow blobs decorativos */}
-                <div style={{ position:'absolute', top:-40, right:-30, width:160, height:160, borderRadius:'50%', background:'rgba(113,49,225,0.22)', filter:'blur(50px)', pointerEvents:'none' }} />
-                <div style={{ position:'absolute', bottom:-20, left:-20, width:110, height:110, borderRadius:'50%', background:'rgba(113,49,225,0.12)', filter:'blur(35px)', pointerEvents:'none' }} />
 
                 {/* Header: checkmark + "Ya sos parte de este club" */}
                 <div style={{ display:'flex', alignItems:'center', gap:8, marginBottom:18, position:'relative', zIndex:1 }}>
@@ -3473,7 +3468,7 @@ export default function ClubProfilePage() {
                 {/* Balance + visitas */}
                 <div style={{ display:'flex', justifyContent:'space-between', alignItems:'flex-end', position:'relative', zIndex:1 }}>
                   <div>
-                    <div style={{ fontFamily:FN, fontSize:42, fontWeight:900, color:'#fff', lineHeight:1, display:'flex', alignItems:'center', gap:8, filter:'drop-shadow(0 0 16px rgba(113,49,225,0.60))' }}>
+                    <div style={{ fontFamily:FN, fontSize:42, fontWeight:900, color:'#fff', lineHeight:1, display:'flex', alignItems:'center', gap:8 }}>
                       <UnitIcon size={30} {...unitIconProps} color="#A78BFA" /> {bal}
                     </div>
                     <div style={{ fontSize:12, color:'rgba(255,255,255,0.50)', marginTop:5, fontWeight:500 }}>{unitLabel}</div>
