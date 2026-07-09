@@ -15009,12 +15009,7 @@ function CommerceSettingsView({ user, profile, setView, onLogout, onOwnerProfile
               Subtítulo + slider horizontal de chips (Cupón / Bonus /
               Premios). Bg ligeramente más claro que el outer para
               diferenciarse visualmente como sub-pieza propia. */}
-          <div style={{
-            background: 'rgba(255,255,255,0.025)',
-            border: '1px solid rgba(255,255,255,0.06)',
-            borderRadius: 14,
-            padding: '12px 12px 10px',
-          }}>
+          <div style={{ padding: '2px 2px 4px' }}>
           {/* Subtítulo "Estado actual" — mismo tamaño/peso que el motivMsg
               ("¡Casi listo! Te falta poco") del sub-container 2. Funciona
               como header de la zona de chips de beneficios. */}
@@ -15232,12 +15227,7 @@ function CommerceSettingsView({ user, profile, setView, onLogout, onOwnerProfile
               motivMsg ("Casi listo! Te falta poco") + cfgPct % + LEDs.
               Mismo bg/border que el sub-container 1 para que ambos sean
               "hermanos" dentro del outer container. */}
-          <div style={{
-            background: 'rgba(255,255,255,0.025)',
-            border: '1px solid rgba(255,255,255,0.06)',
-            borderRadius: 14,
-            padding: '12px 12px 14px',
-          }}>
+          <div style={{ padding: '2px 2px 4px' }}>
 
           {/* ── Stepped progress (1 nodo por tarjeta) ──
               Reemplaza la barra lineal por una secuencia de círculos
@@ -15258,37 +15248,9 @@ function CommerceSettingsView({ user, profile, setView, onLogout, onOwnerProfile
               <div style={{
                 fontFamily: FN, fontSize: 28, fontWeight: 900,
                 letterSpacing: '-0.025em', lineHeight: 1,
-                position: 'relative',
-                // Gradient verde de marca con highlight claro en el medio.
-                // El % SIEMPRE va en verde (#22E698 base + #B5F4DC reflejo)
-                // — antes el caso < 100% era violeta, pero el dueño pidió
-                // que el número de progreso esté siempre en verde para
-                // que se lea como "esto va creciendo" sin importar el
-                // estadio. backgroundSize 300% + animación de
-                // background-position hace que el highlight recorra el
-                // texto de derecha a izquierda en loop, simulando un
-                // reflejo. Cuando llega a 100% no hace falta cambiar
-                // de color porque ya estaba verde.
-                //
-                // OJO: usamos `backgroundImage` (no la shorthand `background`)
-                // para evitar el warning de React "mixing shorthand y
-                // non-shorthand" y para que `backgroundClip: text` no se
-                // resetee al cambiar `cfgPct`.
-                backgroundImage: 'linear-gradient(110deg, #22E698 0%, #22E698 35%, #B5F4DC 50%, #22E698 65%, #22E698 100%)',
-                backgroundSize: '300% 100%',
-                backgroundRepeat: 'no-repeat',
-                WebkitBackgroundClip: 'text',
-                backgroundClip: 'text',
-                WebkitTextFillColor: 'transparent',
-                filter: 'drop-shadow(0 0 10px rgba(34,230,152,0.55))',
+                color: '#22E698',
               }}>
                 {cfgPct}%
-                <style>{`
-                  @keyframes cfg-pct-shimmer {
-                    0%   { background-position: 150% 0; }
-                    100% { background-position: -50% 0; }
-                  }
-                `}</style>
               </div>
             </div>
 
@@ -15321,12 +15283,8 @@ function CommerceSettingsView({ user, profile, setView, onLogout, onOwnerProfile
                     <div key={it.id} style={{
                       width: 10, height: 10, borderRadius: '50%',
                       flexShrink: 0,
-                      background: done
-                        ? 'radial-gradient(circle at 35% 30%, #B5F4DC 0%, #22E698 45%, #15803D 100%)'
-                        : 'radial-gradient(circle at 35% 30%, rgba(245,166,35,0.55) 0%, rgba(245,166,35,0.28) 100%)',
-                      boxShadow: done
-                        ? '0 0 6px rgba(34,230,152,0.85), 0 0 14px rgba(34,230,152,0.45)'
-                        : 'inset 0 0 0 1px rgba(245,166,35,0.40)',
+                      background: done ? '#22E698' : 'rgba(245,166,35,0.30)',
+                      boxShadow: done ? 'none' : 'inset 0 0 0 1px rgba(245,166,35,0.45)',
                       transition: 'background 120ms ease, box-shadow 120ms ease',
                     }} />
                   )
@@ -15383,19 +15341,18 @@ function CommerceSettingsView({ user, profile, setView, onLogout, onOwnerProfile
             // Completos siempre se nota verde y Pendientes siempre amarilla
             // — el active/inactive diferencia INTENSIDAD, no color.
             {
-              id: 'pendientes', label: 'Pendientes', count: pendingCount, color: '#FF199F', symbol: '!',
-              activeBg:     'rgba(245,166,35,0.20)',
-              activeBorder: 'rgba(245,166,35,0.55)',
+              id: 'pendientes', label: 'Pendientes', count: pendingCount, color: '#F5A623', symbol: '!',
+              activeBg:     'rgba(245,166,35,0.18)',
+              activeBorder: 'rgba(245,166,35,0.50)',
               dimBg:        'rgba(245,166,35,0.05)',
               dimBorder:    'rgba(245,166,35,0.22)',
             },
             {
-              id: 'listas', label: 'Completos', count: doneCount, color: '#EDD5F6', symbol: '✓',
-              activeTextColor: '#220033',
-              activeBg:     'rgba(237,213,246,0.15)',
-              activeBorder: 'rgba(237,213,246,0.40)',
-              dimBg:        'rgba(237,213,246,0.05)',
-              dimBorder:    'rgba(237,213,246,0.18)',
+              id: 'listas', label: 'Completos', count: doneCount, color: '#22E698', symbol: '✓',
+              activeBg:     'rgba(34,230,152,0.16)',
+              activeBorder: 'rgba(34,230,152,0.50)',
+              dimBg:        'rgba(34,230,152,0.05)',
+              dimBorder:    'rgba(34,230,152,0.22)',
             },
           ].map(t => {
             const active = effectiveFilter === t.id
@@ -15427,7 +15384,7 @@ function CommerceSettingsView({ user, profile, setView, onLogout, onOwnerProfile
                   // Texto: en la activa va blanco. En la inactiva usa el
                   // color de la tab (amarillo/verde) atenuado al 60%, así
                   // mantiene su identidad cromática.
-                  color: active ? (t.activeTextColor || '#fff') : `${t.color}99`,
+                  color: active ? t.color : `${t.color}99`,
                   fontFamily: FN, fontSize: 13,
                   fontWeight: active ? 800 : 600,
                   letterSpacing: '.04em',
@@ -16028,10 +15985,9 @@ function CommerceSettingsView({ user, profile, setView, onLogout, onOwnerProfile
                         fontSize: 9.5, fontWeight: 800,
                         color: '#1A1206', // texto oscuro sobre amarillo brillante
                         letterSpacing: '.10em', textTransform: 'uppercase',
-                        background: `linear-gradient(135deg, ${themeColorD}, ${themeColor}, ${themeColorL})`,
-                        border: `1px solid ${themeColor}66`,
+                        background: themeColor,
+                        border: 'none',
                         padding: '4px 10px', borderRadius: 99,
-                        boxShadow: `0 4px 12px ${themeRgba35}`,
                       }}>
                         Pendiente
                       </span>
@@ -16053,7 +16009,7 @@ function CommerceSettingsView({ user, profile, setView, onLogout, onOwnerProfile
                       style={{ flexShrink: 0 }}
                     />
                     <div style={{
-                      fontFamily: FN, fontSize: 21, fontWeight: 900,
+                      fontFamily: FN, fontSize: 20, fontWeight: 800,
                       color: '#fff', lineHeight: 1.15,
                       letterSpacing: '-0.02em',
                       // El título puede ser de 1 o 2 líneas según el espacio.
@@ -16084,47 +16040,21 @@ function CommerceSettingsView({ user, profile, setView, onLogout, onOwnerProfile
                       en Pendientes, verde en Completos). */}
                   <div style={{
                     height: 1, width: '100%',
-                    background: `linear-gradient(90deg, transparent 0%, ${themeColor}D9 50%, transparent 100%)`,
-                    boxShadow: `0 0 16px ${themeRgba35}, 0 0 4px ${themeColor}55`,
+                    background: 'rgba(255,255,255,0.10)',
+                    boxShadow: 'none',
                     marginBottom: 16,
                     position: 'relative', zIndex: 2,
                   }} />
 
-                  {/* Bloque del ícono + microcopy con check (estilo lista) */}
-                  <div style={{ flex: 1, display: 'flex', alignItems: 'center', gap: 12, marginBottom: 18, position: 'relative', zIndex: 2 }}>
-                    {item.thumb && done ? (
-                      <div style={{
-                        width: 48, height: 48, borderRadius: '50%',
-                        overflow: 'hidden', flexShrink: 0,
-                        border: '1px solid rgba(255,255,255,0.14)',
-                        boxShadow: '0 4px 14px rgba(0,0,0,0.35)',
-                      }}>
-                        <img src={item.thumb} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
-                      </div>
-                    ) : (
-                      <div style={{
-                        // Círculo glass tinted con el color de la tab
-                        // — antes era violeta uniforme para pending y
-                        // verde solo cuando done. Ahora el bg+border+
-                        // color del ícono se alinean con themeColor
-                        // (amarillo/verde) cuando NO está locked.
-                        width: 48, height: 48, borderRadius: '50%', flexShrink: 0,
-                        background: `${themeColor}1A`,
-                        border: `1px solid ${themeRgba35}`,
-                        backdropFilter: 'blur(8px)',
-                        WebkitBackdropFilter: 'blur(8px)',
-                        boxShadow: 'inset 0 1px 0 rgba(255,255,255,0.08), 0 4px 14px rgba(0,0,0,0.35)',
-                        display: 'flex', alignItems: 'center', justifyContent: 'center',
-                      }}>
-                        <Icon size={22} color={themeColor} strokeWidth={2.2} />
-                      </div>
-                    )}
-                    <div style={{ fontSize: 13, color: 'rgba(255,255,255,0.78)', fontWeight: 500, lineHeight: 1.4 }}>
-                      {isLocked
-                        ? `Para usar esta función necesitás el plan ${(item.lockedByPlan || '').toUpperCase()}.`
-                        : (done ? 'Está cargado y visible para tus clientes.' : 'Tap acá para configurar este dato.')}
+                  {/* Bloque interno redundante removido (el ícono ya está en el
+                      título y el CTA ya invita a la acción). Solo un spacer para
+                      empujar el CTA al fondo. Para locked, mostramos el hint del plan. */}
+                  {isLocked && (
+                    <div style={{ fontSize: 13, color: 'rgba(255,255,255,0.70)', fontWeight: 500, lineHeight: 1.4, marginBottom: 16, position: 'relative', zIndex: 2 }}>
+                      Para usar esta función necesitás el plan {(item.lockedByPlan || '').toUpperCase()}.
                     </div>
-                  </div>
+                  )}
+                  <div style={{ flex: 1, minHeight: 8 }} />
 
                   {/* CTA grande estilo "Get it now" — pill full-width con
                       gradient del color de la tab. Antes era violeta fijo;
@@ -16133,9 +16063,7 @@ function CommerceSettingsView({ user, profile, setView, onLogout, onOwnerProfile
                       desbloquea (azul STARTER o ámbar PRO). */}
                   <div style={{
                     display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6,
-                    background: isLocked
-                      ? `linear-gradient(135deg, ${lockColor} 0%, ${lockColor}D9 100%)`
-                      : `linear-gradient(135deg, ${themeColorD} 0%, ${themeColor} 50%, ${themeColorL} 100%)`,
+                    background: isLocked ? lockColor : themeColorD,
                     border: 'none',
                     // Texto blanco siempre — funciona bien sobre el degradé
                     // del color de la tab (amber/green) y sobre lockColor
@@ -16148,12 +16076,8 @@ function CommerceSettingsView({ user, profile, setView, onLogout, onOwnerProfile
                     marginLeft: -22, marginRight: -22, marginBottom: 0,
                     borderBottomLeftRadius: 22, borderBottomRightRadius: 22,
                     borderTopLeftRadius: 0, borderTopRightRadius: 0,
-                    boxShadow: isLocked
-                      ? `0 6px 20px ${lockColor}80`
-                      : `0 6px 20px ${themeRgba35}`,
+                    boxShadow: 'none',
                     position: 'relative',
-                    // Text-shadow leve para legibilidad sobre el gradient.
-                    textShadow: '0 1px 2px rgba(0,0,0,0.25)',
                   }}>
                     {isLocked
                       ? <><Zap size={14} strokeWidth={2.6} /> Actualizar plan</>
