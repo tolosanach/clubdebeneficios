@@ -17181,7 +17181,7 @@ function CommerceSettingsView({ user, profile, setView, onLogout, onOwnerProfile
       })()}
 
       {/* ── CONTENIDO ── */}
-      <div style={{ flex:1, padding: isMobile ? '20px 16px 80px 30px' : '28px 28px 80px', overflowY:'auto', maxWidth:720 }}>
+      <div style={{ flex:1, padding: isMobile ? '20px 16px 80px 30px' : '28px 28px 80px', overflowY:'auto', maxWidth:720, margin:'0 auto' }}>
 
         {/* ── Botón "Volver a..." ──
             Siempre visible al tope de cualquier pestaña del panel.
