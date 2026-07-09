@@ -6394,15 +6394,14 @@ function CommerceView({ commerce:c, setView, user, onLoginRequired, onCommerceUp
           if (!discount) return null
           const expDate = discount.expires_at ? new Date(discount.expires_at).toLocaleDateString('es-AR', { day:'2-digit', month:'2-digit' }) : null
           return (
-            <div style={{ marginBottom:13, padding:'14px 16px', background:'linear-gradient(135deg, rgba(124,58,237,0.20), rgba(189,75,248,0.18))', border:'1px solid rgba(189,75,248,0.45)', borderRadius:14, display:'flex', alignItems:'center', gap:14, position:'relative', overflow:'hidden' }}>
-              <div style={{ position:'absolute', top:-30, right:-20, width:120, height:120, borderRadius:'50%', background:'radial-gradient(circle, rgba(168,85,247,0.30) 0%, transparent 70%)', filter:'blur(20px)', pointerEvents:'none' }} />
-              <div style={{ width:54, height:54, borderRadius:14, background:'#6F30DF', display:'flex', alignItems:'center', justifyContent:'center', flexShrink:0, position:'relative', zIndex:1, boxShadow:'0 4px 14px rgba(168,85,247,0.40)' }}>
-                <Flame size={26} color="#fff" strokeWidth={2} />
+            <div style={{ marginBottom:14, padding:'14px 16px', background:C.card, border:`1px solid ${C.rim}`, borderRadius:14, display:'flex', alignItems:'center', gap:14 }}>
+              <div style={{ width:48, height:48, borderRadius:12, background:'rgba(111,48,223,0.16)', border:'1px solid rgba(111,48,223,0.40)', display:'flex', alignItems:'center', justifyContent:'center', flexShrink:0 }}>
+                <Flame size={24} color="#A78BFA" strokeWidth={2} />
               </div>
               <div style={{ flex:1, minWidth:0, position:'relative', zIndex:1 }}>
                 <div style={{ fontFamily:FN, fontSize:9, fontWeight:800, color:'#D8B4FE', letterSpacing:'.12em', textTransform:'uppercase', marginBottom:3 }}>Descuento activo</div>
                 <div style={{ display:'flex', alignItems:'baseline', gap:6, flexWrap:'wrap' }}>
-                  <span style={{ fontFamily:FN, fontSize:24, fontWeight:900, background:'#6F30DF', WebkitBackgroundClip:'text', WebkitTextFillColor:'transparent', backgroundClip:'text', lineHeight:1 }}>{discount.value}% OFF</span>
+                  <span style={{ fontFamily:FN, fontSize:24, fontWeight:900, color:'#fff', lineHeight:1 }}>{discount.value}% OFF</span>
                   <span style={{ fontSize:12, color:C.mist }}>en tu próxima compra</span>
                 </div>
                 {(discount.description || expDate) && (
