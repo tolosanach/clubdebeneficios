@@ -15000,7 +15000,7 @@ function CommerceSettingsView({ user, profile, setView, onLogout, onOwnerProfile
             border: '1px solid rgba(255,255,255,0.08)',
             borderRadius: 18,
             padding: 10,
-            margin: isMobile ? '0 18px 14px' : '0 28px 14px',
+            margin: '0 0 14px',
             display: 'flex', flexDirection: 'column', gap: 10,
           }}>
 
