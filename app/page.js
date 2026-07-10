@@ -17788,10 +17788,10 @@ function CommerceSettingsView({ user, profile, setView, onLogout, onOwnerProfile
                       // color para la activa (sin gradient saturado). El border
                       // de la activa marca identidad con el color del sistema.
                       background: isActive
-                        ? `rgba(${rgb}, 0.10)`
+                        ? `rgba(${rgb}, 0.12)`
                         : 'rgba(255,255,255,0.04)',
                       border: isActive
-                        ? `1px solid rgba(${rgb}, 0.40)`
+                        ? `2.5px solid ${sys.color}`
                         : '1px solid transparent',
                       borderRadius:20, padding:16,
                       textAlign:'left', position:'relative',
@@ -17863,11 +17863,7 @@ function CommerceSettingsView({ user, profile, setView, onLogout, onOwnerProfile
 
                     {/* Contenedor unificado: card activa + campos de edición */}
                     <div style={{
-                      border:`1px solid ${activeSys.color}55`,
-                      borderRadius:18,
-                      background:`${activeSys.color}08`,
-                      padding:6,
-                      display:'flex', flexDirection:'column', gap:6,
+                      display:'flex', flexDirection:'column', gap:10,
                     }}>
                       {/* Card activa */}
                       {renderCard(activeSys, true)}
