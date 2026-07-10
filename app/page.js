@@ -12144,7 +12144,7 @@ function CommerceSettingsView({ user, profile, setView, onLogout, onOwnerProfile
   // "Sumar nuevo cliente" (mostrar QR del local) o "Registrar compra"
   // (escanear QR del cliente). Una vez que elige una opción, queda en false
   // hasta el próximo click en el icono "Mi Negocio" del navbar.
-  const [intentPickerActive, setIntentPickerActive] = useState(true)
+  const [intentPickerActive, setIntentPickerActive] = useState(!(initialTab && initialTab !== 'dashboard'))
   // wizardItemId: cuando es != null, se renderiza el ProfileItemWizard con el
   // flujo correspondiente a ese itemId (description, phone, address, social,
   // logo, cover, category, system, hours, firstPrize). Se setea desde
@@ -13520,7 +13520,7 @@ function CommerceSettingsView({ user, profile, setView, onLogout, onOwnerProfile
     }
   }
 
-  async function addVisitToMember() {
+  async function addVisitToMember(opts = {}) {
     if (!selectedMember || addingVisit) return
     const isStars = form?.prog_type === 'stars'
     if (!isStars) {
@@ -13539,6 +13539,7 @@ function CommerceSettingsView({ user, profile, setView, onLogout, onOwnerProfile
         body: JSON.stringify({
           commerce_id:   commerce.id,
           membership_id: selectedMember.id,
+          force_single:  !!opts.forceSingle,
           ...(isStars ? {} : { amount: parseInt(addVisitAmount, 10) }),
         }),
       })
@@ -16453,12 +16454,21 @@ function CommerceSettingsView({ user, profile, setView, onLogout, onOwnerProfile
                         </div>
                       )}
                       <button
-                        onClick={addVisitToMember}
+                        onClick={() => addVisitToMember()}
                         disabled={addingVisit}
                         style={{ width: '100%', padding: '11px', background: addingVisit ? `${sysColor}55` : sysColor, border: 'none', borderRadius: 10, color: '#fff', fontFamily: FN, fontSize: 13, fontWeight: 700, cursor: addingVisit ? 'wait' : 'pointer' }}
                       >
                         {addingVisit ? 'Registrando...' : `Registrar visita (+${starsToAdd} ★)`}
                       </button>
+                      {hasDoubleToday && (
+                        <button
+                          onClick={() => addVisitToMember({ forceSingle: true })}
+                          disabled={addingVisit}
+                          style={{ width: '100%', marginTop: 8, padding: '10px', background: 'transparent', border: `1px solid ${C.rim}`, borderRadius: 10, color: C.mist, fontFamily: FN, fontSize: 12.5, fontWeight: 600, cursor: addingVisit ? 'wait' : 'pointer' }}
+                        >
+                          Registrar visita normal (+1 ★)
+                        </button>
+                      )}
                     </div>
                   ) : (
                     <div>
@@ -16482,7 +16492,7 @@ function CommerceSettingsView({ user, profile, setView, onLogout, onOwnerProfile
                         </button>
                       </div>
                       <button
-                        onClick={addVisitToMember}
+                        onClick={() => addVisitToMember()}
                         disabled={addingVisit || !cur}
                         style={{ width: '100%', padding: '11px', background: (addingVisit || !cur) ? `${sysColor}55` : sysColor, border: 'none', borderRadius: 10, color: '#fff', fontFamily: FN, fontSize: 13, fontWeight: 700, cursor: addingVisit ? 'wait' : (!cur ? 'not-allowed' : 'pointer') }}
                       >
@@ -24075,6 +24085,11 @@ export default function App() {
       const tab = e.detail?.tab
       if (!targetView) return
       const sameView = targetView === view
+      // Si vamos al panel del comerciante con un tab, lo fijamos ANTES de
+      // navegar para que CommerceSettingsView monte directo en ese tab, sin
+      // depender del race del evento set-tab ni del intent picker (bug: los
+      // ítems del rail a veces "no hacían nada" al venir de otra vista).
+      if (tab && targetView === 'commerce-settings') setMerchantTab(tab)
       if (!sameView) navigate(targetView)
       if (tab) {
         // Reenviamos el set-tab varias veces para cubrir el race entre el
@@ -24463,7 +24478,7 @@ export default function App() {
       {view === 'scanner'            && <ScannerView user={user} profile={profile} setView={navigate} />}
       {view === 'admin'              && <AdminView cities={cities} profile={profile} />}
       {view === 'register-commerce'  && <RegisterCommerceView setView={navigate} cities={cities} user={user} onLoginRequired={() => handleLogin({ nextView: 'register-commerce' })} onProfileRefresh={() => loadProfile(user.id)} />}
-      {view === 'commerce-settings'  && <CommerceSettingsView user={user} profile={profile} setView={navigate} onLogout={handleLogout} onOwnerProfile={handleOwnerProfile} initialTab={deepLink.tab} initialMember={deepLink.member} />}
+      {view === 'commerce-settings'  && <CommerceSettingsView user={user} profile={profile} setView={navigate} onLogout={handleLogout} onOwnerProfile={handleOwnerProfile} initialTab={deepLink.tab || merchantTab} initialMember={deepLink.member} />}
       {view === 'notifications' && (
         <div className="with-bottom-nav-v2" style={{ width: '100%' }}>
           <NotificationsBell mode="view" role={activeContext === 'merchant' ? 'merchant' : 'client'} hideButton />
