@@ -16327,9 +16327,11 @@ function CommerceSettingsView({ user, profile, setView, onLogout, onOwnerProfile
 
         {/* Header */}
         <div style={{ display:'flex', alignItems:'center', gap:14, marginBottom:20 }}>
-          <div style={{ width:52, height:52, borderRadius:999, background:`${C.v}33`, display:'flex', alignItems:'center', justifyContent:'center', fontSize:22, fontFamily:FN, fontWeight:900, color:C.v, flexShrink:0 }}>
-            {name[0]?.toUpperCase()}
-          </div>
+          {m.profiles?.avatar_url
+            ? <img src={m.profiles.avatar_url} alt="" referrerPolicy="no-referrer" style={{ width:52, height:52, borderRadius:999, objectFit:'cover', flexShrink:0 }} />
+            : <div style={{ width:52, height:52, borderRadius:999, background:`${C.v}33`, display:'flex', alignItems:'center', justifyContent:'center', fontSize:22, fontFamily:FN, fontWeight:900, color:C.v, flexShrink:0 }}>
+                {name[0]?.toUpperCase()}
+              </div>}
           <div>
             <div style={{ fontFamily:FN, fontSize:18, fontWeight:900, color:C.white }}>{name}</div>
             <div style={{ fontSize:12, color:C.mist }}>{m.visits_count||0} visitas · {unitIcon} {val} {unitLabel}</div>
@@ -17396,10 +17398,12 @@ function CommerceSettingsView({ user, profile, setView, onLogout, onOwnerProfile
                           onClick={() => viewMember(m)}
                           onKeyDown={e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); viewMember(m) } }}
                           style={{ width:'100%', display:'flex', alignItems:'center', gap:12, padding:'12px 14px', background:C.card, border:`1px solid ${C.rim}`, borderRadius:14, cursor:'pointer', textAlign:'left' }}>
-                          {/* Avatar */}
-                          <div style={{ width:40, height:40, borderRadius:'50%', flexShrink:0, display:'flex', alignItems:'center', justifyContent:'center', fontFamily:FN, fontSize:16, fontWeight:900, background:`${sysColor}22`, color:sysColor }}>
-                            {name[0]?.toUpperCase()}
-                          </div>
+                          {/* Avatar — foto de perfil (Google) si existe, sino inicial */}
+                          {m.profiles?.avatar_url
+                            ? <img src={m.profiles.avatar_url} alt="" referrerPolicy="no-referrer" style={{ width:40, height:40, borderRadius:'50%', objectFit:'cover', flexShrink:0 }} />
+                            : <div style={{ width:40, height:40, borderRadius:'50%', flexShrink:0, display:'flex', alignItems:'center', justifyContent:'center', fontFamily:FN, fontSize:16, fontWeight:900, background:`${sysColor}22`, color:sysColor }}>
+                                {name[0]?.toUpperCase()}
+                              </div>}
                           {/* Info */}
                           <div style={{ flex:1, minWidth:0 }}>
                             <div style={{ display:'flex', alignItems:'center', gap:6, marginBottom:2 }}>
