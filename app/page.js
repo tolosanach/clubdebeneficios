@@ -17627,10 +17627,10 @@ function CommerceSettingsView({ user, profile, setView, onLogout, onOwnerProfile
               // - INACTIVE: lavanda pálida (similar al #EDEEFF del reference)
               // Texto e ícono comparten el mismo violeta oscuro de marca para
               // contrastar con el fondo claro de la card.
-              const ACTIVE_BG     = '#D8C4FF'   // pastel violeta saturado
-              const INACTIVE_BG   = '#EFE4FF'   // pastel violeta pálido
-              const FG_ACTIVE     = '#4C1D95'   // violeta brand muy oscuro (más contraste)
-              const FG_INACTIVE   = '#6D28D9'   // violeta brand medio
+              const ACTIVE_BG     = '#7C3AED'   // violeta de marca SÓLIDO — el seleccionado domina
+              const INACTIVE_BG   = 'rgba(255,255,255,0.05)'  // glass oscuro — el inactivo queda atrás
+              const FG_ACTIVE     = '#FFFFFF'   // texto/ícono blanco sobre violeta
+              const FG_INACTIVE   = 'rgba(216,196,255,0.72)'  // violeta claro apagado
               return SHORTCUTS.map(s => {
                 const active = recompensasSubTab === s.id
                 const Icon = s.Icon
@@ -17648,13 +17648,13 @@ function CommerceSettingsView({ user, profile, setView, onLogout, onOwnerProfile
                       padding: '16px 12px',
                       borderRadius: 18,
                       background: active ? ACTIVE_BG : INACTIVE_BG,
-                      border: 'none',
+                      border: active ? 'none' : '1px solid rgba(255,255,255,0.10)',
                       cursor: 'pointer',
                       fontFamily: 'inherit',
                       textAlign: 'center',
                       boxShadow: active
-                        ? '0 8px 22px -8px rgba(124,58,237,0.55)'
-                        : '0 2px 10px -4px rgba(124,58,237,0.20)',
+                        ? '0 8px 24px -6px rgba(124,58,237,0.65)'
+                        : 'none',
                       transition: 'background 200ms ease, box-shadow 200ms ease, transform 160ms ease',
                     }}>
                     <Icon
