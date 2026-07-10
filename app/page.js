@@ -14996,12 +14996,11 @@ function CommerceSettingsView({ user, profile, setView, onLogout, onOwnerProfile
               de abajo, pero con border-opacity más bajo para una
               jerarquía de "este es el resumen, abajo está el detalle". */}
           <div style={{
-            background: 'rgba(189,75,248,0.06)',
-            border: '1px solid rgba(189,75,248,0.22)',
+            background: 'rgba(255,255,255,0.03)',
+            border: '1px solid rgba(255,255,255,0.08)',
             borderRadius: 18,
             padding: 10,
-            marginBottom: 14,
-            boxShadow: '0 8px 28px -10px rgba(0,0,0,0.45)',
+            margin: isMobile ? '0 18px 14px' : '0 28px 14px',
             display: 'flex', flexDirection: 'column', gap: 10,
           }}>
 
@@ -15280,13 +15279,21 @@ function CommerceSettingsView({ user, profile, setView, onLogout, onOwnerProfile
                 {completableItems.map((it) => {
                   const done = it.done
                   return (
-                    <div key={it.id} style={{
-                      width: 10, height: 10, borderRadius: '50%',
-                      flexShrink: 0,
-                      background: done ? '#22E698' : 'rgba(245,166,35,0.30)',
-                      boxShadow: done ? 'none' : 'inset 0 0 0 1px rgba(245,166,35,0.45)',
-                      transition: 'background 120ms ease, box-shadow 120ms ease',
-                    }} />
+                    <button key={it.id}
+                      onClick={() => navigateConfigItem(it)}
+                      title={done ? `${it.title || 'Configuración'} — listo` : `Completar: ${it.title || 'esta configuración'}`}
+                      aria-label={done ? `${it.title || 'Configuración'} lista` : `Completar ${it.title || 'configuración'}`}
+                      style={{
+                        background:'transparent', border:'none', padding:6, margin:-6,
+                        cursor:'pointer', display:'flex', alignItems:'center', justifyContent:'center', flexShrink:0,
+                      }}>
+                      <span style={{
+                        width: 10, height: 10, borderRadius: '50%', display:'block', flexShrink: 0,
+                        background: done ? '#22E698' : 'rgba(245,166,35,0.30)',
+                        boxShadow: done ? 'none' : 'inset 0 0 0 1px rgba(245,166,35,0.45)',
+                        transition: 'background 120ms ease, box-shadow 120ms ease',
+                      }} />
+                    </button>
                   )
                 })}
               </div>
@@ -15305,8 +15312,8 @@ function CommerceSettingsView({ user, profile, setView, onLogout, onOwnerProfile
             para "elevar" la carpeta del fondo de la página. */}
         <div style={{
           margin: isMobile ? '8px 18px 0' : '8px 28px 0',
-          background: 'rgba(189,75,248,0.07)',
-          border: '1px solid rgba(189,75,248,0.32)',
+          background: 'rgba(255,255,255,0.03)',
+          border: '1px solid rgba(255,255,255,0.08)',
           borderRadius: 22,
           paddingTop: 0,
           paddingBottom: 14,
@@ -15326,7 +15333,7 @@ function CommerceSettingsView({ user, profile, setView, onLogout, onOwnerProfile
             solapas". */}
         <div style={{
           display: 'flex', gap: 4,
-          borderBottom: '1px solid rgba(189,75,248,0.32)',
+          borderBottom: '1px solid rgba(255,255,255,0.10)',
           // Padding horizontal alineado con el inset de las cards de abajo
           // (paddingLeft/Right del slider: 16px mobile / 28px desktop).
           // Antes era un fijo '6px' que no coincidía con el inset real de
@@ -15812,7 +15819,8 @@ function CommerceSettingsView({ user, profile, setView, onLogout, onOwnerProfile
                     // óptica de que la card "flota" separada del tab en vez
                     // de fundirse con él. Esquina recta acá = continuidad
                     // visual perfecta con la solapa de arriba.
-                    borderTopLeftRadius: idx === 0 ? 0 : 24,
+                    borderTopLeftRadius: 0,
+                    borderTopRightRadius: 0,
                     padding: '22px 22px 0',
                     textAlign: 'left',
                     cursor: 'pointer',
@@ -18054,7 +18062,11 @@ function CommerceSettingsView({ user, profile, setView, onLogout, onOwnerProfile
                 } else {
                   const existing = (Array.isArray(promos) ? promos : []).find(p => p.type === 'double_points')
                   if (existing) {
-                    await togglePromo(existing)
+                    // Reactivar: double_points NO vence. Si quedó un expires_at
+                    // viejo (en el pasado), isOn nunca volvía a true y el switch
+                    // "no funcionaba". Limpiamos expires_at y normalizamos days.
+                    await supabase.from('promotions').update({ active: true, expires_at: null, days: [] }).eq('id', existing.id)
+                    setPromos(pp => pp.map(x => x.id === existing.id ? { ...x, active: true, expires_at: null, days: [] } : x))
                   } else {
                     await addPromo({
                       type: 'double_points',
