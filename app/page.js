@@ -16782,7 +16782,11 @@ function CommerceSettingsView({ user, profile, setView, onLogout, onOwnerProfile
 
       {showAutoPopup && (
         <div onClick={() => setShowAutoPopup(false)} style={{ position:'fixed', inset:0, background:'rgba(0,0,0,0.80)', backdropFilter:'blur(4px)', WebkitBackdropFilter:'blur(4px)', zIndex:9000, display:'flex', alignItems:'center', justifyContent:'center', padding:20 }}>
-          <div onClick={e => e.stopPropagation()} className="modal-in" style={{ background:'#6F30DF', borderRadius:28, padding:'36px 28px 28px', maxWidth:320, width:'100%', textAlign:'center', boxShadow:'0 32px 80px rgba(0,0,0,0.6), 0 0 60px rgba(168,85,247,0.30)' }}>
+          <div onClick={e => e.stopPropagation()} className="modal-in" style={{ position:'relative', background:'#6F30DF', borderRadius:28, padding:'36px 28px 28px', maxWidth:320, width:'100%', textAlign:'center', boxShadow:'0 32px 80px rgba(0,0,0,0.6), 0 0 60px rgba(168,85,247,0.30)' }}>
+            {/* X cerrar — esquina superior derecha */}
+            <button onClick={() => setShowAutoPopup(false)} aria-label="Cerrar" style={{ position:'absolute', top:14, right:14, width:30, height:30, borderRadius:'50%', background:'rgba(255,255,255,0.15)', border:'none', display:'flex', alignItems:'center', justifyContent:'center', cursor:'pointer', padding:0, color:'#fff' }}>
+              <X size={16} strokeWidth={2.4} />
+            </button>
             {/* Icon */}
             <div style={{ width:64, height:64, borderRadius:'50%', background:'rgba(255,255,255,0.20)', display:'flex', alignItems:'center', justifyContent:'center', margin:'0 auto 20px' }}>
               <Users size={30} color='#fff' strokeWidth={2} />
