@@ -72,6 +72,11 @@ export async function POST(request) {
         reward_text:  'Próximamente...',
         reward_color: '#6F30DF',
         plan:         'pro',
+        // Lanzamiento: todo negocio nuevo arranca PRO como fundador, sin fecha
+        // de corte (founder_expiry queda null → el cron check-founder-expiry
+        // nunca lo degrada). Cuando se defina el fin del lanzamiento, basta con
+        // setear founder_expiry a los is_founder=true y el cron hace el resto.
+        is_founder:   true,
         active:       true,
         featured:     false,
         rating:       5.0,
