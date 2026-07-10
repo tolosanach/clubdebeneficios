@@ -44,16 +44,16 @@ export async function GET(request) {
         commerce_id,
         prize_id,
         points_spent,
+        kind,
+        discount_value,
         created_at,
         profiles:user_id(id, full_name, name, email),
         prizes:prize_id(id, name, cost)
       `)
       .eq('commerce_id', commerce_id)
-      // Solo canjes de PREMIO efectivamente concretados. Antes el reporte
-      // incluía filas kind='discount' (cupones de descuento, sin prize → se
-      // mostraban como "Desconocido") y filas cancelled (canjes rechazados
-      // cuyo saldo se devolvió), inflando el listado de premios canjeados.
-      .eq('kind', 'prize')
+      // Incluye premios Y descuentos: el descuento (kind='discount') se muestra
+      // como "X% OFF" en la columna Premio. Se excluyen solo los cancelled
+      // (canjes rechazados cuyo saldo se devolvió).
       .neq('status', 'cancelled')
       .order('created_at', { ascending: false })
 
@@ -78,8 +78,11 @@ export async function GET(request) {
       hora: new Date(redemption.created_at).toLocaleTimeString('es-AR'),
       cliente: redemption.profiles?.full_name || redemption.profiles?.name || 'Desconocido',
       email: redemption.profiles?.email || '-',
-      premio: redemption.prizes?.name || 'Desconocido',
-      puntos_gastados: redemption.points_spent || 0,
+      premio: redemption.kind === 'discount'
+        ? `${redemption.discount_value || 0}% OFF (descuento)`
+        : (redemption.prizes?.name || 'Desconocido'),
+      puntos_gastados: redemption.kind === 'discount' ? 0 : (redemption.points_spent || 0),
+      tipo: redemption.kind === 'discount' ? 'descuento' : 'premio',
       unidad: commerce.prog_type === 'stars' ? '⭐' : '💎',
     }))
 
