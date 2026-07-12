@@ -4,6 +4,8 @@
 
 App argentina de fidelización para comercios. Cada comercio crea un "club" donde sus clientes acumulan recompensas al escanear su QR. Producción: **clufix.com.ar**.
 
+> 🎬 **Trabajo publicitario / creativo:** todo el universo de los comerciales (personajes **Tato y Vale**, estilo plastilina 3D, prompts de Flow, tomas producidas, decisiones y estado actual) vive en **`docs/biblia-creativa-clufix.md`**. Si Nacho habla de publicidad, anuncios, guiones, personajes o videos, LEER ese archivo primero y mantenerlo actualizado.
+
 ## Stack
 
 - **Next.js 16.2.3** + React 19 (Turbopack)
