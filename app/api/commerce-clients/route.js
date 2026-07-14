@@ -56,7 +56,7 @@ export async function GET(request) {
     // (aunque la promo del comercio sea la misma).
     const { data: memberships, error } = await supabaseAdmin
       .from('memberships')
-      .select('*, profiles(id, name, full_name, email, phone, avatar_url), client_promotions(id, promotion_id, expires_at, granted_at, status)')
+      .select('*, profiles(id, name, full_name, email, phone, avatar_url), client_promotions(id, promotion_id, expires_at, granted_at, used_at, status)')
       .eq('commerce_id', commerceId)
       .order('last_visit', { ascending: false, nullsLast: true })
 

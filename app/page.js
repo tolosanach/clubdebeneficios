@@ -13346,7 +13346,7 @@ function CommerceSettingsView({ user, profile, setView, onLogout, onOwnerProfile
       supabase.from('visits').select('id, scanned_at, points_earned')
         .eq('commerce_id', commerce.id).eq('user_id', m.user_id)
         .order('scanned_at', { ascending:false }).limit(30),
-      supabase.from('redemptions').select('id, created_at, points_spent, prize:prizes(name)')
+      supabase.from('redemptions').select('id, created_at, points_spent, kind, discount_value, promotion_id, prize:prizes(name)')
         .eq('commerce_id', commerce.id).eq('user_id', m.user_id)
         .order('created_at', { ascending:false }).limit(20),
     ])
@@ -16742,6 +16742,91 @@ function CommerceSettingsView({ user, profile, setView, onLogout, onOwnerProfile
                   </div>
 
                 </div>
+              )}
+            </PCard>
+          )
+        })()}
+
+        {/* ── Beneficios del cliente: activo + historial ── */}
+        {(() => {
+          const cps  = (selectedMember?.client_promotions || [])
+          const nowB = new Date()
+          const promoVal = (pid) => (promos || []).find(p => p.id === pid)?.value
+          const fmt = (d) => d ? new Date(d).toLocaleDateString('es-AR', { day:'2-digit', month:'2-digit', year:'2-digit' }) : ''
+          const activos = cps
+            .filter(cp => cp.status === 'active' && cp.expires_at && new Date(cp.expires_at) > nowB)
+            .sort((a,b) => new Date(a.expires_at) - new Date(b.expires_at))
+          const hist = []
+          cps.forEach(cp => {
+            const v = promoVal(cp.promotion_id)
+            const vTxt = v ? `${v}% OFF` : 'descuento'
+            if (cp.granted_at) hist.push({ id:'g'+cp.id, k:'granted', date: cp.granted_at, txt:`Recibió ${vTxt}` })
+            if (cp.status === 'used') hist.push({ id:'u'+cp.id, k:'used', date: cp.used_at || cp.granted_at, txt:`Canjeó ${vTxt}` })
+            else if (cp.expires_at && new Date(cp.expires_at) < nowB) hist.push({ id:'e'+cp.id, k:'expired', date: cp.expires_at, txt:`Se le venció ${vTxt}` })
+            if (cp.status === 'declined') hist.push({ id:'d'+cp.id, k:'declined', date: cp.granted_at, txt:`No se le renovó el ${vTxt}` })
+          })
+          ;(memberRedemptions || []).filter(r => r.kind === 'discount').forEach(r => {
+            hist.push({ id:'rd'+r.id, k:'used', date: r.created_at, txt:`Canjeó ${r.discount_value ? `${r.discount_value}% OFF` : 'un descuento'}` })
+          })
+          const seen = new Set()
+          const histClean = hist.filter(h => {
+            const key = h.k + '|' + h.txt + '|' + (h.date ? new Date(h.date).toISOString().slice(0,10) : '')
+            if (seen.has(key)) return false
+            seen.add(key); return true
+          }).sort((a,b) => new Date(b.date) - new Date(a.date))
+          const META = {
+            granted:  { Icon: Sparkles,   color:'#BD4BF8' },
+            used:     { Icon: CheckCircle, color:'#22C55E' },
+            expired:  { Icon: Clock,       color:C.dust },
+            declined: { Icon: Ban,         color:'#E0413B' },
+          }
+          return (
+            <PCard style={{ padding:16, marginBottom:12 }}>
+              <div style={{ fontSize:10, color:C.dust, fontWeight:700, letterSpacing:'.08em', textTransform:'uppercase', marginBottom:12, display:'flex', alignItems:'center', gap:6 }}>
+                <Percent size={12} color={C.v} strokeWidth={2.5} /> Beneficios
+              </div>
+              {activos.length > 0 ? (
+                <div style={{ display:'flex', flexDirection:'column', gap:8, marginBottom: histClean.length ? 14 : 0 }}>
+                  {activos.map(cp => {
+                    const v = promoVal(cp.promotion_id)
+                    return (
+                      <div key={cp.id} style={{ display:'flex', alignItems:'center', gap:10, padding:'10px 12px', background:`${C.v}14`, border:`1px solid ${C.v}44`, borderRadius:10 }}>
+                        <div style={{ width:30, height:30, borderRadius:8, background:`${C.v}22`, display:'flex', alignItems:'center', justifyContent:'center', flexShrink:0 }}>
+                          <Percent size={14} color={C.v} strokeWidth={2.5} />
+                        </div>
+                        <div style={{ flex:1, minWidth:0 }}>
+                          <div style={{ fontFamily:FN, fontSize:13, fontWeight:700, color:C.white }}>{v ? `${v}% OFF` : 'Descuento'} activo</div>
+                          <div style={{ fontSize:11, color:C.mist }}>Vence el {fmt(cp.expires_at)}</div>
+                        </div>
+                        <span style={{ fontSize:9, fontWeight:800, color:'#22C55E', background:'rgba(34,197,94,0.14)', border:'1px solid rgba(34,197,94,0.35)', borderRadius:999, padding:'3px 8px', letterSpacing:'.06em', flexShrink:0 }}>ACTIVO</span>
+                      </div>
+                    )
+                  })}
+                </div>
+              ) : (
+                <div style={{ fontSize:12, color:C.mist, padding:'8px 0', marginBottom: histClean.length ? 12 : 0 }}>
+                  Sin beneficios activos por ahora.
+                </div>
+              )}
+              {histClean.length > 0 && (
+                <>
+                  <div style={{ fontSize:9, color:C.dust, fontWeight:700, letterSpacing:'.08em', textTransform:'uppercase', marginBottom:8 }}>Historial</div>
+                  <div style={{ display:'flex', flexDirection:'column' }}>
+                    {histClean.map((h, i) => {
+                      const meta = META[h.k] || META.granted
+                      const MI = meta.Icon
+                      return (
+                        <div key={h.id} style={{ display:'flex', alignItems:'center', gap:10, padding:'8px 0', borderBottom: i < histClean.length-1 ? `1px solid ${C.rim}` : 'none' }}>
+                          <div style={{ width:26, height:26, borderRadius:7, background:`${meta.color}1f`, display:'flex', alignItems:'center', justifyContent:'center', flexShrink:0 }}>
+                            <MI size={13} color={meta.color} strokeWidth={2.2} />
+                          </div>
+                          <div style={{ flex:1, minWidth:0, fontSize:12, color:C.white, fontWeight:600, lineHeight:1.3 }}>{h.txt}</div>
+                          <div style={{ fontSize:11, color:C.dust, flexShrink:0 }}>{fmt(h.date)}</div>
+                        </div>
+                      )
+                    })}
+                  </div>
+                </>
               )}
             </PCard>
           )
