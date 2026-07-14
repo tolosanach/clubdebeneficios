@@ -12018,6 +12018,7 @@ function CommerceSettingsView({ user, profile, setView, onLogout, onOwnerProfile
   const [autoConfigs, setAutoConfigs]     = useState({
     reactivacion:  { active: true, days: 7  },
     cercaPremio:   { active: true           },
+    puedeCanjear:  { active: true           },
     // template: 'default' | 'instagram' — 'instagram' agrega la condición
     // de seguir al negocio en Instagram y pega el link/handle cargado en
     // el perfil del negocio. Solo seleccionable si commerce.instagram existe.
@@ -12552,8 +12553,11 @@ function CommerceSettingsView({ user, profile, setView, onLogout, onOwnerProfile
     const cercaPremio = cheapest
       ? members.filter(m => { const b = isStars ? (m.stars||0) : (m.points||0); return b > 0 && b >= cheapest.cost * 0.8 && b < cheapest.cost }).length
       : 0
+    const puedeCanjear = cheapest
+      ? members.filter(m => { const b = isStars ? (m.stars||0) : (m.points||0); return b >= cheapest.cost }).length
+      : 0
     const primera     = members.filter(m => m.created_at && m.created_at >= firstCut).length
-    const count       = reactiv + cercaPremio + primera
+    const count       = reactiv + cercaPremio + puedeCanjear + primera
     if (count > 0) {
       autoPopupShown.current = true
       setShowAutoPopup(true)
@@ -13689,6 +13693,14 @@ function CommerceSettingsView({ user, profile, setView, onLogout, onOwnerProfile
           return bal > 0 && bal >= cheapestActive.cost * 0.8 && bal < cheapestActive.cost
         })
       : [],
+    // Ya pueden canjear: alcanzaron (o superaron) el costo del premio más
+    // barato activo — tienen un premio esperando y hay que empujarlos a venir.
+    puedeCanjear:  cheapestActive
+      ? members.filter(m => {
+          const bal = isAutoStars ? (m.stars||0) : (m.points||0)
+          return bal >= cheapestActive.cost
+        })
+      : [],
     // joined_at es la columna real de memberships (created_at no existe —
     // ese era el bug por el que nunca se detectaban clientes nuevos).
     // A diferencia de las otras automatizaciones, "Bienvenida nuevos socios"
@@ -14684,7 +14696,7 @@ function CommerceSettingsView({ user, profile, setView, onLogout, onOwnerProfile
         // Done si el plan PRO permite Y el dueño activó al menos un tipo
         // de mensaje (no quedaron todos en false).
         done: canUseFeature(planKey, 'automatizaciones')
-          && (autoConfigs?.reactivacion?.active || autoConfigs?.cercaPremio?.active || autoConfigs?.primeraVisita?.active)
+          && (autoConfigs?.reactivacion?.active || autoConfigs?.cercaPremio?.active || autoConfigs?.puedeCanjear?.active || autoConfigs?.primeraVisita?.active)
           && messagesConfigured,
         lockedByPlan: canUseFeature(planKey, 'automatizaciones') ? null : 'pro',
         upgradeFeature: 'automatizaciones',
@@ -16318,6 +16330,10 @@ function CommerceSettingsView({ user, profile, setView, onLogout, onOwnerProfile
     if (type === 'cercaPremio') {
       const faltante = cheapestActive ? Math.max(1, Math.round(cheapestActive.cost - bal)) : 0
       return `Hola ${firstName}! Estás a solo ${faltante} ${unit} de tu recompensa 🎁\n¡Vení a ${biz} y aprovechala!`
+    }
+    if (type === 'puedeCanjear') {
+      const prizeName = cheapestActive?.name ? `"${cheapestActive.name}"` : 'tu recompensa'
+      return `Hola ${firstName}! 🎉 ¡Ya juntaste lo necesario para canjear ${prizeName} en ${biz}!\nVení cuando quieras y llevate tu premio 🎁`
     }
     if (type === 'primeraVisita') {
       const useInstagram = autoConfigs.primeraVisita?.template === 'instagram' && !!commerce?.instagram?.trim()
@@ -20814,6 +20830,7 @@ function CommerceSettingsView({ user, profile, setView, onLogout, onOwnerProfile
           const AUTO_META = {
             reactivacion:  { Icon: RefreshCw, label:'Reactivar inactivos',   sub:'Sin visitar hace varios días',         color:'#6366F1' },
             cercaPremio:   { Icon: Target,    label:'Cerca de premio',        sub:'A punto de canjear su recompensa',     color:'#F59E0B' },
+            puedeCanjear:  { Icon: Gift,      label:'Ya puede canjear',       sub:'Alcanzó el puntaje para un premio',    color:'#14B8A6' },
             primeraVisita: { Icon: UserPlus,  label:'Bienvenida nuevos socios', sub:'Se unió al club esta semana',           color:'#22C55E' },
           }
 
@@ -20882,6 +20899,7 @@ function CommerceSettingsView({ user, profile, setView, onLogout, onOwnerProfile
                 {[
                   { id:'reactivacion',  n:12 },
                   { id:'cercaPremio',   n:5  },
+                  { id:'puedeCanjear',  n:4  },
                   { id:'primeraVisita', n:3  },
                 ].map(({ id, n }) => (
                   <AutoCard key={id} id={id} meta={AUTO_META[id]} count={n} locked />
@@ -20925,6 +20943,18 @@ function CommerceSettingsView({ user, profile, setView, onLogout, onOwnerProfile
                       'Más canjes = más cliente comprometido con tu marca',
                     ],
                     example:'Ejemplo: "¡Estás a 1 estrella del café gratis! Te esperamos"',
+                  },
+                  puedeCanjear: {
+                    Icon: Gift, color:'#14B8A6', rgb:'20,184,166',
+                    title:'Ya puede canjear',
+                    hook:'Avisales a los que ya tienen un premio esperando',
+                    benefits:[
+                      'Detecta clientes que YA llegaron al puntaje de un premio',
+                      'Mensaje "ya podés canjear tu recompensa" listo para enviar',
+                      'Los invita a volver para usar el premio (y comprar de nuevo)',
+                      'Evita que se olviden de que tienen un beneficio disponible',
+                    ],
+                    example:'Ejemplo: "¡Ya tenés el café gratis esperándote! Vení a buscarlo"',
                   },
                   primeraVisita: {
                     Icon: UserPlus, color:'#22C55E', rgb:'34,197,94',
@@ -21008,6 +21038,7 @@ function CommerceSettingsView({ user, profile, setView, onLogout, onOwnerProfile
                   {clients.length} cliente{clients.length !== 1 ? 's' : ''} {autoDetail === 'primeraVisita' ? 'por contactar' : 'detectado' + (clients.length !== 1 ? 's' : '')}
                   {autoDetail === 'reactivacion' && ` · sin visitar hace más de ${cfg.days} días`}
                   {autoDetail === 'cercaPremio' && mockCheapestActive && ` · ≥80% hacia "${mockCheapestActive.name}" (${mockCheapestActive.cost} ${isAutoStars?'estrellas':'puntos'})`}
+                  {autoDetail === 'puedeCanjear' && mockCheapestActive && ` · ya pueden canjear "${mockCheapestActive.name}" (${mockCheapestActive.cost} ${isAutoStars?'estrellas':'puntos'})`}
                   {autoDetail === 'primeraVisita' && ' · todos tus clientes, de más nuevo a más antiguo'}
                 </div>
                 {clients.length === 0 && (
@@ -21021,6 +21052,7 @@ function CommerceSettingsView({ user, profile, setView, onLogout, onOwnerProfile
                     <div style={{ fontSize:12, color:C.mist }}>
                       {autoDetail === 'reactivacion' && 'Todos tus clientes visitaron recientemente.'}
                       {autoDetail === 'cercaPremio'   && 'Ningún cliente está cerca de canjear aún.'}
+                      {autoDetail === 'puedeCanjear'  && 'Ningún cliente llegó al puntaje de un premio todavía.'}
                       {autoDetail === 'primeraVisita' && 'Ya le mandaste la bienvenida a todos tus clientes.'}
                     </div>
                   </PCard>
@@ -21044,6 +21076,7 @@ function CommerceSettingsView({ user, profile, setView, onLogout, onOwnerProfile
                             <div style={{ fontSize:11, color:C.mist, marginTop:2 }}>
                               {autoDetail === 'reactivacion' && daysSince !== null && `Última visita: hace ${daysSince} días`}
                               {autoDetail === 'cercaPremio'   && mockCheapestActive && `${Math.round(bal)} / ${mockCheapestActive.cost} ${isAutoStars?'⭐':'💎'} (falta ${Math.max(1, Math.round(mockCheapestActive.cost - bal))})`}
+                              {autoDetail === 'puedeCanjear'  && mockCheapestActive && `${Math.round(bal)} ${isAutoStars?'⭐':'💎'} · puede canjear "${mockCheapestActive.name}"`}
                               {autoDetail === 'primeraVisita' && (m.joined_at
                                 ? `Se unió el ${new Date(m.joined_at).toLocaleDateString('es-AR')}`
                                 : 'Fecha de alta no disponible')}
