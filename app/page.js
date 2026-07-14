@@ -11775,6 +11775,10 @@ function CommerceSettingsView({ user, profile, setView, onLogout, onOwnerProfile
   // Otorgar beneficio: panel desplegable en la ficha de cliente que lista las
   // promos discount_next activas y permite regalárselas con un click.
   const [grantPanelOpen, setGrantPanelOpen] = useState(false)
+  // Editor de vencimiento unitario del cupón de un cliente (desde su ficha).
+  const [couponEditId, setCouponEditId]     = useState(null)
+  const [couponEditDate, setCouponEditDate] = useState('')
+  const [couponSaving, setCouponSaving]     = useState(false)
   const [grantingPromoId, setGrantingPromoId] = useState(null)
   const [grantError, setGrantError]         = useState('')
   // Otorgar balance manual (estrellas/puntos)
@@ -13267,43 +13271,61 @@ function CommerceSettingsView({ user, profile, setView, onLogout, onOwnerProfile
   // Actualiza descripción y/o vencimiento de una promo activa.
   // Si applies_to_existing=true, propaga los cambios a todos los client_promotions activos.
   // Si applies_to_existing=false, solo actualiza la promo (congela los existentes).
-  async function updatePromo(id, patch) {
+  async function updatePromo(id, patch, applyToExisting = false) {
     const promo = promos.find(p => p.id === id)
     if (!promo) return
 
-    // Determinar si debemos aplicar cambios a clientes existentes
-    // (si el patch cambió applies_to_existing, usar el nuevo valor; si no, usar el anterior)
-    const shouldApplyToExisting = patch.applies_to_existing !== undefined
-      ? patch.applies_to_existing
-      : promo.applies_to_existing
-
-    // Actualizar la promo en tabla promotions
+    // Actualizar la promo en tabla promotions (siempre — así los PRÓXIMOS
+    // clientes que se sumen toman la fecha nueva vía /api/join).
     const { error: promoError } = await supabase.from('promotions').update(patch).eq('id', id)
     if (promoError) {
       console.error('updatePromo error:', promoError)
       return
     }
 
-    // Si applies_to_existing=true y hay cambios que afecten client_promotions,
-    // propagarlos a todos los client_promotions activos
-    if (shouldApplyToExisting) {
-      const clientPromosPatch = {}
-      if (patch.expires_at !== undefined) clientPromosPatch.expires_at = patch.expires_at
-      if (patch.value !== undefined) clientPromosPatch.value = patch.value
-      if (patch.description !== undefined) clientPromosPatch.description = patch.description
-
-      if (Object.keys(clientPromosPatch).length > 0) {
-        const { error: cpError } = await supabase
-          .from('client_promotions')
-          .update(clientPromosPatch)
-          .eq('promotion_id', id)
-          .eq('status', 'active')
-        if (cpError) console.warn('Error updating client_promotions:', cpError)
-      }
+    // Propagar el nuevo vencimiento a los clientes que YA tienen el cupón SOLO
+    // si el dueño lo eligió explícitamente en esta edición. Por defecto NO se
+    // los toca: cada client_promotion conserva su expires_at, así conviven
+    // fechas distintas por cliente. Solo se propaga expires_at (única columna
+    // válida acá; value/description NO existen en client_promotions).
+    if (applyToExisting && patch.expires_at !== undefined) {
+      const { error: cpError } = await supabase
+        .from('client_promotions')
+        .update({ expires_at: patch.expires_at })
+        .eq('promotion_id', id)
+        .eq('status', 'active')
+      if (cpError) console.warn('Error updating client_promotions:', cpError)
     }
 
     setPromos(p => p.map(x => x.id === id ? { ...x, ...patch } : x))
     setEditingPromo(null)
+  }
+
+  // Guarda el vencimiento editado de UN cupón puntual de un cliente (desde su
+  // ficha). No toca a los demás clientes — cada uno mantiene su fecha.
+  async function saveCouponExpiry(cp) {
+    if (!couponEditDate) return
+    setCouponSaving(true)
+    try {
+      const iso = new Date(couponEditDate + 'T23:59:59').toISOString()
+      const res = await fetch('/api/update-client-promotion', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ client_promotion_id: cp.id, expires_at: iso }),
+      })
+      const d = await res.json().catch(() => ({}))
+      if (!res.ok) { showToast('error', d.error || 'No se pudo actualizar'); return }
+      const patchCP = arr => (arr || []).map(x => x.id === cp.id ? { ...x, expires_at: iso } : x)
+      setSelectedMember(sm => sm ? { ...sm, client_promotions: patchCP(sm.client_promotions) } : sm)
+      setMembers(ms => ms.map(mm => mm.id === selectedMember?.id ? { ...mm, client_promotions: patchCP(mm.client_promotions) } : mm))
+      setCouponEditId(null)
+      setCouponEditDate('')
+      showToast('success', 'Vencimiento del cupón actualizado')
+    } catch (e) {
+      showToast('error', 'Error de red')
+    } finally {
+      setCouponSaving(false)
+    }
   }
 
   async function deletePromo(id) {
@@ -16534,6 +16556,10 @@ function CommerceSettingsView({ user, profile, setView, onLogout, onOwnerProfile
           const activeCouponPromo = activeCoupon
             ? (promos || []).find(p => p.id === activeCoupon.promotion_id)
             : null
+          // Todos los cupones vigentes de este cliente (para editar su fecha 1 x 1).
+          const activeCoupons = (selectedMember?.client_promotions || [])
+            .filter(cp => cp.status === 'active' && cp.expires_at && new Date(cp.expires_at) > nowForCoupon)
+            .sort((a,b) => new Date(a.expires_at) - new Date(b.expires_at))
 
           return (
             <PCard style={{
@@ -16629,12 +16655,43 @@ function CommerceSettingsView({ user, profile, setView, onLogout, onOwnerProfile
                       <Percent size={11} color={C.v} strokeWidth={2.5} />
                       Dar % OFF próxima compra
                     </div>
-                    {activeCoupon && (
-                      <div style={{ marginBottom:10, padding:'8px 12px', background:`${C.v}14`, border:`1px solid ${C.v}44`, borderRadius:10, display:'flex', alignItems:'center', gap:8 }}>
-                        <Percent size={13} color={C.v} strokeWidth={2.5} style={{ flexShrink:0 }} />
-                        <span style={{ fontSize:12, color:C.white, fontWeight:600, lineHeight:1.4 }}>
-                          Ya tiene{activeCouponPromo?.value ? ` ${activeCouponPromo.value}% OFF` : ' un cupón'} activo — vence el {new Date(activeCoupon.expires_at).toLocaleDateString('es-AR')}
-                        </span>
+                    {activeCoupons.length > 0 && (
+                      <div style={{ marginBottom:10, display:'flex', flexDirection:'column', gap:8 }}>
+                        {activeCoupons.map(cp => {
+                          const cpPromo = (promos || []).find(p => p.id === cp.promotion_id)
+                          const editing = couponEditId === cp.id
+                          return (
+                            <div key={cp.id} style={{ padding:'10px 12px', background:`${C.v}14`, border:`1px solid ${C.v}44`, borderRadius:10 }}>
+                              <div style={{ display:'flex', alignItems:'center', gap:8 }}>
+                                <Percent size={13} color={C.v} strokeWidth={2.5} style={{ flexShrink:0 }} />
+                                <span style={{ flex:1, fontSize:12, color:C.white, fontWeight:600, lineHeight:1.4 }}>
+                                  {cpPromo?.value ? `${cpPromo.value}% OFF` : 'Cupón'} activo — vence el {new Date(cp.expires_at).toLocaleDateString('es-AR')}
+                                </span>
+                                {!editing && (
+                                  <button onClick={() => { setCouponEditId(cp.id); setCouponEditDate(new Date(cp.expires_at).toISOString().slice(0,10)) }}
+                                    style={{ background:'transparent', border:`1px solid ${C.v}66`, color:C.v, borderRadius:8, padding:'5px 9px', cursor:'pointer', display:'flex', alignItems:'center', gap:5, fontSize:11, fontWeight:700, fontFamily:FN, flexShrink:0 }}>
+                                    <Pen size={11} strokeWidth={2.2} /> Editar
+                                  </button>
+                                )}
+                              </div>
+                              {editing && (
+                                <div style={{ display:'flex', gap:8, marginTop:10 }}>
+                                  <input type="date" value={couponEditDate}
+                                    onChange={e => setCouponEditDate(e.target.value)}
+                                    style={{ flex:1, background:C.bg3, border:`1px solid ${C.rim}`, borderRadius:8, padding:'8px 10px', fontSize:13, color:C.pearl, fontFamily:'inherit', boxSizing:'border-box', colorScheme:'dark' }} />
+                                  <button onClick={() => saveCouponExpiry(cp)} disabled={couponSaving || !couponEditDate}
+                                    style={{ background:C.v, border:'none', borderRadius:8, padding:'8px 14px', color:'#fff', fontFamily:FN, fontSize:12, fontWeight:700, cursor: couponSaving ? 'wait' : 'pointer', flexShrink:0 }}>
+                                    {couponSaving ? '⟳' : 'Guardar'}
+                                  </button>
+                                  <button onClick={() => { setCouponEditId(null); setCouponEditDate('') }}
+                                    style={{ background:C.bg3, border:`1px solid ${C.rim}`, borderRadius:8, padding:'8px 11px', color:C.mist, fontFamily:FN, fontSize:13, fontWeight:600, cursor:'pointer', flexShrink:0 }}>
+                                    ✕
+                                  </button>
+                                </div>
+                              )}
+                            </div>
+                          )
+                        })}
                       </div>
                     )}
                     {grantError && (
@@ -19107,15 +19164,17 @@ function CommerceSettingsView({ user, profile, setView, onLogout, onOwnerProfile
                         />
                       </>
                     )}
-                    {/* Toggle: aplicar cambios a clientes que ya tienen la promo */}
+                    {/* Toggle: aplicar el nuevo vencimiento a los clientes que YA tienen
+                        el cupón. DEFAULT destildado → solo próximos. Solo si el dueño lo
+                        tilda a propósito, se pisa el vencimiento de los ya registrados. */}
                     <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', gap:12, marginBottom:18, padding:'11px', background:C.bg3, borderRadius:8, border:`1px solid ${C.rim}` }}>
                       <div style={{ flex:1 }}>
-                        <label style={{ display:'block', fontSize:12, fontWeight:700, color:C.white, marginBottom:4 }}>Aplicar a clientes existentes</label>
-                        <label style={{ display:'block', fontSize:10, color:C.mist, lineHeight:1.3 }}>Si desactivas, los cambios solo aplican a nuevos clientes</label>
+                        <label style={{ display:'block', fontSize:12, fontWeight:700, color:C.white, marginBottom:4 }}>Aplicar también a clientes que ya lo tienen</label>
+                        <label style={{ display:'block', fontSize:10, color:C.mist, lineHeight:1.3 }}>Si lo dejás sin tildar, el nuevo vencimiento aplica solo a los próximos clientes; los que ya tienen el cupón conservan su fecha.</label>
                       </div>
                       <input
                         type="checkbox"
-                        defaultChecked={ep.applies_to_existing ?? true}
+                        defaultChecked={false}
                         onChange={e => setEditingPromo(prev => ({ ...prev, _appliesToExisting: e.target.checked }))}
                         style={{ width:18, height:18, cursor:'pointer', flexShrink:0 }}
                       />
@@ -19139,11 +19198,10 @@ function CommerceSettingsView({ user, profile, setView, onLogout, onOwnerProfile
                             patch.value = n
                           }
                         }
-                        // Toggle: aplicar cambios a clientes existentes
-                        if (ep._appliesToExisting !== undefined && ep._appliesToExisting !== ep.applies_to_existing) {
-                          patch.applies_to_existing = ep._appliesToExisting
-                        }
-                        if (Object.keys(patch).length > 0) updatePromo(ep.id, patch)
+                        // Aplicar a clientes existentes: decisión puntual de ESTA edición
+                        // (default false). No se guarda en la promo; se pasa como flag.
+                        const applyToExisting = ep._appliesToExisting === true
+                        if (Object.keys(patch).length > 0) updatePromo(ep.id, patch, applyToExisting)
                         else setEditingPromo(null)
                       }}
                         style={{ flex:1, padding:'11px', background:`linear-gradient(135deg, ${epColor}, ${epColor}cc)`, border:'none', borderRadius:10, color:'#fff', fontSize:13, cursor:'pointer', fontFamily:FN, fontWeight:700 }}>
