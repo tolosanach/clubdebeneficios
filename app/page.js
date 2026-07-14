@@ -7570,14 +7570,14 @@ function WalletCardBack({ club, colors, onFlip, userId }) {
   const showPromoBadge = activePromo && (
     activePromo.type === 'discount_next' ? !!clientPromo : true
   )
-  // Si la vigencia es 'fixed', la fuente de verdad es la fecha viva de la
-  // promoción (activePromo.expires_at) — el snapshot en client_promotions
-  // puede haber quedado desactualizado si el dueño editó la fecha después
-  // de otorgar el cupón. Si es 'relative', cada cliente tiene su propio
-  // plazo desde que se le otorgó, así que ahí sí vale el snapshot.
-  const effectivePromoExpiry = activePromo?.expiration_type === 'relative'
-    ? (clientPromo?.expires_at || activePromo?.expires_at)
-    : (activePromo?.expires_at || clientPromo?.expires_at)
+  // Cada cliente tiene su PROPIA fecha de vencimiento (el snapshot en
+  // client_promotions) y ESA es la fuente de verdad — tanto para 'fixed'
+  // como para 'relative'. Si el dueño edita la fecha general de la promo sin
+  // tildar "aplicar a existentes", los cupones ya otorgados conservan su
+  // fecha, así que mostramos la del cliente (coincide con lo que honra la
+  // caja en /api/scan). Solo caemos a la fecha de la promo si el cliente no
+  // tuviera snapshot por algún motivo.
+  const effectivePromoExpiry = clientPromo?.expires_at || activePromo?.expires_at
   const promoExpiry = showPromoBadge && effectivePromoExpiry
     ? new Date(effectivePromoExpiry).toLocaleDateString('es-AR', { day:'2-digit', month:'2-digit', year:'2-digit' })
     : null
