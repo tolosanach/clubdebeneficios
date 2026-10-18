@@ -2773,12 +2773,19 @@ function LoadingScreen({ onComplete }) {
 }
 
 function FullscreenLoader({ message }) {
+  // Estilo de los comerciales: placa naranja con grano, estrella de plastilina
+  // que rebota con squash & stretch, sombra que respira y label mono.
   return (
-    <div style={{ position:'fixed', inset:0, zIndex:9990, background:'#000', display:'flex', flexDirection:'column', alignItems:'center', justifyContent:'center' }}>
-      <div style={{ position:'absolute', top:'-20%', left:'-10%', width:'60vw', height:'60vw', borderRadius:'50%', background:'radial-gradient(circle, rgba(139,92,246,0.30) 0%, transparent 70%)', filter:'blur(80px)', pointerEvents:'none' }} />
-      <div style={{ position:'absolute', bottom:'-20%', right:'-10%', width:'50vw', height:'50vw', borderRadius:'50%', background:'radial-gradient(circle, rgba(236,72,153,0.25) 0%, transparent 70%)', filter:'blur(80px)', pointerEvents:'none' }} />
-      <ClufixLoader size={100} />
-      {message && <p style={{ fontFamily:FI, fontSize:13, color:'rgba(255,255,255,0.50)', marginTop:24, margin:'24px 0 0' }}>{message}</p>}
+    <div className="cx-grain" role="status" aria-live="polite" style={{ position:'fixed', inset:0, zIndex:9990, background:'#FE5000', display:'flex', flexDirection:'column', alignItems:'center', justifyContent:'center', overflow:'hidden' }}>
+      <div aria-hidden="true" className="cx-ring cx-spin" style={{ width:'min(520px,90vw)', height:'min(520px,90vw)', left:'50%', top:'50%', marginLeft:'calc(min(520px,90vw) / -2)', marginTop:'calc(min(520px,90vw) / -2)', border:'3px solid rgba(255,255,255,0.14)' }} />
+      <div style={{ position:'relative', width:150, height:190 }}>
+        <img src="/landing/star_front.webp" alt="" aria-hidden="true" className="cx-loader-star" style={{ position:'absolute', left:0, bottom:26, width:150, height:'auto' }} />
+        <span aria-hidden="true" className="cx-loader-shadow" style={{ position:'absolute', left:'50%', bottom:0, width:96, height:16, marginLeft:-48, borderRadius:'50%', background:'rgba(122,34,0,0.45)' }} />
+      </div>
+      <p style={{ fontFamily:"'DM Mono', monospace", fontWeight:500, fontSize:13, letterSpacing:'0.16em', textTransform:'uppercase', color:'#7A2200', margin:'26px 0 0', paddingLeft:'1.6em', position:'relative' }}>
+        {message || 'Cargando'}<span className="cx-loader-dots" />
+      </p>
+      <img src="/clufix_logo.svg" alt="Clufix" style={{ position:'absolute', bottom:'clamp(28px,6vh,56px)', left:'50%', transform:'translateX(-50%)', width:96, height:'auto', opacity:0.9 }} />
     </div>
   )
 }
