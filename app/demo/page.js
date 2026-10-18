@@ -528,7 +528,7 @@ function CtaModal({ onClose }) {
         </div>
 
         <a
-          href="/"
+          href="/api/auth/google"
           style={{
             display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8,
             padding: '14px', borderRadius: 14,
