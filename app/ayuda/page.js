@@ -1,6 +1,7 @@
 'use client'
 import Link from 'next/link'
 import { ChevronLeft, MessageCircle, Mail } from 'lucide-react'
+import BackHome from '../../lib/BackHome'
 
 export const dynamic = 'force-static'
 
@@ -123,6 +124,7 @@ export default function AyudaPage() {
           <Link href="/terminos" style={{ color:'inherit', textDecoration:'underline' }}>Términos y Condiciones</Link>
           <Link href="/privacidad" style={{ color:'inherit', textDecoration:'underline' }}>Privacidad</Link>
         </div>
+        <BackHome />
       </div>
     </div>
   )

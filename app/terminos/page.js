@@ -1,6 +1,7 @@
 'use client'
 import Link from 'next/link'
 import { ChevronLeft } from 'lucide-react'
+import BackHome from '../../lib/BackHome'
 
 export const dynamic = 'force-static'
 
@@ -89,6 +90,7 @@ export default function TerminosPage() {
           </section>
 
         </div>
+        <BackHome />
       </div>
     </div>
   )
