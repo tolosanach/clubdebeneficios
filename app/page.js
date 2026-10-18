@@ -2717,62 +2717,12 @@ function LoadingScreen({ onComplete }) {
     return () => clearInterval(iv)
   }, [])
 
-  return (
-    <div style={{ position:'fixed', inset:0, zIndex:9999, background:'#0a0a0f', display:'flex', flexDirection:'column', overflow:'hidden' }}>
-      {/* Blobs */}
-      <div style={{ position:'absolute', top:'-20%', left:'-10%', width:'60vw', height:'60vw', borderRadius:'50%', background:'radial-gradient(circle, rgba(139,92,246,0.30) 0%, transparent 70%)', filter:'blur(80px)', pointerEvents:'none' }} />
-      <div style={{ position:'absolute', bottom:'-20%', right:'-10%', width:'50vw', height:'50vw', borderRadius:'50%', background:'radial-gradient(circle, rgba(236,72,153,0.25) 0%, transparent 70%)', filter:'blur(80px)', pointerEvents:'none' }} />
-
-      {/* Logo */}
-      <div style={{ padding:'24px', opacity:0.5 }}><Logo /></div>
-
-      {/* Palabras rotativas */}
-      <div style={{ flex:1, display:'flex', alignItems:'center', justifyContent:'center' }}>
-        <div style={{ position:'relative', height:96, width:'100%', overflow:'hidden', textAlign:'center' }}>
-          {WORDS.map((word, i) => (
-            <span key={word} style={{
-              position:'absolute', inset:0, display:'flex', alignItems:'center', justifyContent:'center',
-              fontFamily: FN, fontSize:'clamp(40px,8vw,72px)', fontWeight:900, letterSpacing:'-0.03em',
-              background:'#6F30DF',
-              WebkitBackgroundClip:'text', WebkitTextFillColor:'transparent',
-              opacity:    i === wordIndex ? 1 : 0,
-              transform:  i === wordIndex ? 'translateY(0)' : 'translateY(28px)',
-              transition: 'opacity 0.45s ease, transform 0.45s ease',
-              pointerEvents:'none',
-            }}>
-              {word}
-            </span>
-          ))}
-        </div>
-      </div>
-
-      {/* Contador + barra */}
-      <div style={{ padding:'20px 24px 32px' }}>
-        <div style={{ textAlign:'right', marginBottom:12 }}>
-          <span style={{
-            fontFamily:FN, fontWeight:900, fontSize:'clamp(52px,10vw,80px)',
-            fontVariantNumeric:'tabular-nums', letterSpacing:'-0.04em',
-            background:'linear-gradient(135deg,#fff,rgba(255,255,255,0.45))',
-            WebkitBackgroundClip:'text', WebkitTextFillColor:'transparent',
-          }}>
-            {String(count).padStart(3, '0')}
-          </span>
-        </div>
-        <div style={{ height:3, background:'rgba(255,255,255,0.10)', borderRadius:99, overflow:'hidden' }}>
-          <div style={{
-            height:'100%', borderRadius:99,
-            background:'#6F30DF',
-            boxShadow:'0 0 20px rgba(168,85,247,0.55)',
-            width:`${count}%`,
-            transition:'width 80ms linear',
-          }} />
-        </div>
-      </div>
-    </div>
-  )
+  // Mismo look que FullscreenLoader (placa naranja + estrella) para que no
+  // haya salto visual entre "Iniciando..." y la intro de primera visita.
+  return <FullscreenLoader message={WORDS[wordIndex]} progress={count} />
 }
 
-function FullscreenLoader({ message }) {
+function FullscreenLoader({ message, progress }) {
   // Estilo de los comerciales: placa naranja con grano, estrella de plastilina
   // que rebota con squash & stretch, sombra que respira y label mono.
   return (
@@ -2785,6 +2735,11 @@ function FullscreenLoader({ message }) {
       <p style={{ fontFamily:"'DM Mono', monospace", fontWeight:500, fontSize:13, letterSpacing:'0.16em', textTransform:'uppercase', color:'#7A2200', margin:'26px 0 0', paddingLeft:'1.6em', position:'relative' }}>
         {message || 'Cargando'}<span className="cx-loader-dots" />
       </p>
+      {typeof progress === 'number' && (
+        <div aria-hidden="true" style={{ width:'min(220px,60vw)', height:5, borderRadius:99, background:'rgba(122,34,0,0.25)', marginTop:18, overflow:'hidden', position:'relative' }}>
+          <div style={{ width:`${progress}%`, height:'100%', borderRadius:99, background:'#fff', transition:'width 80ms linear' }} />
+        </div>
+      )}
       <img src="/clufix_logo.svg" alt="Clufix" style={{ position:'absolute', bottom:'clamp(28px,6vh,56px)', left:'50%', transform:'translateX(-50%)', width:96, height:'auto', opacity:0.9 }} />
     </div>
   )
