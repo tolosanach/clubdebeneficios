@@ -13638,9 +13638,8 @@ function CommerceSettingsView({ user, profile, setView, onLogout, onOwnerProfile
     //     correspondiente al plan (STARTER / PRO).
     //  2. Le agregamos `external_reference={commerce.id}` a la URL para que
     //     cuando MP nos notifique el pago aprobado, sepamos qué comercio
-    //     activar. El admin (vos) revisa la notificación de MP y actualiza
-    //     el plan en supabase manualmente — la activación automática vía
-    //     webhooks queda para una iteración futura cuando haya más volumen.
+    //     activar. Además registramos un checkout_intent como respaldo: el
+    //     webhook (app/api/webhooks/mercadopago) activa el plan solo.
     //  3. Si el dueño no quiere pagar online o tiene problemas, el modal
     //     muestra un fallback de WhatsApp (ver UpgradeModal).
     const def = PLANS[newPlan]
@@ -13655,6 +13654,17 @@ function CommerceSettingsView({ user, profile, setView, onLogout, onOwnerProfile
     const sep = def.subscriptionUrl.includes('?') ? '&' : '?'
     const ref = commerce?.id ? `${sep}external_reference=${encodeURIComponent(commerce.id)}` : ''
     const url = `${def.subscriptionUrl}${ref}`
+    // Registramos el intento ANTES de abrir MP (fire-and-forget, keepalive
+    // para que sobreviva aunque la pestaña pierda foco). El webhook lo usa
+    // para saber qué comercio activar si MP no le pasa external_reference.
+    if (commerce?.id) {
+      fetch('/api/billing/checkout-intent', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ commerce_id: commerce.id, plan: newPlan }),
+        keepalive: true,
+      }).catch(() => {})
+    }
     window.open(url, '_blank', 'noopener,noreferrer')
     showToast('success', `Te abrimos el checkout de Mercado Pago. Activamos tu plan ${def.label} en cuanto se confirme el pago.`)
     logActivity('settings', `Iniciado checkout de upgrade a ${def.label}`)
