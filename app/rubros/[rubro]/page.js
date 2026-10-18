@@ -1,4 +1,5 @@
 import { notFound } from 'next/navigation'
+import '../../globals.css'
 import RubroPage from '../../../lib/RubroPage'
 import { rubros } from '../../../lib/rubros-data'
 
