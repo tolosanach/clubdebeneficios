@@ -947,13 +947,13 @@ function OnboardingFlow({ user, onComplete }) {
                 onClick={() => onComplete({ goTo: 'register-commerce' })}
                 style={{ width:'100%', padding:'15px', borderRadius:14, background:G, border:'none', color:'#fff', fontFamily:FN, fontSize:14, fontWeight:700, cursor:'pointer', boxShadow:'0 8px 28px rgba(254,80,0,0.32)', display:'flex', alignItems:'center', justifyContent:'center', gap:8, marginBottom:10 }}>
                 <Store size={16} strokeWidth={2.2} />
-                Sí, registrar mi negocio
+                Soy comerciante
               </button>
 
               <button
                 onClick={() => onComplete()}
                 style={{ width:'100%', padding:'14px', borderRadius:14, background:'rgba(255,255,255,0.06)', border:`1px solid ${C.rim}`, color:C.pearl, fontFamily:FN, fontSize:13, fontWeight:600, cursor:'pointer' }}>
-                No, soy solo cliente
+                Soy cliente
               </button>
 
               <div style={{ fontSize:11, color:C.dust, marginTop:14, lineHeight:1.5 }}>
