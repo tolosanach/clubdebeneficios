@@ -1073,15 +1073,15 @@ html.clufix-nav-back::view-transition-new(root) {
   position: fixed; left: 0; top: 50%; z-index: 2147483000;
   width: 48px; height: 48px; border-radius: 50%;
   display: flex; align-items: center; justify-content: center;
-  background: rgba(30,18,52,0.92); color: #C4B5FD;
-  border: 1px solid rgba(196,181,253,0.35);
+  background: rgba(36,24,18,0.92); color: #FFB59E;
+  border: 1px solid rgba(255,181,158,0.35);
   box-shadow: 0 6px 20px rgba(0,0,0,0.45);
   opacity: 0; transform: translateX(-48px) scale(0.7);
   pointer-events: none; will-change: transform, opacity;
 }
-.clufix-swipe-bubble[data-ready="1"] { background: #7C3AED; color: #fff; border-color: #7C3AED; }
+.clufix-swipe-bubble[data-ready="1"] { background: #E03E1B; color: #fff; border-color: #E03E1B; }
 .clufix-swipe-edge {
   position: fixed; left: 0; top: 0; bottom: 0; width: 22px; z-index: 2147482999;
-  background: linear-gradient(90deg, rgba(124,58,237,0.35), rgba(124,58,237,0));
+  background: linear-gradient(90deg, rgba(224,62,27,0.35), rgba(224,62,27,0));
   opacity: 0; pointer-events: none;
 }
