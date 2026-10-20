@@ -14446,7 +14446,7 @@ function CommerceSettingsView({ user, profile, setView, onLogout, onOwnerProfile
       }}>
         <div style={{ width:3, height:14, borderRadius:99, background:'#E03E1B' }} />
         <div style={{
-          fontFamily:FN, fontSize:11.5, fontWeight:800,
+          fontFamily:FN, fontSize:12, fontWeight:800,
           color:'rgba(255,255,255,0.85)',
           letterSpacing:'.10em', textTransform:'uppercase',
         }}>{children}</div>
@@ -14877,7 +14877,7 @@ function CommerceSettingsView({ user, profile, setView, onLogout, onOwnerProfile
               </div>
               <div>
                 <div style={{ fontFamily:FN, fontSize:12, fontWeight:900, color:C.white, lineHeight:1.3 }}>{commerce?.name || 'Tu negocio'}</div>
-                <div style={{ fontSize:10, color:unitColor, marginTop:1 }}>{unitIcon} {unitLabel}</div>
+                <div style={{ fontSize:12, color:unitColor, marginTop:1 }}>{unitIcon} {unitLabel}</div>
               </div>
             </div>
             {MENU.map(m => {
@@ -14893,7 +14893,7 @@ function CommerceSettingsView({ user, profile, setView, onLogout, onOwnerProfile
                   style={{ display:'flex', alignItems:'center', gap:10, padding:'11px 18px', background:'transparent', border:'none', borderRadius:8, color: dimmed ? C.dust : C.mist, fontSize:12, cursor:'pointer', textAlign:'left', width:'100%', transition:'background 130ms ease, color 130ms ease', fontFamily:'inherit', opacity: dimmed ? 0.75 : 1 }}>
                   {(() => { const I = MENU_ICONS[m.id]; return I ? <I size={15} color={dimmed ? C.dust : C.mist} strokeWidth={2} style={{ flexShrink:0 }} /> : null })()}
                   <span style={{ fontFamily:FN, fontWeight:400, flex:1 }}>{m.label}</span>
-                  {isProLocked && <span style={{ fontSize:9, color:PLANS.pro.color, fontFamily:FN, fontWeight:700 }}>PRO</span>}
+                  {isProLocked && <span style={{ fontSize:12, color:PLANS.pro.color, fontFamily:FN, fontWeight:700 }}>PRO</span>}
                   {isLocked && !isProLocked && <Lock size={10} color={C.dust} strokeWidth={2} />}
                 </button>
               )
@@ -14986,7 +14986,7 @@ function CommerceSettingsView({ user, profile, setView, onLogout, onOwnerProfile
                     flexShrink: 0,
                   }} />
                   <span style={{
-                    fontFamily: FN, fontSize: 8.5, fontWeight: 800,
+                    fontFamily: FN, fontSize: 12, fontWeight: 800,
                     color: '#22E698', letterSpacing: '.10em', textTransform: 'uppercase',
                   }}>
                     Negocio activo
@@ -15023,7 +15023,7 @@ function CommerceSettingsView({ user, profile, setView, onLogout, onOwnerProfile
                     border: '1px solid rgba(34,230,152,0.45)',
                     color: '#22E698',
                     cursor: 'pointer',
-                    fontFamily: FN, fontSize: 11, fontWeight: 700,
+                    fontFamily: FN, fontSize: 12, fontWeight: 700,
                     letterSpacing: '.02em',
                     transition: 'background 160ms ease, border-color 160ms ease, transform 120ms ease',
                   }}
@@ -15136,10 +15136,10 @@ function CommerceSettingsView({ user, profile, setView, onLogout, onOwnerProfile
                   transition: 'background 200ms ease, box-shadow 200ms ease',
                 }}>
                   <Icon size={22} color={fg} strokeWidth={2.4} />
-                  <span style={{ fontFamily: FN, fontSize: 9, fontWeight: 800, color: fg, letterSpacing: '.06em', textTransform: 'uppercase', lineHeight: 1, opacity: 0.78, marginTop: 6 }}>{label}</span>
+                  <span style={{ fontFamily: FN, fontSize: 12, fontWeight: 800, color: fg, letterSpacing: '.06em', textTransform: 'uppercase', lineHeight: 1, opacity: 0.78, marginTop: 6 }}>{label}</span>
                   <span style={{ fontFamily: FN, fontSize: 14, fontWeight: 800, color: fg, lineHeight: 1.2, marginTop: 3, letterSpacing: '-.01em' }}>{value}</span>
                   {hint && (
-                    <span style={{ fontFamily: FN, fontSize: 9.5, fontWeight: 600, color: fg, lineHeight: 1.2, marginTop: 2, letterSpacing: '.01em', opacity: 0.65 }}>{hint}</span>
+                    <span style={{ fontFamily: FN, fontSize: 12, fontWeight: 600, color: fg, lineHeight: 1.2, marginTop: 2, letterSpacing: '.01em', opacity: 0.65 }}>{hint}</span>
                   )}
                   <button onClick={onEdit}
                     style={{
@@ -15293,7 +15293,7 @@ function CommerceSettingsView({ user, profile, setView, onLogout, onOwnerProfile
                 <div style={{ fontSize: 13, color: '#fff', fontWeight: 700, fontFamily: FN, lineHeight: 1.3 }}>
                   {motivMsg}
                 </div>
-                <div style={{ fontSize: 11, color: 'rgba(255,255,255,0.55)', marginTop: 3 }}>
+                <div style={{ fontSize: 12, color: 'rgba(255,255,255,0.55)', marginTop: 3 }}>
                   {doneCount} de {totalCount} configuraciones completadas
                 </div>
               </div>
@@ -15471,7 +15471,7 @@ function CommerceSettingsView({ user, profile, setView, onLogout, onOwnerProfile
                   background: active ? t.color : `${t.color}1F`,
                   border: active ? 'none' : `1px solid ${t.color}44`,
                   color: active ? '#0a0a0a' : `${t.color}B3`,
-                  fontFamily: FN, fontSize: 11, fontWeight: 900,
+                  fontFamily: FN, fontSize: 12, fontWeight: 900,
                   display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
                   flexShrink: 0,
                 }}>
@@ -15481,7 +15481,7 @@ function CommerceSettingsView({ user, profile, setView, onLogout, onOwnerProfile
                 {/* Badge contador — también con el color de la tab,
                     incluso cuando la tab está inactiva. */}
                 <span style={{
-                  fontSize: 10.5, fontWeight: 800,
+                  fontSize: 12, fontWeight: 800,
                   padding: '2px 7px',
                   borderRadius: 99,
                   background: active ? `${t.color}33` : `${t.color}14`,
@@ -15790,7 +15790,7 @@ function CommerceSettingsView({ user, profile, setView, onLogout, onOwnerProfile
                 <div style={{
                   marginTop: 'auto',
                   display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6,
-                  fontSize: 11, color: 'rgba(34,230,152,0.85)',
+                  fontSize: 12, color: 'rgba(34,230,152,0.85)',
                   fontFamily: FN, fontWeight: 700,
                   letterSpacing: '.06em', textTransform: 'uppercase',
                   position: 'relative', zIndex: 2,
@@ -16008,7 +16008,7 @@ function CommerceSettingsView({ user, profile, setView, onLogout, onOwnerProfile
                   <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', marginBottom: 6, position: 'relative', zIndex: 2 }}>
                     {/* Kicker — usa themeColor cuando no es locked. */}
                     <div style={{
-                      fontFamily: FN, fontSize: 11, fontWeight: 700,
+                      fontFamily: FN, fontSize: 12, fontWeight: 700,
                       color: isLocked ? `${lockColor}DD` : themeColor,
                       letterSpacing: '.10em', textTransform: 'uppercase',
                     }}>
@@ -16017,7 +16017,7 @@ function CommerceSettingsView({ user, profile, setView, onLogout, onOwnerProfile
                     {isLocked ? (
                       <span style={{
                         display: 'inline-flex', alignItems: 'center', gap: 5,
-                        fontSize: 9.5, fontWeight: 800, color: lockColor,
+                        fontSize: 12, fontWeight: 800, color: lockColor,
                         letterSpacing: '.10em', textTransform: 'uppercase',
                         background: `${lockColor}1F`,
                         border: `1px solid ${lockColor}66`,
@@ -16030,7 +16030,7 @@ function CommerceSettingsView({ user, profile, setView, onLogout, onOwnerProfile
                     ) : done ? (
                       <span style={{
                         display: 'inline-flex', alignItems: 'center', gap: 4,
-                        fontSize: 9.5, fontWeight: 800, color: themeColor,
+                        fontSize: 12, fontWeight: 800, color: themeColor,
                         letterSpacing: '.10em', textTransform: 'uppercase',
                         background: `${themeColor}1A`,
                         border: `1px solid ${themeRgba35}`,
@@ -16045,7 +16045,7 @@ function CommerceSettingsView({ user, profile, setView, onLogout, onOwnerProfile
                       // Texto en negro porque el amarillo brillante con
                       // texto blanco no contrasta bien (acessibilidad).
                       <span style={{
-                        fontSize: 9.5, fontWeight: 800,
+                        fontSize: 12, fontWeight: 800,
                         color: '#1A1206', // texto oscuro sobre amarillo brillante
                         letterSpacing: '.10em', textTransform: 'uppercase',
                         background: themeColor,
@@ -16252,7 +16252,7 @@ function CommerceSettingsView({ user, profile, setView, onLogout, onOwnerProfile
             display: 'flex', alignItems: 'flex-start', gap: 10,
           }}>
             <Sparkles size={14} color="#E03E1B" strokeWidth={2.2} style={{ flexShrink: 0, marginTop: 1 }} />
-            <div style={{ fontSize: 11.5, color: 'rgba(255,255,255,0.72)', lineHeight: 1.5 }}>
+            <div style={{ fontSize: 12, color: 'rgba(255,255,255,0.72)', lineHeight: 1.5 }}>
               Las tarjetas con chip <strong style={{ color: '#E03E1B' }}>STARTER</strong> o <strong style={{ color: '#F0603A' }}>PRO</strong> son funciones premium. Aparecen acá para que las conozcas, pero no afectan tu progreso — son las que se desbloquean si actualizás tu plan.
             </div>
           </div>
@@ -16397,7 +16397,7 @@ function CommerceSettingsView({ user, profile, setView, onLogout, onOwnerProfile
             <div style={{ fontSize:12, color:C.mist }}>{m.visits_count||0} visitas · {unitIcon} {val} {unitLabel}</div>
           </div>
           {canRedeem && (
-            <div style={{ marginLeft:'auto', background:`${C.ok}22`, border:`1px solid ${C.ok}44`, borderRadius:8, padding:'4px 10px', fontSize:11, color:C.ok, fontWeight:700, flexShrink:0, display:'flex', alignItems:'center', gap:4 }}>
+            <div style={{ marginLeft:'auto', background:`${C.ok}22`, border:`1px solid ${C.ok}44`, borderRadius:8, padding:'4px 10px', fontSize:12, color:C.ok, fontWeight:700, flexShrink:0, display:'flex', alignItems:'center', gap:4 }}>
               <CheckCircle size={11} strokeWidth={2} /> Listo
             </div>
           )}
@@ -16405,7 +16405,7 @@ function CommerceSettingsView({ user, profile, setView, onLogout, onOwnerProfile
 
         {/* Datos de contacto */}
         <PCard style={{ padding:'14px 16px', marginBottom:12 }}>
-          <div style={{ fontSize:10, color:C.dust, fontWeight:700, letterSpacing:'.08em', textTransform:'uppercase', marginBottom:12 }}>Datos del cliente</div>
+          <div style={{ fontSize:12, color:C.dust, fontWeight:700, letterSpacing:'.08em', textTransform:'uppercase', marginBottom:12 }}>Datos del cliente</div>
           <div style={{ display:'flex', flexDirection:'column', gap:10 }}>
             {[
               { Icon: Mail,     label:'Email',        val: m.profiles?.email || '–',
@@ -16417,12 +16417,12 @@ function CommerceSettingsView({ user, profile, setView, onLogout, onOwnerProfile
               <div key={row.label} style={{ display:'flex', alignItems:'center', gap:10 }}>
                 <row.Icon size={14} color='rgba(255,255,255,0.50)' strokeWidth={2} style={{ flexShrink:0 }} />
                 <div style={{ flex:1, minWidth:0 }}>
-                  <div style={{ fontSize:9, color:C.dust, textTransform:'uppercase', letterSpacing:'.06em' }}>{row.label}</div>
+                  <div style={{ fontSize:12, color:C.dust, textTransform:'uppercase', letterSpacing:'.06em' }}>{row.label}</div>
                   <div style={{ fontSize:13, color: row.val === '–' ? C.dust : C.pearl, fontFamily:FN, fontWeight:600, overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>{row.val}</div>
                 </div>
                 {row.action && (
                   <a href={row.action.href} target="_blank" rel="noreferrer"
-                    style={{ marginLeft:'auto', display:'flex', alignItems:'center', gap:5, background:`${row.action.color}22`, border:`1px solid ${row.action.color}55`, borderRadius:8, padding:'5px 10px', color:row.action.color, fontSize:11, fontWeight:700, textDecoration:'none', flexShrink:0, whiteSpace:'nowrap' }}>
+                    style={{ marginLeft:'auto', display:'flex', alignItems:'center', gap:5, background:`${row.action.color}22`, border:`1px solid ${row.action.color}55`, borderRadius:8, padding:'5px 10px', color:row.action.color, fontSize:12, fontWeight:700, textDecoration:'none', flexShrink:0, whiteSpace:'nowrap' }}>
                     <row.action.ActionIcon size={12} strokeWidth={2.5} />
                     {row.action.btnLabel}
                   </a>
@@ -16442,7 +16442,7 @@ function CommerceSettingsView({ user, profile, setView, onLogout, onOwnerProfile
               { label:'Canjes realizados', val: memberRedemptions.length },
             ].map(s => (
               <div key={s.label} style={{ background:C.bg3, borderRadius:10, padding:'12px 14px' }}>
-                <div style={{ fontSize:10, color:C.dust, marginBottom:4 }}>{s.label}</div>
+                <div style={{ fontSize:12, color:C.dust, marginBottom:4 }}>{s.label}</div>
                 <div style={{ fontFamily:FN, fontSize:14, fontWeight:900, color:C.white }}>{s.val}</div>
               </div>
             ))}
@@ -16484,7 +16484,7 @@ function CommerceSettingsView({ user, profile, setView, onLogout, onOwnerProfile
                   </div>
                   <div style={{ textAlign: 'left' }}>
                     <div style={{ fontFamily: FN, fontSize: 13, fontWeight: 700, color: C.white }}>Registrar visita</div>
-                    <div style={{ fontSize: 11, color: C.dust, marginTop: 2 }}>
+                    <div style={{ fontSize: 12, color: C.dust, marginTop: 2 }}>
                       {isStars
                         ? `Suma ${hasDoubleToday ? '×2 → 2 estrellas hoy' : '1 estrella'} por esta compra`
                         : 'Suma puntos por el monto de la compra'}
@@ -16499,7 +16499,7 @@ function CommerceSettingsView({ user, profile, setView, onLogout, onOwnerProfile
               {addVisitOpen && (
                 <div style={{ marginTop: 14, paddingTop: 14, borderTop: `1px solid ${C.rim}` }}>
                   {addVisitError && (
-                    <div style={{ fontSize: 11, color: '#f87444', marginBottom: 10, padding: '7px 10px', background: 'rgba(248,116,68,0.10)', border: '1px solid rgba(248,116,68,0.30)', borderRadius: 8 }}>
+                    <div style={{ fontSize: 12, color: '#f87444', marginBottom: 10, padding: '7px 10px', background: 'rgba(248,116,68,0.10)', border: '1px solid rgba(248,116,68,0.30)', borderRadius: 8 }}>
                       {addVisitError}
                     </div>
                   )}
@@ -16531,7 +16531,7 @@ function CommerceSettingsView({ user, profile, setView, onLogout, onOwnerProfile
                     </div>
                   ) : (
                     <div>
-                      <div style={{ fontSize: 10, color: C.dust, fontWeight: 700, letterSpacing: '.07em', textTransform: 'uppercase', marginBottom: 10 }}>Monto de la compra ($)</div>
+                      <div style={{ fontSize: 12, color: C.dust, fontWeight: 700, letterSpacing: '.07em', textTransform: 'uppercase', marginBottom: 10 }}>Monto de la compra ($)</div>
                       <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 10 }}>
                         <button onClick={dec} disabled={cur <= step}
                           style={{ width: 44, height: 44, borderRadius: 12, background: 'rgba(255,255,255,0.08)', border: `1px solid ${C.rim}`, color: C.white, fontSize: 22, fontWeight: 300, cursor: cur <= step ? 'not-allowed' : 'pointer', opacity: cur <= step ? 0.4 : 1, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
@@ -16539,7 +16539,7 @@ function CommerceSettingsView({ user, profile, setView, onLogout, onOwnerProfile
                         </button>
                         <div style={{ flex: 1, textAlign: 'center' }}>
                           <div style={{ fontFamily: FN, fontSize: 28, fontWeight: 900, color: C.white, lineHeight: 1 }}>${(cur || step).toLocaleString('es-AR')}</div>
-                          <div style={{ fontSize: 10, color: C.dust, marginTop: 3 }}>
+                          <div style={{ fontSize: 12, color: C.dust, marginTop: 3 }}>
                             {hasDoubleToday
                               ? <span style={{ color: sysColor, fontWeight: 700 }}>×2 = {((cur || step) * 2).toLocaleString('es-AR')} puntos hoy</span>
                               : `= ${(cur || step).toLocaleString('es-AR')} puntos`}
@@ -16615,7 +16615,7 @@ function CommerceSettingsView({ user, profile, setView, onLogout, onOwnerProfile
                     </div>
                     <div style={{ textAlign:'left' }}>
                       <div style={{ fontFamily:FN, fontSize:13, fontWeight:700, color:C.white }}>Otorgar beneficio</div>
-                      <div style={{ fontSize:11, color:C.dust, marginTop:2 }}>Sumá balance o regalá un cupón</div>
+                      <div style={{ fontSize:12, color:C.dust, marginTop:2 }}>Sumá balance o regalá un cupón</div>
                     </div>
                   </div>
                   {grantPanelOpen
@@ -16635,12 +16635,12 @@ function CommerceSettingsView({ user, profile, setView, onLogout, onOwnerProfile
 
                   {/* Sub-sección 1: Sumar/restar balance */}
                   <div>
-                    <div style={{ fontSize:10, color:C.dust, fontWeight:700, letterSpacing:'.07em', textTransform:'uppercase', marginBottom:10, display:'flex', alignItems:'center', gap:6 }}>
+                    <div style={{ fontSize:12, color:C.dust, fontWeight:700, letterSpacing:'.07em', textTransform:'uppercase', marginBottom:10, display:'flex', alignItems:'center', gap:6 }}>
                       {isStars ? <Star size={11} color={sysColor} strokeWidth={2} /> : <Gem size={11} color={sysColor} strokeWidth={2} />}
                       Ajustar {unitWord}
                     </div>
                     {grantBalanceError && (
-                      <div style={{ fontSize:11, color:'#f87444', marginBottom:10, padding:'7px 10px', background:'rgba(248,116,68,0.10)', border:'1px solid rgba(248,116,68,0.30)', borderRadius:8 }}>
+                      <div style={{ fontSize:12, color:'#f87444', marginBottom:10, padding:'7px 10px', background:'rgba(248,116,68,0.10)', border:'1px solid rgba(248,116,68,0.30)', borderRadius:8 }}>
                         {grantBalanceError}
                       </div>
                     )}
@@ -16666,7 +16666,7 @@ function CommerceSettingsView({ user, profile, setView, onLogout, onOwnerProfile
                       </button>
                       <div style={{ flex:1, textAlign:'center' }}>
                         <div style={{ fontFamily:FN, fontSize:28, fontWeight:900, color:C.white, lineHeight:1 }}>{cur || step}</div>
-                        <div style={{ fontSize:10, color:C.dust, marginTop:3 }}>
+                        <div style={{ fontSize:12, color:C.dust, marginTop:3 }}>
                           {unitWord}{!isStars && step > 1 && ` · paso $${step.toLocaleString('es-AR')}`}
                         </div>
                       </div>
@@ -16688,7 +16688,7 @@ function CommerceSettingsView({ user, profile, setView, onLogout, onOwnerProfile
 
                   {/* Sub-sección 2: % OFF */}
                   <div>
-                    <div style={{ fontSize:10, color:C.dust, fontWeight:700, letterSpacing:'.07em', textTransform:'uppercase', marginBottom:10, display:'flex', alignItems:'center', gap:6 }}>
+                    <div style={{ fontSize:12, color:C.dust, fontWeight:700, letterSpacing:'.07em', textTransform:'uppercase', marginBottom:10, display:'flex', alignItems:'center', gap:6 }}>
                       <Percent size={11} color={C.v} strokeWidth={2.5} />
                       Dar % OFF próxima compra
                     </div>
@@ -16706,7 +16706,7 @@ function CommerceSettingsView({ user, profile, setView, onLogout, onOwnerProfile
                                 </span>
                                 {!editing && (
                                   <button onClick={() => { setCouponEditId(cp.id); setCouponEditDate(new Date(cp.expires_at).toISOString().slice(0,10)) }}
-                                    style={{ background:'transparent', border:`1px solid ${C.v}66`, color:C.v, borderRadius:8, padding:'5px 9px', cursor:'pointer', display:'flex', alignItems:'center', gap:5, fontSize:11, fontWeight:700, fontFamily:FN, flexShrink:0 }}>
+                                    style={{ background:'transparent', border:`1px solid ${C.v}66`, color:C.v, borderRadius:8, padding:'5px 9px', cursor:'pointer', display:'flex', alignItems:'center', gap:5, fontSize:12, fontWeight:700, fontFamily:FN, flexShrink:0 }}>
                                     <Pen size={11} strokeWidth={2.2} /> Editar
                                   </button>
                                 )}
@@ -16732,7 +16732,7 @@ function CommerceSettingsView({ user, profile, setView, onLogout, onOwnerProfile
                       </div>
                     )}
                     {grantError && (
-                      <div style={{ fontSize:11, color:'#f87444', marginBottom:10, padding:'7px 10px', background:'rgba(248,116,68,0.10)', border:'1px solid rgba(248,116,68,0.30)', borderRadius:8 }}>
+                      <div style={{ fontSize:12, color:'#f87444', marginBottom:10, padding:'7px 10px', background:'rgba(248,116,68,0.10)', border:'1px solid rgba(248,116,68,0.30)', borderRadius:8 }}>
                         {grantError}
                       </div>
                     )}
@@ -16764,11 +16764,11 @@ function CommerceSettingsView({ user, profile, setView, onLogout, onOwnerProfile
                                   <Percent size={11} color={C.v} strokeWidth={2.5} />
                                   <span style={{ fontFamily:FN, fontSize:13, fontWeight:700, color:C.white }}>{valueTxt}</span>
                                 </div>
-                                {p.description && <div style={{ fontSize:11, color:C.mist, marginBottom:2, overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>{p.description}</div>}
-                                <div style={{ fontSize:10, color:C.dust }}>{expiresTxt}</div>
+                                {p.description && <div style={{ fontSize:12, color:C.mist, marginBottom:2, overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>{p.description}</div>}
+                                <div style={{ fontSize:12, color:C.dust }}>{expiresTxt}</div>
                               </div>
                               <button onClick={() => grantPromoToMember(p.id)} disabled={!!grantingPromoId}
-                                style={{ background:GV, border:'none', borderRadius:8, padding:'8px 14px', color:'#fff', fontFamily:FN, fontSize:11, fontWeight:700, cursor: grantingPromoId ? 'wait' : 'pointer', opacity: busy ? 0.7 : 1, flexShrink:0 }}>
+                                style={{ background:GV, border:'none', borderRadius:8, padding:'8px 14px', color:'#fff', fontFamily:FN, fontSize:12, fontWeight:700, cursor: grantingPromoId ? 'wait' : 'pointer', opacity: busy ? 0.7 : 1, flexShrink:0 }}>
                                 {busy ? '⟳' : 'Otorgar'}
                               </button>
                             </div>
@@ -16819,7 +16819,7 @@ function CommerceSettingsView({ user, profile, setView, onLogout, onOwnerProfile
           }
           return (
             <PCard style={{ padding:16, marginBottom:12 }}>
-              <div style={{ fontSize:10, color:C.dust, fontWeight:700, letterSpacing:'.08em', textTransform:'uppercase', marginBottom:12, display:'flex', alignItems:'center', gap:6 }}>
+              <div style={{ fontSize:12, color:C.dust, fontWeight:700, letterSpacing:'.08em', textTransform:'uppercase', marginBottom:12, display:'flex', alignItems:'center', gap:6 }}>
                 <Percent size={12} color={C.v} strokeWidth={2.5} /> Beneficios
               </div>
               {activos.length > 0 ? (
@@ -16833,9 +16833,9 @@ function CommerceSettingsView({ user, profile, setView, onLogout, onOwnerProfile
                         </div>
                         <div style={{ flex:1, minWidth:0 }}>
                           <div style={{ fontFamily:FN, fontSize:13, fontWeight:700, color:C.white }}>{v ? `${v}% OFF` : 'Descuento'} activo</div>
-                          <div style={{ fontSize:11, color:C.mist }}>Vence el {fmt(cp.expires_at)}</div>
+                          <div style={{ fontSize:12, color:C.mist }}>Vence el {fmt(cp.expires_at)}</div>
                         </div>
-                        <span style={{ fontSize:9, fontWeight:800, color:'#22C55E', background:'rgba(34,197,94,0.14)', border:'1px solid rgba(34,197,94,0.35)', borderRadius:999, padding:'3px 8px', letterSpacing:'.06em', flexShrink:0 }}>ACTIVO</span>
+                        <span style={{ fontSize:12, fontWeight:800, color:'#22C55E', background:'rgba(34,197,94,0.14)', border:'1px solid rgba(34,197,94,0.35)', borderRadius:999, padding:'3px 8px', letterSpacing:'.06em', flexShrink:0 }}>ACTIVO</span>
                       </div>
                     )
                   })}
@@ -16847,7 +16847,7 @@ function CommerceSettingsView({ user, profile, setView, onLogout, onOwnerProfile
               )}
               {histClean.length > 0 && (
                 <>
-                  <div style={{ fontSize:9, color:C.dust, fontWeight:700, letterSpacing:'.08em', textTransform:'uppercase', marginBottom:8 }}>Historial</div>
+                  <div style={{ fontSize:12, color:C.dust, fontWeight:700, letterSpacing:'.08em', textTransform:'uppercase', marginBottom:8 }}>Historial</div>
                   <div style={{ display:'flex', flexDirection:'column' }}>
                     {histClean.map((h, i) => {
                       const meta = META[h.k] || META.granted
@@ -16858,7 +16858,7 @@ function CommerceSettingsView({ user, profile, setView, onLogout, onOwnerProfile
                             <MI size={13} color={meta.color} strokeWidth={2.2} />
                           </div>
                           <div style={{ flex:1, minWidth:0, fontSize:12, color:C.white, fontWeight:600, lineHeight:1.3 }}>{h.txt}</div>
-                          <div style={{ fontSize:11, color:C.dust, flexShrink:0 }}>{fmt(h.date)}</div>
+                          <div style={{ fontSize:12, color:C.dust, flexShrink:0 }}>{fmt(h.date)}</div>
                         </div>
                       )
                     })}
@@ -16872,14 +16872,14 @@ function CommerceSettingsView({ user, profile, setView, onLogout, onOwnerProfile
         {/* QR del cliente */}
         {(m.profiles?.id || m.user_id) && (
           <PCard style={{ padding:16, marginBottom:12 }}>
-            <div style={{ fontSize:10, color:C.dust, fontWeight:700, letterSpacing:'.08em', textTransform:'uppercase', marginBottom:12 }}>QR del cliente</div>
+            <div style={{ fontSize:12, color:C.dust, fontWeight:700, letterSpacing:'.08em', textTransform:'uppercase', marginBottom:12 }}>QR del cliente</div>
             <div style={{ display:'flex', alignItems:'center', gap:16 }}>
               <div style={{ background:'#fff', padding:10, borderRadius:12, flexShrink:0 }}>
                 <QRCodeSVG value={`CLUB-${m.profiles?.id || m.user_id}`} size={90} bgColor="#ffffff" fgColor="#0a0a0a" level="M" />
               </div>
               <div>
                 <div style={{ fontFamily:FN, fontSize:13, fontWeight:700, color:C.white, marginBottom:4 }}>Código personal</div>
-                <div style={{ fontSize:11, color:C.mist, lineHeight:1.5 }}>Escanealo con tu cámara para registrar una visita si el cliente no tiene su teléfono a mano.</div>
+                <div style={{ fontSize:12, color:C.mist, lineHeight:1.5 }}>Escanealo con tu cámara para registrar una visita si el cliente no tiene su teléfono a mano.</div>
               </div>
             </div>
           </PCard>
@@ -16889,16 +16889,16 @@ function CommerceSettingsView({ user, profile, setView, onLogout, onOwnerProfile
         {canRedeem && eligiblePrizes.length > 0 && (
           <PCard style={{ padding:16, marginBottom:12, border:`1px solid ${C.ok}44`, background:`${C.ok}08` }}>
             <div style={{ fontFamily:FN, fontSize:13, fontWeight:700, color:C.ok, marginBottom:12, display:'flex', alignItems:'center', gap:6 }}><Gift size={14} color={C.ok} strokeWidth={2} /> Canjear premio</div>
-            {redeemError && <div style={{ fontSize:11, color:'#f87', marginBottom:10 }}>{redeemError}</div>}
+            {redeemError && <div style={{ fontSize:12, color:'#f87', marginBottom:10 }}>{redeemError}</div>}
             <div style={{ display:'flex', flexDirection:'column', gap:8 }}>
               {eligiblePrizes.map(p => (
                 <div key={p.id} style={{ display:'flex', alignItems:'center', justifyContent:'space-between', background:C.bg3, borderRadius:10, padding:'10px 14px' }}>
                   <div>
                     <div style={{ fontFamily:FN, fontSize:13, fontWeight:700, color:C.white }}>{p.name}</div>
-                    <div style={{ fontSize:11, color:unitColor }}>{p.cost} {unitIcon} · quedarán {val - p.cost}</div>
+                    <div style={{ fontSize:12, color:unitColor }}>{p.cost} {unitIcon} · quedarán {val - p.cost}</div>
                   </div>
                   <button onClick={() => redeemFromPanel(m, p)} disabled={!!redeemingPrize}
-                    style={{ background:GV, border:'none', borderRadius:8, padding:'7px 14px', color:'#fff', fontFamily:FN, fontSize:11, fontWeight:700, cursor:'pointer', opacity: redeemingPrize === p.id ? 0.7 : 1, flexShrink:0 }}>
+                    style={{ background:GV, border:'none', borderRadius:8, padding:'7px 14px', color:'#fff', fontFamily:FN, fontSize:12, fontWeight:700, cursor:'pointer', opacity: redeemingPrize === p.id ? 0.7 : 1, flexShrink:0 }}>
                     {redeemingPrize === p.id ? '⟳' : 'Canjear'}
                   </button>
                 </div>
@@ -16909,7 +16909,7 @@ function CommerceSettingsView({ user, profile, setView, onLogout, onOwnerProfile
 
         {/* Historial combinado: visitas + canjes */}
         <PCard style={{ padding:16 }}>
-          <div style={{ fontSize:11, color:C.mist, fontWeight:700, marginBottom:12 }}>Actividad</div>
+          <div style={{ fontSize:12, color:C.mist, fontWeight:700, marginBottom:12 }}>Actividad</div>
           {memberVisits.length === 0 && memberRedemptions.length === 0 ? (
             <div style={{ color:C.dust, fontSize:12, textAlign:'center', padding:'12px 0' }}>Sin actividad registrada aún</div>
           ) : (
@@ -16931,13 +16931,13 @@ function CommerceSettingsView({ user, profile, setView, onLogout, onOwnerProfile
                       <div style={{ fontSize:12, color:C.mist }}>
                         {new Date(item.date).toLocaleDateString('es-AR',{day:'2-digit',month:'short',year:'numeric'})}
                       </div>
-                      <div style={{ fontSize:10, color:C.dust }}>
+                      <div style={{ fontSize:12, color:C.dust }}>
                         {new Date(item.date).toLocaleTimeString('es-AR',{hour:'2-digit',minute:'2-digit'})}
                         {item.type === 'redeem' && item.prize ? ` · ${item.prize}` : ''}
                       </div>
                     </div>
                   </div>
-                  <div style={{ fontFamily:FN, fontSize:11, fontWeight:700, color: item.type === 'visit' ? unitColor : '#f87444' }}>
+                  <div style={{ fontFamily:FN, fontSize:12, fontWeight:700, color: item.type === 'visit' ? unitColor : '#f87444' }}>
                     {item.type === 'visit' ? `+${item.points} ${unitLabel}` : `-${item.spent} ${unitLabel}`}
                   </div>
                 </div>
@@ -17034,7 +17034,7 @@ function CommerceSettingsView({ user, profile, setView, onLogout, onOwnerProfile
             </label>
             <div>
               <div style={{ fontFamily:FN, fontSize:12, fontWeight:900, color:C.white, lineHeight:1.3 }}>{commerce.name}</div>
-              <div style={{ fontSize:10, color:unitColor, marginTop:1 }}>{unitIcon} {unitLabel}</div>
+              <div style={{ fontSize:12, color:unitColor, marginTop:1 }}>{unitIcon} {unitLabel}</div>
             </div>
           </div>
           {MENU.map(m => {
@@ -17046,10 +17046,10 @@ function CommerceSettingsView({ user, profile, setView, onLogout, onOwnerProfile
                 style={{ display:'flex', alignItems:'center', gap:10, padding:'11px 18px', background:tab===m.id?`${C.v}20`:'transparent', border:'none', borderRadius:8, color: dimmed ? C.dust : tab===m.id?C.white:C.mist, fontSize:12, cursor:'pointer', textAlign:'left', width:'100%', transition:'background 130ms ease, color 130ms ease', fontFamily:'inherit', opacity: dimmed ? 0.75 : 1 }}>
                 {(() => { const I = MENU_ICONS[m.id]; return I ? <I size={15} color={dimmed ? C.dust : tab===m.id ? C.white : C.mist} strokeWidth={2} style={{ flexShrink:0 }} /> : null })()}
                 <span style={{ fontFamily:FN, fontWeight:tab===m.id?700:400, flex:1 }}>{m.label}</span>
-                {isProLocked && <span style={{ fontSize:9, color:PLANS.pro.color, fontFamily:FN, fontWeight:700 }}>PRO</span>}
+                {isProLocked && <span style={{ fontSize:12, color:PLANS.pro.color, fontFamily:FN, fontWeight:700 }}>PRO</span>}
                 {isLocked && !isProLocked && <Lock size={10} color={C.dust} strokeWidth={2} />}
                 {m.id === 'automatizaciones' && planKey === 'pro' && displayTotalDetected > 0 && (
-                  <span style={{ fontSize:10, fontWeight:700, color:'#fff', background:C.v, borderRadius:99, padding:'1px 6px', minWidth:16, textAlign:'center' }}>{displayTotalDetected}</span>
+                  <span style={{ fontSize:12, fontWeight:700, color:'#fff', background:C.v, borderRadius:99, padding:'1px 6px', minWidth:16, textAlign:'center' }}>{displayTotalDetected}</span>
                 )}
               </button>
             )
@@ -17060,12 +17060,12 @@ function CommerceSettingsView({ user, profile, setView, onLogout, onOwnerProfile
             onClick={() => setTab('configuracion')}
             style={{ margin:'0 12px 10px', padding:'10px 12px', background:planDef.badge, border:`1px solid ${planDef.color}44`, borderRadius:10, cursor:'pointer' }}>
             <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', marginBottom: planDef.limit ? 6 : 0 }}>
-              <span style={{ fontFamily:FN, fontSize:10, fontWeight:700, color:planDef.color, letterSpacing:'.08em' }}>{planDef.label}</span>
-              {planKey !== 'pro' && <span style={{ fontSize:9, color:C.dust }}>Ver planes →</span>}
+              <span style={{ fontFamily:FN, fontSize:12, fontWeight:700, color:planDef.color, letterSpacing:'.08em' }}>{planDef.label}</span>
+              {planKey !== 'pro' && <span style={{ fontSize:12, color:C.dust }}>Ver planes →</span>}
             </div>
             {planDef.limit !== null && (
               <>
-                <div style={{ fontSize:10, color: atLimit ? '#f87444' : nearLimit ? C.pink : C.mist, marginBottom:4 }}>
+                <div style={{ fontSize:12, color: atLimit ? '#f87444' : nearLimit ? C.pink : C.mist, marginBottom:4 }}>
                   {clientCount} / {planDef.limit} clientes
                 </div>
                 <div style={{ height:3, borderRadius:3, background:C.rim, overflow:'hidden' }}>
@@ -17074,7 +17074,7 @@ function CommerceSettingsView({ user, profile, setView, onLogout, onOwnerProfile
               </>
             )}
             {planDef.limit === null && (
-              <div style={{ fontSize:10, color:C.mist }}>{clientCount} clientes · ilimitado</div>
+              <div style={{ fontSize:12, color:C.mist }}>{clientCount} clientes · ilimitado</div>
             )}
           </div>
           {/* Action buttons del sidebar removidos — ahora viven en la Navbar global arriba. */}
@@ -17127,12 +17127,12 @@ function CommerceSettingsView({ user, profile, setView, onLogout, onOwnerProfile
               <div style={{ flex:1, minWidth:0 }}>
                 <div style={{ fontFamily:FN, fontSize:13, fontWeight:900, color:C.white, whiteSpace:'nowrap', overflow:'hidden', textOverflow:'ellipsis' }}>{commerce.name}</div>
                 <div style={{ display:'flex', alignItems:'center', gap:6, marginTop:2 }}>
-                  <span style={{ fontFamily:FN, fontSize:9, fontWeight:700, color:planDef.color, letterSpacing:'.06em', padding:'1px 6px', borderRadius:4, background:planDef.badge }}>{planDef.label}</span>
+                  <span style={{ fontFamily:FN, fontSize:12, fontWeight:700, color:planDef.color, letterSpacing:'.06em', padding:'1px 6px', borderRadius:4, background:planDef.badge }}>{planDef.label}</span>
                   {planDef.limit !== null && (
-                    <span style={{ fontSize:10, color: atLimit ? '#f87444' : nearLimit ? C.pink : C.mist }}>{clientCount}/{planDef.limit} clientes</span>
+                    <span style={{ fontSize:12, color: atLimit ? '#f87444' : nearLimit ? C.pink : C.mist }}>{clientCount}/{planDef.limit} clientes</span>
                   )}
                   {planDef.limit === null && (
-                    <span style={{ fontSize:10, color:C.mist }}>{clientCount} clientes</span>
+                    <span style={{ fontSize:12, color:C.mist }}>{clientCount} clientes</span>
                   )}
                 </div>
               </div>
@@ -17163,10 +17163,10 @@ function CommerceSettingsView({ user, profile, setView, onLogout, onOwnerProfile
                   style={{ display:'flex', alignItems:'center', gap:11, width:'100%', padding:'11px 12px', borderRadius:10, background: active ? `${C.v}20` : 'transparent', border:'none', color: dimmed ? C.dust : active ? C.white : C.mist, fontSize:13, fontFamily:FN, fontWeight: active ? 700 : 400, cursor:'pointer', textAlign:'left', transition:'background 130ms ease, color 130ms ease', opacity: dimmed ? 0.65 : 1, marginBottom:2 }}>
                   {IconComp && <IconComp size={17} style={{ flexShrink:0 }} />}
                   <span style={{ flex:1 }}>{m.label}</span>
-                  {isProLocked && <span style={{ fontSize:9, color:PLANS.pro.color, fontFamily:FN, fontWeight:700, letterSpacing:'.05em' }}>PRO</span>}
+                  {isProLocked && <span style={{ fontSize:12, color:PLANS.pro.color, fontFamily:FN, fontWeight:700, letterSpacing:'.05em' }}>PRO</span>}
                   {isLocked && !isProLocked && <Lock size={11} color={C.dust} strokeWidth={2} />}
                   {m.id === 'automatizaciones' && planKey === 'pro' && displayTotalDetected > 0 && (
-                    <span style={{ fontSize:10, fontWeight:700, color:'#fff', background:C.v, borderRadius:99, padding:'1px 6px', minWidth:18, textAlign:'center' }}>{displayTotalDetected}</span>
+                    <span style={{ fontSize:12, fontWeight:700, color:'#fff', background:C.v, borderRadius:99, padding:'1px 6px', minWidth:18, textAlign:'center' }}>{displayTotalDetected}</span>
                   )}
                 </button>
               )
@@ -17342,12 +17342,12 @@ function CommerceSettingsView({ user, profile, setView, onLogout, onOwnerProfile
                           {item.label}
                         </span>
                         {item.id === 'mensajes' && totalDetected > 0 && (
-                          <span style={{ fontSize:9, fontWeight:800, color:'#fff', background:'#F59E0B', borderRadius:99, padding:'1px 6px', fontFamily:FN, flexShrink:0 }}>
+                          <span style={{ fontSize:12, fontWeight:800, color:'#fff', background:'#F59E0B', borderRadius:99, padding:'1px 6px', fontFamily:FN, flexShrink:0 }}>
                             {totalDetected}
                           </span>
                         )}
                         {isProLocked && (
-                          <span style={{ fontSize:8, fontWeight:800, color:'#fff', background:PLANS.pro.color, borderRadius:99, padding:'2px 5px', fontFamily:FN, letterSpacing:'.04em', flexShrink:0 }}>PRO</span>
+                          <span style={{ fontSize:12, fontWeight:800, color:'#fff', background:PLANS.pro.color, borderRadius:99, padding:'2px 5px', fontFamily:FN, letterSpacing:'.04em', flexShrink:0 }}>PRO</span>
                         )}
                         {isLocked && !isProLocked && (
                           <Lock size={11} color={active ? '#110d0a' : C.dust} strokeWidth={2.5} style={{ flexShrink: 0 }} />
