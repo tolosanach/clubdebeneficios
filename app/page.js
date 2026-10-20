@@ -17,6 +17,7 @@ import PrizeWizardModal from '../lib/PrizeWizardModal'
 import ProfileItemWizard from '../lib/ProfileItemWizard'
 import MerchantSetupHome from '../lib/MerchantSetupHome'
 import { useNavHistory, SwipeBack, setNavConfirm } from '../lib/navHistory'
+import TopScrim from '../lib/TopScrim'
 import BizPromptBanner from '../lib/BizPromptBanner'
 import CrossRoleNudges from '../lib/CrossRoleNudges'
 import LogoCropper, { validateImageFile, checkImageDimensions } from '../lib/LogoCropper'
@@ -24629,6 +24630,9 @@ export default function App() {
           }}
         />
       )}
+      {/* Tapa la franja de arriba del navbar flotante para que el contenido
+          scrolleado no se vea por encima del menú (ver lib/TopScrim.js). */}
+      {view !== 'home' && <TopScrim watch={view} />}
       <Navbar
         setView={navigate}
         cityName={currentCity?.name}
