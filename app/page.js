@@ -11724,6 +11724,13 @@ function CommerceSettingsView({ user, profile, setView, onLogout, onOwnerProfile
   // El deep-link desde el intent picker (card "%OFF próx. compra") setea
   // este state a 'discount' para aterrizar directo en esa tab.
   const [recompensasSubTab, setRecompensasSubTab] = useState('how')
+  // Una sola pantalla: si un deep-link pide 'discount', scrolleamos a esa sección.
+  useEffect(() => {
+    if (tab === 'recompensas' && recompensasSubTab === 'discount') {
+      const t = setTimeout(() => document.getElementById('cupon-descuento')?.scrollIntoView({ behavior:'smooth', block:'start' }), 150)
+      return () => clearTimeout(t)
+    }
+  }, [tab, recompensasSubTab])
   // Modal de premios sugeridos por rubro — se abre desde el estado vacío
   // de Premios o al activar el sistema. addedSuggestedNames trackea los
   // que ya se agregaron en esta sesión del modal para no duplicarlos.
@@ -17798,66 +17805,13 @@ function CommerceSettingsView({ user, profile, setView, onLogout, onOwnerProfile
           </button>
         )}
 
-        {/* ─── Selector de modo (segmented control) ───
-            Dos opciones compactas: "Cómo suman" (sistema base) y
-            "Cupón de descuento" (promo próxima compra). Activo = coral
-            sólido con texto blanco; inactivo = neutro. */}
-        {tab === 'recompensas' && (
-          <div role="tablist" aria-label="Configuración de beneficios" style={{
-            display: 'flex',
-            gap: 4,
-            padding: 4,
-            marginTop: 4,
-            marginBottom: 16,
-            background: 'rgba(255,255,255,0.05)',
-            border: '1px solid rgba(255,255,255,0.10)',
-            borderRadius: 14,
-          }}>
-            {[
-              { id: 'how',      Icon: Sparkles, label: 'Cómo suman' },
-              { id: 'discount', Icon: Percent,  label: 'Cupón de descuento' },
-            ].map(s => {
-              const active = recompensasSubTab === s.id
-              const Icon = s.Icon
-              return (
-                <button key={s.id}
-                  role="tab"
-                  aria-selected={active}
-                  onClick={() => setRecompensasSubTab(s.id)}
-                  style={{
-                    flex: 1,
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    gap: 7,
-                    minHeight: 44,
-                    padding: '8px 10px',
-                    borderRadius: 10,
-                    background: active ? '#CC3516' : 'transparent',
-                    border: 'none',
-                    cursor: 'pointer',
-                    fontFamily: FN,
-                    fontSize: 13,
-                    fontWeight: 800,
-                    lineHeight: 1.2,
-                    color: active ? '#FFFFFF' : 'rgba(255,255,255,0.72)',
-                    transition: 'background 180ms ease, color 180ms ease',
-                  }}>
-                  <Icon size={16} strokeWidth={2.2} color={active ? '#FFFFFF' : 'rgba(255,255,255,0.72)'} />
-                  {s.label}
-                </button>
-              )
-            })}
-          </div>
-        )}
-
         {/* Header global — mini diagrama "QR → 🎁" en lugar de subtítulo
             largo. Cuenta toda la historia (escanea y recibe) con dos íconos.
             La sección "TU SISTEMA BASE" también queda absorbida: las cards
             de abajo se autoexplican.
             El color del regalo sigue al sistema seleccionado (preview o
             guardado), así si previsualizás Puntos ves el regalo en fucsia. */}
-        {tab === 'recompensas' && recompensasSubTab === 'how' && (
+        {tab === 'recompensas' && (
           <div style={{
             // Panel del tab "Sistema de acumulación" — mismo bg+border
             // tinteado violeta que la solapa activa, así se lee como una
@@ -17889,6 +17843,7 @@ function CommerceSettingsView({ user, profile, setView, onLogout, onOwnerProfile
                   directos pastel violeta arriba ya cuentan la historia, y
                   el ícono extra en el header se sentía redundante. */}
               <div style={{ display:'flex', alignItems:'center', gap:8 }}>
+                <div style={{ fontFamily:TITLE, fontWeight:400, fontSize:18, color:C.white, letterSpacing:'.08em', textTransform:'uppercase' }}>Cómo suman</div>
                 <InfoHint align="left" text={
                   'Es el sistema base con el que tus clientes acumulan recompensas al escanear su QR.\n\n' +
                   '• Estrellas: 1 estrella por compra. Simple, ideal para tickets parecidos.\n\n' +
@@ -18976,8 +18931,8 @@ function CommerceSettingsView({ user, profile, setView, onLogout, onOwnerProfile
         )}
 
         {/* ─── TAB 2: %OFF PRÓX. COMPRA (cupón discount_next) ─── */}
-        {tab === 'recompensas' && recompensasSubTab === 'discount' && (
-          <div style={{
+        {tab === 'recompensas' && (
+          <div id="cupon-descuento" style={{
             // Mismos colores que la tab "how" — panel violeta tinteado,
             // border violeta más visible, sombra suave para elevarlo
             // sobre el fondo. Paleta subida en may 2026.
@@ -18994,7 +18949,7 @@ function CommerceSettingsView({ user, profile, setView, onLogout, onOwnerProfile
           }}>
             {/* Título + línea divisoria */}
             <div style={{ display:'flex', alignItems:'center', gap:10 }}>
-              <span style={{ fontSize:18, fontWeight:900, color:C.white, letterSpacing:'.08em', textTransform:'uppercase' }}>Descuento próxima compra</span>
+              <span style={{ fontSize:18, fontWeight:900, color:C.white, letterSpacing:'.08em', textTransform:'uppercase' }}>Cupón de descuento</span>
               <InfoHint align="left" text={
                 'Cupón de descuento que el cliente recibe automáticamente al sumarse a tu club o cuando se lo otorgás manualmente.\n\n' +
                 '• Lo usa la próxima vez que va — un empujón concreto para que vuelva.\n\n' +
