@@ -18284,23 +18284,20 @@ function CommerceSettingsView({ user, profile, setView, onLogout, onOwnerProfile
               }
               // Toggle de un día específico — actualiza `days` en la promo
               // existente. Mutual exclusivity entre "todos los días" y
-              // "día específico": si destildás un día estando en "todos",
-              // el array pasa de [] a [los 6 días sin ese].
+              // "día específico": con [] (todos los días) los chips están
+              // apagados; al tocar uno el array pasa a [ese día].
               const toggleDay = (v) => {
                 if (!activeDouble) return
                 // Tomamos selectedDays (que ya considera pending) como base.
                 const cur = selectedDays
                 let next
-                if (cur.length === 0) {
-                  // Estaba "todos los dias" — empezamos con los 7 menos el tappeado
-                  next = [0,1,2,3,4,5,6].filter(d => d !== v)
-                } else if (cur.includes(v)) {
+                if (cur.includes(v)) {
                   next = cur.filter(d => d !== v)
                 } else {
                   next = [...cur, v]
                 }
-                // Si quedo con 0 o 7, normalizamos a [] (= todos los dias).
-                if (next.length === 0 || next.length === 7) next = []
+                // Sin días marcados = [] (aplica todos los días). Con 7 marcados
+                // se guarda explícito, así los chips no cambian solos de estado.
                 // No persistimos al toque: dejamos como pending y que el
                 // boton Guardar lo confirme. Si el resultado coincide con
                 // lo que esta en DB (despues de varios toques), limpiamos.
@@ -18409,11 +18406,17 @@ function CommerceSettingsView({ user, profile, setView, onLogout, onOwnerProfile
                           {allDays ? 'Todos los días' : `${selectedDays.length} ${selectedDays.length === 1 ? 'día' : 'días'}`}
                         </span>
                       </div>
+                      {selectedDays.length === 0 && (
+                        <div style={{ fontFamily: FI, fontSize: 12, color: C.mist, marginBottom: 10 }}>
+                          Sin días marcados, la suma doble vale todos los días. Tocá los días en que querés que aplique.
+                        </div>
+                      )}
                       <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
                         {DAYS.map(({ l, v }) => {
-                          // Un día está "seleccionado" si está en days,
-                          // O si days está vacío (= todos los días).
-                          const sel = selectedDays.length === 0 || selectedDays.includes(v)
+                          // Un día está "seleccionado" solo si está en days.
+                          // Con days vacío todos los chips quedan apagados y la
+                          // etiqueta dice "Todos los días" (sin restricción).
+                          const sel = selectedDays.includes(v)
                           return (
                             <button key={v}
                               onClick={() => toggleDay(v)}
