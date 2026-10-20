@@ -16,6 +16,7 @@ import MinimalSignupModal from '../lib/MinimalSignupModal'
 import PrizeWizardModal from '../lib/PrizeWizardModal'
 import ProfileItemWizard from '../lib/ProfileItemWizard'
 import MerchantSetupHome from '../lib/MerchantSetupHome'
+import { useNavHistory, SwipeBack, setNavConfirm } from '../lib/navHistory'
 import BizPromptBanner from '../lib/BizPromptBanner'
 import CrossRoleNudges from '../lib/CrossRoleNudges'
 import LogoCropper, { validateImageFile, checkImageDimensions } from '../lib/LogoCropper'
@@ -8167,6 +8168,12 @@ function ClientView({ setView, user, profile, onLogout, initialTab }) {
   // abre una vista estilo ecommerce con la info completa. `selectedBenefit`
   // guarda { kind: 'prize'|'discount'|'double', data, commerce, bal, isStars }.
   const [selectedBenefit, setSelectedBenefit] = useState(null)
+  // Volver atrás en la vista del cliente: pestañas + detalle de beneficio.
+  useNavHistory(
+    { tab, benefit: selectedBenefit },
+    st => `${st.tab}|${st.benefit ? `${st.benefit.kind}:${st.benefit.data?.id || ''}` : ''}`,
+    st => { setSelectedBenefit(st.benefit || null); setTab(st.tab) }
+  )
   // Estado del flujo de canje pendiente: cuando el cliente toca "Canjear"
   // en un premio, llamamos /api/redeem-request y guardamos la respuesta
   // acá. RedeemPendingModal se renderea con esos datos (código + info
@@ -12116,6 +12123,19 @@ function CommerceSettingsView({ user, profile, setView, onLogout, onOwnerProfile
   // (escanear QR del cliente). Una vez que elige una opción, queda en false
   // hasta el próximo click en el icono "Mi Negocio" del navbar.
   const [intentPickerActive, setIntentPickerActive] = useState(!(initialTab && initialTab !== 'dashboard'))
+  // Volver atrás dentro del panel: pantalla inicial ↔ pestañas ↔ ficha de
+  // cliente. Con el picker activo el tab no cuenta (no se ve). Restaura con
+  // _setTabRaw porque el chequeo de "cambios sin guardar" ya lo hace
+  // lib/navHistory antes de volver.
+  useNavHistory(
+    { picker: intentPickerActive, tab, member: selectedMember },
+    st => `${st.picker ? 'picker' : st.tab}|${st.member?.id || ''}`,
+    st => {
+      setSelectedMember(st.member || null)
+      setIntentPickerActive(st.picker)
+      _setTabRaw(st.tab)
+    }
+  )
   // wizardItemId: cuando es != null, se renderiza el ProfileItemWizard con el
   // flujo correspondiente a ese itemId (description, phone, address, social,
   // logo, cover, category, system, hours, firstPrize). Se setea desde
@@ -23946,6 +23966,10 @@ export default function App() {
   // 'home' y bumpearlo recién cuando React ya está vivo en el cliente.
   const [deepLink, setDeepLink] = useState({ view: null, tab: null, upgrade: null, member: null })
   const [view,     setView]     = useState('home')
+  // Volver atrás (gesto / botón atrás del celu): cada cambio de vista queda
+  // apilado y se puede deshacer. Ver lib/navHistory.js.
+  useNavHistory(view, v => v, v => setView(v))
+  useEffect(() => { setNavConfirm(showConfirm); return () => setNavConfirm(null) }, [])
   // upgradeResult: 'success' | 'pending' | 'failure' | null — vino del query
   // ?upgrade=... que MP setea al redirigir post-checkout. Mostramos un modal
   // de confirmación encima de cualquier vista.
@@ -24522,6 +24546,7 @@ export default function App() {
       <ToastContainer />
       <ConfirmModal />
       <SwRegister />
+      <SwipeBack />
       <InstallPrompt currentView={view} />
       {/* Modal de resultado del checkout de Mercado Pago — se muestra cuando
           la URL trae ?upgrade=success|pending|failure. MP redirige acá tras

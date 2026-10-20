@@ -1053,3 +1053,35 @@ input[type="week"]::-webkit-calendar-picker-indicator:hover {
 @media (prefers-reduced-motion: reduce) { .cx-loader-star, .cx-loader-shadow, .cx-loader-dots::after { animation: none; } }
 
 @media (max-width: 620px) { .cx-cta-star { width: 84px !important; right: 4% !important; top: 2% !important; } }
+
+/* ── Volver atrás (lib/navHistory.js) ──
+   Animación al volver a la pantalla anterior (View Transitions) y el
+   indicador del gesto de deslizar desde el borde izquierdo. */
+html.clufix-nav-back::view-transition-old(root) {
+  z-index: 2;
+  animation: clufix-nav-old 280ms cubic-bezier(.2,.8,.2,1) both;
+  box-shadow: -14px 0 32px rgba(0,0,0,0.45);
+}
+html.clufix-nav-back::view-transition-new(root) {
+  z-index: 1;
+  animation: clufix-nav-new 280ms cubic-bezier(.2,.8,.2,1) both;
+}
+@keyframes clufix-nav-old { to { transform: translateX(100%); } }
+@keyframes clufix-nav-new { from { transform: translateX(-28%); filter: brightness(0.6); } }
+
+.clufix-swipe-bubble {
+  position: fixed; left: 0; top: 50%; z-index: 2147483000;
+  width: 48px; height: 48px; border-radius: 50%;
+  display: flex; align-items: center; justify-content: center;
+  background: rgba(30,18,52,0.92); color: #C4B5FD;
+  border: 1px solid rgba(196,181,253,0.35);
+  box-shadow: 0 6px 20px rgba(0,0,0,0.45);
+  opacity: 0; transform: translateX(-48px) scale(0.7);
+  pointer-events: none; will-change: transform, opacity;
+}
+.clufix-swipe-bubble[data-ready="1"] { background: #7C3AED; color: #fff; border-color: #7C3AED; }
+.clufix-swipe-edge {
+  position: fixed; left: 0; top: 0; bottom: 0; width: 22px; z-index: 2147482999;
+  background: linear-gradient(90deg, rgba(124,58,237,0.35), rgba(124,58,237,0));
+  opacity: 0; pointer-events: none;
+}
