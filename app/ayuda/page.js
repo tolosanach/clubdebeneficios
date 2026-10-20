@@ -41,7 +41,7 @@ export default function AyudaPage() {
   const email = 'sitiospampa@gmail.com'
 
   return (
-    <div style={{ minHeight:'100vh', background:'#0a0a0f', color:'#F0EAFF', fontFamily:"'Inter', system-ui, sans-serif", padding:'24px 18px 80px' }}>
+    <div style={{ minHeight:'100vh', background:'#0a0a0f', color:'#FFEDE6', fontFamily:"'Inter', system-ui, sans-serif", padding:'24px 18px 80px' }}>
       <div style={{ maxWidth:720, margin:'0 auto' }}>
         <Link href="/" style={{ display:'inline-flex', alignItems:'center', gap:6, color:'rgba(255,255,255,0.55)', fontSize:13, marginBottom:24, textDecoration:'none' }}>
           <ChevronLeft size={16} strokeWidth={2} /> Volver

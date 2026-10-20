@@ -209,7 +209,7 @@ export async function POST(request) {
         prog_goal:    safeProgType === 'stars' ? 10 : 1000,
         prog_pts:     1,
         reward_text:  'Próximamente...',
-        reward_color: '#6F30DF',
+        reward_color: '#E03E1B',
         plan:         'free',
         active:       true,
         featured:     false,

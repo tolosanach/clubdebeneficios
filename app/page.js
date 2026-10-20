@@ -111,9 +111,9 @@ const MENU = [
 const REVIEWS_ENABLED = false
 
 // ─── Design tokens Clufix ─────────────────────────────────────────────────────
-const G  = '#6F30DF'        // color principal
-const GV = '#3D0A9E'        // hover / énfasis
-const GH = '#1A0050'        // hero / secciones oscuras
+const G  = '#E03E1B'        // color principal
+const GV = '#8F2A12'        // hover / énfasis
+const GH = '#2A140D'        // hero / secciones oscuras
 
 const C = {
   // Fondos
@@ -124,23 +124,23 @@ const C = {
   cardH:  'rgba(255,255,255,0.10)',
   rim:    'rgba(255,255,255,0.10)',
   rimH:   'rgba(255,255,255,0.20)',
-  dark:   '#1A0050',
-  deep:   '#3D0A9E',
-  light:  '#F0E8FF',
+  dark:   '#2A140D',
+  deep:   '#8F2A12',
+  light:  '#FFEDE6',
 
   // Texto
   white:  '#FFFFFF',
-  pearl:  '#F0E8FF',
+  pearl:  '#FFEDE6',
   mist:   'rgba(255,255,255,0.55)',
   dust:   'rgba(255,255,255,0.35)',
 
   // Acento
-  pink:   '#FF199F',
+  pink:   '#F0603A',
 
   // Colores principales
-  v:      '#6F30DF',
-  v1:     '#3D0A9E',
-  v2:     '#1A0050',
+  v:      '#E03E1B',
+  v1:     '#8F2A12',
+  v2:     '#2A140D',
 
   // Semánticos
   ok:     '#22E698',
@@ -191,8 +191,8 @@ const PLANS = {
     label:           'STARTER',
     limit:           60,
     price:           25000,
-    color:           '#6F30DF',
-    badge:           '#1F0935',
+    color:           '#E03E1B',
+    badge:           '#2A1D14',
     // Link de pago recurrente de Mercado Pago. Al abrirse, le agregamos
     // `?external_reference={commerce.id}` para que cuando MP nos notifique
     // el pago sepamos qué comercio activar (ver upgradePlan).
@@ -202,8 +202,8 @@ const PLANS = {
     label:           'PRO',
     limit:           null,
     price:           45000,
-    color:           '#FF199F',
-    badge:           '#3D0F26',
+    color:           '#F0603A',
+    badge:           '#332419',
     subscriptionUrl: 'https://www.mercadopago.com.ar/subscriptions/checkout?preapproval_plan_id=62e68b0c9a6d4e7697a6032fda8e95ec',
   },
 }
@@ -242,7 +242,7 @@ function ToastContainer() {
           error:   { bg:'rgba(248,116,68,0.14)',  border:'rgba(248,116,68,0.32)',  color:'#f87444', Icon:AlertTriangle },
           info:    { bg:'rgba(64,200,255,0.14)',   border:'rgba(64,200,255,0.32)',  color:C.info,   Icon:AlertCircle  },
           warn:    { bg:'rgba(254,80,0,0.14)',     border:'rgba(254,80,0,0.32)',    color:C.pink,      Icon:AlertTriangle },
-        }[t.type] || { bg:'rgba(189,75,248,0.14)', border:'rgba(189,75,248,0.32)', color:C.v, Icon:Bell }
+        }[t.type] || { bg:'rgba(255,122,89,0.14)', border:'rgba(255,122,89,0.32)', color:C.v, Icon:Bell }
         return (
           <div key={t.id} className="modal-in" style={{ pointerEvents:'auto', display:'flex', alignItems:'center', gap:10, padding:'12px 16px', background:cfg.bg, backdropFilter:'blur(24px)', WebkitBackdropFilter:'blur(24px)', border:`1px solid ${cfg.border}`, borderRadius:14, boxShadow:'0 8px 32px rgba(0,0,0,0.40)' }}>
             <cfg.Icon size={15} color={cfg.color} strokeWidth={2} style={{ flexShrink:0 }} />
@@ -271,8 +271,8 @@ function ConfirmModal() {
   const confirm = () => { setModal(null); resolve(true)  }
   const cancel  = () => { setModal(null); resolve(false) }
   // Acento del icon: violeta de marca por defecto, naranja-rojo cuando es danger
-  const accentColor = danger ? '#FF199F' : '#6F30DF'
-  const accentGlow  = danger ? 'rgba(254,80,0,0.55)' : 'rgba(189,75,248,0.55)'
+  const accentColor = danger ? '#F0603A' : '#E03E1B'
+  const accentGlow  = danger ? 'rgba(254,80,0,0.55)' : 'rgba(255,122,89,0.55)'
   return createPortal(
     <div style={{ position:'fixed', inset:0, zIndex:9998, display:'flex', alignItems:'center', justifyContent:'center', padding:20 }}>
       {/* Backdrop con gradient de marca en modo oscuro + halos radiales en
@@ -281,9 +281,9 @@ function ConfirmModal() {
       <div onClick={cancel} style={{
         position:'absolute', inset:0,
         background: `
-          radial-gradient(ellipse at top left,    rgba(189,75,248,0.22) 0%, transparent 50%),
+          radial-gradient(ellipse at top left,    rgba(255,122,89,0.22) 0%, transparent 50%),
           radial-gradient(ellipse at bottom right, rgba(254,80,0,0.18)   0%, transparent 50%),
-          linear-gradient(135deg, #0a0612 0%, #150823 50%, #0a0612 100%)
+          linear-gradient(135deg, #110d0a 0%, #1D140E 50%, #110d0a 100%)
         `,
       }} />
       {/* Tarjeta glass con borde sutil. Opacidad baja + backdrop-filter
@@ -334,7 +334,7 @@ function ConfirmModal() {
             background:'#ffffff',
             border:'none',
             borderRadius:99,
-            color:'#0a0612',
+            color:'#110d0a',
             fontFamily:FN, fontSize:13, fontWeight:800,
             cursor:'pointer',
             boxShadow:'0 4px 14px rgba(0,0,0,0.30)',
@@ -370,9 +370,9 @@ function LoginPromptModal() {
       <div onClick={cancel} style={{
         position:'absolute', inset:0,
         background: `
-          radial-gradient(ellipse at top left,    rgba(189,75,248,0.22) 0%, transparent 50%),
+          radial-gradient(ellipse at top left,    rgba(255,122,89,0.22) 0%, transparent 50%),
           radial-gradient(ellipse at bottom right, rgba(254,80,0,0.18)   0%, transparent 50%),
-          linear-gradient(135deg, #0a0612 0%, #150823 50%, #0a0612 100%)
+          linear-gradient(135deg, #110d0a 0%, #1D140E 50%, #110d0a 100%)
         `,
       }} />
       <div className="modal-in" style={{
@@ -394,13 +394,13 @@ function LoginPromptModal() {
         </button>
         <div style={{
           width:64, height:64, borderRadius:'50%',
-          border: '2px solid #6F30DF',
+          border: '2px solid #E03E1B',
           background: 'transparent',
           display:'flex', alignItems:'center', justifyContent:'center',
           margin:'0 auto 18px',
-          boxShadow: '0 0 22px rgba(189,75,248,0.55), inset 0 0 12px rgba(189,75,248,0.55)',
+          boxShadow: '0 0 22px rgba(255,122,89,0.55), inset 0 0 12px rgba(255,122,89,0.55)',
         }}>
-          <span style={{ fontFamily:FN, fontSize:24, fontWeight:900, color:'#6F30DF' }}>G</span>
+          <span style={{ fontFamily:FN, fontSize:24, fontWeight:900, color:'#E03E1B' }}>G</span>
         </div>
         <div style={{ fontFamily:FN, fontSize:20, fontWeight:800, color:'#fff', textAlign:'center', marginBottom:8, letterSpacing:'-0.01em' }}>Iniciar sesión con Google</div>
         <div style={{ fontSize:13, color:'rgba(255,255,255,0.65)', textAlign:'center', lineHeight:1.6, marginBottom:24 }}>Te vamos a redirigir a Google para iniciar sesión. Después volvés a Clufix automáticamente.</div>
@@ -419,7 +419,7 @@ function LoginPromptModal() {
             background:'#ffffff',
             border:'none',
             borderRadius:99,
-            color:'#0a0612',
+            color:'#110d0a',
             fontFamily:FN, fontSize:13, fontWeight:800,
             cursor:'pointer',
             boxShadow:'0 4px 14px rgba(0,0,0,0.30)',
@@ -464,14 +464,14 @@ function EmptyState({ type = 'clubs', title, description, actionLabel, onAction 
   const dsc = description || cfg.defDesc
   return (
     <div style={{ display:'flex', flexDirection:'column', alignItems:'center', padding:'44px 20px', textAlign:'center' }}>
-      <div style={{ width:72, height:72, borderRadius:22, background:grad, display:'flex', alignItems:'center', justifyContent:'center', marginBottom:18, boxShadow:'0 8px 32px rgba(189,75,248,0.25)', position:'relative', overflow:'hidden' }}>
+      <div style={{ width:72, height:72, borderRadius:22, background:grad, display:'flex', alignItems:'center', justifyContent:'center', marginBottom:18, boxShadow:'0 8px 32px rgba(255,122,89,0.25)', position:'relative', overflow:'hidden' }}>
         <div style={{ position:'absolute', inset:0, background:'rgba(255,255,255,0.08)' }} />
         <Icon size={30} color="white" strokeWidth={1.5} style={{ position:'relative' }} />
       </div>
       <div style={{ fontFamily:FN, fontSize:16, fontWeight:800, color:C.white, marginBottom:8, letterSpacing:'-.01em' }}>{ttl}</div>
       <div style={{ fontSize:13, color:C.mist, lineHeight:1.6, maxWidth:260, marginBottom: actionLabel ? 20 : 0 }}>{dsc}</div>
       {actionLabel && onAction && (
-        <button onClick={onAction} style={{ display:'inline-flex', alignItems:'center', gap:7, padding:'10px 22px', borderRadius:50, background:grad, border:'none', color:'#fff', fontFamily:FN, fontSize:12, fontWeight:700, cursor:'pointer', boxShadow:'0 4px 16px rgba(189,75,248,0.35)' }}>
+        <button onClick={onAction} style={{ display:'inline-flex', alignItems:'center', gap:7, padding:'10px 22px', borderRadius:50, background:grad, border:'none', color:'#fff', fontFamily:FN, fontSize:12, fontWeight:700, cursor:'pointer', boxShadow:'0 4px 16px rgba(255,122,89,0.35)' }}>
           {actionLabel}
         </button>
       )}
@@ -529,7 +529,7 @@ function PullToRefresh({ onRefresh, children }) {
     <div style={{ position:'relative' }}>
       {showing && (
         <div style={{ position:'absolute', top: pullY > 0 ? -pullY : -36, left:0, right:0, display:'flex', justifyContent:'center', zIndex:10, pointerEvents:'none', transition: pullY > 0 ? 'none' : 'top 300ms ease' }}>
-          <div style={{ width:36, height:36, borderRadius:'50%', background:'rgba(189,75,248,0.15)', border:`1px solid rgba(189,75,248,${triggered ? 0.65 : 0.30})`, display:'flex', alignItems:'center', justifyContent:'center', backdropFilter:'blur(12px)', WebkitBackdropFilter:'blur(12px)', transform:`scale(${0.4 + progress * 0.6})`, transition: pullY > 0 ? 'none' : 'transform 300ms ease' }}>
+          <div style={{ width:36, height:36, borderRadius:'50%', background:'rgba(255,122,89,0.15)', border:`1px solid rgba(255,122,89,${triggered ? 0.65 : 0.30})`, display:'flex', alignItems:'center', justifyContent:'center', backdropFilter:'blur(12px)', WebkitBackdropFilter:'blur(12px)', transform:`scale(${0.4 + progress * 0.6})`, transition: pullY > 0 ? 'none' : 'transform 300ms ease' }}>
             <RefreshCw size={16} color={C.v} style={{ transform: pullY > 0 ? `rotate(${progress * 360}deg)` : 'none', animation: refreshing ? 'spin 0.8s linear infinite' : 'none' }} />
           </div>
         </div>
@@ -642,7 +642,7 @@ function InstallPrompt({ currentView }) {
           topeada a 380px (right:auto) para no estirarse a toda la pantalla.
           Anclada a la izquierda para no chocar con los botones flotantes
           (chat + campana) que viven abajo-derecha. Se cierra con la X. */}
-      <div className="modal-in" style={{ position:'fixed', bottom:88, left:16, right:'auto', width:'calc(100% - 32px)', maxWidth:380, zIndex:190, background:'rgba(18,10,32,0.97)', backdropFilter:'blur(24px)', WebkitBackdropFilter:'blur(24px)', border:'1px solid rgba(189,75,248,0.35)', borderRadius:18, padding:'14px 16px', boxShadow:'0 8px 40px rgba(0,0,0,0.5)', display:'flex', alignItems:'center', gap:12 }}>
+      <div className="modal-in" style={{ position:'fixed', bottom:88, left:16, right:'auto', width:'calc(100% - 32px)', maxWidth:380, zIndex:190, background:'rgba(28,20,14,0.97)', backdropFilter:'blur(24px)', WebkitBackdropFilter:'blur(24px)', border:'1px solid rgba(255,122,89,0.35)', borderRadius:18, padding:'14px 16px', boxShadow:'0 8px 40px rgba(0,0,0,0.5)', display:'flex', alignItems:'center', gap:12 }}>
         {/* X de cerrar — esquina superior izquierda, lejos de los botones
             flotantes que están a la derecha. */}
         <button onClick={dismiss} aria-label="Cerrar"
@@ -794,8 +794,8 @@ function OnboardingFlow({ user, onComplete }) {
   return (
     <div style={{ position:'fixed', inset:0, zIndex:9990, background:'#000', display:'flex', flexDirection:'column' }}>
       {/* Blobs */}
-      <div style={{ position:'fixed', top:'-20%', left:'-10%', width:'60vw', height:'60vw', borderRadius:'50%', background:'radial-gradient(circle, rgba(139,92,246,0.40) 0%, rgba(139,92,246,0) 70%)', filter:'blur(80px)', zIndex:-1, pointerEvents:'none' }} />
-      <div style={{ position:'fixed', bottom:'-20%', right:'-10%', width:'50vw', height:'50vw', borderRadius:'50%', background:'radial-gradient(circle, rgba(236,72,153,0.35) 0%, rgba(236,72,153,0) 70%)', filter:'blur(80px)', zIndex:-1, pointerEvents:'none' }} />
+      <div style={{ position:'fixed', top:'-20%', left:'-10%', width:'60vw', height:'60vw', borderRadius:'50%', background:'radial-gradient(circle, rgba(232,67,31,0.40) 0%, rgba(232,67,31,0) 70%)', filter:'blur(80px)', zIndex:-1, pointerEvents:'none' }} />
+      <div style={{ position:'fixed', bottom:'-20%', right:'-10%', width:'50vw', height:'50vw', borderRadius:'50%', background:'radial-gradient(circle, rgba(20,184,166,0.35) 0%, rgba(20,184,166,0) 70%)', filter:'blur(80px)', zIndex:-1, pointerEvents:'none' }} />
 
       {/* Header: back + skip + progress */}
       {showHeader && (
@@ -872,8 +872,8 @@ function OnboardingFlow({ user, onComplete }) {
                   value={form.country}
                   onChange={e => setCountry(e.target.value)}
                   style={{ width:'100%', padding:'13px 44px 13px 16px', background:'rgba(255,255,255,0.06)', border:`1px solid ${form.country ? C.rim : 'rgba(255,255,255,0.12)'}`, borderRadius:14, color: form.country ? C.white : C.dust, fontSize:15, fontFamily:FI, boxSizing:'border-box', cursor:'pointer' }}>
-                  <option value="" style={{ background:'#0D0818', color:C.mist }}>Seleccioná un país</option>
-                  <option value="argentina" style={{ background:'#0D0818', color:C.white }}>Argentina</option>
+                  <option value="" style={{ background:'#14100D', color:C.mist }}>Seleccioná un país</option>
+                  <option value="argentina" style={{ background:'#14100D', color:C.white }}>Argentina</option>
                 </select>
               </div>
 
@@ -886,9 +886,9 @@ function OnboardingFlow({ user, onComplete }) {
                   onChange={e => setProvince(e.target.value)}
                   disabled={!form.country}
                   style={{ width:'100%', padding:'13px 44px 13px 16px', background:'rgba(255,255,255,0.06)', border:`1px solid ${form.province ? C.rim : 'rgba(255,255,255,0.12)'}`, borderRadius:14, color: form.province ? C.white : C.dust, fontSize:15, fontFamily:FI, boxSizing:'border-box', cursor: form.country ? 'pointer' : 'default' }}>
-                  <option value="" style={{ background:'#0D0818', color:C.mist }}>Seleccioná una provincia</option>
+                  <option value="" style={{ background:'#14100D', color:C.mist }}>Seleccioná una provincia</option>
                   {locProvinces.map(([key, prov]) => (
-                    <option key={key} value={key} style={{ background:'#0D0818', color:C.white }}>{prov.name}</option>
+                    <option key={key} value={key} style={{ background:'#14100D', color:C.white }}>{prov.name}</option>
                   ))}
                 </select>
               </div>
@@ -902,9 +902,9 @@ function OnboardingFlow({ user, onComplete }) {
                   onChange={e => setCity(e.target.value)}
                   disabled={!form.province}
                   style={{ width:'100%', padding:'13px 44px 13px 16px', background:'rgba(255,255,255,0.06)', border:`1px solid ${form.city ? C.rim : 'rgba(255,255,255,0.12)'}`, borderRadius:14, color: form.city ? C.white : C.dust, fontSize:15, fontFamily:FI, boxSizing:'border-box', cursor: form.province ? 'pointer' : 'default' }}>
-                  <option value="" style={{ background:'#0D0818', color:C.mist }}>Seleccioná una localidad</option>
+                  <option value="" style={{ background:'#14100D', color:C.mist }}>Seleccioná una localidad</option>
                   {locCities.map(name => (
-                    <option key={name} value={name} style={{ background:'#0D0818', color:C.white }}>{name}</option>
+                    <option key={name} value={name} style={{ background:'#14100D', color:C.white }}>{name}</option>
                   ))}
                 </select>
               </div>
@@ -931,7 +931,7 @@ function OnboardingFlow({ user, onComplete }) {
           {/* ── Paso 4: ¿Tenés un negocio? ── */}
           {step === 4 && (
             <div style={{ textAlign:'center' }}>
-              <div style={{ width:88, height:88, borderRadius:'50%', background:'rgba(189,75,248,0.14)', border:`2px solid rgba(189,75,248,0.40)`, display:'flex', alignItems:'center', justifyContent:'center', margin:'0 auto 22px', boxShadow:'0 8px 28px rgba(189,75,248,0.28)' }}>
+              <div style={{ width:88, height:88, borderRadius:'50%', background:'rgba(255,122,89,0.14)', border:`2px solid rgba(255,122,89,0.40)`, display:'flex', alignItems:'center', justifyContent:'center', margin:'0 auto 22px', boxShadow:'0 8px 28px rgba(255,122,89,0.28)' }}>
                 <Check size={44} color={C.v} strokeWidth={2} />
               </div>
               <div style={{ fontFamily:FN, fontSize:24, fontWeight:900, color:C.white, marginBottom:8, letterSpacing:'-.02em' }}>¡Cuenta lista!</div>
@@ -943,7 +943,7 @@ function OnboardingFlow({ user, onComplete }) {
                 ¿Tenés un negocio?
               </div>
 
-              <div style={{ fontSize:12, color:C.dust, lineHeight:1.55, marginBottom:20, padding:'10px 14px', background:'rgba(189,75,248,0.08)', border:'1px solid rgba(189,75,248,0.20)', borderRadius:12 }}>
+              <div style={{ fontSize:12, color:C.dust, lineHeight:1.55, marginBottom:20, padding:'10px 14px', background:'rgba(255,122,89,0.08)', border:'1px solid rgba(255,122,89,0.20)', borderRadius:12 }}>
                 Si registrás un negocio, también vas a poder usar Clufix como cliente
                 de otros comercios y acumular beneficios. Es la misma cuenta.
               </div>
@@ -1017,8 +1017,8 @@ function CasiListoView({ user, onComplete }) {
 
   return (
     <div style={{ position:'fixed', inset:0, zIndex:9990, background:'#000', display:'flex', flexDirection:'column' }}>
-      <div style={{ position:'fixed', top:'-20%', left:'-10%', width:'60vw', height:'60vw', borderRadius:'50%', background:'radial-gradient(circle, rgba(139,92,246,0.40) 0%, rgba(139,92,246,0) 70%)', filter:'blur(80px)', zIndex:-1, pointerEvents:'none' }} />
-      <div style={{ position:'fixed', bottom:'-20%', right:'-10%', width:'50vw', height:'50vw', borderRadius:'50%', background:'radial-gradient(circle, rgba(236,72,153,0.35) 0%, rgba(236,72,153,0) 70%)', filter:'blur(80px)', zIndex:-1, pointerEvents:'none' }} />
+      <div style={{ position:'fixed', top:'-20%', left:'-10%', width:'60vw', height:'60vw', borderRadius:'50%', background:'radial-gradient(circle, rgba(232,67,31,0.40) 0%, rgba(232,67,31,0) 70%)', filter:'blur(80px)', zIndex:-1, pointerEvents:'none' }} />
+      <div style={{ position:'fixed', bottom:'-20%', right:'-10%', width:'50vw', height:'50vw', borderRadius:'50%', background:'radial-gradient(circle, rgba(20,184,166,0.35) 0%, rgba(20,184,166,0) 70%)', filter:'blur(80px)', zIndex:-1, pointerEvents:'none' }} />
 
       <div style={{ padding:'20px 24px', display:'flex', alignItems:'center', justifyContent:'center', flexShrink:0 }}>
         <Logo />
@@ -1026,8 +1026,8 @@ function CasiListoView({ user, onComplete }) {
 
       <div style={{ flex:1, display:'flex', flexDirection:'column', justifyContent:'center', padding:'0 24px 40px', maxWidth:420, width:'100%', margin:'0 auto' }}>
         <div className="fu">
-          <div style={{ width:72, height:72, borderRadius:'50%', background:'rgba(113,49,225,0.15)', border:'2px solid rgba(113,49,225,0.40)', display:'flex', alignItems:'center', justifyContent:'center', margin:'0 auto 24px', boxShadow:'0 8px 28px rgba(113,49,225,0.25)' }}>
-            <Sparkles size={34} color="#6F30DF" strokeWidth={1.8} />
+          <div style={{ width:72, height:72, borderRadius:'50%', background:'rgba(224,62,27,0.15)', border:'2px solid rgba(224,62,27,0.40)', display:'flex', alignItems:'center', justifyContent:'center', margin:'0 auto 24px', boxShadow:'0 8px 28px rgba(224,62,27,0.25)' }}>
+            <Sparkles size={34} color="#E03E1B" strokeWidth={1.8} />
           </div>
 
           <div style={{ fontFamily:FN, fontSize:28, fontWeight:800, color:C.white, textAlign:'center', marginBottom:8, letterSpacing:'-0.02em' }}>¡Casi listo!</div>
@@ -1056,7 +1056,7 @@ function CasiListoView({ user, onComplete }) {
             <div style={{
               width:24, height:24, borderRadius:8, flexShrink:0, marginTop:1,
               display:'flex', alignItems:'center', justifyContent:'center',
-              background: agreed ? '#6F30DF' : 'rgba(255,255,255,0.08)',
+              background: agreed ? '#E03E1B' : 'rgba(255,255,255,0.08)',
               border: agreed ? 'none' : '1px solid rgba(255,255,255,0.20)',
               transition:'background 160ms ease, border 160ms ease',
             }}>
@@ -1079,12 +1079,12 @@ function CasiListoView({ user, onComplete }) {
             disabled={!agreed || saving}
             style={{
               width:'100%', padding:'16px',
-              background: agreed ? '#EDD5F6' : 'rgba(255,255,255,0.08)',
-              border:'none', borderRadius:16, color: agreed ? '#220033' : 'rgba(255,255,255,0.45)',
+              background: agreed ? '#FFE6DC' : 'rgba(255,255,255,0.08)',
+              border:'none', borderRadius:16, color: agreed ? '#2A140D' : 'rgba(255,255,255,0.45)',
               fontFamily:FN, fontSize:15, fontWeight:700,
               cursor: agreed && !saving ? 'pointer' : 'not-allowed',
               opacity: saving ? 0.7 : 1,
-              boxShadow: agreed && !saving ? '0 8px 28px rgba(34,0,51,0.14)' : 'none',
+              boxShadow: agreed && !saving ? '0 8px 28px rgba(42,20,13,0.14)' : 'none',
               transition:'background 250ms ease, opacity 160ms ease',
             }}>
             {saving ? 'Guardando...' : 'Entrar a Clufix →'}
@@ -1117,7 +1117,7 @@ function GBtn({ children, onClick, sm, outline, style:s={}, disabled }) {
       onMouseDown={()=>setActive(true)} onMouseUp={()=>setActive(false)}
       style={{ display:'inline-flex', alignItems:'center', justifyContent:'center', gap:7, borderRadius:10, fontFamily:FN, fontWeight:700, fontSize:sm?12:14, padding:sm?'7px 16px':'12px 28px', transition:'transform 160ms cubic-bezier(0.23,1,0.32,1), background 200ms cubic-bezier(0.23,1,0.32,1), box-shadow 200ms cubic-bezier(0.23,1,0.32,1), opacity 160ms ease', border:'none', opacity:disabled?.6:1, cursor:disabled?'not-allowed':'pointer',
         ...(outline ? { background:'transparent', color:C.v, border:`1.5px solid ${C.v}`, transform:scale }
-          : { background:hov?'#D4B8E0':'#EDD5F6', color:'#220033', boxShadow:hov?'0 8px 26px rgba(34,0,51,0.20)':'0 4px 18px rgba(34,0,51,0.12)', transform:scale }), ...s }}>
+          : { background:hov?'#E0BFB8':'#FFE6DC', color:'#2A140D', boxShadow:hov?'0 8px 26px rgba(42,20,13,0.20)':'0 4px 18px rgba(42,20,13,0.12)', transform:scale }), ...s }}>
       {children}
     </button>
   )
@@ -1140,16 +1140,16 @@ function InfoBanner({ type = 'info', icon: CustomIcon, children, action, subtle 
   if (subtle) {
     const Icon = CustomIcon || AlertCircle
     return (
-      <div role="status" style={{ background:'linear-gradient(135deg,rgba(139,92,246,0.18),rgba(124,58,237,0.28))', border:'1px solid rgba(139,92,246,0.45)', backdropFilter:'blur(12px)', WebkitBackdropFilter:'blur(12px)', borderRadius:16, padding:'14px 18px', display:'flex', alignItems:'center', gap:12, boxShadow:'0 8px 24px -6px rgba(139,92,246,0.35)' }}>
-        <Icon size={22} color='#A78BFA' strokeWidth={1.8} style={{ flexShrink:0 }} />
+      <div role="status" style={{ background:'linear-gradient(135deg,rgba(232,67,31,0.18),rgba(224,62,27,0.28))', border:'1px solid rgba(232,67,31,0.45)', backdropFilter:'blur(12px)', WebkitBackdropFilter:'blur(12px)', borderRadius:16, padding:'14px 18px', display:'flex', alignItems:'center', gap:12, boxShadow:'0 8px 24px -6px rgba(232,67,31,0.35)' }}>
+        <Icon size={22} color='#FF8A6B' strokeWidth={1.8} style={{ flexShrink:0 }} />
         <div style={{ fontSize:14, lineHeight:1.5 }}>{children}</div>
       </div>
     )
   }
   const cfgMap = {
-    info:    { bg:'rgba(189,75,248,0.08)',  bd:`1px solid rgba(189,75,248,0.25)`, iconBg:'rgba(189,75,248,0.18)', iconCol:C.v,   tc:C.pearl },
+    info:    { bg:'rgba(255,122,89,0.08)',  bd:`1px solid rgba(255,122,89,0.25)`, iconBg:'rgba(255,122,89,0.18)', iconCol:C.v,   tc:C.pearl },
     warning: { bg:`${C.pink}0d`,              bd:`1px solid ${C.pink}44`,              iconBg:`${C.pink}20`,             iconCol:C.pink,   tc:C.pearl },
-    limit:   { bg:'linear-gradient(135deg,rgba(139,92,246,0.10),rgba(236,72,153,0.10))', bd:'1px solid rgba(139,92,246,0.30)', iconBg:'#6F30DF', iconCol:'#fff', tc:C.pearl },
+    limit:   { bg:'linear-gradient(135deg,rgba(232,67,31,0.10),rgba(20,184,166,0.10))', bd:'1px solid rgba(232,67,31,0.30)', iconBg:'#E03E1B', iconCol:'#fff', tc:C.pearl },
     success: { bg:`${C.ok}0d`,             bd:`1px solid ${C.ok}44`,             iconBg:`${C.ok}20`,            iconCol:C.ok,  tc:C.pearl },
   }
   const cfg = cfgMap[type] || cfgMap.info
@@ -1226,9 +1226,9 @@ function InfoTooltip({ text }) {
         <span
           onMouseEnter={() => { clearTimeout(timerRef.current); setOpen(true) }}
           onMouseLeave={closeTip}
-          style={{ position:'fixed', top:pos.top, left:pos.left, transform:'translateX(-50%) translateY(-100%)', background:'rgba(14,7,24,0.92)', backdropFilter:'blur(20px)', WebkitBackdropFilter:'blur(20px)', border:'1px solid rgba(255,255,255,0.18)', borderRadius:12, padding:'10px 13px 16px', fontSize:11, color:'#F0EAFF', lineHeight:1.6, width:232, zIndex:9999, boxShadow:'0 8px 28px rgba(0,0,0,0.70)', fontFamily:FI, fontWeight:400, whiteSpace:'normal', display:'block' }}>
+          style={{ position:'fixed', top:pos.top, left:pos.left, transform:'translateX(-50%) translateY(-100%)', background:'rgba(21,15,10,0.92)', backdropFilter:'blur(20px)', WebkitBackdropFilter:'blur(20px)', border:'1px solid rgba(255,255,255,0.18)', borderRadius:12, padding:'10px 13px 16px', fontSize:11, color:'#FFEDE6', lineHeight:1.6, width:232, zIndex:9999, boxShadow:'0 8px 28px rgba(0,0,0,0.70)', fontFamily:FI, fontWeight:400, whiteSpace:'normal', display:'block' }}>
           {text}
-          <span style={{ position:'absolute', bottom:5, left:'50%', transform:'translateX(-50%) rotate(45deg)', width:8, height:8, background:'rgba(14,7,24,0.92)', borderRight:'1px solid rgba(255,255,255,0.18)', borderBottom:'1px solid rgba(255,255,255,0.18)' }} />
+          <span style={{ position:'absolute', bottom:5, left:'50%', transform:'translateX(-50%) rotate(45deg)', width:8, height:8, background:'rgba(21,15,10,0.92)', borderRight:'1px solid rgba(255,255,255,0.18)', borderBottom:'1px solid rgba(255,255,255,0.18)' }} />
         </span>,
         document.body
       )}
@@ -1328,7 +1328,7 @@ function _luminance(hex) {
 function ColorPickerModal({ initialColor, onApply, onClose }) {
   // El slider trabaja sobre el TONO (0–360). El color final se deriva del tono
   // a una luminosidad segura, así el control jamás produce algo ilegible.
-  const [hue, setHue] = useState(() => hexToHue(initialColor || '#7C3AED'))
+  const [hue, setHue] = useState(() => hexToHue(initialColor || '#E03E1B'))
   const draft = hueToSafeColor(hue)
   const modalRef  = useRef(null)
   const [mobile, setMobile] = useState(false)
@@ -1362,7 +1362,7 @@ function ColorPickerModal({ initialColor, onApply, onClose }) {
         role="dialog"
         aria-modal="true"
         aria-label="Elegí el color de tu tarjeta"
-        style={{ width:'100%', maxWidth:340, background:'#0E0B18', border:`1px solid rgba(255,255,255,0.12)`, boxShadow:'0 24px 64px rgba(0,0,0,0.7)', borderRadius: mobile ? '20px 20px 0 0' : 20, padding: mobile ? '24px 20px 32px' : '24px 20px 20px', display:'flex', flexDirection:'column', gap:14 }}
+        style={{ width:'100%', maxWidth:340, background:'#18110B', border:`1px solid rgba(255,255,255,0.12)`, boxShadow:'0 24px 64px rgba(0,0,0,0.7)', borderRadius: mobile ? '20px 20px 0 0' : 20, padding: mobile ? '24px 20px 32px' : '24px 20px 20px', display:'flex', flexDirection:'column', gap:14 }}
       >
         <div style={{ fontFamily:FN, fontSize:16, fontWeight:800, color:C.white }}>Elegí el color de tu tarjeta</div>
         <div style={{ fontFamily:FI, fontSize:12, color:C.dust, marginTop:-6, lineHeight:1.4 }}>
@@ -1455,7 +1455,7 @@ function InstagramStoryQR({ commerce, qrDataUrl }) {
   return (
     <div style={{
       width:1080, height:1920,
-      background:'#6F30DF',
+      background:'#E03E1B',
       display:'flex', flexDirection:'column', alignItems:'center',
       justifyContent:'center',
       fontFamily:'system-ui, -apple-system, sans-serif',
@@ -1550,7 +1550,7 @@ function QrFullscreen({ open, onClose, qrValue, audience = 'client', shareUrl = 
   // Diferenciación por modo: color de fondo + ícono. Negocio = violeta de
   // marca; cliente = fucsia. Se lee de un vistazo sin leer nada.
   const isMerchantQr = audience === 'merchant'
-  const qrBg      = isMerchantQr ? '#6F30DF' : '#D6198C'
+  const qrBg      = isMerchantQr ? '#E03E1B' : '#D63519'
   const ModeIcon  = isMerchantQr ? Store : User
   const modeLabel = isMerchantQr ? 'MODO NEGOCIO' : 'TU PASE'
 
@@ -1973,7 +1973,7 @@ function CommerceQRCard({ commerce }) {
 
         {/* Gradient QR card */}
         <div style={{
-          background:'#6F30DF',
+          background:'#E03E1B',
           borderRadius:20, padding:'20px 20px 16px', marginBottom:14,
           position:'relative', overflow:'hidden',
         }}>
@@ -2053,7 +2053,7 @@ function CommerceQRCard({ commerce }) {
                 display:'flex', alignItems:'center', gap:14, textAlign:'left',
                 opacity: downloading === 'digital' ? 0.6 : 1,
               }}>
-                <div style={{ width:48, height:48, borderRadius:12, background:'#6F30DF', display:'flex', alignItems:'center', justifyContent:'center', flexShrink:0 }}>
+                <div style={{ width:48, height:48, borderRadius:12, background:'#E03E1B', display:'flex', alignItems:'center', justifyContent:'center', flexShrink:0 }}>
                   <Smartphone size={22} color="white" strokeWidth={1.5} />
                 </div>
                 <div>
@@ -2099,7 +2099,7 @@ function CommerceQRCard({ commerce }) {
         fontFamily:'system-ui, -apple-system, sans-serif',
       }}>
         <div style={{ marginBottom:8 }}>
-          <span style={{ fontSize:13, fontWeight:700, color:'#9333ea', textTransform:'uppercase', letterSpacing:'0.08em' }}>Clufix</span>
+          <span style={{ fontSize:13, fontWeight:700, color:'#ea5433', textTransform:'uppercase', letterSpacing:'0.08em' }}>Clufix</span>
         </div>
         <div style={{ fontSize:26, fontWeight:700, color:'#111', marginBottom:24, lineHeight:1.2 }}>{commerce?.name}</div>
         <div style={{ display:'inline-block', padding:20, border:'2px solid #e5e7eb', borderRadius:16, marginBottom:20, position:'relative' }}>
@@ -2139,7 +2139,7 @@ function UpgradeResultModal({ result, onClose }) {
       <div
         onClick={(e) => e.stopPropagation()}
         style={{
-          background:'linear-gradient(180deg, #15091F 0%, #0a0612 100%)',
+          background:'linear-gradient(180deg, #1B130D 0%, #110d0a 100%)',
           border:`1px solid ${accentBorder}`,
           borderRadius:24,
           padding:'32px 24px 24px',
@@ -2186,13 +2186,13 @@ function UpgradeResultModal({ result, onClose }) {
           style={{
             width:'100%', padding:'14px 18px', borderRadius:14,
             background: isSuccess
-              ? '#6F30DF'
+              ? '#E03E1B'
               : 'rgba(255,255,255,0.08)',
             border: isSuccess ? 'none' : '1px solid rgba(255,255,255,0.16)',
             color:'#fff',
             fontSize:14, fontWeight:800, letterSpacing:'.02em',
             cursor:'pointer',
-            boxShadow: isSuccess ? '0 8px 24px rgba(189,75,248,0.45)' : 'none',
+            boxShadow: isSuccess ? '0 8px 24px rgba(255,122,89,0.45)' : 'none',
           }}
         >
           {isSuccess ? 'Volver al panel' : 'Entendido'}
@@ -2212,7 +2212,7 @@ function UpgradeModal({ feature, onUpgrade, onViewPlans, onContactSupport, onClo
       onClick={onClose}>
       <div onClick={e => e.stopPropagation()} className="modal-in"
         style={{ background:'rgba(255,255,255,0.08)', backdropFilter:'blur(40px)', WebkitBackdropFilter:'blur(40px)', border:`1px solid ${C.v}44`, borderRadius:20, padding:28, maxWidth:380, width:'100%', position:'relative',
-          boxShadow:`0 0 0 1px ${C.v}22, 0 24px 64px rgba(0,0,0,.6), 0 0 80px rgba(189,75,248,.15)` }}>
+          boxShadow:`0 0 0 1px ${C.v}22, 0 24px 64px rgba(0,0,0,.6), 0 0 80px rgba(255,122,89,.15)` }}>
         {/* Glow top */}
         <div style={{ position:'absolute', top:0, left:'50%', transform:'translateX(-50%)', width:180, height:2, background:GV, borderRadius:2 }} />
 
@@ -2242,7 +2242,7 @@ function UpgradeModal({ feature, onUpgrade, onViewPlans, onContactSupport, onClo
         </div>
 
         <button onClick={() => onUpgrade(gate.ctaPlan)}
-          style={{ width:'100%', padding:'13px', background:GV, border:'none', borderRadius:12, color:'#fff', fontFamily:FN, fontSize:13, fontWeight:700, cursor:'pointer', marginBottom:10, boxShadow:`0 4px 16px rgba(189,75,248,.4)`, display:'flex', alignItems:'center', justifyContent:'center', gap:6 }}>
+          style={{ width:'100%', padding:'13px', background:GV, border:'none', borderRadius:12, color:'#fff', fontFamily:FN, fontSize:13, fontWeight:700, cursor:'pointer', marginBottom:10, boxShadow:`0 4px 16px rgba(255,122,89,.4)`, display:'flex', alignItems:'center', justifyContent:'center', gap:6 }}>
           <Zap size={14} strokeWidth={2} /> {gate.ctaLabel}
         </button>
         <button onClick={onViewPlans}
@@ -2295,8 +2295,8 @@ function Btn({ variant = 'primary', size = 'md', onClick, children, style: xs, .
     },
     outline: {
       background:'transparent',
-      border:`1px solid ${hov ? 'rgba(168,85,247,0.65)' : 'rgba(168,85,247,0.40)'}`,
-      color: hov ? '#d8b4fe' : '#c084fc',
+      border:`1px solid ${hov ? 'rgba(255,122,89,0.65)' : 'rgba(255,122,89,0.40)'}`,
+      color: hov ? '#ffb59e' : '#ff8a6b',
       transform: hov ? 'scale(1.02)' : 'scale(1)',
     },
   }
@@ -2441,7 +2441,7 @@ function PlanCards({ currentPlan=null, clientCount=0, planLimit=null, onUpgrade,
             position: 'absolute', top: 12, right: 12,
             background: `${C.v}1f`,
             border: `1px solid ${C.v}66`,
-            color: '#E9D5FF',
+            color: '#FDDED7',
             borderRadius: 99,
             padding: '4px 9px',
             fontSize: 8.5, fontWeight: 700, fontFamily: FN,
@@ -2556,7 +2556,7 @@ function PlanCards({ currentPlan=null, clientCount=0, planLimit=null, onUpgrade,
                   sobre él. */}
               <span style={{
                 width: 16, height: 16, borderRadius: '50%',
-                background: '#6F30DF',
+                background: '#E03E1B',
                 display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
                 flexShrink: 0, marginTop: 1,
                 boxShadow: `0 2px 6px ${C.v}55`,
@@ -2655,8 +2655,8 @@ function CoverImg({ src, height, children, style:s={} }) {
     <div style={{ position:'relative', height, overflow:'hidden', ...s }}
       onMouseEnter={()=>setHov(true)} onMouseLeave={()=>setHov(false)}>
       <img src={src} alt="" style={{ width:'100%', height:'100%', objectFit:'cover', filter:'brightness(.65) saturate(1.3)', transform:hov?'scale(1.04)':'scale(1)', transition:'transform 150ms ease' }} />
-      <div style={{ position:'absolute', inset:0, background:'rgba(113,49,225,0.08)', mixBlendMode:'color', pointerEvents:'none' }} />
-      <div style={{ position:'absolute', inset:0, background:`linear-gradient(to bottom,rgba(13,8,24,.05) 0%,rgba(13,8,24,.85) 80%,${C.bg} 100%)`, pointerEvents:'none' }} />
+      <div style={{ position:'absolute', inset:0, background:'rgba(224,62,27,0.08)', mixBlendMode:'color', pointerEvents:'none' }} />
+      <div style={{ position:'absolute', inset:0, background:`linear-gradient(to bottom,rgba(20,16,13,.05) 0%,rgba(20,16,13,.85) 80%,${C.bg} 100%)`, pointerEvents:'none' }} />
       {children}
     </div>
   )
@@ -2682,9 +2682,9 @@ function ClufixLoader({ size = 80 }) {
         <style>{`@keyframes bf-snake{to{stroke-dashoffset:-120.6}}.bf-p{stroke-dasharray:55 66;stroke-dashoffset:0;animation:bf-snake 3s linear infinite}`}</style>
         <defs>
           <linearGradient id="bfg" x1="0" y1="0" x2="1" y2="1">
-            <stop offset="0%" stopColor="#6F30DF" />
-            <stop offset="55%" stopColor="#c026d3" />
-            <stop offset="100%" stopColor="#FF199F" />
+            <stop offset="0%" stopColor="#E03E1B" />
+            <stop offset="55%" stopColor="#d34026" />
+            <stop offset="100%" stopColor="#F0603A" />
           </linearGradient>
         </defs>
         <path className="bf-p"
@@ -2805,16 +2805,16 @@ function Navbar({ setView, cityName, user, profile, commerce, onLogin, onLogout,
   }
   const NAV_SCROLL_STATE = scrolled
     ? {
-        background: 'rgba(34, 0, 51, 0.96)',
+        background: 'rgba(42, 20, 13, 0.96)',
         backdropFilter: 'blur(14px)',
         WebkitBackdropFilter: 'blur(14px)',
-        borderBottom: '1px solid rgba(237,213,246,0.10)',
+        borderBottom: '1px solid rgba(246,219,213,0.10)',
       }
     : {
-        background: 'rgba(34, 0, 51, 0.80)',
+        background: 'rgba(42, 20, 13, 0.80)',
         backdropFilter: 'blur(14px)',
         WebkitBackdropFilter: 'blur(14px)',
-        borderBottom: '1px solid rgba(237,213,246,0.08)',
+        borderBottom: '1px solid rgba(246,219,213,0.08)',
       }
 
   // Tinte del nav según el contexto activo (solo cuando se ve el switch):
@@ -2822,8 +2822,8 @@ function Navbar({ setView, cityName, user, profile, commerce, onLogin, onLogout,
   // del modo pero apagado, para no competir con el switch vibrante.
   const NAV_CTX_TINT = !showContextSwitch ? null
     : activeContext === 'client'
-      ? { background: scrolled ? 'rgba(58, 4, 38, 0.96)' : 'rgba(58, 4, 38, 0.82)', borderBottom: '1px solid rgba(244,114,182,0.16)' }
-      : { background: scrolled ? 'rgba(40, 6, 66, 0.96)' : 'rgba(40, 6, 66, 0.82)', borderBottom: '1px solid rgba(167,139,250,0.16)' }
+      ? { background: scrolled ? 'rgba(40, 22, 14, 0.96)' : 'rgba(40, 22, 14, 0.82)', borderBottom: '1px solid rgba(244,134,114,0.16)' }
+      : { background: scrolled ? 'rgba(49, 34, 23, 0.96)' : 'rgba(49, 34, 23, 0.82)', borderBottom: '1px solid rgba(255,138,107,0.16)' }
 
   // ── Shared style helpers ──────────────────────────────────────────────────
   // Botones dentro del contenedor glass: transparentes por defecto,
@@ -2831,10 +2831,10 @@ function Navbar({ setView, cityName, user, profile, commerce, onLogin, onLogout,
   const BTN = { position:'relative', zIndex:1, display:'flex', alignItems:'center', justifyContent:'center', width:34, height:34, borderRadius:9, flexShrink:0, transition:'background 220ms ease, box-shadow 220ms ease' }
   const NEUTRAL = { background:'transparent', border:'none' }
   // Activo = degradé de marca
-  // Rebrand mayo 2026: violeta brand sólido (#6F30DF) en lugar del
+  // Rebrand mayo 2026: violeta brand sólido (#E03E1B) en lugar del
   // gradient orange→fucsia (G). Mantiene la lectura de "indicador
   // activo" sin contradecir la nueva identidad sólida.
-  const GRAD_ACTIVE = { background:'#6F30DF', border:'none', boxShadow:'0 2px 10px rgba(113,49,225,0.42)' }
+  const GRAD_ACTIVE = { background:'#E03E1B', border:'none', boxShadow:'0 2px 10px rgba(224,62,27,0.42)' }
   // Aliases legacy (mantenidos para compatibilidad de los call sites; ahora todos
   // los activos usan el mismo gradient)
   const QR_HINT = NEUTRAL
@@ -2875,10 +2875,10 @@ function Navbar({ setView, cityName, user, profile, commerce, onLogin, onLogout,
   // Para usuarios no autenticados el navbar es siempre opaco — el botón
   // "Entrar" tiene que ser legible en cualquier scroll y cualquier sección.
   const NAV_OPAQUE = {
-    background: 'rgba(34, 0, 51, 0.96)',
+    background: 'rgba(42, 20, 13, 0.96)',
     backdropFilter: 'blur(14px)',
     WebkitBackdropFilter: 'blur(14px)',
-    borderBottom: '1px solid rgba(237,213,246,0.10)',
+    borderBottom: '1px solid rgba(246,219,213,0.10)',
   }
 
   // En home la landing tiene su propio nav — el glass pill del AppRoot no se monta.
@@ -2931,7 +2931,7 @@ function Navbar({ setView, cityName, user, profile, commerce, onLogin, onLogout,
         onMouseEnter={e => { e.currentTarget.style.background = danger ? 'rgba(248,116,68,0.10)' : 'rgba(255,255,255,0.07)' }}
         onMouseLeave={e => { e.currentTarget.style.background = 'none' }}
       >
-        <Icon size={15} strokeWidth={2} color={danger ? '#f87444' : '#A78BFA'} />
+        <Icon size={15} strokeWidth={2} color={danger ? '#f87444' : '#FF8A6B'} />
         {label}
       </button>
     )
@@ -2975,7 +2975,7 @@ function Navbar({ setView, cityName, user, profile, commerce, onLogin, onLogout,
             {profile?.avatar_url ? (
               <img src={profile.avatar_url} alt="" style={{ width:26, height:26, borderRadius:'50%', objectFit:'cover', flexShrink:0 }} />
             ) : (
-              <div style={{ width:26, height:26, borderRadius:'50%', background:'#6F30DF', display:'flex', alignItems:'center', justifyContent:'center', flexShrink:0 }}>
+              <div style={{ width:26, height:26, borderRadius:'50%', background:'#E03E1B', display:'flex', alignItems:'center', justifyContent:'center', flexShrink:0 }}>
                 <span style={{ fontFamily:FN, fontSize:12, fontWeight:700, color:'#fff' }}>
                   {(profile?.name || profile?.full_name || user?.email || '?')[0].toUpperCase()}
                 </span>
@@ -3018,19 +3018,19 @@ function Navbar({ setView, cityName, user, profile, commerce, onLogin, onLogout,
           {(() => {
             const eyeActive   = currentView === 'commerce'
             const storeActive = currentView === 'commerce-settings'
-            // Rebrand mayo 2026: violeta brand sólido (#6F30DF) en
+            // Rebrand mayo 2026: violeta brand sólido (#E03E1B) en
             // lugar del gradient violeta-violeta. Misma intencion: marcar
             // el icono activo del kit duenio con glow brand, ícono blanco.
             const VIOLET_ACTIVE = {
-              background: '#EDD5F6',
+              background: '#FFE6DC',
               border: 'none',
-              boxShadow: '0 2px 10px rgba(34,0,51,0.22)',
+              boxShadow: '0 2px 10px rgba(42,20,13,0.22)',
             }
             return (
               <>
                 <button title="Vista pública de mi club" onClick={onOwnerProfile}
                   style={{ ...BTN, ...(eyeActive ? VIOLET_ACTIVE : NEUTRAL), cursor: 'pointer' }}>
-                  <Eye size={16} color={eyeActive ? '#220033' : 'rgba(189,75,248,0.85)'} strokeWidth={2} />
+                  <Eye size={16} color={eyeActive ? '#2A140D' : 'rgba(255,122,89,0.85)'} strokeWidth={2} />
                 </button>
                 <button title="Mi Negocio"
                   onClick={() => {
@@ -3038,7 +3038,7 @@ function Navbar({ setView, cityName, user, profile, commerce, onLogin, onLogout,
                     window.dispatchEvent(new CustomEvent('clufix:merchant-intent'))
                   }}
                   style={{ ...BTN, ...(storeActive ? VIOLET_ACTIVE : NEUTRAL), cursor: 'pointer' }}>
-                  <Store size={16} color={storeActive ? '#220033' : 'rgba(189,75,248,0.85)'} strokeWidth={2} />
+                  <Store size={16} color={storeActive ? '#2A140D' : 'rgba(255,122,89,0.85)'} strokeWidth={2} />
                 </button>
               </>
             )
@@ -3076,7 +3076,7 @@ function Navbar({ setView, cityName, user, profile, commerce, onLogin, onLogout,
       )}
     </nav>
     {dropdownOpen && dropdownRect && typeof document !== 'undefined' && createPortal(
-      <div ref={dropdownPortalRef} style={{ position:'fixed', top: dropdownRect.top, right: dropdownRect.right, minWidth:192, background:'rgba(12,8,24,0.96)', backdropFilter:'blur(20px)', WebkitBackdropFilter:'blur(20px)', border:'1px solid rgba(255,255,255,0.12)', borderRadius:14, padding:6, zIndex:9999, boxShadow:'0 12px 40px rgba(0,0,0,0.60)' }}>
+      <div ref={dropdownPortalRef} style={{ position:'fixed', top: dropdownRect.top, right: dropdownRect.right, minWidth:192, background:'rgba(22,15,10,0.96)', backdropFilter:'blur(20px)', WebkitBackdropFilter:'blur(20px)', border:'1px solid rgba(255,255,255,0.12)', borderRadius:14, padding:6, zIndex:9999, boxShadow:'0 12px 40px rgba(0,0,0,0.60)' }}>
         <button
           onClick={() => { setDropdownOpen(false); isMerchantDD ? setView('commerce-settings') : undefined }}
           style={{ display:'block', width:'100%', textAlign:'left', background:'none', border:'none', cursor: isMerchantDD ? 'pointer' : 'default', padding:'10px 14px 8px', borderBottom:'1px solid rgba(255,255,255,0.08)', marginBottom:4 }}
@@ -3163,7 +3163,7 @@ function ReviewCard({ review }) {
             <img src={review.avatarUrl} alt={review.name}
               style={{ width:38, height:38, borderRadius:'50%', objectFit:'cover', flexShrink:0, border:'1px solid rgba(255,255,255,0.12)' }} />
           ) : (
-            <div style={{ width:38, height:38, borderRadius:'50%', background:'#6F30DF', display:'flex', alignItems:'center', justifyContent:'center', fontFamily:FN, fontSize:13, fontWeight:800, color:'#fff', flexShrink:0 }}>
+            <div style={{ width:38, height:38, borderRadius:'50%', background:'#E03E1B', display:'flex', alignItems:'center', justifyContent:'center', fontFamily:FN, fontSize:13, fontWeight:800, color:'#fff', flexShrink:0 }}>
               {initials}
             </div>
           )}
@@ -3172,7 +3172,7 @@ function ReviewCard({ review }) {
             <div style={{ display:'flex', alignItems:'center', gap:5, minWidth:0 }}>
               <p style={{ fontFamily:FN, fontSize:13, fontWeight:700, color:'#fff', whiteSpace:'nowrap', overflow:'hidden', textOverflow:'ellipsis' }}>{review.name}</p>
               {review.verified && (
-                <CheckCircle size={13} color='#6F30DF' strokeWidth={2.5} style={{ flexShrink:0 }} />
+                <CheckCircle size={13} color='#E03E1B' strokeWidth={2.5} style={{ flexShrink:0 }} />
               )}
             </div>
             {/* Business name (owners) or location */}
@@ -3184,7 +3184,7 @@ function ReviewCard({ review }) {
             )}
           </div>
         </div>
-        <span style={{ flexShrink:0, fontSize:10, fontWeight:700, fontFamily:FN, padding:'3px 9px', borderRadius:99, background: isOwner ? 'rgba(168,85,247,0.18)' : 'rgba(236,72,153,0.18)', color: isOwner ? C.v : '#FF199F', border:`1px solid ${isOwner ? 'rgba(168,85,247,0.30)' : 'rgba(236,72,153,0.30)'}` }}>
+        <span style={{ flexShrink:0, fontSize:10, fontWeight:700, fontFamily:FN, padding:'3px 9px', borderRadius:99, background: isOwner ? 'rgba(255,122,89,0.18)' : 'rgba(20,184,166,0.18)', color: isOwner ? C.v : '#F0603A', border:`1px solid ${isOwner ? 'rgba(255,122,89,0.30)' : 'rgba(20,184,166,0.30)'}` }}>
           {isOwner ? 'Negocio' : 'Cliente'}
         </span>
       </div>
@@ -3206,8 +3206,8 @@ function ReviewsSection() {
   return (
     <section className="section-secondary" style={{ padding:'100px 0 92px', overflow:'hidden', position:'relative' }}>
       {/* Edge fades */}
-      <div style={{ position:'absolute', left:0, top:0, bottom:0, width:120, background:'linear-gradient(to right, #0f0820, transparent)', zIndex:10, pointerEvents:'none' }} />
-      <div style={{ position:'absolute', right:0, top:0, bottom:0, width:120, background:'linear-gradient(to left, #0f0820, transparent)', zIndex:10, pointerEvents:'none' }} />
+      <div style={{ position:'absolute', left:0, top:0, bottom:0, width:120, background:'linear-gradient(to right, #1b130d, transparent)', zIndex:10, pointerEvents:'none' }} />
+      <div style={{ position:'absolute', right:0, top:0, bottom:0, width:120, background:'linear-gradient(to left, #1b130d, transparent)', zIndex:10, pointerEvents:'none' }} />
 
       {/* Header */}
       <div style={{ textAlign:'center', marginBottom:52, padding:'0 20px', position:'relative', zIndex:20 }}>
@@ -3258,7 +3258,7 @@ function BeneficioWord({ delay = 0 }) {
       transform: show ? 'translateY(0)' : 'translateY(20px)',
       transition: `opacity 0.7s ease, filter 0.7s ease, transform 0.7s cubic-bezier(0.23,1,0.32,1)`,
       transitionDelay: `${delay}ms`,
-      background: '#6F30DF',
+      background: '#E03E1B',
       backgroundSize: '300% 100%',
       WebkitBackgroundClip: 'text',
       WebkitTextFillColor: 'transparent',
@@ -3363,9 +3363,9 @@ function HeroSection({ setView, user, profile, onLogin }) {
     <section className="animated-gradient-bg" style={{ position:'relative', minHeight:'100vh', display:'flex', flexDirection:'column', alignItems:'center', justifyContent:'center', overflow:'hidden', padding:'80px 24px 48px' }}>
 
       {/* Background blobs */}
-      <div style={{ position:'absolute', top:'-20%', left:'-10%', width:'60vw', height:'60vw', borderRadius:'50%', background:'radial-gradient(circle, rgba(139,92,246,0.40) 0%, transparent 70%)', filter:'blur(80px)', pointerEvents:'none', zIndex:0 }} />
-      <div style={{ position:'absolute', bottom:'-20%', right:'-10%', width:'50vw', height:'50vw', borderRadius:'50%', background:'radial-gradient(circle, rgba(236,72,153,0.35) 0%, transparent 70%)', filter:'blur(80px)', pointerEvents:'none', zIndex:0 }} />
-      <div style={{ position:'absolute', top:'40%', right:'-5%', width:'35vw', height:'35vw', borderRadius:'50%', background:'radial-gradient(circle, rgba(168,85,247,0.20) 0%, transparent 70%)', filter:'blur(60px)', pointerEvents:'none', zIndex:0 }} />
+      <div style={{ position:'absolute', top:'-20%', left:'-10%', width:'60vw', height:'60vw', borderRadius:'50%', background:'radial-gradient(circle, rgba(232,67,31,0.40) 0%, transparent 70%)', filter:'blur(80px)', pointerEvents:'none', zIndex:0 }} />
+      <div style={{ position:'absolute', bottom:'-20%', right:'-10%', width:'50vw', height:'50vw', borderRadius:'50%', background:'radial-gradient(circle, rgba(20,184,166,0.35) 0%, transparent 70%)', filter:'blur(80px)', pointerEvents:'none', zIndex:0 }} />
+      <div style={{ position:'absolute', top:'40%', right:'-5%', width:'35vw', height:'35vw', borderRadius:'50%', background:'radial-gradient(circle, rgba(255,122,89,0.20) 0%, transparent 70%)', filter:'blur(60px)', pointerEvents:'none', zIndex:0 }} />
 
       {/* Content */}
       <div style={{ position:'relative', zIndex:1, textAlign:'center', maxWidth:780, width:'100%' }}>
@@ -3446,14 +3446,14 @@ function HeroSection({ setView, user, profile, onLogin }) {
             <div className="trust-marquee">
               {TRUST.map(({ Icon, label }) => (
                 <div key={label} className="trust-marquee-item">
-                  <Icon size={24} color="#6F30DF" strokeWidth={1.5} />
+                  <Icon size={24} color="#E03E1B" strokeWidth={1.5} />
                   <span>{label}</span>
                 </div>
               ))}
               {/* Duplicado para loop seamless — oculto a lectores de pantalla */}
               {TRUST.map(({ Icon, label }) => (
                 <div key={`d-${label}`} className="trust-marquee-item" aria-hidden="true">
-                  <Icon size={24} color="#6F30DF" strokeWidth={1.5} />
+                  <Icon size={24} color="#E03E1B" strokeWidth={1.5} />
                   <span>{label}</span>
                 </div>
               ))}
@@ -3472,7 +3472,7 @@ function HeroSection({ setView, user, profile, onLogin }) {
       }}>
         <span style={{ fontFamily:FN, fontSize:10, color:'rgba(255,255,255,0.35)', letterSpacing:'0.15em', textTransform:'uppercase' }}>Scroll</span>
         <div style={{ width:1, height:48, background:'rgba(255,255,255,0.15)', position:'relative', overflow:'hidden', borderRadius:1 }}>
-          <div className="scroll-light" style={{ position:'absolute', top:0, left:0, width:'100%', height:16, background:'#6F30DF', borderRadius:1 }} />
+          <div className="scroll-light" style={{ position:'absolute', top:0, left:0, width:'100%', height:16, background:'#E03E1B', borderRadius:1 }} />
         </div>
       </div>
 
@@ -3536,13 +3536,13 @@ function FeaturesSection() {
       Icon: QrCode,
       title: 'QR único del negocio',
       desc: 'Cada local tiene su QR personalizado. El cliente escanea, queda dentro del club. Cero tarjetas de papel que se pierden.',
-      color: '#6F30DF',
+      color: '#E03E1B',
     },
     {
       Icon: Star,
       title: 'Estrellas o puntos',
       desc: 'Elegís el sistema que mejor te queda. Estrellas (1 por compra) para algo simple, o puntos (1 = $1) para algo flexible.',
-      color: '#FF199F',
+      color: '#F0603A',
     },
     {
       Icon: Gift,
@@ -3554,7 +3554,7 @@ function FeaturesSection() {
       Icon: Percent,
       title: 'Promos automáticas',
       desc: 'Cupón de descuento para la próxima visita, o doble puntos los días que vos elijas (lunes flojos, miércoles muertos). Lo configurás una vez y corre solo.',
-      color: '#6F30DF',
+      color: '#E03E1B',
     },
     {
       Icon: BarChart2,
@@ -3566,7 +3566,7 @@ function FeaturesSection() {
       Icon: Bell,
       title: 'WhatsApp y notificaciones',
       desc: 'Mensajes de WhatsApp listos para mandar al cliente que hace tiempo no viene. Y notifs push cuando tiene un premio para canjear.',
-      color: '#FF199F',
+      color: '#F0603A',
     },
   ]
 
@@ -3878,7 +3878,7 @@ function HowItWorksSection() {
           position: 'absolute',
           inset: 0,
           zIndex: 0,
-          background: 'linear-gradient(135deg, rgba(254,80,0,0.85) 0%, rgba(236,72,153,0.80) 50%, rgba(189,75,248,0.85) 100%)',
+          background: 'linear-gradient(135deg, rgba(254,80,0,0.85) 0%, rgba(20,184,166,0.80) 50%, rgba(255,122,89,0.85) 100%)',
           mixBlendMode: 'overlay',
           pointerEvents: 'none',
         }} />
@@ -4055,9 +4055,9 @@ function _HowItWorksSectionLegacy() {
       title:'Escaneá',
       desc:'Mostrá el QR del local y unite al club en segundos. Sin descargar nada, sin papelitos.',
       pills:['QR único por local', 'Sin app extra', 'Funciona offline'],
-      accent:'#6F30DF',         // violeta — sistema "stars"
-      accentDark:'#6F30DF',
-      grad:'linear-gradient(135deg, #2A1140 0%, #1A0626 60%, #0d0218 100%)',
+      accent:'#E03E1B',         // violeta — sistema "stars"
+      accentDark:'#E03E1B',
+      grad:'linear-gradient(135deg, #37261A 0%, #1E150E 60%, #120c08 100%)',
       visual:'qr',
     },
     {
@@ -4067,9 +4067,9 @@ function _HowItWorksSectionLegacy() {
       title:'Sumás',
       desc:'Cada visita suma estrellas o puntos automáticos. El comerciante escanea tu tarjeta y listo.',
       pills:['Estrellas o puntos', 'Suma automática', 'Sin trámite'],
-      accent:'#FF199F',         // fucsia — sistema "points"
-      accentDark:'#d4007f',
-      grad:'linear-gradient(135deg, #2A0E22 0%, #1B0612 60%, #0F0309 100%)',
+      accent:'#F0603A',         // fucsia — sistema "points"
+      accentDark:'#c2410c',
+      grad:'linear-gradient(135deg, #261A12 0%, #16100B 60%, #0C0806 100%)',
       visual:'sparks',
     },
     {
@@ -4079,7 +4079,7 @@ function _HowItWorksSectionLegacy() {
       title:'Canjeás',
       desc:'Usás lo acumulado para llevarte premios reales: cafés, descuentos, productos y más.',
       pills:['Premios reales', 'Descuentos exclusivos', 'Stock en vivo'],
-      accent:'#FF199F',         // naranja — color CTA marca
+      accent:'#F0603A',         // naranja — color CTA marca
       accentDark:'#EA580C',
       grad:'linear-gradient(135deg, #2B1308 0%, #1A0A04 60%, #0F0502 100%)',
       visual:'gift',
@@ -4483,8 +4483,8 @@ function _HeroSlider({ setView, profile }) {
       cta:   isOwner ? 'Ir a mi panel' : 'Ver mis clubes',
       onCta: () => setView(isOwner ? 'commerce-settings' : 'client'),
       Icon:  QrCode,
-      blob1: 'rgba(189,75,248,0.28)', blob2: 'rgba(254,80,0,0.18)',
-      bg:    'radial-gradient(ellipse at 28% 38%, #3D0A9E 0%, #1a0040 50%, #09000e 100%)',
+      blob1: 'rgba(255,122,89,0.28)', blob2: 'rgba(254,80,0,0.18)',
+      bg:    'radial-gradient(ellipse at 28% 38%, #8F2A12 0%, #26120b 50%, #0c0907 100%)',
     },
     {
       id: 2,
@@ -4494,8 +4494,8 @@ function _HeroSlider({ setView, profile }) {
       cta:   'Crear mi club',
       onCta: () => setView('register-commerce'),
       Icon:  Users,
-      blob1: 'rgba(254,80,0,0.22)', blob2: 'rgba(189,75,248,0.18)',
-      bg:    'radial-gradient(ellipse at 72% 30%, #6F30DF 0%, #1a0040 50%, #09000e 100%)',
+      blob1: 'rgba(254,80,0,0.22)', blob2: 'rgba(255,122,89,0.18)',
+      bg:    'radial-gradient(ellipse at 72% 30%, #E03E1B 0%, #26120b 50%, #0c0907 100%)',
     },
     {
       id: 3,
@@ -4505,8 +4505,8 @@ function _HeroSlider({ setView, profile }) {
       cta:   'Ver ejemplo',
       onCta: () => { window.location.href = '/club/cafe-berlin' },
       Icon:  Gift,
-      blob1: 'rgba(236,72,153,0.28)', blob2: 'rgba(189,75,248,0.18)',
-      bg:    'radial-gradient(ellipse at 50% 60%, #7c1fa0 0%, #1a0040 50%, #09000e 100%)',
+      blob1: 'rgba(20,184,166,0.28)', blob2: 'rgba(255,122,89,0.18)',
+      bg:    'radial-gradient(ellipse at 50% 60%, #a0361f 0%, #26120b 50%, #0c0907 100%)',
     },
     {
       id: 4,
@@ -4516,8 +4516,8 @@ function _HeroSlider({ setView, profile }) {
       cta:   'Empezar gratis',
       onCta: () => setView('register-commerce'),
       Icon:  Bot,
-      blob1: 'rgba(64,200,255,0.14)', blob2: 'rgba(189,75,248,0.22)',
-      bg:    'radial-gradient(ellipse at 18% 70%, #3D0A9E 0%, #1a0040 50%, #09000e 100%)',
+      blob1: 'rgba(64,200,255,0.14)', blob2: 'rgba(255,122,89,0.22)',
+      bg:    'radial-gradient(ellipse at 18% 70%, #8F2A12 0%, #26120b 50%, #0c0907 100%)',
     },
     {
       id: 5,
@@ -4527,8 +4527,8 @@ function _HeroSlider({ setView, profile }) {
       cta:   'Crear cuenta',
       onCta: () => setView(isOwner ? 'commerce-settings' : 'client'),
       Icon:  Rocket,
-      blob1: 'rgba(189,75,248,0.32)', blob2: 'rgba(254,80,0,0.22)',
-      bg:    'radial-gradient(ellipse at 62% 28%, #6F30DF 0%, #1a0040 50%, #09000e 100%)',
+      blob1: 'rgba(255,122,89,0.32)', blob2: 'rgba(254,80,0,0.22)',
+      bg:    'radial-gradient(ellipse at 62% 28%, #E03E1B 0%, #26120b 50%, #0c0907 100%)',
     },
   ]
 
@@ -4566,7 +4566,7 @@ function _HeroSlider({ setView, profile }) {
 
   return (
     <div
-      style={{ position:'relative', width:'100%', height:'85vh', minHeight:600, overflow:'hidden', background:'#09000e' }}
+      style={{ position:'relative', width:'100%', height:'85vh', minHeight:600, overflow:'hidden', background:'#0c0907' }}
       onTouchStart={onTouchStart} onTouchEnd={onTouchEnd}
     >
       {slides.map((s, i) => (
@@ -4626,7 +4626,7 @@ function _HeroSlider({ setView, profile }) {
                 boxShadow:'0 32px 80px rgba(0,0,0,0.45)',
                 position:'relative', overflow:'hidden',
               }}>
-                <div style={{ position:'absolute', top:-20, left:-20, width:120, height:120, borderRadius:'50%', background:'rgba(189,75,248,0.18)', filter:'blur(30px)', pointerEvents:'none' }} />
+                <div style={{ position:'absolute', top:-20, left:-20, width:120, height:120, borderRadius:'50%', background:'rgba(255,122,89,0.18)', filter:'blur(30px)', pointerEvents:'none' }} />
                 <s.Icon size={isDesktop ? 64 : 44} strokeWidth={1.1} color='rgba(255,255,255,0.80)' style={{ position:'relative', zIndex:1 }} />
                 {isDesktop && (
                   <>
@@ -4675,7 +4675,7 @@ function _HeroSlider({ setView, profile }) {
       )}
 
       {/* Bottom section fade */}
-      <div style={{ position:'absolute', bottom:0, left:0, right:0, height:120, background:'linear-gradient(to bottom, transparent, #09000e)', pointerEvents:'none', zIndex:10 }} />
+      <div style={{ position:'absolute', bottom:0, left:0, right:0, height:120, background:'linear-gradient(to bottom, transparent, #0c0907)', pointerEvents:'none', zIndex:10 }} />
     </div>
   )
 }
@@ -4695,7 +4695,7 @@ function TestimonialsSection() {
   return (
     <section style={{ padding:'80px 20px', position:'relative', overflow:'hidden' }}>
       {/* bg blob */}
-      <div style={{ position:'absolute', top:0, right:0, width:500, height:500, borderRadius:'50%', background:'radial-gradient(circle, rgba(236,72,153,0.10) 0%, transparent 70%)', filter:'blur(60px)', pointerEvents:'none' }} />
+      <div style={{ position:'absolute', top:0, right:0, width:500, height:500, borderRadius:'50%', background:'radial-gradient(circle, rgba(20,184,166,0.10) 0%, transparent 70%)', filter:'blur(60px)', pointerEvents:'none' }} />
 
       <div style={{ maxWidth:1080, margin:'0 auto' }}>
         {/* Badge */}
@@ -4718,7 +4718,7 @@ function TestimonialsSection() {
               style={{ borderRadius:24, padding:'28px 28px 24px', display:'flex', flexDirection:'column', gap:0, transition:'transform 280ms cubic-bezier(0.23,1,0.32,1)', transform: hov===i ? 'scale(1.02)' : 'scale(1)' }}
               onMouseEnter={() => setHov(i)} onMouseLeave={() => setHov(-1)}>
               {/* Quote mark */}
-              <div style={{ fontFamily:'Georgia, serif', fontSize:72, lineHeight:1, color:'rgba(168,85,247,0.25)', marginBottom:8, marginTop:-8 }}>"</div>
+              <div style={{ fontFamily:'Georgia, serif', fontSize:72, lineHeight:1, color:'rgba(255,122,89,0.25)', marginBottom:8, marginTop:-8 }}>"</div>
               {/* Text */}
               <p style={{ fontFamily:FI, fontSize:15, color:'rgba(255,255,255,0.80)', lineHeight:1.65, marginBottom:20, flex:1, fontStyle:'italic' }}>{t.text}</p>
               {/* Stars */}
@@ -4727,7 +4727,7 @@ function TestimonialsSection() {
               </div>
               {/* Author */}
               <div style={{ display:'flex', alignItems:'center', gap:14 }}>
-                <div style={{ width:44, height:44, borderRadius:'50%', background:'#6F30DF', display:'flex', alignItems:'center', justifyContent:'center', flexShrink:0 }}>
+                <div style={{ width:44, height:44, borderRadius:'50%', background:'#E03E1B', display:'flex', alignItems:'center', justifyContent:'center', flexShrink:0 }}>
                   <span style={{ fontFamily:FN, fontSize:14, fontWeight:900, color:'#fff' }}>
                     {t.name.split(' ').map(n=>n[0]).join('')}
                   </span>
@@ -5048,11 +5048,11 @@ function CinematicSplashSection({ setView, user, profile, onLogin }) {
       // padding-bottom amplio para que el skyline tenga lugar a la base.
       padding:'88px 20px 100px',
       overflow:'hidden',
-      // Background del hero. Cierra al pie en `#07040f` (mismo tono que la
+      // Background del hero. Cierra al pie en `#0d0906` (mismo tono que la
       // base de los edificios + el bg de FeaturesSection abajo) para que
       // la transición scroll → siguiente sección sea continua, sin corte
       // de color cuando termina el hero.
-      background:'linear-gradient(180deg, #0a0612 0%, #15091F 40%, #1a0a28 70%, #07040f 100%)',
+      background:'linear-gradient(180deg, #110d0a 0%, #1B130D 40%, #221810 70%, #0d0906 100%)',
     }}>
       {/* Halo violeta detrás del título, simulando una "luna" / spotlight
           que ilumina las letras desde atrás. Pintado de marca. */}
@@ -5060,7 +5060,7 @@ function CinematicSplashSection({ setView, user, profile, onLogin }) {
         position:'absolute', top:'25%', left:'50%',
         transform:'translateX(-50%)',
         width:'min(900px, 90vw)', height:380,
-        background:'radial-gradient(ellipse at center, rgba(189,75,248,0.30) 0%, rgba(254,80,0,0.12) 35%, transparent 65%)',
+        background:'radial-gradient(ellipse at center, rgba(255,122,89,0.30) 0%, rgba(254,80,0,0.12) 35%, transparent 65%)',
         filter:'blur(40px)',
         pointerEvents:'none',
       }} />
@@ -5077,7 +5077,7 @@ function CinematicSplashSection({ setView, user, profile, onLogin }) {
             position:'absolute', top:s.top, left:s.left,
             width:2, height:2, borderRadius:'50%',
             background:'#fff',
-            boxShadow:'0 0 4px rgba(255,255,255,0.85), 0 0 8px rgba(189,75,248,0.45)',
+            boxShadow:'0 0 4px rgba(255,255,255,0.85), 0 0 8px rgba(255,122,89,0.45)',
           }} />
         ))}
       </div>
@@ -5104,13 +5104,13 @@ function CinematicSplashSection({ setView, user, profile, onLogin }) {
           <div className="trust-marquee trust-marquee--splash">
             {TRUST.map(({ Icon, label }) => (
               <div key={label} className="trust-marquee-item">
-                <Icon size={18} color="#6F30DF" strokeWidth={1.6} />
+                <Icon size={18} color="#E03E1B" strokeWidth={1.6} />
                 <span>{label}</span>
               </div>
             ))}
             {TRUST.map(({ Icon, label }) => (
               <div key={`d-${label}`} className="trust-marquee-item" aria-hidden="true">
-                <Icon size={18} color="#6F30DF" strokeWidth={1.6} />
+                <Icon size={18} color="#E03E1B" strokeWidth={1.6} />
                 <span>{label}</span>
               </div>
             ))}
@@ -5145,7 +5145,7 @@ function CinematicSplashSection({ setView, user, profile, onLogin }) {
           }}>
             <span style={{
               background:'#fff',
-              color:'#0a0612',
+              color:'#110d0a',
               fontSize:10.5, fontWeight:800,
               padding:'4px 11px',
               borderRadius:99,
@@ -5184,7 +5184,7 @@ function CinematicSplashSection({ setView, user, profile, onLogin }) {
             lineHeight:0.88,
             textTransform:'uppercase',
             color:'transparent',
-            backgroundImage:'#6F30DF',
+            backgroundImage:'#E03E1B',
             WebkitBackgroundClip:'text',
             backgroundClip:'text',
             WebkitTextFillColor:'transparent',
@@ -5211,12 +5211,12 @@ function CinematicSplashSection({ setView, user, profile, onLogin }) {
             letterSpacing:'-0.04em',
             lineHeight:0.88,
             textTransform:'uppercase',
-            backgroundImage:'#6F30DF',
+            backgroundImage:'#E03E1B',
             WebkitBackgroundClip:'text',
             backgroundClip:'text',
             WebkitTextFillColor:'transparent',
             // Glow característico violeta + naranja (como antes)
-            filter:'drop-shadow(0 4px 16px rgba(189,75,248,0.55)) drop-shadow(0 2px 6px rgba(254,80,0,0.30))',
+            filter:'drop-shadow(0 4px 16px rgba(255,122,89,0.55)) drop-shadow(0 2px 6px rgba(254,80,0,0.30))',
             opacity: revealed ? 1 : 0,
             transform: revealed ? 'scale(1) translateY(0)' : 'scale(0.94) translateY(20px)',
             transition: 'opacity 1000ms cubic-bezier(0.22,1,0.36,1) 280ms, transform 1000ms cubic-bezier(0.22,1,0.36,1) 280ms',
@@ -5296,7 +5296,7 @@ function CinematicSplashSection({ setView, user, profile, onLogin }) {
             corte con el cielo se vea suave (no un edge cortado a cuchillo). */}
         <div style={{
           position:'absolute', bottom:0, left:0, right:0, height:'100%',
-          background:'linear-gradient(180deg, rgba(15,7,28,0.65) 0%, rgba(10,6,18,0.95) 12%, #0a0612 30%, #07040f 100%)',
+          background:'linear-gradient(180deg, rgba(24,17,11,0.65) 0%, rgba(16,11,8,0.95) 12%, #110d0a 30%, #0d0906 100%)',
           clipPath:'polygon(0 100%, 0 65%, 4% 65%, 4% 40%, 8% 40%, 8% 60%, 12% 60%, 12% 25%, 16% 25%, 16% 50%, 20% 50%, 20% 35%, 24% 35%, 24% 70%, 28% 70%, 28% 45%, 32% 45%, 32% 20%, 38% 20%, 38% 55%, 42% 55%, 42% 40%, 48% 40%, 48% 68%, 52% 68%, 52% 30%, 58% 30%, 58% 50%, 62% 50%, 62% 15%, 68% 15%, 68% 45%, 72% 45%, 72% 60%, 78% 60%, 78% 35%, 84% 35%, 84% 55%, 88% 55%, 88% 40%, 92% 40%, 92% 65%, 100% 65%, 100% 100%)',
         }} />
         {/* Ventanas iluminadas en colores marca. Posiciones en % del alto
@@ -5306,24 +5306,24 @@ function CinematicSplashSection({ setView, user, profile, onLogin }) {
             sobre el rango 0-65% del alto, que es donde el clip-path tiene
             edificios sólidos. */}
         {[
-          { l:'5%',  b:'24%', c:'#FF199F' },
-          { l:'9%',  b:'31%', c:'#6F30DF' },
-          { l:'14%', b:'40%', c:'#FF199F' },
-          { l:'17%', b:'27%', c:'#FF199F' },
-          { l:'22%', b:'21%', c:'#6F30DF' },
-          { l:'26%', b:'45%', c:'#FF199F' },
-          { l:'34%', b:'58%', c:'#6F30DF' },
-          { l:'40%', b:'30%', c:'#FF199F' },
-          { l:'45%', b:'39%', c:'#FF199F' },
-          { l:'50%', b:'48%', c:'#6F30DF' },
-          { l:'56%', b:'25%', c:'#FF199F' },
-          { l:'64%', b:'62%', c:'#FF199F' },
-          { l:'69%', b:'37%', c:'#6F30DF' },
-          { l:'75%', b:'27%', c:'#FF199F' },
-          { l:'81%', b:'45%', c:'#6F30DF' },
-          { l:'86%', b:'30%', c:'#FF199F' },
-          { l:'92%', b:'40%', c:'#6F30DF' },
-          { l:'95%', b:'24%', c:'#FF199F' },
+          { l:'5%',  b:'24%', c:'#F0603A' },
+          { l:'9%',  b:'31%', c:'#E03E1B' },
+          { l:'14%', b:'40%', c:'#F0603A' },
+          { l:'17%', b:'27%', c:'#F0603A' },
+          { l:'22%', b:'21%', c:'#E03E1B' },
+          { l:'26%', b:'45%', c:'#F0603A' },
+          { l:'34%', b:'58%', c:'#E03E1B' },
+          { l:'40%', b:'30%', c:'#F0603A' },
+          { l:'45%', b:'39%', c:'#F0603A' },
+          { l:'50%', b:'48%', c:'#E03E1B' },
+          { l:'56%', b:'25%', c:'#F0603A' },
+          { l:'64%', b:'62%', c:'#F0603A' },
+          { l:'69%', b:'37%', c:'#E03E1B' },
+          { l:'75%', b:'27%', c:'#F0603A' },
+          { l:'81%', b:'45%', c:'#E03E1B' },
+          { l:'86%', b:'30%', c:'#F0603A' },
+          { l:'92%', b:'40%', c:'#E03E1B' },
+          { l:'95%', b:'24%', c:'#F0603A' },
         ].map((w, i) => (
           <div key={i} style={{
             position:'absolute',
@@ -5480,22 +5480,22 @@ function BigBoldRowsSection({ setView }) {
       key: 'sumar',
       title: 'Sumar',
       desc: 'Cada cliente que entra al local escanea tu QR y queda dentro del club. Cero tarjetas de papel, cero fricción.',
-      bg: 'linear-gradient(110deg, #1a0d2e 0%, #2a1340 50%, #4c1d95 100%)',
-      accent: '#6F30DF',
+      bg: 'linear-gradient(110deg, #281c13 0%, #38271b 50%, #7a2410 100%)',
+      accent: '#E03E1B',
     },
     {
       key: 'fidelizar',
       title: 'Fidelizar',
       desc: 'Cargás premios con foto y costo. Tu cliente los ve desde su tarjeta y los canjea con las estrellas o puntos que acumuló.',
-      bg: 'linear-gradient(110deg, #2a0e1f 0%, #4a1936 50%, #be185d 100%)',
-      accent: '#FF199F',
+      bg: 'linear-gradient(110deg, #261a12 0%, #432f20 50%, #be185d 100%)',
+      accent: '#F0603A',
     },
     {
       key: 'reactivar',
       title: 'Reactivar',
       desc: 'Cupones automáticos para la próxima visita y mensajes a los que no vuelven. Lo configurás una vez, corre solo.',
       bg: 'linear-gradient(110deg, #1f0e0a 0%, #3a1a0c 50%, #c2410c 100%)',
-      accent: '#FF199F',
+      accent: '#F0603A',
     },
   ]
   return (
@@ -5527,7 +5527,7 @@ function BigBoldRowsSection({ setView }) {
               transition: 'opacity 800ms ease 200ms, transform 800ms cubic-bezier(0.22,1,0.36,1) 200ms',
             }}>
               Fidelización,<br />
-              <span className="font-display" style={{ color:'#6F30DF', fontWeight:400, letterSpacing:'-.005em' }}>reinventada:</span>
+              <span className="font-display" style={{ color:'#E03E1B', fontWeight:400, letterSpacing:'-.005em' }}>reinventada:</span>
             </h2>
           </div>
         </div>
@@ -5679,8 +5679,8 @@ function HomeView({ setView, user, profile, onLogin }) {
           <div style={{ display:'flex', flexDirection:'column', gap:14, marginBottom:56, textAlign:'left', maxWidth:320, margin:'0 auto 56px' }}>
             {BIZ_BULLETS.map(({ Icon, text }) => (
               <div key={text} style={{ display:'flex', alignItems:'center', gap:14 }}>
-                <div style={{ width:36, height:36, borderRadius:10, background:'rgba(113,49,225,0.18)', border:'1px solid rgba(113,49,225,0.30)', display:'flex', alignItems:'center', justifyContent:'center', flexShrink:0 }}>
-                  <Icon size={17} color='#A78BFA' strokeWidth={2} />
+                <div style={{ width:36, height:36, borderRadius:10, background:'rgba(224,62,27,0.18)', border:'1px solid rgba(224,62,27,0.30)', display:'flex', alignItems:'center', justifyContent:'center', flexShrink:0 }}>
+                  <Icon size={17} color='#FF8A6B' strokeWidth={2} />
                 </div>
                 <span style={{ fontFamily:FN, fontSize:15, fontWeight:500, color:'rgba(255,255,255,0.85)' }}>{text}</span>
               </div>
@@ -5713,12 +5713,12 @@ function HomeView({ setView, user, profile, onLogin }) {
               display:'inline-flex', alignItems:'center', gap:8,
               padding:'14px 28px',
               borderRadius:99,
-              background:'linear-gradient(135deg,#FF199F,#6F30DF)',
+              background:'linear-gradient(135deg,#F0603A,#E03E1B)',
               border:'none',
               color:'#fff',
               fontFamily:FN, fontSize:15, fontWeight:700,
               cursor:'pointer',
-              boxShadow:'0 4px 24px rgba(189,75,248,0.35)',
+              boxShadow:'0 4px 24px rgba(255,122,89,0.35)',
             }}
             onMouseEnter={e => { e.currentTarget.style.opacity = '0.88' }}
             onMouseLeave={e => { e.currentTarget.style.opacity = '1' }}
@@ -5832,7 +5832,7 @@ function DirectoryView({ citySlug, cities, setView, setCommerce }) {
         <Inp value={search} onChange={e=>setSearch(e.target.value)} placeholder="Buscar..." style={{ width:170, fontSize:12 }} />
         <div style={{ display:'flex', gap:5, flexWrap:'wrap' }}>
           {CATS.map(c => (
-            <button key={c.id} onClick={()=>setCat(c.id)} style={{ padding:'6px 12px', borderRadius:99, background:cat===c.id?G:'transparent', color:cat===c.id?'#fff':C.mist, border:cat===c.id?'none':`1px solid ${C.rim}`, fontSize:11, fontWeight:600, cursor:'pointer', boxShadow:cat===c.id?'0 4px 12px #FF199F44':'none', transition:'background 160ms ease, border-color 160ms ease, color 160ms ease, transform 160ms cubic-bezier(0.23,1,0.32,1), box-shadow 160ms ease' }}>{c.label}</button>
+            <button key={c.id} onClick={()=>setCat(c.id)} style={{ padding:'6px 12px', borderRadius:99, background:cat===c.id?G:'transparent', color:cat===c.id?'#fff':C.mist, border:cat===c.id?'none':`1px solid ${C.rim}`, fontSize:11, fontWeight:600, cursor:'pointer', boxShadow:cat===c.id?'0 4px 12px #F0603A44':'none', transition:'background 160ms ease, border-color 160ms ease, color 160ms ease, transform 160ms cubic-bezier(0.23,1,0.32,1), box-shadow 160ms ease' }}>{c.label}</button>
           ))}
         </div>
       </div>
@@ -6141,7 +6141,7 @@ function CommerceView({ commerce:c, setView, user, onLoginRequired, onCommerceUp
           violeta/fucsia de marca (definido inline cuando coverSrc es null).
           El logo (img_url) se muestra al lado del nombre como avatar circular,
           NO se estira como cover. */}
-      <div style={{ position:'relative', width:'100%', height:260, overflow:'hidden', background: coverSrc ? '#000' : '#6F30DF' }}>
+      <div style={{ position:'relative', width:'100%', height:260, overflow:'hidden', background: coverSrc ? '#000' : '#E03E1B' }}>
         {coverSrc && (
           <img src={coverSrc} alt="" style={{ position:'absolute', inset:0, width:'100%', height:'100%', objectFit:'cover' }} />
         )}
@@ -6335,7 +6335,7 @@ function CommerceView({ commerce:c, setView, user, onLoginRequired, onCommerceUp
                 </button>
               )}
               <a href={mapsUrl} target="_blank" rel="noopener noreferrer"
-                style={{ background:'transparent', color:'#6F30DF', border:'1.5px solid #6F30DF', borderRadius:8, padding:'6px 12px', fontSize:11, fontWeight:700, fontFamily:FN, cursor:'pointer', textDecoration:'none', whiteSpace:'nowrap', display:'inline-flex', alignItems:'center', gap:4, transition:'background .15s' }}>
+                style={{ background:'transparent', color:'#E03E1B', border:'1.5px solid #E03E1B', borderRadius:8, padding:'6px 12px', fontSize:11, fontWeight:700, fontFamily:FN, cursor:'pointer', textDecoration:'none', whiteSpace:'nowrap', display:'inline-flex', alignItems:'center', gap:4, transition:'background .15s' }}>
                 Cómo llegar →
               </a>
             </div>
@@ -6362,11 +6362,11 @@ function CommerceView({ commerce:c, setView, user, onLoginRequired, onCommerceUp
           const expDate = discount.expires_at ? new Date(discount.expires_at).toLocaleDateString('es-AR', { day:'2-digit', month:'2-digit' }) : null
           return (
             <div style={{ marginBottom:14, padding:'14px 16px', background:C.card, border:`1px solid ${C.rim}`, borderRadius:14, display:'flex', alignItems:'center', gap:14 }}>
-              <div style={{ width:48, height:48, borderRadius:12, background:'rgba(111,48,223,0.16)', border:'1px solid rgba(111,48,223,0.40)', display:'flex', alignItems:'center', justifyContent:'center', flexShrink:0 }}>
-                <Flame size={24} color="#A78BFA" strokeWidth={2} />
+              <div style={{ width:48, height:48, borderRadius:12, background:'rgba(224,62,27,0.16)', border:'1px solid rgba(224,62,27,0.40)', display:'flex', alignItems:'center', justifyContent:'center', flexShrink:0 }}>
+                <Flame size={24} color="#FF8A6B" strokeWidth={2} />
               </div>
               <div style={{ flex:1, minWidth:0, position:'relative', zIndex:1 }}>
-                <div style={{ fontFamily:FN, fontSize:9, fontWeight:800, color:'#D8B4FE', letterSpacing:'.12em', textTransform:'uppercase', marginBottom:3 }}>Descuento activo</div>
+                <div style={{ fontFamily:FN, fontSize:9, fontWeight:800, color:'#FFB59E', letterSpacing:'.12em', textTransform:'uppercase', marginBottom:3 }}>Descuento activo</div>
                 <div style={{ display:'flex', alignItems:'baseline', gap:6, flexWrap:'wrap' }}>
                   <span style={{ fontFamily:FN, fontSize:24, fontWeight:900, color:'#fff', lineHeight:1 }}>{discount.value}% OFF</span>
                   <span style={{ fontSize:12, color:C.mist }}>en tu próxima compra</span>
@@ -6399,19 +6399,19 @@ function CommerceView({ commerce:c, setView, user, onLoginRequired, onCommerceUp
           const isStars = c.prog_type === 'stars'
           const unitLabel = isStars ? 'estrellas' : 'puntos'
           const unitIcon  = isStars ? '★' : '◆'
-          const unitColor = isStars ? '#6F30DF' : '#FF199F'  // violeta / fucsia (paleta de sistemas)
+          const unitColor = isStars ? '#E03E1B' : '#F0603A'  // violeta / fucsia (paleta de sistemas)
           return (
             <PCard style={{ padding:18, marginBottom:13 }}>
               <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', marginBottom:13, gap:8 }}>
-                <div style={{ fontFamily:FN, fontSize:10, color:'#6F30DF', fontWeight:800, letterSpacing:'.14em', textTransform:'uppercase', display:'flex', alignItems:'center', gap:7 }}>
-                  <Gift size={12} strokeWidth={2.5} color="#6F30DF" /> Catálogo de premios
+                <div style={{ fontFamily:FN, fontSize:10, color:'#E03E1B', fontWeight:800, letterSpacing:'.14em', textTransform:'uppercase', display:'flex', alignItems:'center', gap:7 }}>
+                  <Gift size={12} strokeWidth={2.5} color="#E03E1B" /> Catálogo de premios
                 </div>
                 {isOwner && (
                   <button onClick={() => {
                     try { localStorage.setItem('clufix:cameFromPreview', '1') } catch {}
                     window.dispatchEvent(new CustomEvent('clufix:navigate', { detail: { view: 'commerce-settings', tab: 'premios' } }))
                   }}
-                    style={{ background:'transparent', border:'none', color:'#6F30DF', fontSize:11, fontFamily:FN, fontWeight:700, cursor:'pointer', display:'inline-flex', alignItems:'center', gap:4, padding:0, flexShrink:0 }}>
+                    style={{ background:'transparent', border:'none', color:'#E03E1B', fontSize:11, fontFamily:FN, fontWeight:700, cursor:'pointer', display:'inline-flex', alignItems:'center', gap:4, padding:0, flexShrink:0 }}>
                     Ver catálogo <ArrowRight size={11} strokeWidth={2.5} />
                   </button>
                 )}
@@ -6427,9 +6427,9 @@ function CommerceView({ commerce:c, setView, user, onLoginRequired, onCommerceUp
                     // Premio creado en los últimos 7 días → badge "NUEVO" violeta
                     const isNew = p.created_at && (Date.now() - new Date(p.created_at).getTime()) < 7 * 24 * 60 * 60 * 1000
                     return (
-                      <div key={p.id} style={{ position:'relative', display:'flex', alignItems:'center', gap:11, padding:'10px 12px', background:C.bg3, borderRadius:10, border:`1px solid ${isNew ? '#6F30DF' : C.rim}`, opacity: out ? 0.55 : 1 }}>
+                      <div key={p.id} style={{ position:'relative', display:'flex', alignItems:'center', gap:11, padding:'10px 12px', background:C.bg3, borderRadius:10, border:`1px solid ${isNew ? '#E03E1B' : C.rim}`, opacity: out ? 0.55 : 1 }}>
                         {isNew && (
-                          <span style={{ position:'absolute', top:-6, right:8, background:'#6F30DF', color:'#fff', fontFamily:FN, fontSize:9, fontWeight:800, letterSpacing:'.1em', padding:'2px 8px', borderRadius:99, boxShadow:'0 2px 8px rgba(139,92,246,0.45)' }}>NUEVO</span>
+                          <span style={{ position:'absolute', top:-6, right:8, background:'#E03E1B', color:'#fff', fontFamily:FN, fontSize:9, fontWeight:800, letterSpacing:'.1em', padding:'2px 8px', borderRadius:99, boxShadow:'0 2px 8px rgba(232,67,31,0.45)' }}>NUEVO</span>
                         )}
                         {p.img_url
                           ? <img src={p.img_url} alt="" style={{ width:46, height:46, borderRadius:8, objectFit:'cover', flexShrink:0 }} />
@@ -6478,9 +6478,9 @@ function CommerceView({ commerce:c, setView, user, onLoginRequired, onCommerceUp
         {/* Compra mínima — debajo del catálogo. Solo cuando aplica
             (stars + valor configurado, o si el viewer es owner). */}
         {c.prog_type === 'stars' && (c.prog_min_purchase > 0 || isOwner) && (
-          <div style={{ display:'flex', alignItems:'center', gap:8, marginBottom:13, padding:'8px 12px', background: c.prog_min_purchase > 0 ? 'rgba(189,75,248,0.10)' : 'rgba(255,255,255,0.03)', border: `1px solid ${c.prog_min_purchase > 0 ? 'rgba(189,75,248,0.30)' : 'rgba(255,255,255,0.08)'}`, borderRadius:10, fontSize:12 }}>
-            <Star size={13} color={c.prog_min_purchase > 0 ? '#D8B4FE' : 'rgba(255,255,255,0.30)'} fill="currentColor" strokeWidth={0} />
-            <span style={{ flex:1, color: c.prog_min_purchase > 0 ? '#D8B4FE' : 'rgba(255,255,255,0.40)' }}>
+          <div style={{ display:'flex', alignItems:'center', gap:8, marginBottom:13, padding:'8px 12px', background: c.prog_min_purchase > 0 ? 'rgba(255,122,89,0.10)' : 'rgba(255,255,255,0.03)', border: `1px solid ${c.prog_min_purchase > 0 ? 'rgba(255,122,89,0.30)' : 'rgba(255,255,255,0.08)'}`, borderRadius:10, fontSize:12 }}>
+            <Star size={13} color={c.prog_min_purchase > 0 ? '#FFB59E' : 'rgba(255,255,255,0.30)'} fill="currentColor" strokeWidth={0} />
+            <span style={{ flex:1, color: c.prog_min_purchase > 0 ? '#FFB59E' : 'rgba(255,255,255,0.40)' }}>
               {c.prog_min_purchase > 0
                 ? <>Compra mínima para sumar estrella: <strong>${c.prog_min_purchase.toLocaleString('es-AR')}</strong></>
                 : <span style={{ fontStyle:'italic' }}>Sin compra mínima configurada</span>
@@ -6501,7 +6501,7 @@ function CommerceView({ commerce:c, setView, user, onLoginRequired, onCommerceUp
             Si está en preview viendo su propio comercio, ya tiene el banner
             arriba "Así ven tu club los clientes" con link a editar. */}
         {user?.id !== c?.owner_id && (
-        <div style={{ background:joined?C.okBg:'rgba(113,49,225,0.05)', border:`1px solid ${joined?C.ok:C.v}44`, borderRadius:15, padding:24, textAlign:'center' }}>
+        <div style={{ background:joined?C.okBg:'rgba(224,62,27,0.05)', border:`1px solid ${joined?C.ok:C.v}44`, borderRadius:15, padding:24, textAlign:'center' }}>
           {joined ? (
             <>
               <div style={{ display:'flex', justifyContent:'center', marginBottom:9 }}>
@@ -6519,7 +6519,7 @@ function CommerceView({ commerce:c, setView, user, onLoginRequired, onCommerceUp
                   <div style={{ display:'flex', alignItems:'center', gap:10, background:'rgba(255,255,255,0.05)', border:'1px solid rgba(255,255,255,0.09)', borderRadius:11, padding:'10px 13px' }}>
                     {joinBenefits.prog_type === 'stars'
                       ? <Star size={15} color={C.v} fill={C.v} strokeWidth={0} style={{ flexShrink:0 }} />
-                      : <Gem  size={15} color='#FF199F' strokeWidth={1.5} style={{ flexShrink:0 }} />
+                      : <Gem  size={15} color='#F0603A' strokeWidth={1.5} style={{ flexShrink:0 }} />
                     }
                     <span style={{ fontSize:13, color:C.pearl }}>
                       {joinBenefits.prog_type === 'stars'
@@ -6531,8 +6531,8 @@ function CommerceView({ commerce:c, setView, user, onLoginRequired, onCommerceUp
                   {/* Doble puntos hoy */}
                   {joinBenefits.has_double_today && (
                     <div style={{ display:'flex', alignItems:'center', gap:10, background:'rgba(245,166,35,0.10)', border:'1px solid rgba(245,166,35,0.30)', borderRadius:11, padding:'10px 13px' }}>
-                      <Zap size={15} color='#FF199F' strokeWidth={2} style={{ flexShrink:0 }} />
-                      <span style={{ fontSize:13, color:'#FF199F', fontWeight:600 }}>¡Hoy sumás el doble!</span>
+                      <Zap size={15} color='#F0603A' strokeWidth={2} style={{ flexShrink:0 }} />
+                      <span style={{ fontSize:13, color:'#F0603A', fontWeight:600 }}>¡Hoy sumás el doble!</span>
                     </div>
                   )}
                   {/* Cupones de descuento otorgados */}
@@ -6547,7 +6547,7 @@ function CommerceView({ commerce:c, setView, user, onLoginRequired, onCommerceUp
                 </div>
               )}
               {typeof window !== 'undefined' && 'Notification' in window && 'PushManager' in window && Notification.permission === 'default' && !view.includes('standalone') && (
-                <div style={{ background:'rgba(189,75,248,0.08)', border:'1px solid rgba(189,75,248,0.30)', borderRadius:12, padding:'12px 14px', marginBottom:16, display:'flex', alignItems:'center', gap:12 }}>
+                <div style={{ background:'rgba(255,122,89,0.08)', border:'1px solid rgba(255,122,89,0.30)', borderRadius:12, padding:'12px 14px', marginBottom:16, display:'flex', alignItems:'center', gap:12 }}>
                   <Bell size={18} color={C.v} strokeWidth={2} style={{ flexShrink:0 }} />
                   <div style={{ textAlign:'left', flex:1 }}>
                     <div style={{ fontSize:13, fontWeight:600, color:C.white, marginBottom:2 }}>¿Querés que te avisemos?</div>
@@ -6839,7 +6839,7 @@ function CommerceView({ commerce:c, setView, user, onLoginRequired, onCommerceUp
                 <div style={{ display:'flex', flexDirection:'column', gap:10 }}>
                   {/* Chips seleccionadas */}
                   {cur.categories.length > 0 && (
-                    <div style={{ display:'flex', flexWrap:'wrap', gap:6, padding:'8px 10px', background:'rgba(189,75,248,0.10)', border:'1px solid rgba(189,75,248,0.30)', borderRadius:10 }}>
+                    <div style={{ display:'flex', flexWrap:'wrap', gap:6, padding:'8px 10px', background:'rgba(255,122,89,0.10)', border:'1px solid rgba(255,122,89,0.30)', borderRadius:10 }}>
                       {cur.categories.map(cat => (
                         <span key={cat} style={{ display:'inline-flex', alignItems:'center', gap:6, padding:'4px 6px 4px 10px', borderRadius:99, background:'rgba(255,255,255,0.10)', fontSize:12, color:C.white, fontWeight:600 }}>
                           {cat}
@@ -7095,7 +7095,7 @@ function ClientBottomNav({ tab, setTab, profile, setView }) {
           const isWallet = id === 'mis clubs'
           let color
           if (isWallet) {
-            color = active ? '#FF199F' : 'rgba(236,72,153,0.75)'
+            color = active ? '#F0603A' : 'rgba(20,184,166,0.75)'
           } else {
             color = active ? '#fff' : 'rgba(255,255,255,0.55)'
           }
@@ -7125,7 +7125,7 @@ function ClientBottomNav({ tab, setTab, profile, setView }) {
                 <span style={{
                   position:'absolute', bottom:-1, left:'25%', right:'25%',
                   height: 2, borderRadius: 2,
-                  background:'#6F30DF',
+                  background:'#E03E1B',
                 }} />
               )}
             </button>
@@ -7453,19 +7453,19 @@ function WalletCardFront({ club, colors, onFlip, visible }) {
             zIndex:6,
             display:'inline-flex', alignItems:'center', gap:5,
             // Rebrand mayo 2026: paleta DK/LT.
-            background:'#EDD5F6',
-            border:'1px solid rgba(34,0,51,0.15)',
+            background:'#FFE6DC',
+            border:'1px solid rgba(42,20,13,0.15)',
             borderRadius:9999,
             padding:'6px 11px',
-            color:'#220033',
+            color:'#2A140D',
             fontFamily:FN, fontSize:11, fontWeight:800,
             letterSpacing:'.02em',
             textDecoration:'none',
-            boxShadow:'0 6px 16px rgba(34,0,51,0.18)',
+            boxShadow:'0 6px 16px rgba(42,20,13,0.18)',
           }}
         >
           <span>Ir al club</span>
-          <ArrowRight size={11} strokeWidth={2.6} color="#220033" />
+          <ArrowRight size={11} strokeWidth={2.6} color="#2A140D" />
         </a>
       )}
 
@@ -7624,7 +7624,7 @@ function WalletCardBack({ club, colors, onFlip, userId }) {
         <div onClick={e => e.stopPropagation()} style={{ display:'flex', justifyContent:'space-between', alignItems:'center' }}>
           {/* Botones del back de la tarjeta — par armónico:
                 "Mi QR": pill glass outlined, secundaria.
-                "Ir al club": pill violeta brand sólido (#6F30DF), primaria.
+                "Ir al club": pill violeta brand sólido (#E03E1B), primaria.
               Ambos con backdrop-blur para que se sientan parte de la tarjeta
               sin chocar con el color de fondo del club. */}
           <button
@@ -7660,19 +7660,19 @@ function WalletCardBack({ club, colors, onFlip, userId }) {
                 style={{
                   display:'inline-flex', alignItems:'center', gap:6,
                   // Rebrand mayo 2026: paleta DK/LT.
-                  background:'#EDD5F6',
-                  border:'1px solid rgba(34,0,51,0.15)',
+                  background:'#FFE6DC',
+                  border:'1px solid rgba(42,20,13,0.15)',
                   borderRadius:9999,
                   padding:'7px 14px',
-                  color:'#220033',
+                  color:'#2A140D',
                   fontFamily:FN, fontSize:12, fontWeight:800,
                   letterSpacing:'.02em',
                   textDecoration:'none',
-                  boxShadow:'0 6px 18px rgba(34,0,51,0.18)',
+                  boxShadow:'0 6px 18px rgba(42,20,13,0.18)',
                 }}
               >
                 <span>Ir al club</span>
-                <ArrowRight size={13} strokeWidth={2.6} color="#220033" />
+                <ArrowRight size={13} strokeWidth={2.6} color="#2A140D" />
               </a>
             : <span style={{ fontFamily:FN, fontSize:11, color:colors.textSub, opacity:0.40 }}>tap para volver</span>
           }
@@ -7793,7 +7793,7 @@ function WalletCard({ club, variant, isActive, onScrollTo, isMock, userId }) {
           <div style={{
             position: 'absolute', inset: 0,
             borderRadius: 20,
-            background: 'rgba(8,4,18,0.62)',
+            background: 'rgba(14,11,9,0.62)',
             backdropFilter: 'blur(4px)',
             WebkitBackdropFilter: 'blur(4px)',
             display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
@@ -8106,9 +8106,9 @@ function FilterPills({ pills, selected, onSelect, label, size, multi = false }) 
                 fontFamily:   FN,
                 fontWeight:   active ? 700 : 500,
                 // Activo: outline violeta + relleno violeta tenue. Inactivo: outline gris.
-                color:        active ? '#6F30DF' : 'rgba(255,255,255,0.50)',
-                background:   active ? 'rgba(168,85,247,0.10)' : 'transparent',
-                border:       `1.5px solid ${active ? '#6F30DF' : 'rgba(255,255,255,0.30)'}`,
+                color:        active ? '#E03E1B' : 'rgba(255,255,255,0.50)',
+                background:   active ? 'rgba(255,122,89,0.10)' : 'transparent',
+                border:       `1.5px solid ${active ? '#E03E1B' : 'rgba(255,255,255,0.30)'}`,
                 cursor:       'pointer',
                 transition:   'all 150ms ease',
                 whiteSpace:   'nowrap',
@@ -8124,7 +8124,7 @@ function FilterPills({ pills, selected, onSelect, label, size, multi = false }) 
                 <span style={{
                   fontWeight: 700,
                   fontSize: isLarge ? 14 : 12,
-                  color: 'rgba(168,85,247,0.85)',
+                  color: 'rgba(255,122,89,0.85)',
                   lineHeight: 1,
                 }}>+</span>
               )}
@@ -8137,7 +8137,7 @@ function FilterPills({ pills, selected, onSelect, label, size, multi = false }) 
                   style={{
                     display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
                     width: isLarge ? 16 : 14, height: isLarge ? 16 : 14, borderRadius: '50%',
-                    background: 'rgba(168,85,247,0.20)', color: '#6F30DF',
+                    background: 'rgba(255,122,89,0.20)', color: '#E03E1B',
                     fontSize: isLarge ? 11 : 9, fontWeight: 800, cursor: 'pointer', lineHeight: 1,
                   }}
                 >×</span>
@@ -8581,7 +8581,7 @@ function ClientView({ setView, user, profile, onLogout, initialTab }) {
         <div style={{ display:'flex', gap:12, alignItems:'center' }}>
           {profile?.avatar_url
             ? <img src={profile.avatar_url} alt="" style={{ width:44, height:44, borderRadius:'50%', objectFit:'cover', flexShrink:0 }} />
-            : <div style={{ width:44, height:44, borderRadius:'50%', background:'#6F30DF', display:'flex', alignItems:'center', justifyContent:'center', fontFamily:FN, fontSize:14, fontWeight:900, color:'#fff', flexShrink:0 }}>{initials}</div>
+            : <div style={{ width:44, height:44, borderRadius:'50%', background:'#E03E1B', display:'flex', alignItems:'center', justifyContent:'center', fontFamily:FN, fontSize:14, fontWeight:900, color:'#fff', flexShrink:0 }}>{initials}</div>
           }
           <div style={{ flex:1, minWidth:0 }}>
             <div style={{ fontFamily:FN, fontSize:15, fontWeight:700, color:'#fff', marginBottom:2, overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>{profile?.name || user.email}</div>
@@ -8624,8 +8624,8 @@ function ClientView({ setView, user, profile, onLogout, initialTab }) {
               mount. */}
           {displayMemberships.length === 0 ? (
             <div style={{ textAlign:'center', padding:'52px 24px 24px' }}>
-              <div style={{ width:76, height:76, borderRadius:24, background:'rgba(139,92,246,0.12)', border:'1px solid rgba(139,92,246,0.22)', display:'flex', alignItems:'center', justifyContent:'center', margin:'0 auto 20px' }}>
-                <Wallet size={34} strokeWidth={1.5} color="rgba(139,92,246,0.70)" />
+              <div style={{ width:76, height:76, borderRadius:24, background:'rgba(232,67,31,0.12)', border:'1px solid rgba(232,67,31,0.22)', display:'flex', alignItems:'center', justifyContent:'center', margin:'0 auto 20px' }}>
+                <Wallet size={34} strokeWidth={1.5} color="rgba(232,67,31,0.70)" />
               </div>
               <div style={{ fontFamily:FN, fontSize:17, fontWeight:800, color:'rgba(255,255,255,0.80)', marginBottom:10 }}>Tu billetera está vacía</div>
               <div style={{ fontSize:13, color:'rgba(255,255,255,0.38)', maxWidth:240, margin:'0 auto 24px', lineHeight:1.65 }}>Escaneá el QR de un comercio para sumar tu primer club.</div>
@@ -8634,7 +8634,7 @@ function ClientView({ setView, user, profile, onLogout, initialTab }) {
                   try { sessionStorage.setItem('clufix:scanIntent', 'join-club') } catch {}
                   setView('scanner')
                 }}
-                style={{ padding:'11px 26px', borderRadius:99, background:'#EDD5F6', border:'none', cursor:'pointer', fontFamily:FN, fontSize:13, fontWeight:700, color:'#220033', boxShadow:'0 4px 20px rgba(34,0,51,0.15)' }}
+                style={{ padding:'11px 26px', borderRadius:99, background:'#FFE6DC', border:'none', cursor:'pointer', fontFamily:FN, fontSize:13, fontWeight:700, color:'#2A140D', boxShadow:'0 4px 20px rgba(42,20,13,0.15)' }}
               >
                 Escanear QR
               </button>
@@ -8799,8 +8799,8 @@ function ClientView({ setView, user, profile, onLogout, initialTab }) {
               const hasFilter = safeBenefitsCommerces.length > 0
               return (
                 <div style={{ textAlign:'center', padding:'52px 24px 32px' }}>
-                  <div style={{ width:76, height:76, borderRadius:24, background:'rgba(189,75,248,0.10)', border:'1px solid rgba(189,75,248,0.22)', display:'flex', alignItems:'center', justifyContent:'center', margin:'0 auto 18px' }}>
-                    <Gift size={32} strokeWidth={1.5} color='rgba(189,75,248,0.70)' />
+                  <div style={{ width:76, height:76, borderRadius:24, background:'rgba(255,122,89,0.10)', border:'1px solid rgba(255,122,89,0.22)', display:'flex', alignItems:'center', justifyContent:'center', margin:'0 auto 18px' }}>
+                    <Gift size={32} strokeWidth={1.5} color='rgba(255,122,89,0.70)' />
                   </div>
                   <div style={{ fontFamily:FN, fontSize:17, fontWeight:800, color:'rgba(255,255,255,0.80)', marginBottom:8 }}>
                     {hasFilter ? 'Sin resultados con esos filtros' : 'Sin beneficios disponibles'}
@@ -8835,10 +8835,10 @@ function ClientView({ setView, user, profile, onLogout, initialTab }) {
                     title         = data.name
                     subtitle      = commerce.name
                     LeftIcon      = data.img_url ? null : Gift
-                    leftIconColor = '#6F30DF'
+                    leftIconColor = '#E03E1B'
                     const UI      = isStars ? Star : Gem
                     costDisplay   = (
-                      <span style={{ display:'inline-flex', alignItems:'center', gap:4, fontFamily:FN, fontSize:13, fontWeight:800, color:'#6F30DF' }}>
+                      <span style={{ display:'inline-flex', alignItems:'center', gap:4, fontFamily:FN, fontSize:13, fontWeight:800, color:'#E03E1B' }}>
                         <UI size={11} {...(isStars ? { strokeWidth:0, fill:'currentColor' } : { strokeWidth:2 })} />
                         {data.cost}
                       </span>
@@ -8849,9 +8849,9 @@ function ClientView({ setView, user, profile, onLogout, initialTab }) {
                     title         = `${data.value || 10}% OFF en próxima compra`
                     subtitle      = commerce.name
                     LeftIcon      = Percent
-                    leftIconColor = '#6F30DF'
+                    leftIconColor = '#E03E1B'
                     costDisplay   = (
-                      <span style={{ fontFamily:FN, fontSize:13, fontWeight:800, color:'#6F30DF' }}>
+                      <span style={{ fontFamily:FN, fontSize:13, fontWeight:800, color:'#E03E1B' }}>
                         {data.value || 10}%
                       </span>
                     )
@@ -8862,9 +8862,9 @@ function ClientView({ setView, user, profile, onLogout, initialTab }) {
                     title         = `Doble ${isStars ? 'estrellas' : 'puntos'}${days ? ` los ${days.toLowerCase()}` : ''}`
                     subtitle      = commerce.name
                     LeftIcon      = Sparkles
-                    leftIconColor = '#6F30DF'
+                    leftIconColor = '#E03E1B'
                     costDisplay   = (
-                      <span style={{ fontFamily:FN, fontSize:13, fontWeight:800, color:'#6F30DF' }}>
+                      <span style={{ fontFamily:FN, fontSize:13, fontWeight:800, color:'#E03E1B' }}>
                         ×2
                       </span>
                     )
@@ -8884,10 +8884,10 @@ function ClientView({ setView, user, profile, onLogout, initialTab }) {
                         fontFamily:'inherit',
                         transition:'transform 160ms ease, border-color 160ms ease, background 160ms ease',
                       }}
-                      onMouseEnter={e => { e.currentTarget.style.borderColor = 'rgba(189,75,248,0.32)'; e.currentTarget.style.background = 'rgba(189,75,248,0.06)' }}
+                      onMouseEnter={e => { e.currentTarget.style.borderColor = 'rgba(255,122,89,0.32)'; e.currentTarget.style.background = 'rgba(255,122,89,0.06)' }}
                       onMouseLeave={e => { e.currentTarget.style.borderColor = 'rgba(255,255,255,0.08)'; e.currentTarget.style.background = 'rgba(255,255,255,0.04)' }}>
                       {/* Imagen / ícono */}
-                      <div style={{ width:48, height:48, borderRadius:11, background:'rgba(189,75,248,0.14)', border:'1px solid rgba(189,75,248,0.30)', display:'flex', alignItems:'center', justifyContent:'center', flexShrink:0, overflow:'hidden' }}>
+                      <div style={{ width:48, height:48, borderRadius:11, background:'rgba(255,122,89,0.14)', border:'1px solid rgba(255,122,89,0.30)', display:'flex', alignItems:'center', justifyContent:'center', flexShrink:0, overflow:'hidden' }}>
                         {kind === 'prize' && data.img_url
                           ? <img src={data.img_url} alt="" style={{ width:'100%', height:'100%', objectFit:'cover' }} />
                           : LeftIcon ? <LeftIcon size={20} color={leftIconColor} strokeWidth={2} /> : null}
@@ -8904,12 +8904,12 @@ function ClientView({ setView, user, profile, onLogout, initialTab }) {
                             width:`${pct}%`, height:'100%',
                             borderRadius:99,
                             background: canRedeem
-                              ? '#6F30DF'
-                              : '#6F30DF',
+                              ? '#E03E1B'
+                              : '#E03E1B',
                             backgroundSize: canRedeem ? '200% 100%' : 'auto',
                             boxShadow: canRedeem
-                              ? '0 0 8px rgba(254,80,0,0.55), 0 0 16px rgba(189,75,248,0.45), inset 0 0 6px rgba(255,255,255,0.25)'
-                              : '0 0 6px rgba(189,75,248,0.40), inset 0 0 4px rgba(255,255,255,0.15)',
+                              ? '0 0 8px rgba(254,80,0,0.55), 0 0 16px rgba(255,122,89,0.45), inset 0 0 6px rgba(255,255,255,0.25)'
+                              : '0 0 6px rgba(255,122,89,0.40), inset 0 0 4px rgba(255,255,255,0.15)',
                             transition:'width .35s ease',
                           }} />
                         </div>
@@ -8917,7 +8917,7 @@ function ClientView({ setView, user, profile, onLogout, initialTab }) {
                       {/* Costo + status — todo en violeta */}
                       <div style={{ flexShrink:0, textAlign:'right' }}>
                         {costDisplay}
-                        <div style={{ fontSize:10, color: canRedeem ? '#6F30DF' : 'rgba(255,255,255,0.45)', fontWeight: canRedeem ? 700 : 400, marginTop:2, whiteSpace:'nowrap' }}>
+                        <div style={{ fontSize:10, color: canRedeem ? '#E03E1B' : 'rgba(255,255,255,0.45)', fontWeight: canRedeem ? 700 : 400, marginTop:2, whiteSpace:'nowrap' }}>
                           {statusText}
                         </div>
                       </div>
@@ -8954,7 +8954,7 @@ function ClientView({ setView, user, profile, onLogout, initialTab }) {
                   <div style={{ fontSize:10, color:'rgba(255,255,255,0.4)', marginTop:2 }}>visitas</div>
                 </div>
                 <div style={{ ...glass, padding:'14px 8px', textAlign:'center' }}>
-                  <div style={{ fontFamily:FN, fontSize:24, fontWeight:900, color:'#6F30DF' }}>{totalRedeems}</div>
+                  <div style={{ fontFamily:FN, fontSize:24, fontWeight:900, color:'#E03E1B' }}>{totalRedeems}</div>
                   <div style={{ fontSize:10, color:'rgba(255,255,255,0.4)', marginTop:2 }}>canjes</div>
                 </div>
                 <div style={{ ...glass, padding:'14px 8px', textAlign:'center' }}>
@@ -9022,10 +9022,10 @@ function ClientView({ setView, user, profile, onLogout, initialTab }) {
 
             // Helpers para el render
             const ICONS = {
-              'visit':           { Icon: Star,    color: '#6F30DF', bg: 'rgba(168,85,247,0.16)', border: 'rgba(168,85,247,0.36)' },
+              'visit':           { Icon: Star,    color: '#E03E1B', bg: 'rgba(255,122,89,0.16)', border: 'rgba(255,122,89,0.36)' },
               'redeem-prize':    { Icon: Gift,    color: '#22E698', bg: 'rgba(34,230,152,0.14)', border: 'rgba(34,230,152,0.34)' },
-              'redeem-discount': { Icon: Percent, color: '#FF199F', bg: 'rgba(254,80,0,0.14)',   border: 'rgba(254,80,0,0.34)' },
-              'join':            { Icon: UserPlus,color: '#FF199F', bg: 'rgba(236,72,153,0.14)', border: 'rgba(236,72,153,0.34)' },
+              'redeem-discount': { Icon: Percent, color: '#F0603A', bg: 'rgba(254,80,0,0.14)',   border: 'rgba(254,80,0,0.34)' },
+              'join':            { Icon: UserPlus,color: '#F0603A', bg: 'rgba(20,184,166,0.14)', border: 'rgba(20,184,166,0.34)' },
             }
 
             return events.map((ev, i) => {
@@ -9045,7 +9045,7 @@ function ClientView({ setView, user, profile, onLogout, initialTab }) {
                         marginLeft: 2,
                         padding: '1px 5px',
                         borderRadius: 4,
-                        background: '#6F30DF',
+                        background: '#E03E1B',
                         color: '#fff',
                         fontSize: 9, fontWeight: 900,
                         letterSpacing: '.02em',
@@ -9128,14 +9128,14 @@ function ClientView({ setView, user, profile, onLogout, initialTab }) {
           {/* HelpBanner movido al tope (TAB_HELP['mi qr']) — ya no va acá */}
 
           {/* ── PASE VIP ── */}
-          <div style={{ width:'100%', maxWidth:340, borderRadius:28, overflow:'hidden', boxShadow:'0 24px 64px rgba(189,75,248,0.30), 0 8px 24px rgba(0,0,0,0.50)' }}>
+          <div style={{ width:'100%', maxWidth:340, borderRadius:28, overflow:'hidden', boxShadow:'0 24px 64px rgba(255,122,89,0.30), 0 8px 24px rgba(0,0,0,0.50)' }}>
 
             {/* Cuerpo del pase */}
-            <div style={{ background:'#6F30DF', padding:'24px 24px 28px', position:'relative', overflow:'hidden' }}>
+            <div style={{ background:'#E03E1B', padding:'24px 24px 28px', position:'relative', overflow:'hidden' }}>
 
               {/* Blobs decorativos */}
               <div style={{ position:'absolute', top:-32, right:-32, width:120, height:120, borderRadius:'50%', background:'rgba(255,255,255,0.10)', filter:'blur(24px)', pointerEvents:'none' }} />
-              <div style={{ position:'absolute', bottom:-24, left:-16, width:90, height:90, borderRadius:'50%', background:'rgba(236,72,153,0.25)', filter:'blur(20px)', pointerEvents:'none' }} />
+              <div style={{ position:'absolute', bottom:-24, left:-16, width:90, height:90, borderRadius:'50%', background:'rgba(20,184,166,0.25)', filter:'blur(20px)', pointerEvents:'none' }} />
               <div style={{ position:'absolute', top:'40%', left:'30%', width:160, height:160, borderRadius:'50%', background:'rgba(255,255,255,0.04)', filter:'blur(32px)', pointerEvents:'none' }} />
 
               {/* Header */}
@@ -9181,7 +9181,7 @@ function ClientView({ setView, user, profile, onLogout, initialTab }) {
             </div>
 
             {/* Separador tipo ticket */}
-            <div style={{ position:'relative', background:'#6F30DF' }}>
+            <div style={{ position:'relative', background:'#E03E1B' }}>
               {/* Muescas */}
               <div style={{ position:'absolute', left:-1, top:'50%', transform:'translateY(-50%)', width:18, height:18, borderRadius:'50%', background:'#000', zIndex:2 }} />
               <div style={{ position:'absolute', right:-1, top:'50%', transform:'translateY(-50%)', width:18, height:18, borderRadius:'50%', background:'#000', zIndex:2 }} />
@@ -9189,7 +9189,7 @@ function ClientView({ setView, user, profile, onLogout, initialTab }) {
             </div>
 
             {/* Footer del pase */}
-            <div style={{ background:'linear-gradient(to bottom right, #4c1d95, #3b0764)', padding:'14px 24px 16px', textAlign:'center' }}>
+            <div style={{ background:'linear-gradient(to bottom right, #7a2410, #483323)', padding:'14px 24px 16px', textAlign:'center' }}>
               <div style={{ fontFamily:FI, fontSize:11, color:'rgba(255,255,255,0.50)', letterSpacing:'.04em' }}>
                 Mostrá este código en caja para acumular beneficios
               </div>
@@ -9223,7 +9223,7 @@ function ClientView({ setView, user, profile, onLogout, initialTab }) {
           <div style={{ ...glass, padding:'18px', marginBottom:12, display:'flex', alignItems:'center', gap:14 }}>
             {profile?.avatar_url
               ? <img src={profile.avatar_url} alt="" style={{ width:56, height:56, borderRadius:'50%', objectFit:'cover', flexShrink:0 }} />
-              : <div style={{ width:56, height:56, borderRadius:'50%', background:'#6F30DF', display:'flex', alignItems:'center', justifyContent:'center', fontFamily:FN, fontSize:18, fontWeight:900, color:'#fff', flexShrink:0 }}>{initials}</div>
+              : <div style={{ width:56, height:56, borderRadius:'50%', background:'#E03E1B', display:'flex', alignItems:'center', justifyContent:'center', fontFamily:FN, fontSize:18, fontWeight:900, color:'#fff', flexShrink:0 }}>{initials}</div>
             }
             <div style={{ flex:1, minWidth:0 }}>
               <div style={{ fontFamily:FN, fontSize:15, fontWeight:700, color:'#fff', overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>{profile?.name || 'Sin nombre'}</div>
@@ -9304,7 +9304,7 @@ function ClientView({ setView, user, profile, onLogout, initialTab }) {
                 showToast('success', n > 0 ? `Listo — vas a volver a ver los carteles de ayuda (${n})` : 'No hay carteles para reactivar')
               }}
               style={{ width:'100%', display:'flex', alignItems:'center', gap:12, padding:'15px 18px', background:'transparent', border:'none', color:'rgba(255,255,255,0.70)', cursor:'pointer', fontFamily:FI, fontSize:13, textAlign:'left' }}>
-              <Sparkles size={16} strokeWidth={2} color="rgba(189,75,248,0.80)" />
+              <Sparkles size={16} strokeWidth={2} color="rgba(255,122,89,0.80)" />
               Volver a ver los carteles de ayuda
             </button>
           </div>
@@ -9324,8 +9324,8 @@ function ClientView({ setView, user, profile, onLogout, initialTab }) {
                 display: 'flex', alignItems: 'center', gap: 14,
                 padding: '15px 18px',
                 marginBottom: 12,
-                background: 'linear-gradient(135deg, rgba(189,75,248,0.14), rgba(124,58,237,0.10))',
-                border: '1px solid rgba(189,75,248,0.36)',
+                background: 'linear-gradient(135deg, rgba(255,122,89,0.14), rgba(224,62,27,0.10))',
+                border: '1px solid rgba(255,122,89,0.36)',
                 borderRadius: 16,
                 color: '#fff',
                 cursor: 'pointer',
@@ -9335,19 +9335,19 @@ function ClientView({ setView, user, profile, onLogout, initialTab }) {
               }}
               onMouseEnter={e => {
                 e.currentTarget.style.transform = 'translateY(-1px)'
-                e.currentTarget.style.borderColor = 'rgba(189,75,248,0.65)'
+                e.currentTarget.style.borderColor = 'rgba(255,122,89,0.65)'
               }}
               onMouseLeave={e => {
                 e.currentTarget.style.transform = 'translateY(0)'
-                e.currentTarget.style.borderColor = 'rgba(189,75,248,0.36)'
+                e.currentTarget.style.borderColor = 'rgba(255,122,89,0.36)'
               }}
             >
               <div style={{
                 width: 36, height: 36, borderRadius: 10,
-                background: '#6F30DF',
+                background: '#E03E1B',
                 display: 'flex', alignItems: 'center', justifyContent: 'center',
                 flexShrink: 0,
-                boxShadow: '0 6px 18px -4px rgba(189,75,248,0.55)',
+                boxShadow: '0 6px 18px -4px rgba(255,122,89,0.55)',
               }}>
                 <Store size={18} color="#fff" strokeWidth={2.2} />
               </div>
@@ -9410,7 +9410,7 @@ function ClientView({ setView, user, profile, onLogout, initialTab }) {
           heroIcon      = data.img_url ? null : Gift
           heroTitle     = data.name
           heroValueLine = (
-            <span style={{ display:'inline-flex', alignItems:'center', gap:8, padding:'8px 14px', borderRadius:99, background:'rgba(189,75,248,0.14)', border:'1px solid rgba(189,75,248,0.40)', color:'#c084fc', fontFamily:FN, fontSize:14, fontWeight:800 }}>
+            <span style={{ display:'inline-flex', alignItems:'center', gap:8, padding:'8px 14px', borderRadius:99, background:'rgba(255,122,89,0.14)', border:'1px solid rgba(255,122,89,0.40)', color:'#ff8a6b', fontFamily:FN, fontSize:14, fontWeight:800 }}>
               <UI size={14} {...(isStars ? { strokeWidth:0, fill:'currentColor' } : { strokeWidth:2 })} />
               {data.cost} {unitLabel}
             </span>
@@ -9422,7 +9422,7 @@ function ClientView({ setView, user, profile, onLogout, initialTab }) {
           heroIcon      = Percent
           heroTitle     = `${data.value || 10}% OFF en próxima compra`
           heroValueLine = (
-            <span style={{ display:'inline-flex', alignItems:'center', gap:8, padding:'8px 14px', borderRadius:99, background:'rgba(189,75,248,0.14)', border:'1px solid rgba(189,75,248,0.40)', color:'#c084fc', fontFamily:FN, fontSize:14, fontWeight:800 }}>
+            <span style={{ display:'inline-flex', alignItems:'center', gap:8, padding:'8px 14px', borderRadius:99, background:'rgba(255,122,89,0.14)', border:'1px solid rgba(255,122,89,0.40)', color:'#ff8a6b', fontFamily:FN, fontSize:14, fontWeight:800 }}>
               <Percent size={14} strokeWidth={2.4} />
               {data.value || 10}% OFF
             </span>
@@ -9436,7 +9436,7 @@ function ClientView({ setView, user, profile, onLogout, initialTab }) {
           heroIcon      = Sparkles
           heroTitle     = `Doble ${unitLabel}${days ? ` los ${days}` : ''}`
           heroValueLine = (
-            <span style={{ display:'inline-flex', alignItems:'center', gap:8, padding:'8px 14px', borderRadius:99, background:'rgba(189,75,248,0.14)', border:'1px solid rgba(189,75,248,0.40)', color:'#c084fc', fontFamily:FN, fontSize:14, fontWeight:800 }}>
+            <span style={{ display:'inline-flex', alignItems:'center', gap:8, padding:'8px 14px', borderRadius:99, background:'rgba(255,122,89,0.14)', border:'1px solid rgba(255,122,89,0.40)', color:'#ff8a6b', fontFamily:FN, fontSize:14, fontWeight:800 }}>
               <Sparkles size={14} strokeWidth={2.4} />
               ×2 {unitLabel}
             </span>
@@ -9485,7 +9485,7 @@ function ClientView({ setView, user, profile, onLogout, initialTab }) {
                   <div style={{
                     width:'100%',
                     aspectRatio:'4 / 3',
-                    background:'linear-gradient(135deg, rgba(168,85,247,0.30), rgba(189,75,248,0.20))',
+                    background:'linear-gradient(135deg, rgba(255,122,89,0.30), rgba(255,122,89,0.20))',
                     position:'relative',
                     display:'flex', alignItems:'center', justifyContent:'center',
                   }}>
@@ -9518,7 +9518,7 @@ function ClientView({ setView, user, profile, onLogout, initialTab }) {
                     }}>
                       <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:8 }}>
                         <span style={{ fontSize:12, color:'rgba(255,255,255,0.65)', fontWeight:600 }}>Tu progreso</span>
-                        <span style={{ fontSize:12, color:'#6F30DF', fontWeight:700 }}>
+                        <span style={{ fontSize:12, color:'#E03E1B', fontWeight:700 }}>
                           {bal} / {data.cost} {unitLabel}
                         </span>
                       </div>
@@ -9528,12 +9528,12 @@ function ClientView({ setView, user, profile, onLogout, initialTab }) {
                           minWidth: pct > 0 ? 10 : 0,
                           borderRadius:99,
                           background: canRedeem
-                            ? '#6F30DF'
-                            : '#6F30DF',
+                            ? '#E03E1B'
+                            : '#E03E1B',
                           backgroundSize: canRedeem ? '200% 100%' : 'auto',
                           boxShadow: canRedeem
-                            ? '0 0 14px rgba(254,80,0,0.70), 0 0 26px rgba(189,75,248,0.60), inset 0 0 12px rgba(255,255,255,0.35)'
-                            : '0 0 8px rgba(189,75,248,0.45), inset 0 0 6px rgba(255,255,255,0.20)',
+                            ? '0 0 14px rgba(254,80,0,0.70), 0 0 26px rgba(255,122,89,0.60), inset 0 0 12px rgba(255,255,255,0.35)'
+                            : '0 0 8px rgba(255,122,89,0.45), inset 0 0 6px rgba(255,255,255,0.20)',
                         }} />
                       </div>
                     </div>
@@ -9627,13 +9627,13 @@ function ClientView({ setView, user, profile, onLogout, initialTab }) {
                   style={{
                     width:'100%', padding:'14px 0',
                     background: canRedeem
-                      ? '#6F30DF'
-                      : 'rgba(189,75,248,0.18)',
-                    border: canRedeem ? 'none' : '1px solid rgba(189,75,248,0.40)',
+                      ? '#E03E1B'
+                      : 'rgba(255,122,89,0.18)',
+                    border: canRedeem ? 'none' : '1px solid rgba(255,122,89,0.40)',
                     borderRadius:14,
                     color:'#fff', fontFamily:FN, fontSize:15, fontWeight:800,
                     letterSpacing:'.02em', cursor: redeemRequesting ? 'wait' : 'pointer',
-                    boxShadow: canRedeem ? '0 8px 24px rgba(189,75,248,0.50)' : 'none',
+                    boxShadow: canRedeem ? '0 8px 24px rgba(255,122,89,0.50)' : 'none',
                     opacity: redeemRequesting ? 0.6 : 1,
                     display:'flex', alignItems:'center', justifyContent:'center', gap:8,
                   }}>
@@ -10027,8 +10027,8 @@ function RegisterCommerceView({ setView, user, onProfileRefresh, onLoginRequired
 
   if (done) return (
     <div style={{ position:'fixed', inset:0, zIndex:9990, background:'#000', display:'flex', flexDirection:'column', alignItems:'center', justifyContent:'center', padding:'0 24px' }}>
-      <div style={{ position:'fixed', top:'-20%', left:'-10%', width:'60vw', height:'60vw', borderRadius:'50%', background:'radial-gradient(circle, rgba(139,92,246,0.40) 0%, rgba(139,92,246,0) 70%)', filter:'blur(80px)', zIndex:-1, pointerEvents:'none' }} />
-      <div style={{ position:'fixed', bottom:'-20%', right:'-10%', width:'50vw', height:'50vw', borderRadius:'50%', background:'radial-gradient(circle, rgba(236,72,153,0.35) 0%, rgba(236,72,153,0) 70%)', filter:'blur(80px)', zIndex:-1, pointerEvents:'none' }} />
+      <div style={{ position:'fixed', top:'-20%', left:'-10%', width:'60vw', height:'60vw', borderRadius:'50%', background:'radial-gradient(circle, rgba(232,67,31,0.40) 0%, rgba(232,67,31,0) 70%)', filter:'blur(80px)', zIndex:-1, pointerEvents:'none' }} />
+      <div style={{ position:'fixed', bottom:'-20%', right:'-10%', width:'50vw', height:'50vw', borderRadius:'50%', background:'radial-gradient(circle, rgba(20,184,166,0.35) 0%, rgba(20,184,166,0) 70%)', filter:'blur(80px)', zIndex:-1, pointerEvents:'none' }} />
       <div className="fu" style={{ textAlign:'center', maxWidth:400, width:'100%' }}>
         <div style={{ width:88, height:88, borderRadius:'50%', background:`${C.ok}15`, border:`2px solid ${C.ok}44`, display:'flex', alignItems:'center', justifyContent:'center', margin:'0 auto 24px' }}>
           <CheckCircle size={42} color={C.ok} strokeWidth={1.5} />
@@ -10044,7 +10044,7 @@ function RegisterCommerceView({ setView, user, onProfileRefresh, onLoginRequired
               de escanear desde su intent picker, así que un solo CTA grande
               al panel cubre ambos casos sin saturar la pantalla. */}
           <button onClick={() => setView('commerce-settings')}
-            style={{ width:'100%', padding:'16px', borderRadius:16, background:G, border:'none', color:'#fff', fontFamily:FN, fontSize:15, fontWeight:700, cursor:'pointer', boxShadow:'0 8px 32px rgba(189,75,248,0.35)' }}>
+            style={{ width:'100%', padding:'16px', borderRadius:16, background:G, border:'none', color:'#fff', fontFamily:FN, fontSize:15, fontWeight:700, cursor:'pointer', boxShadow:'0 8px 32px rgba(255,122,89,0.35)' }}>
             Comenzar ahora →
           </button>
         </div>
@@ -10055,8 +10055,8 @@ function RegisterCommerceView({ setView, user, onProfileRefresh, onLoginRequired
   return (
     <div style={{ position:'fixed', inset:0, zIndex:9990, background:'#000', display:'flex', flexDirection:'column' }}>
       {/* Blobs */}
-      <div style={{ position:'fixed', top:'-20%', left:'-10%', width:'60vw', height:'60vw', borderRadius:'50%', background:'radial-gradient(circle, rgba(139,92,246,0.40) 0%, rgba(139,92,246,0) 70%)', filter:'blur(80px)', zIndex:-1, pointerEvents:'none' }} />
-      <div style={{ position:'fixed', bottom:'-20%', right:'-10%', width:'50vw', height:'50vw', borderRadius:'50%', background:'radial-gradient(circle, rgba(236,72,153,0.35) 0%, rgba(236,72,153,0) 70%)', filter:'blur(80px)', zIndex:-1, pointerEvents:'none' }} />
+      <div style={{ position:'fixed', top:'-20%', left:'-10%', width:'60vw', height:'60vw', borderRadius:'50%', background:'radial-gradient(circle, rgba(232,67,31,0.40) 0%, rgba(232,67,31,0) 70%)', filter:'blur(80px)', zIndex:-1, pointerEvents:'none' }} />
+      <div style={{ position:'fixed', bottom:'-20%', right:'-10%', width:'50vw', height:'50vw', borderRadius:'50%', background:'radial-gradient(circle, rgba(20,184,166,0.35) 0%, rgba(20,184,166,0) 70%)', filter:'blur(80px)', zIndex:-1, pointerEvents:'none' }} />
 
       {/* Header */}
       {showHeader ? (
@@ -10090,7 +10090,7 @@ function RegisterCommerceView({ setView, user, onProfileRefresh, onLoginRequired
           {/* ── Paso 1: Bienvenida ── */}
           {step === 1 && (
             <div style={{ textAlign:'center' }}>
-              <div style={{ width:96, height:96, borderRadius:28, background:G, display:'flex', alignItems:'center', justifyContent:'center', margin:'0 auto 24px', boxShadow:'0 16px 48px rgba(189,75,248,0.40)' }}>
+              <div style={{ width:96, height:96, borderRadius:28, background:G, display:'flex', alignItems:'center', justifyContent:'center', margin:'0 auto 24px', boxShadow:'0 16px 48px rgba(255,122,89,0.40)' }}>
                 <Store size={46} color='#fff' strokeWidth={1.5} />
               </div>
               <div style={{ fontFamily:FN, fontSize:30, fontWeight:900, color:C.white, marginBottom:10, letterSpacing:'-.02em' }}>¡Creá tu club!</div>
@@ -10098,7 +10098,7 @@ function RegisterCommerceView({ setView, user, onProfileRefresh, onLoginRequired
                 Fidelizá a tus clientes con<br />tu propio sistema de beneficios
               </div>
               <button onClick={next}
-                style={{ width:'100%', padding:'16px', borderRadius:16, background:G, border:'none', color:'#fff', fontFamily:FN, fontSize:15, fontWeight:700, cursor:'pointer', boxShadow:'0 8px 32px rgba(189,75,248,0.40)' }}>
+                style={{ width:'100%', padding:'16px', borderRadius:16, background:G, border:'none', color:'#fff', fontFamily:FN, fontSize:15, fontWeight:700, cursor:'pointer', boxShadow:'0 8px 32px rgba(255,122,89,0.40)' }}>
                 Empezar
               </button>
             </div>
@@ -10138,11 +10138,11 @@ function RegisterCommerceView({ setView, user, onProfileRefresh, onLoginRequired
                   marginBottom: 20,
                   padding: '12px 14px',
                   borderRadius: 12,
-                  background: 'rgba(189,75,248,0.10)',
-                  border: '1px solid rgba(189,75,248,0.32)',
+                  background: 'rgba(255,122,89,0.10)',
+                  border: '1px solid rgba(255,122,89,0.32)',
                   display: 'flex', alignItems: 'flex-start', gap: 10,
                 }}>
-                  <CheckCircle size={15} color="#6F30DF" strokeWidth={2.4} style={{ flexShrink: 0, marginTop: 2 }} />
+                  <CheckCircle size={15} color="#E03E1B" strokeWidth={2.4} style={{ flexShrink: 0, marginTop: 2 }} />
                   <div style={{ flex: 1, minWidth: 0 }}>
                     <div style={{ fontFamily: FN, fontSize: 12.5, fontWeight: 700, color: '#fff', marginBottom: 3 }}>
                       Datos importados de Google Maps
@@ -10170,7 +10170,7 @@ function RegisterCommerceView({ setView, user, onProfileRefresh, onLoginRequired
               )}
 
               <button onClick={next} disabled={!form.name.trim()}
-                style={{ width:'100%', padding:'16px', borderRadius:16, background:G, border:'none', color:'#fff', fontFamily:FN, fontSize:15, fontWeight:700, cursor: form.name.trim() ? 'pointer' : 'not-allowed', opacity: form.name.trim() ? 1 : 0.40, boxShadow: form.name.trim() ? '0 8px 32px rgba(189,75,248,0.40)' : 'none', transition:'opacity 200ms ease' }}>
+                style={{ width:'100%', padding:'16px', borderRadius:16, background:G, border:'none', color:'#fff', fontFamily:FN, fontSize:15, fontWeight:700, cursor: form.name.trim() ? 'pointer' : 'not-allowed', opacity: form.name.trim() ? 1 : 0.40, boxShadow: form.name.trim() ? '0 8px 32px rgba(255,122,89,0.40)' : 'none', transition:'opacity 200ms ease' }}>
                 Continuar
               </button>
             </div>
@@ -10249,8 +10249,8 @@ function RegisterCommerceView({ setView, user, onProfileRefresh, onLoginRequired
                           style={{
                             display:'flex', alignItems:'center', gap:10,
                             padding:'11px 14px',
-                            background: 'rgba(189,75,248,0.18)',
-                            border: '1.5px solid rgba(189,75,248,0.45)',
+                            background: 'rgba(255,122,89,0.18)',
+                            border: '1.5px solid rgba(255,122,89,0.45)',
                             borderRadius:12, cursor:'pointer', textAlign:'left',
                             color:'#fff', fontFamily:FN, fontSize:13, fontWeight:700,
                           }}>
@@ -10337,7 +10337,7 @@ function RegisterCommerceView({ setView, user, onProfileRefresh, onLoginRequired
 
                 {/* Current selection chip */}
                 {form.category && !catSearch.trim() && (
-                  <div style={{ display:'flex', alignItems:'center', gap:8, padding:'8px 12px', background:'rgba(189,75,248,0.12)', border:'1px solid rgba(189,75,248,0.25)', borderRadius:10, marginBottom:12 }}>
+                  <div style={{ display:'flex', alignItems:'center', gap:8, padding:'8px 12px', background:'rgba(255,122,89,0.12)', border:'1px solid rgba(255,122,89,0.25)', borderRadius:10, marginBottom:12 }}>
                     <Check size={14} color={C.v} />
                     <span style={{ fontSize:13, color:C.white, fontWeight:600 }}>
                       {form.category === '__otro__' ? (form.customCategory || 'Escribí tu rubro arriba') : form.category}
@@ -10346,7 +10346,7 @@ function RegisterCommerceView({ setView, user, onProfileRefresh, onLoginRequired
                 )}
 
                 <button onClick={next} disabled={!step3ok}
-                  style={{ width:'100%', padding:'16px', borderRadius:16, background:G, border:'none', color:'#fff', fontFamily:FN, fontSize:15, fontWeight:700, cursor: step3ok ? 'pointer' : 'not-allowed', opacity: step3ok ? 1 : 0.40, boxShadow: step3ok ? '0 8px 32px rgba(189,75,248,0.40)' : 'none', transition:'opacity 200ms ease' }}>
+                  style={{ width:'100%', padding:'16px', borderRadius:16, background:G, border:'none', color:'#fff', fontFamily:FN, fontSize:15, fontWeight:700, cursor: step3ok ? 'pointer' : 'not-allowed', opacity: step3ok ? 1 : 0.40, boxShadow: step3ok ? '0 8px 32px rgba(255,122,89,0.40)' : 'none', transition:'opacity 200ms ease' }}>
                   Continuar
                 </button>
               </div>
@@ -10372,8 +10372,8 @@ function RegisterCommerceView({ setView, user, onProfileRefresh, onLoginRequired
                 <div style={{ fontSize:11, color:C.dust, fontWeight:600, textTransform:'uppercase', letterSpacing:'.07em', marginBottom:7 }}>País</div>
                 <select className="ob-select" value={form.country} onChange={e => setRCCountry(e.target.value)}
                   style={{ width:'100%', padding:'13px 44px 13px 16px', background:'rgba(255,255,255,0.06)', border:`1px solid ${form.country ? C.rim : 'rgba(255,255,255,0.12)'}`, borderRadius:14, color: form.country ? C.white : C.dust, fontSize:15, fontFamily:FI, boxSizing:'border-box', cursor:'pointer' }}>
-                  <option value="" style={{ background:'#0D0818', color:C.mist }}>Seleccioná un país</option>
-                  <option value="argentina" style={{ background:'#0D0818', color:C.white }}>Argentina</option>
+                  <option value="" style={{ background:'#14100D', color:C.mist }}>Seleccioná un país</option>
+                  <option value="argentina" style={{ background:'#14100D', color:C.white }}>Argentina</option>
                 </select>
               </div>
 
@@ -10381,9 +10381,9 @@ function RegisterCommerceView({ setView, user, onProfileRefresh, onLoginRequired
                 <div style={{ fontSize:11, color: form.country ? C.dust : 'rgba(255,255,255,0.20)', fontWeight:600, textTransform:'uppercase', letterSpacing:'.07em', marginBottom:7, transition:'color 180ms ease' }}>Provincia</div>
                 <select className="ob-select" value={form.province} onChange={e => setRCProvince(e.target.value)} disabled={!form.country}
                   style={{ width:'100%', padding:'13px 44px 13px 16px', background:'rgba(255,255,255,0.06)', border:`1px solid ${form.province ? C.rim : 'rgba(255,255,255,0.12)'}`, borderRadius:14, color: form.province ? C.white : C.dust, fontSize:15, fontFamily:FI, boxSizing:'border-box', cursor: form.country ? 'pointer' : 'default' }}>
-                  <option value="" style={{ background:'#0D0818', color:C.mist }}>Seleccioná una provincia</option>
+                  <option value="" style={{ background:'#14100D', color:C.mist }}>Seleccioná una provincia</option>
                   {rcProvinces.map(([key, prov]) => (
-                    <option key={key} value={key} style={{ background:'#0D0818', color:C.white }}>{prov.name}</option>
+                    <option key={key} value={key} style={{ background:'#14100D', color:C.white }}>{prov.name}</option>
                   ))}
                 </select>
               </div>
@@ -10392,9 +10392,9 @@ function RegisterCommerceView({ setView, user, onProfileRefresh, onLoginRequired
                 <div style={{ fontSize:11, color: form.province ? C.dust : 'rgba(255,255,255,0.20)', fontWeight:600, textTransform:'uppercase', letterSpacing:'.07em', marginBottom:7, transition:'color 180ms ease' }}>Localidad</div>
                 <select className="ob-select" value={form.city} onChange={e => setForm(f => ({ ...f, city: e.target.value }))} disabled={!form.province}
                   style={{ width:'100%', padding:'13px 44px 13px 16px', background:'rgba(255,255,255,0.06)', border:`1px solid ${form.city ? C.rim : 'rgba(255,255,255,0.12)'}`, borderRadius:14, color: form.city ? C.white : C.dust, fontSize:15, fontFamily:FI, boxSizing:'border-box', cursor: form.province ? 'pointer' : 'default' }}>
-                  <option value="" style={{ background:'#0D0818', color:C.mist }}>Seleccioná una localidad</option>
+                  <option value="" style={{ background:'#14100D', color:C.mist }}>Seleccioná una localidad</option>
                   {rcCities.map(name => (
-                    <option key={name} value={name} style={{ background:'#0D0818', color:C.white }}>{name}</option>
+                    <option key={name} value={name} style={{ background:'#14100D', color:C.white }}>{name}</option>
                   ))}
                 </select>
               </div>
@@ -10406,7 +10406,7 @@ function RegisterCommerceView({ setView, user, onProfileRefresh, onLoginRequired
               )}
 
               <button onClick={next} disabled={!form.city}
-                style={{ width:'100%', padding:'16px', borderRadius:16, background:G, border:'none', color:'#fff', fontFamily:FN, fontSize:15, fontWeight:700, cursor: form.city ? 'pointer' : 'not-allowed', opacity: form.city ? 1 : 0.40, boxShadow: form.city ? '0 8px 32px rgba(189,75,248,0.40)' : 'none', transition:'opacity 200ms ease' }}>
+                style={{ width:'100%', padding:'16px', borderRadius:16, background:G, border:'none', color:'#fff', fontFamily:FN, fontSize:15, fontWeight:700, cursor: form.city ? 'pointer' : 'not-allowed', opacity: form.city ? 1 : 0.40, boxShadow: form.city ? '0 8px 32px rgba(255,122,89,0.40)' : 'none', transition:'opacity 200ms ease' }}>
                 Continuar
               </button>
             </div>
@@ -10455,7 +10455,7 @@ function RegisterCommerceView({ setView, user, onProfileRefresh, onLoginRequired
               </div>
 
               <button onClick={next}
-                style={{ width:'100%', padding:'16px', borderRadius:16, background:G, border:'none', color:'#fff', fontFamily:FN, fontSize:15, fontWeight:700, cursor:'pointer', boxShadow:'0 8px 32px rgba(189,75,248,0.40)' }}>
+                style={{ width:'100%', padding:'16px', borderRadius:16, background:G, border:'none', color:'#fff', fontFamily:FN, fontSize:15, fontWeight:700, cursor:'pointer', boxShadow:'0 8px 32px rgba(255,122,89,0.40)' }}>
                 Continuar
               </button>
             </div>
@@ -10499,7 +10499,7 @@ function RegisterCommerceView({ setView, user, onProfileRefresh, onLoginRequired
               )}
 
               <button onClick={handleSubmit} disabled={sending}
-                style={{ width:'100%', padding:'16px', borderRadius:16, background:G, border:'none', color:'#fff', fontFamily:FN, fontSize:15, fontWeight:700, cursor: sending ? 'not-allowed' : 'pointer', opacity: sending ? 0.60 : 1, boxShadow: sending ? 'none' : '0 8px 32px rgba(189,75,248,0.40)', transition:'opacity 200ms ease' }}>
+                style={{ width:'100%', padding:'16px', borderRadius:16, background:G, border:'none', color:'#fff', fontFamily:FN, fontSize:15, fontWeight:700, cursor: sending ? 'not-allowed' : 'pointer', opacity: sending ? 0.60 : 1, boxShadow: sending ? 'none' : '0 8px 32px rgba(255,122,89,0.40)', transition:'opacity 200ms ease' }}>
                 {sending ? 'Creando tu club...' : 'Crear mi negocio'}
               </button>
 
@@ -10549,8 +10549,8 @@ function TermsAcceptance({ user, onAccept }) {
   return (
     <div style={{ position:'fixed', inset:0, zIndex:9995, background:'#000', display:'flex', flexDirection:'column' }}>
       {/* Background blobs */}
-      <div style={{ position:'absolute', top:'-20%', left:'-10%', width:'60vw', height:'60vw', borderRadius:'50%', background:'radial-gradient(circle, rgba(139,92,246,0.30) 0%, transparent 70%)', filter:'blur(80px)', pointerEvents:'none' }} />
-      <div style={{ position:'absolute', bottom:'-20%', right:'-10%', width:'50vw', height:'50vw', borderRadius:'50%', background:'radial-gradient(circle, rgba(236,72,153,0.25) 0%, transparent 70%)', filter:'blur(80px)', pointerEvents:'none' }} />
+      <div style={{ position:'absolute', top:'-20%', left:'-10%', width:'60vw', height:'60vw', borderRadius:'50%', background:'radial-gradient(circle, rgba(232,67,31,0.30) 0%, transparent 70%)', filter:'blur(80px)', pointerEvents:'none' }} />
+      <div style={{ position:'absolute', bottom:'-20%', right:'-10%', width:'50vw', height:'50vw', borderRadius:'50%', background:'radial-gradient(circle, rgba(20,184,166,0.25) 0%, transparent 70%)', filter:'blur(80px)', pointerEvents:'none' }} />
 
       {/* Header */}
       <div style={{ padding:'20px 24px', display:'flex', alignItems:'center', justifyContent:'center', flexShrink:0 }}>
@@ -10683,7 +10683,7 @@ function OnboardingView({ commerce, onComplete }) {
 
   const unitLabel = progType === 'stars' ? 'estrellas' : 'puntos'
   const unitIcon  = progType === 'stars' ? '★' : '◆'
-  const unitColor = progType === 'stars' ? '#6F30DF' : '#FF199F'
+  const unitColor = progType === 'stars' ? '#E03E1B' : '#F0603A'
 
   function next() { setStep(s => Math.min(s + 1, TOTAL)) }
   function skip() { if (step < TOTAL) next() }
@@ -10871,16 +10871,16 @@ function OnboardingView({ commerce, onComplete }) {
           { id:'points', Icon:Gem,   label:'Puntos',   desc:'1 punto por cada peso gastado. Flexible para ticket variable.' },
         ].map(opt => (
           <button key={opt.id} onClick={() => setProgType(opt.id)}
-            style={{ display:'flex', alignItems:'flex-start', gap:14, padding:18, background: progType===opt.id ? `${opt.id==='stars'?'#6F30DF':'#FF199F'}18` : C.card, border:`2px solid ${progType===opt.id ? (opt.id==='stars'?'#6F30DF':'#FF199F') : C.rim}`, borderRadius:16, cursor:'pointer', textAlign:'left', position:'relative', transition:'background 130ms ease, border-color 130ms ease, color 130ms ease, transform 130ms cubic-bezier(0.23,1,0.32,1)' }}>
-            <div style={{ width:36, height:36, borderRadius:10, background:`${opt.id==='stars'?'#6F30DF':'#FF199F'}22`, display:'flex', alignItems:'center', justifyContent:'center', flexShrink:0 }}>{(() => { const I = opt.Icon; return I ? <I size={20} color={opt.id==='stars'?'#6F30DF':'#FF199F'} strokeWidth={1.5} /> : null })()}</div>
+            style={{ display:'flex', alignItems:'flex-start', gap:14, padding:18, background: progType===opt.id ? `${opt.id==='stars'?'#E03E1B':'#F0603A'}18` : C.card, border:`2px solid ${progType===opt.id ? (opt.id==='stars'?'#E03E1B':'#F0603A') : C.rim}`, borderRadius:16, cursor:'pointer', textAlign:'left', position:'relative', transition:'background 130ms ease, border-color 130ms ease, color 130ms ease, transform 130ms cubic-bezier(0.23,1,0.32,1)' }}>
+            <div style={{ width:36, height:36, borderRadius:10, background:`${opt.id==='stars'?'#E03E1B':'#F0603A'}22`, display:'flex', alignItems:'center', justifyContent:'center', flexShrink:0 }}>{(() => { const I = opt.Icon; return I ? <I size={20} color={opt.id==='stars'?'#E03E1B':'#F0603A'} strokeWidth={1.5} /> : null })()}</div>
             <div style={{ flex:1 }}>
               <div style={{ display:'flex', alignItems:'center', gap:8, marginBottom:4 }}>
                 <span style={{ fontFamily:FN, fontSize:15, fontWeight:700, color:C.white }}>{opt.label}</span>
-                {opt.badge && <span style={{ fontSize:9, fontWeight:700, color:'#6F30DF', background:'#6F30DF22', padding:'2px 7px', borderRadius:10, letterSpacing:'.07em' }}>{opt.badge}</span>}
+                {opt.badge && <span style={{ fontSize:9, fontWeight:700, color:'#E03E1B', background:'#E03E1B22', padding:'2px 7px', borderRadius:10, letterSpacing:'.07em' }}>{opt.badge}</span>}
               </div>
               <div style={{ fontSize:12, color:C.mist, lineHeight:1.5 }}>{opt.desc}</div>
             </div>
-            {progType===opt.id && <div style={{ position:'absolute', top:14, right:16, width:18, height:18, borderRadius:'50%', background: opt.id==='stars'?'#FF199F':'#6F30DF', display:'flex', alignItems:'center', justifyContent:'center', fontSize:10 }}>✓</div>}
+            {progType===opt.id && <div style={{ position:'absolute', top:14, right:16, width:18, height:18, borderRadius:'50%', background: opt.id==='stars'?'#F0603A':'#E03E1B', display:'flex', alignItems:'center', justifyContent:'center', fontSize:10 }}>✓</div>}
           </button>
         ))}
       </div>
@@ -11123,7 +11123,7 @@ function OnboardingView({ commerce, onComplete }) {
             </div>
           </PCard>
         </div>
-        <div style={{ position:'absolute', inset:0, display:'flex', flexDirection:'column', alignItems:'center', justifyContent:'center', gap:8, backdropFilter:'blur(2px)', background:'rgba(13,8,24,.3)', borderRadius:14 }}>
+        <div style={{ position:'absolute', inset:0, display:'flex', flexDirection:'column', alignItems:'center', justifyContent:'center', gap:8, backdropFilter:'blur(2px)', background:'rgba(20,16,13,.3)', borderRadius:14 }}>
           <Lock size={24} color='rgba(255,255,255,0.60)' strokeWidth={2} />
           <span style={{ fontFamily:FN, fontSize:13, fontWeight:700, color:C.white }}>Disponible en STARTER</span>
         </div>
@@ -11138,7 +11138,7 @@ function OnboardingView({ commerce, onComplete }) {
       </div>
 
       <button onClick={() => setUpgradeModal('promotions')}
-        style={{ width:'100%', padding:'13px', background:GV, border:'none', borderRadius:12, color:'#fff', fontFamily:FN, fontSize:14, fontWeight:700, cursor:'pointer', marginBottom:10, boxShadow:'0 4px 16px rgba(189,75,248,.4)' }}>
+        style={{ width:'100%', padding:'13px', background:GV, border:'none', borderRadius:12, color:'#fff', fontFamily:FN, fontSize:14, fontWeight:700, cursor:'pointer', marginBottom:10, boxShadow:'0 4px 16px rgba(255,122,89,.4)' }}>
         <Zap size={13} strokeWidth={2} /> Desbloquear promociones
       </button>
       <button onClick={next}
@@ -11248,7 +11248,7 @@ function PromoWizard({ progType = 'points', onClose, onComplete, activePromos = 
   }
 
   const overlayStyle = { position:'fixed', inset:0, zIndex:300, display:'flex', alignItems:'center', justifyContent:'center', padding:'16px', background:'rgba(0,0,0,0.82)', backdropFilter:'blur(14px)', WebkitBackdropFilter:'blur(14px)' }
-  const sheetStyle   = { background:'#0d0818', border:'1px solid rgba(255,255,255,0.12)', borderRadius:24, width:'100%', maxWidth:480, maxHeight:'90vh', overflowY:'auto', boxShadow:'0 24px 80px rgba(0,0,0,0.6)' }
+  const sheetStyle   = { background:'#14100d', border:'1px solid rgba(255,255,255,0.12)', borderRadius:24, width:'100%', maxWidth:480, maxHeight:'90vh', overflowY:'auto', boxShadow:'0 24px 80px rgba(0,0,0,0.6)' }
 
   return (
     <div style={overlayStyle} onClick={e => e.target === e.currentTarget && onClose()}>
@@ -11266,7 +11266,7 @@ function PromoWizard({ progType = 'points', onClose, onComplete, activePromos = 
               <div style={{ fontFamily:FN, fontSize:16, fontWeight:800, color:C.white }}>
                 {step === 1 ? 'Nueva promoción' : (
                   <div style={{ display:'flex', alignItems:'center', gap:8 }}>
-                    <div aria-hidden="true" style={{ width:24, height:24, borderRadius:8, background: promoType==='discount_next' ? '#6F30DF' : '#d4007f', display:'flex', alignItems:'center', justifyContent:'center', flexShrink:0 }}>
+                    <div aria-hidden="true" style={{ width:24, height:24, borderRadius:8, background: promoType==='discount_next' ? '#E03E1B' : '#c2410c', display:'flex', alignItems:'center', justifyContent:'center', flexShrink:0 }}>
                       <span style={{ fontFamily:FN, fontWeight:900, fontSize:9, color:'#fff', letterSpacing:'-0.02em', lineHeight:1 }}>
                         {promoType==='discount_next' ? '−%' : '×2'}
                       </span>
@@ -11283,7 +11283,7 @@ function PromoWizard({ progType = 'points', onClose, onComplete, activePromos = 
           {showProgress && (
             <>
               <div style={{ height:3, background:'rgba(255,255,255,0.10)', borderRadius:99, overflow:'hidden', marginBottom:6 }}>
-                <div style={{ height:'100%', borderRadius:99, background: promoType === 'discount_next' ? GV : promoType === 'double_points' ? '#FF199F' : G, width:`${progressPct}%`, transition:'width 150ms ease' }} />
+                <div style={{ height:'100%', borderRadius:99, background: promoType === 'discount_next' ? GV : promoType === 'double_points' ? '#F0603A' : G, width:`${progressPct}%`, transition:'width 150ms ease' }} />
               </div>
               <div style={{ fontSize:10, color:'rgba(255,255,255,0.35)', fontFamily:FI }}>Paso {step} de {totalSteps}</div>
             </>
@@ -11301,8 +11301,8 @@ function PromoWizard({ progType = 'points', onClose, onComplete, activePromos = 
                 <div style={{ fontSize:13, color:C.mist, marginBottom:20 }}>Elegí una opción para continuar</div>
                 <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:12, marginBottom: activePromos.length > 0 ? 14 : 0 }}>
                   {[
-                    { id:'discount_next', symbol:'−%', label:'Descuento en visita', desc:'% OFF automático en la próxima visita',    bg:'#6F30DF', shadow:'0 12px 32px -8px rgba(139,92,246,0.45)', shadowHov:'0 12px 32px -8px rgba(139,92,246,0.65)' },
-                    { id:'double_points', symbol:'×2', label:'Suma doble',          desc:`Doble de ${unitLabel} por período o días`, bg:'#FF199F', shadow:'0 12px 32px -8px rgba(236,72,153,0.45)', shadowHov:'0 12px 32px -8px rgba(236,72,153,0.65)' },
+                    { id:'discount_next', symbol:'−%', label:'Descuento en visita', desc:'% OFF automático en la próxima visita',    bg:'#E03E1B', shadow:'0 12px 32px -8px rgba(232,67,31,0.45)', shadowHov:'0 12px 32px -8px rgba(232,67,31,0.65)' },
+                    { id:'double_points', symbol:'×2', label:'Suma doble',          desc:`Doble de ${unitLabel} por período o días`, bg:'#F0603A', shadow:'0 12px 32px -8px rgba(20,184,166,0.45)', shadowHov:'0 12px 32px -8px rgba(20,184,166,0.65)' },
                   ].map(t => {
                     const blocked = activePromos.some(p => p.type === t.id)
                     return (
@@ -11402,8 +11402,8 @@ function PromoWizard({ progType = 'points', onClose, onComplete, activePromos = 
                           onClick={() => setForm(f => ({ ...f, days: sel ? f.days.filter(d => d !== v) : [...f.days, v] }))}
                           style={{
                             flex:1, padding:'10px 0', borderRadius:10,
-                            border:`1.5px solid ${sel ? '#FF199F' : C.rim}`,
-                            background: sel ? 'rgba(236,72,153,0.18)' : C.bg3,
+                            border:`1.5px solid ${sel ? '#F0603A' : C.rim}`,
+                            background: sel ? 'rgba(20,184,166,0.18)' : C.bg3,
                             color: sel ? C.white : C.mist,
                             fontFamily:FN, fontSize:12, fontWeight:700,
                             cursor:'pointer', transition:'border-color 130ms ease, background 130ms ease, color 130ms ease',
@@ -11504,12 +11504,12 @@ function PromoWizard({ progType = 'points', onClose, onComplete, activePromos = 
                 <div style={{ fontFamily:FN, fontSize:17, fontWeight:800, color:C.white, marginBottom:5 }}>¡Todo listo!</div>
                 <div style={{ fontSize:13, color:C.mist, marginBottom:20 }}>Revisá los detalles antes de activar</div>
                 {/* Preview card */}
-                <div style={{ background:'linear-gradient(135deg, rgba(63,11,120,0.50), rgba(189,75,248,0.25))', border:'1px solid rgba(189,75,248,0.35)', borderRadius:18, padding:18, marginBottom:20 }}>
+                <div style={{ background:'linear-gradient(135deg, rgba(120,31,11,0.50), rgba(255,122,89,0.25))', border:'1px solid rgba(255,122,89,0.35)', borderRadius:18, padding:18, marginBottom:20 }}>
                   <div style={{ display:'flex', alignItems:'center', gap:12, marginBottom:14 }}>
-                    <div style={{ width:42, height:42, borderRadius:12, background:promoType==='discount_next'?`${C.v}30`:'rgba(236,72,153,0.25)', display:'flex', alignItems:'center', justifyContent:'center' }}>
+                    <div style={{ width:42, height:42, borderRadius:12, background:promoType==='discount_next'?`${C.v}30`:'rgba(20,184,166,0.25)', display:'flex', alignItems:'center', justifyContent:'center' }}>
                       {promoType === 'discount_next'
                         ? <Zap size={20} color={C.v} strokeWidth={1.5} />
-                        : <RefreshCw size={20} color="#FF199F" strokeWidth={1.5} />}
+                        : <RefreshCw size={20} color="#F0603A" strokeWidth={1.5} />}
                     </div>
                     <div>
                       <div style={{ fontFamily:FN, fontSize:15, fontWeight:800, color:C.white }}>
@@ -11554,7 +11554,7 @@ function PromoWizard({ progType = 'points', onClose, onComplete, activePromos = 
                 <div style={{ display:'flex', gap:10 }}>
                   <button onClick={prev} style={{ flex:1, padding:'13px', background:'rgba(255,255,255,0.07)', border:`1px solid ${C.rim}`, borderRadius:13, color:C.mist, fontFamily:FN, fontSize:13, fontWeight:600, cursor:'pointer' }}>Atrás</button>
                   <button onClick={submit} disabled={saving}
-                    style={{ flex:2, padding:'13px', background: promoType==='discount_next' ? GV : '#FF199F', border:'none', borderRadius:13, color:'#fff', fontFamily:FN, fontSize:14, fontWeight:700, cursor:saving?'not-allowed':'pointer', opacity:saving?0.6:1, boxShadow: promoType==='discount_next' ? '0 4px 16px rgba(139,92,246,0.40)' : '0 4px 16px rgba(236,72,153,0.40)', display:'flex', alignItems:'center', justifyContent:'center', gap:7 }}>
+                    style={{ flex:2, padding:'13px', background: promoType==='discount_next' ? GV : '#F0603A', border:'none', borderRadius:13, color:'#fff', fontFamily:FN, fontSize:14, fontWeight:700, cursor:saving?'not-allowed':'pointer', opacity:saving?0.6:1, boxShadow: promoType==='discount_next' ? '0 4px 16px rgba(232,67,31,0.40)' : '0 4px 16px rgba(20,184,166,0.40)', display:'flex', alignItems:'center', justifyContent:'center', gap:7 }}>
                     {saving ? 'Activando...' : 'Activar promoción'}
                   </button>
                 </div>
@@ -12505,9 +12505,9 @@ function CommerceSettingsView({ user, profile, setView, onLogout, onOwnerProfile
           // Mock data de segmentos
           setSegments({
             nuevos: { label: 'Nuevos', icon: '🌟', color: '#40C8FF', count: 5, percent: 25, description: 'Clientes que acaban de unirse' },
-            frecuentes: { label: 'Frecuentes', icon: '🔥', color: '#FF199F', count: 8, percent: 40, description: 'Clientes que visitan regularmente' },
-            vip: { label: 'VIP', icon: '👑', color: '#6F30DF', count: 4, percent: 20, description: 'Clientes más leales y comprometidos' },
-            inactivos: { label: 'Inactivos', icon: '😴', color: '#9B85CC', count: 3, percent: 15, description: 'Clientes sin visitas recientes' },
+            frecuentes: { label: 'Frecuentes', icon: '🔥', color: '#F0603A', count: 8, percent: 40, description: 'Clientes que visitan regularmente' },
+            vip: { label: 'VIP', icon: '👑', color: '#E03E1B', count: 4, percent: 20, description: 'Clientes más leales y comprometidos' },
+            inactivos: { label: 'Inactivos', icon: '😴', color: '#B3A596', count: 3, percent: 15, description: 'Clientes sin visitas recientes' },
           })
         }
         setLoadingSegments(false)
@@ -12515,9 +12515,9 @@ function CommerceSettingsView({ user, profile, setView, onLogout, onOwnerProfile
         // Mock data si hay error
         setSegments({
           nuevos: { label: 'Nuevos', icon: '🌟', color: '#40C8FF', count: 5, percent: 25, description: 'Clientes que acaban de unirse' },
-          frecuentes: { label: 'Frecuentes', icon: '🔥', color: '#FF199F', count: 8, percent: 40, description: 'Clientes que visitan regularmente' },
-          vip: { label: 'VIP', icon: '👑', color: '#6F30DF', count: 4, percent: 20, description: 'Clientes más leales y comprometidos' },
-          inactivos: { label: 'Inactivos', icon: '😴', color: '#9B85CC', count: 3, percent: 15, description: 'Clientes sin visitas recientes' },
+          frecuentes: { label: 'Frecuentes', icon: '🔥', color: '#F0603A', count: 8, percent: 40, description: 'Clientes que visitan regularmente' },
+          vip: { label: 'VIP', icon: '👑', color: '#E03E1B', count: 4, percent: 20, description: 'Clientes más leales y comprometidos' },
+          inactivos: { label: 'Inactivos', icon: '😴', color: '#B3A596', count: 3, percent: 15, description: 'Clientes sin visitas recientes' },
         })
         setLoadingSegments(false)
       })
@@ -13603,7 +13603,7 @@ function CommerceSettingsView({ user, profile, setView, onLogout, onOwnerProfile
 
   const unitLabel = form?.prog_type === 'stars' ? 'estrellas' : 'puntos'
   const unitIcon  = form?.prog_type === 'stars' ? '★' : '◆'
-  const unitColor = form?.prog_type === 'stars' ? '#6F30DF' : '#FF199F'
+  const unitColor = form?.prog_type === 'stars' ? '#E03E1B' : '#F0603A'
   const activePrizes   = prizes.filter(p => p.active)
   const minPrizeCost   = activePrizes.length ? Math.min(...activePrizes.map(p => p.cost)) : 10
 
@@ -13776,7 +13776,7 @@ function CommerceSettingsView({ user, profile, setView, onLogout, onOwnerProfile
             onClick={() => setRadialOpen(false)}
             style={{
               position: 'fixed', inset: 0, zIndex: 198,
-              background: 'rgba(8,4,18,0.55)',
+              background: 'rgba(14,11,9,0.55)',
               backdropFilter: 'blur(8px)', WebkitBackdropFilter: 'blur(8px)',
               animation: 'fadeIn 200ms ease',
             }}
@@ -13817,19 +13817,19 @@ function CommerceSettingsView({ user, profile, setView, onLogout, onOwnerProfile
                 zIndex: 200,
                 width: 52, height: 52, borderRadius: '50%',
                 background: (active || isHovered)
-                  ? '#6F30DF'
-                  : 'rgba(40,18,62,0.55)',
+                  ? '#E03E1B'
+                  : 'rgba(54,38,26,0.55)',
                 backdropFilter: 'blur(22px) saturate(180%)',
                 WebkitBackdropFilter: 'blur(22px) saturate(180%)',
-                border: (active || isHovered) ? '1px solid rgba(255,255,255,0.40)' : '1px solid rgba(216,180,254,0.42)',
+                border: (active || isHovered) ? '1px solid rgba(255,255,255,0.40)' : '1px solid rgba(251,195,183,0.42)',
                 color: '#fff',
                 cursor: 'pointer',
                 display: 'flex', alignItems: 'center', justifyContent: 'center',
                 padding: 0,
                 boxShadow: isHovered
-                  ? '0 8px 28px rgba(189,75,248,0.85), inset 0 1px 0 rgba(255,255,255,0.25)'
+                  ? '0 8px 28px rgba(255,122,89,0.85), inset 0 1px 0 rgba(255,255,255,0.25)'
                   : active
-                    ? '0 6px 22px rgba(189,75,248,0.65), inset 0 1px 0 rgba(255,255,255,0.18)'
+                    ? '0 6px 22px rgba(255,122,89,0.65), inset 0 1px 0 rgba(255,255,255,0.18)'
                     : '0 6px 18px rgba(0,0,0,0.45), inset 0 1px 0 rgba(255,255,255,0.10)',
                 opacity: dimmed ? 0.55 : 1,
                 transform: isHovered ? 'scale(1.18)' : 'scale(1)',
@@ -13885,14 +13885,14 @@ function CommerceSettingsView({ user, profile, setView, onLogout, onOwnerProfile
             borderLeft:   '1px solid rgba(255,255,255,0.85)',
             borderRight:  '1px solid rgba(255,255,255,0.85)',
             borderBottom: 'none',
-            color: '#6F30DF',
+            color: '#E03E1B',
             cursor: 'pointer',
             display: 'flex', alignItems: 'center', justifyContent: 'center',
             padding: 0,
             paddingTop: 6,
             boxShadow: radialOpen
-              ? '0 -6px 24px rgba(189,75,248,0.45), inset 0 1px 0 rgba(255,255,255,0.95)'
-              : '0 -4px 18px rgba(189,75,248,0.30), inset 0 1px 0 rgba(255,255,255,0.95)',
+              ? '0 -6px 24px rgba(255,122,89,0.45), inset 0 1px 0 rgba(255,255,255,0.95)'
+              : '0 -4px 18px rgba(255,122,89,0.30), inset 0 1px 0 rgba(255,255,255,0.95)',
             transition: 'transform 150ms ease, background 120ms ease, box-shadow 120ms ease',
             // Animación combinada:
             //  • Antes de la primera interacción → pulso violeta más fuerte
@@ -13905,8 +13905,8 @@ function CommerceSettingsView({ user, profile, setView, onLogout, onOwnerProfile
           }}
         >
           {radialOpen
-            ? <X size={22} strokeWidth={2.8} color="#6F30DF" />
-            : <Settings size={22} strokeWidth={2.4} color="#6F30DF" />
+            ? <X size={22} strokeWidth={2.8} color="#E03E1B" />
+            : <Settings size={22} strokeWidth={2.4} color="#E03E1B" />
           }
         </button>
 
@@ -13917,10 +13917,10 @@ function CommerceSettingsView({ user, profile, setView, onLogout, onOwnerProfile
           }
           @keyframes radial-cog-pulse {
             0%, 100% {
-              box-shadow: 0 -4px 18px rgba(189,75,248,0.40), 0 0 0 0 rgba(189,75,248,0.55);
+              box-shadow: 0 -4px 18px rgba(255,122,89,0.40), 0 0 0 0 rgba(255,122,89,0.55);
             }
             50% {
-              box-shadow: 0 -4px 22px rgba(189,75,248,0.65), 0 0 0 14px rgba(189,75,248,0);
+              box-shadow: 0 -4px 22px rgba(255,122,89,0.65), 0 0 0 14px rgba(255,122,89,0);
             }
           }
           /* Heartbeat: dos thumps cortos al inicio del ciclo (0–24%) y
@@ -13929,19 +13929,19 @@ function CommerceSettingsView({ user, profile, setView, onLogout, onOwnerProfile
           @keyframes radial-cog-heartbeat {
             0%, 24%, 100% {
               transform: translateX(-50%) scale(1);
-              box-shadow: 0 -4px 18px rgba(189,75,248,0.30), inset 0 1px 0 rgba(255,255,255,0.95);
+              box-shadow: 0 -4px 18px rgba(255,122,89,0.30), inset 0 1px 0 rgba(255,255,255,0.95);
             }
             6% {
               transform: translateX(-50%) scale(1.08);
-              box-shadow: 0 -6px 22px rgba(189,75,248,0.55), 0 0 0 8px rgba(189,75,248,0.20), inset 0 1px 0 rgba(255,255,255,0.95);
+              box-shadow: 0 -6px 22px rgba(255,122,89,0.55), 0 0 0 8px rgba(255,122,89,0.20), inset 0 1px 0 rgba(255,255,255,0.95);
             }
             12% {
               transform: translateX(-50%) scale(1);
-              box-shadow: 0 -4px 18px rgba(189,75,248,0.30), inset 0 1px 0 rgba(255,255,255,0.95);
+              box-shadow: 0 -4px 18px rgba(255,122,89,0.30), inset 0 1px 0 rgba(255,255,255,0.95);
             }
             18% {
               transform: translateX(-50%) scale(1.05);
-              box-shadow: 0 -6px 22px rgba(189,75,248,0.50), 0 0 0 6px rgba(189,75,248,0.15), inset 0 1px 0 rgba(255,255,255,0.95);
+              box-shadow: 0 -6px 22px rgba(255,122,89,0.50), 0 0 0 6px rgba(255,122,89,0.15), inset 0 1px 0 rgba(255,255,255,0.95);
             }
           }
         `}</style>
@@ -13966,8 +13966,8 @@ function CommerceSettingsView({ user, profile, setView, onLogout, onOwnerProfile
         padding: 0,
         border: 'none',
         borderRadius: '0 16px 16px 0',
-        background: '#6F30DF',
-        boxShadow: '4px 0 22px rgba(189,75,248,0.65), inset -1px 0 0 rgba(255,255,255,0.20)',
+        background: '#E03E1B',
+        boxShadow: '4px 0 22px rgba(255,122,89,0.65), inset -1px 0 0 rgba(255,255,255,0.20)',
         color: '#fff',
         cursor: 'pointer',
         display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
@@ -13993,11 +13993,11 @@ function CommerceSettingsView({ user, profile, setView, onLogout, onOwnerProfile
         @keyframes rail-summon-pulse {
           0%, 100% {
             transform: translateY(-50%) translateX(0);
-            box-shadow: 4px 0 22px rgba(189,75,248,0.65), inset -1px 0 0 rgba(255,255,255,0.20), 0 0 0 0 rgba(189,75,248,0.6);
+            box-shadow: 4px 0 22px rgba(255,122,89,0.65), inset -1px 0 0 rgba(255,255,255,0.20), 0 0 0 0 rgba(255,122,89,0.6);
           }
           50% {
             transform: translateY(-50%) translateX(4px);
-            box-shadow: 4px 0 28px rgba(189,75,248,0.85), inset -1px 0 0 rgba(255,255,255,0.20), 0 0 0 12px rgba(189,75,248,0);
+            box-shadow: 4px 0 28px rgba(255,122,89,0.85), inset -1px 0 0 rgba(255,255,255,0.20), 0 0 0 12px rgba(255,122,89,0);
           }
         }
         @keyframes rail-summon-arrow {
@@ -14029,7 +14029,7 @@ function CommerceSettingsView({ user, profile, setView, onLogout, onOwnerProfile
           // Vidrio difuso: opacidad baja en el fondo + blur fuerte +
           // saturate. Esto hace que se vea lo que hay detrás "borroseado",
           // como un panel de cristal esmerilado real.
-          background: 'linear-gradient(180deg, rgba(40,20,60,0.42), rgba(25,12,45,0.55))',
+          background: 'linear-gradient(180deg, rgba(54,38,26,0.42), rgba(38,27,19,0.55))',
           backdropFilter: 'blur(28px) saturate(180%)',
           WebkitBackdropFilter: 'blur(28px) saturate(180%)',
           borderRadius: 16,
@@ -14051,7 +14051,7 @@ function CommerceSettingsView({ user, profile, setView, onLogout, onOwnerProfile
             width: 38, height: 38, borderRadius: 12, flexShrink: 0,
             background: G,
             display: 'flex', alignItems: 'center', justifyContent: 'center',
-            boxShadow: '0 4px 14px rgba(168,85,247,0.45)',
+            boxShadow: '0 4px 14px rgba(255,122,89,0.45)',
             marginBottom: 4,
           }}
         >
@@ -14096,7 +14096,7 @@ function CommerceSettingsView({ user, profile, setView, onLogout, onOwnerProfile
                   opacity: dimmed ? 0.55 : 1,
                   boxShadow: active ? '0 4px 12px rgba(0,0,0,0.40)' : 'none',
                 }}>
-                {I && <I size={17} color={active ? '#0a0612' : 'rgba(255,255,255,0.80)'} strokeWidth={2.2} />}
+                {I && <I size={17} color={active ? '#110d0a' : 'rgba(255,255,255,0.80)'} strokeWidth={2.2} />}
                 {isProLocked && (
                   <span style={{ position: 'absolute', top: -2, right: -2, fontSize: 7, fontWeight: 800, color: '#fff', background: PLANS.pro.color, borderRadius: 99, padding: '1px 4px', fontFamily: FN, letterSpacing: '.04em' }}>PRO</span>
                 )}
@@ -14165,7 +14165,7 @@ function CommerceSettingsView({ user, profile, setView, onLogout, onOwnerProfile
       top: 62,
       left: 0, right: 0,
       zIndex: 199,
-      background: 'rgba(8, 4, 18, 0.82)',
+      background: 'rgba(14, 11, 9, 0.82)',
       backdropFilter: 'blur(16px) saturate(180%)',
       WebkitBackdropFilter: 'blur(16px) saturate(180%)',
       borderBottom: '1px solid rgba(255,255,255,0.08)',
@@ -14233,7 +14233,7 @@ function CommerceSettingsView({ user, profile, setView, onLogout, onOwnerProfile
                 <span style={{
                   position: 'absolute', bottom: 0, left: '15%', right: '15%',
                   height: 2, borderRadius: 2,
-                  background: '#6F30DF',
+                  background: '#E03E1B',
                 }} />
               )}
             </button>
@@ -14264,12 +14264,12 @@ function CommerceSettingsView({ user, profile, setView, onLogout, onOwnerProfile
     // (gradient violeta marca) para que se lean como hermanos. La diferencia
     // entre ellos la da el ícono y el texto, no el color.
     const VIOLET_THEME = {
-      bg:         'linear-gradient(135deg, rgba(124,58,237,0.18), rgba(168,85,247,0.10), rgba(189,75,248,0.14))',
-      border:     'rgba(168,85,247,0.42)',
-      iconBg:     '#6F30DF',
-      shadow:     '0 6px 22px rgba(168,85,247,0.40)',
-      descColor:  'rgba(229,221,255,0.78)',
-      arrowColor: 'rgba(196,181,253,0.88)',
+      bg:         'linear-gradient(135deg, rgba(224,62,27,0.18), rgba(255,122,89,0.10), rgba(255,122,89,0.14))',
+      border:     'rgba(255,122,89,0.42)',
+      iconBg:     '#E03E1B',
+      shadow:     '0 6px 22px rgba(255,122,89,0.40)',
+      descColor:  'rgba(253,228,223,0.78)',
+      arrowColor: 'rgba(255,181,158,0.88)',
     }
 
     const AnimatedRewardIcon = ({ size = 22, color = '#fff', strokeWidth = 2.2 }) => (
@@ -14362,7 +14362,7 @@ function CommerceSettingsView({ user, profile, setView, onLogout, onOwnerProfile
       try { e.currentTarget.setPointerCapture?.(e.pointerId) } catch {}
       // Estilo destacado del card arrastrado.
       cardEl.style.zIndex      = '10'
-      cardEl.style.boxShadow   = '0 18px 48px rgba(168,85,247,0.55)'
+      cardEl.style.boxShadow   = '0 18px 48px rgba(255,122,89,0.55)'
       cardEl.style.animation   = 'none'
       cardEl.style.transition  = 'none'
       cardEl.style.transform   = 'scale(1.03)'
@@ -14443,7 +14443,7 @@ function CommerceSettingsView({ user, profile, setView, onLogout, onOwnerProfile
         padding:'0 4px 10px',
         marginBottom:2,
       }}>
-        <div style={{ width:3, height:14, borderRadius:99, background:'#6F30DF' }} />
+        <div style={{ width:3, height:14, borderRadius:99, background:'#E03E1B' }} />
         <div style={{
           fontFamily:FN, fontSize:11.5, fontWeight:800,
           color:'rgba(255,255,255,0.85)',
@@ -14497,7 +14497,7 @@ function CommerceSettingsView({ user, profile, setView, onLogout, onOwnerProfile
                 position:'absolute', top:-7, right:-7, zIndex:5,
                 width:24, height:24, borderRadius:'50%',
                 background:'#0a0a0a',
-                border:'2px solid rgba(168,85,247,0.85)',
+                border:'2px solid rgba(255,122,89,0.85)',
                 color:'#fff',
                 cursor:'pointer', padding:0,
                 display:'flex', alignItems:'center', justifyContent:'center',
@@ -14556,26 +14556,26 @@ function CommerceSettingsView({ user, profile, setView, onLogout, onOwnerProfile
                   display:'inline-flex', alignItems:'center', gap:6,
                   padding:'8px 16px',
                   background:'transparent',
-                  border:'1px solid rgba(168,85,247,0.45)',
+                  border:'1px solid rgba(255,122,89,0.45)',
                   borderRadius:10,
-                  color:'#D8B4FE',
+                  color:'#FFB59E',
                   fontFamily:FN, fontSize:13, fontWeight:700,
                   cursor:'pointer',
                   letterSpacing:'.02em',
                   transition:'background 160ms ease, border-color 160ms ease',
                 }}
                 onMouseEnter={e => {
-                  e.currentTarget.style.background = 'rgba(168,85,247,0.10)'
-                  e.currentTarget.style.borderColor = 'rgba(168,85,247,0.65)'
+                  e.currentTarget.style.background = 'rgba(255,122,89,0.10)'
+                  e.currentTarget.style.borderColor = 'rgba(255,122,89,0.65)'
                 }}
                 onMouseLeave={e => {
                   e.currentTarget.style.background = 'transparent'
-                  e.currentTarget.style.borderColor = 'rgba(168,85,247,0.45)'
+                  e.currentTarget.style.borderColor = 'rgba(255,122,89,0.45)'
                 }}>
                 Ir
                 <ArrowRight
                   size={14}
-                  color="#D8B4FE"
+                  color="#FFB59E"
                   strokeWidth={2.4}
                 />
               </button>
@@ -15107,10 +15107,10 @@ function CommerceSettingsView({ user, profile, setView, onLogout, onOwnerProfile
             // — los labels ya cuentan el estado con el value ("10% OFF" vs
             // "No activo").
             const Chip = ({ Icon, label, value, hint, color, onEdit, dimmed }) => {
-              const ACTIVE_BG   = '#D8C4FF'   // pastel violeta saturado
-              const INACTIVE_BG = '#EFE4FF'   // pastel violeta palido
-              const FG_ACTIVE   = '#4C1D95'   // violeta brand muy oscuro
-              const FG_INACTIVE = '#6D28D9'   // violeta brand medio
+              const ACTIVE_BG   = '#FCD1C7'   // pastel violeta saturado
+              const INACTIVE_BG = '#FEEAE5'   // pastel violeta palido
+              const FG_ACTIVE   = '#7A2410'   // violeta brand muy oscuro
+              const FG_INACTIVE = '#D94828'   // violeta brand medio
               const bg = dimmed ? INACTIVE_BG : ACTIVE_BG
               const fg = dimmed ? FG_INACTIVE : FG_ACTIVE
               // Disposicion VERTICAL (icono arriba, texto centrado abajo)
@@ -15130,8 +15130,8 @@ function CommerceSettingsView({ user, profile, setView, onLogout, onOwnerProfile
                   minWidth: 116,
                   textAlign: 'center',
                   boxShadow: dimmed
-                    ? '0 2px 10px -4px rgba(124,58,237,0.18)'
-                    : '0 6px 18px -6px rgba(124,58,237,0.45)',
+                    ? '0 2px 10px -4px rgba(224,62,27,0.18)'
+                    : '0 6px 18px -6px rgba(224,62,27,0.45)',
                   transition: 'background 200ms ease, box-shadow 200ms ease',
                 }}>
                   <Icon size={22} color={fg} strokeWidth={2.4} />
@@ -15144,8 +15144,8 @@ function CommerceSettingsView({ user, profile, setView, onLogout, onOwnerProfile
                     style={{
                       position: 'absolute', top: 6, right: 6,
                       width: 22, height: 22, borderRadius: 6,
-                      background: 'rgba(124,58,237,0.14)',
-                      border: '1px solid rgba(124,58,237,0.32)',
+                      background: 'rgba(224,62,27,0.14)',
+                      border: '1px solid rgba(224,62,27,0.32)',
                       color: fg,
                       cursor: 'pointer',
                       display: 'flex', alignItems: 'center', justifyContent: 'center',
@@ -15324,7 +15324,7 @@ function CommerceSettingsView({ user, profile, setView, onLogout, onOwnerProfile
                   actual. Items locked se rendean aparte con su chip de plan.
                   Encendidos (done) = verde brillante con glow, mismo verde
                   que la solapa "Completos" (#22E698) para coherencia.
-                  Apagados = amarillo apagado (#FF199F al 28% opacidad),
+                  Apagados = amarillo apagado (#F0603A al 28% opacidad),
                   mismo amarillo que la solapa "Pendientes" para que se
                   lea de un vistazo "esto está pendiente, esto está hecho". */}
               <div style={{ position:'relative', zIndex:1, display:'flex', alignItems:'center', justifyContent:'space-between', width:'100%' }}>
@@ -15581,11 +15581,11 @@ function CommerceSettingsView({ user, profile, setView, onLogout, onOwnerProfile
                 style={{
                   marginTop: 16,
                   padding: '10px 18px', borderRadius: 12,
-                  background: '#6F30DF',
+                  background: '#E03E1B',
                   border: 'none', color: '#fff',
                   fontFamily: FN, fontSize: 13, fontWeight: 800,
                   cursor: 'pointer',
-                  boxShadow: '0 6px 18px rgba(189,75,248,0.40)',
+                  boxShadow: '0 6px 18px rgba(255,122,89,0.40)',
                 }}>
                 Ir a Pendientes ({pendingCount})
               </button>
@@ -15815,9 +15815,9 @@ function CommerceSettingsView({ user, profile, setView, onLogout, onOwnerProfile
               // chip del plan que las desbloquea + CTA "Actualizar plan".
               const isLocked = !!item.lockedByPlan
               const lockPlan = item.lockedByPlan && PLANS[item.lockedByPlan]
-              const lockColor = lockPlan?.color || '#6F30DF'
+              const lockColor = lockPlan?.color || '#E03E1B'
               // ── Tema de la tab actual ──
-              // Pendientes (intentFilter='pendientes') → amarillo (#FF199F,
+              // Pendientes (intentFilter='pendientes') → amarillo (#F0603A,
               // mismo color que la solapa Pendientes).
               // Completos (intentFilter='listas') → verde (#22E698, mismo
               // color que la solapa Completos).
@@ -16084,7 +16084,7 @@ function CommerceSettingsView({ user, profile, setView, onLogout, onOwnerProfile
                   </div>
 
                   {/* Subtítulo descriptivo — antes con tinte violeta
-                      claro (rgba(229,221,255,0.70)). Ahora un blanco
+                      claro (rgba(253,228,223,0.70)). Ahora un blanco
                       neutro al 70% para no aportar más violeta. */}
                   <div style={{
                     fontSize: 13, fontWeight: 500,
@@ -16097,7 +16097,7 @@ function CommerceSettingsView({ user, profile, setView, onLogout, onOwnerProfile
                   </div>
 
                   {/* Divider con glow del color de la tab — antes era
-                      una línea violeta (rgba(189,75,248,0.85)) con glow
+                      una línea violeta (rgba(255,122,89,0.85)) con glow
                       violeta. Ahora se alinea con themeColor (amarillo
                       en Pendientes, verde en Completos). */}
                   <div style={{
@@ -16171,8 +16171,8 @@ function CommerceSettingsView({ user, profile, setView, onLogout, onOwnerProfile
                 left: 4, top: '50%', transform: 'translateY(-50%)',
                 zIndex: 5,
                 width: 36, height: 36, borderRadius: '50%',
-                background: 'rgba(15,8,28,0.85)',
-                border: '1px solid rgba(189,75,248,0.40)',
+                background: 'rgba(20,15,12,0.85)',
+                border: '1px solid rgba(255,122,89,0.40)',
                 color: '#fff',
                 cursor: configEdges.atStart ? 'not-allowed' : 'pointer',
                 opacity: configEdges.atStart ? 0.30 : 1,
@@ -16196,8 +16196,8 @@ function CommerceSettingsView({ user, profile, setView, onLogout, onOwnerProfile
                 right: 4, top: '50%', transform: 'translateY(-50%)',
                 zIndex: 5,
                 width: 36, height: 36, borderRadius: '50%',
-                background: 'rgba(15,8,28,0.85)',
-                border: '1px solid rgba(189,75,248,0.40)',
+                background: 'rgba(20,15,12,0.85)',
+                border: '1px solid rgba(255,122,89,0.40)',
                 color: '#fff',
                 cursor: configEdges.atEnd ? 'not-allowed' : 'pointer',
                 opacity: configEdges.atEnd ? 0.30 : 1,
@@ -16229,7 +16229,7 @@ function CommerceSettingsView({ user, profile, setView, onLogout, onOwnerProfile
                 aria-label={`Ir a la tarjeta ${i + 1}`}
                 style={{
                   width: active ? 28 : 7, height: 7, borderRadius: 99,
-                  background: active ? '#6F30DF' : 'rgba(255,255,255,0.18)',
+                  background: active ? '#E03E1B' : 'rgba(255,255,255,0.18)',
                   border: 'none', padding: 0, cursor: 'pointer',
                   transition: 'width 150ms ease, background 150ms ease',
                 }}
@@ -16246,13 +16246,13 @@ function CommerceSettingsView({ user, profile, setView, onLogout, onOwnerProfile
             margin: isMobile ? '14px 18px 4px' : '14px 28px 4px',
             padding: '10px 14px',
             borderRadius: 12,
-            background: 'rgba(189,75,248,0.06)',
-            border: '1px solid rgba(189,75,248,0.20)',
+            background: 'rgba(255,122,89,0.06)',
+            border: '1px solid rgba(255,122,89,0.20)',
             display: 'flex', alignItems: 'flex-start', gap: 10,
           }}>
-            <Sparkles size={14} color="#6F30DF" strokeWidth={2.2} style={{ flexShrink: 0, marginTop: 1 }} />
+            <Sparkles size={14} color="#E03E1B" strokeWidth={2.2} style={{ flexShrink: 0, marginTop: 1 }} />
             <div style={{ fontSize: 11.5, color: 'rgba(255,255,255,0.72)', lineHeight: 1.5 }}>
-              Las tarjetas con chip <strong style={{ color: '#6F30DF' }}>STARTER</strong> o <strong style={{ color: '#FF199F' }}>PRO</strong> son funciones premium. Aparecen acá para que las conozcas, pero no afectan tu progreso — son las que se desbloquean si actualizás tu plan.
+              Las tarjetas con chip <strong style={{ color: '#E03E1B' }}>STARTER</strong> o <strong style={{ color: '#F0603A' }}>PRO</strong> son funciones premium. Aparecen acá para que las conozcas, pero no afectan tu progreso — son las que se desbloquean si actualizás tu plan.
             </div>
           </div>
         )}
@@ -16451,7 +16451,7 @@ function CommerceSettingsView({ user, profile, setView, onLogout, onOwnerProfile
         {/* ── Registrar visita manual ── */}
         {(() => {
           const isStars    = form?.prog_type === 'stars'
-          const sysColor   = isStars ? '#6F30DF' : '#FF199F'
+          const sysColor   = isStars ? '#E03E1B' : '#F0603A'
           const step       = 100
           const cur        = parseInt(addVisitAmount) || 0
           const todayDow   = new Date().getDay()
@@ -16568,7 +16568,7 @@ function CommerceSettingsView({ user, profile, setView, onLogout, onOwnerProfile
         {(() => {
           const isStars  = form?.prog_type === 'stars'
           const unitWord = isStars ? 'estrellas' : 'puntos'
-          const sysColor = isStars ? '#6F30DF' : '#FF199F'
+          const sysColor = isStars ? '#E03E1B' : '#F0603A'
           const step     = isStars ? 1 : (parseInt(form?.prog_min_purchase) > 0 ? parseInt(form.prog_min_purchase) : 100)
           const cur      = parseInt(grantBalanceAmount) || 0
           const dec      = () => { const n = Math.max(step, cur - step); setGrantBalanceAmount(String(n)); setGrantBalanceError('') }
@@ -16600,16 +16600,16 @@ function CommerceSettingsView({ user, profile, setView, onLogout, onOwnerProfile
           return (
             <PCard style={{
               padding:16, marginBottom:12,
-              background:'linear-gradient(135deg, rgba(254,80,0,0.12), rgba(189,75,248,0.16))',
-              border:'1px solid rgba(189,75,248,0.45)',
-              boxShadow:'0 6px 22px rgba(189,75,248,0.20)',
+              background:'linear-gradient(135deg, rgba(254,80,0,0.12), rgba(255,122,89,0.16))',
+              border:'1px solid rgba(255,122,89,0.45)',
+              boxShadow:'0 6px 22px rgba(255,122,89,0.20)',
             }}>
               {/* Header del acordeón */}
               <div style={{ display:'flex', alignItems:'center', gap:6 }}>
                 <button onClick={() => setGrantPanelOpen(o => !o)}
                   style={{ flex:1, display:'flex', alignItems:'center', justifyContent:'space-between', background:'transparent', border:'none', padding:0, cursor:'pointer', fontFamily:'inherit' }}>
                   <div style={{ display:'flex', alignItems:'center', gap:10 }}>
-                    <div style={{ width:34, height:34, borderRadius:10, background:G, display:'flex', alignItems:'center', justifyContent:'center', flexShrink:0, boxShadow:'0 4px 14px rgba(189,75,248,0.40)' }}>
+                    <div style={{ width:34, height:34, borderRadius:10, background:G, display:'flex', alignItems:'center', justifyContent:'center', flexShrink:0, boxShadow:'0 4px 14px rgba(255,122,89,0.40)' }}>
                       <Sparkles size={16} color="#fff" strokeWidth={2.2} />
                     </div>
                     <div style={{ textAlign:'left' }}>
@@ -16811,7 +16811,7 @@ function CommerceSettingsView({ user, profile, setView, onLogout, onOwnerProfile
             seen.add(key); return true
           }).sort((a,b) => new Date(b.date) - new Date(a.date))
           const META = {
-            granted:  { Icon: Sparkles,   color:'#BD4BF8' },
+            granted:  { Icon: Sparkles,   color:'#FF7A59' },
             used:     { Icon: CheckCircle, color:'#22C55E' },
             expired:  { Icon: Clock,       color:C.dust },
             declined: { Icon: Ban,         color:'#E0413B' },
@@ -16970,7 +16970,7 @@ function CommerceSettingsView({ user, profile, setView, onLogout, onOwnerProfile
 
       {showAutoPopup && (
         <div onClick={() => setShowAutoPopup(false)} style={{ position:'fixed', inset:0, background:'rgba(0,0,0,0.80)', backdropFilter:'blur(4px)', WebkitBackdropFilter:'blur(4px)', zIndex:9000, display:'flex', alignItems:'center', justifyContent:'center', padding:20 }}>
-          <div onClick={e => e.stopPropagation()} className="modal-in" style={{ position:'relative', background:'#6F30DF', borderRadius:28, padding:'36px 28px 28px', maxWidth:320, width:'100%', textAlign:'center', boxShadow:'0 32px 80px rgba(0,0,0,0.6), 0 0 60px rgba(168,85,247,0.30)' }}>
+          <div onClick={e => e.stopPropagation()} className="modal-in" style={{ position:'relative', background:'#E03E1B', borderRadius:28, padding:'36px 28px 28px', maxWidth:320, width:'100%', textAlign:'center', boxShadow:'0 32px 80px rgba(0,0,0,0.6), 0 0 60px rgba(255,122,89,0.30)' }}>
             {/* X cerrar — esquina superior derecha */}
             <button onClick={() => setShowAutoPopup(false)} aria-label="Cerrar" style={{ position:'absolute', top:14, right:14, width:30, height:30, borderRadius:'50%', background:'rgba(255,255,255,0.15)', border:'none', display:'flex', alignItems:'center', justifyContent:'center', cursor:'pointer', padding:0, color:'#fff' }}>
               <X size={16} strokeWidth={2.4} />
@@ -16994,7 +16994,7 @@ function CommerceSettingsView({ user, profile, setView, onLogout, onOwnerProfile
             {/* Primary CTA */}
             <button
               onClick={() => { setShowAutoPopup(false); setTab('mensajes') }}
-              style={{ width:'100%', padding:'14px 0', borderRadius:16, background:'#fff', border:'none', color:'#6F30DF', fontFamily:FN, fontSize:14, fontWeight:700, cursor:'pointer', marginBottom:10, transition:'opacity 160ms ease' }}
+              style={{ width:'100%', padding:'14px 0', borderRadius:16, background:'#fff', border:'none', color:'#E03E1B', fontFamily:FN, fontSize:14, fontWeight:700, cursor:'pointer', marginBottom:10, transition:'opacity 160ms ease' }}
               onMouseEnter={e => e.currentTarget.style.opacity = '0.92'}
               onMouseLeave={e => e.currentTarget.style.opacity = '1'}>
               Ver automatizaciones →
@@ -17176,7 +17176,7 @@ function CommerceSettingsView({ user, profile, setView, onLogout, onOwnerProfile
           <div style={{ padding:'12px 16px', borderTop:`1px solid ${C.rim}` }}>
             <button
               onClick={() => { setView('scanner'); setDrawerOpen(false) }}
-              style={{ display:'flex', alignItems:'center', justifyContent:'center', gap:8, width:'100%', padding:'13px 0', borderRadius:12, background:G, border:'none', color:'#fff', fontFamily:FN, fontSize:14, fontWeight:700, cursor:'pointer', boxShadow:'0 4px 18px #FF199F44' }}>
+              style={{ display:'flex', alignItems:'center', justifyContent:'center', gap:8, width:'100%', padding:'13px 0', borderRadius:12, background:G, border:'none', color:'#fff', fontFamily:FN, fontSize:14, fontWeight:700, cursor:'pointer', boxShadow:'0 4px 18px #F0603A44' }}>
               <QrCode size={18} />
               Escáner QR
             </button>
@@ -17261,7 +17261,7 @@ function CommerceSettingsView({ user, profile, setView, onLogout, onOwnerProfile
                 data-rail-menu="true"
                 style={{
                   position:'fixed', top:70, bottom:14, left:8, width:200, zIndex:199,
-                  background: 'linear-gradient(180deg, rgba(15,8,28,0.96), rgba(8,4,18,0.98))',
+                  background: 'linear-gradient(180deg, rgba(20,15,12,0.96), rgba(14,11,9,0.98))',
                   backdropFilter: 'blur(22px)',
                   WebkitBackdropFilter: 'blur(22px)',
                   border: '1px solid rgba(255,255,255,0.06)',
@@ -17278,7 +17278,7 @@ function CommerceSettingsView({ user, profile, setView, onLogout, onOwnerProfile
                     width: 38, height: 38, borderRadius: 12, flexShrink: 0,
                     background: G,
                     display: 'flex', alignItems: 'center', justifyContent: 'center',
-                    boxShadow: '0 4px 14px rgba(168,85,247,0.45)',
+                    boxShadow: '0 4px 14px rgba(255,122,89,0.45)',
                   }}>
                     <Settings size={18} color="#fff" strokeWidth={2.4} />
                   </div>
@@ -17330,10 +17330,10 @@ function CommerceSettingsView({ user, profile, setView, onLogout, onOwnerProfile
                           textAlign: 'left',
                           fontFamily: 'inherit',
                         }}>
-                        {I && <I size={17} color={active ? '#0a0612' : 'rgba(255,255,255,0.85)'} strokeWidth={2.2} style={{ flexShrink: 0 }} />}
+                        {I && <I size={17} color={active ? '#110d0a' : 'rgba(255,255,255,0.85)'} strokeWidth={2.2} style={{ flexShrink: 0 }} />}
                         <span style={{
                           fontSize: 13, fontWeight: active ? 800 : 600,
-                          color: active ? '#0a0612' : 'rgba(255,255,255,0.92)',
+                          color: active ? '#110d0a' : 'rgba(255,255,255,0.92)',
                           fontFamily: FN,
                           whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis',
                           flex: 1,
@@ -17349,7 +17349,7 @@ function CommerceSettingsView({ user, profile, setView, onLogout, onOwnerProfile
                           <span style={{ fontSize:8, fontWeight:800, color:'#fff', background:PLANS.pro.color, borderRadius:99, padding:'2px 5px', fontFamily:FN, letterSpacing:'.04em', flexShrink:0 }}>PRO</span>
                         )}
                         {isLocked && !isProLocked && (
-                          <Lock size={11} color={active ? '#0a0612' : C.dust} strokeWidth={2.5} style={{ flexShrink: 0 }} />
+                          <Lock size={11} color={active ? '#110d0a' : C.dust} strokeWidth={2.5} style={{ flexShrink: 0 }} />
                         )}
                       </button>
                     )
@@ -17404,17 +17404,17 @@ function CommerceSettingsView({ user, profile, setView, onLogout, onOwnerProfile
             display: 'inline-flex', alignItems: 'center', gap: 7,
             padding: '8px 14px',
             marginBottom: 14,
-            background: 'rgba(189,75,248,0.12)',
-            border: '1px solid rgba(189,75,248,0.42)',
+            background: 'rgba(255,122,89,0.12)',
+            border: '1px solid rgba(255,122,89,0.42)',
             borderRadius: 99,
-            color: '#D8B4FE',
+            color: '#FFB59E',
             fontFamily: FN, fontSize: 12, fontWeight: 700,
             letterSpacing: '.04em',
             cursor: 'pointer',
             transition: 'background 180ms ease, border-color 180ms ease, color 180ms ease',
           }}
-          onMouseEnter={e => { e.currentTarget.style.background = 'rgba(189,75,248,0.22)'; e.currentTarget.style.color = '#fff' }}
-          onMouseLeave={e => { e.currentTarget.style.background = 'rgba(189,75,248,0.12)'; e.currentTarget.style.color = '#D8B4FE' }}
+          onMouseEnter={e => { e.currentTarget.style.background = 'rgba(255,122,89,0.22)'; e.currentTarget.style.color = '#fff' }}
+          onMouseLeave={e => { e.currentTarget.style.background = 'rgba(255,122,89,0.12)'; e.currentTarget.style.color = '#FFB59E' }}
         >
           <ArrowLeft size={13} strokeWidth={2.6} />
           {previewBackSlug ? 'Volver al preview' : 'Volver a tarjetas'}
@@ -17446,7 +17446,7 @@ function CommerceSettingsView({ user, profile, setView, onLogout, onOwnerProfile
               </>}
             />
           )
-          const sysColor = form?.prog_type === 'stars' ? '#6F30DF' : '#FF199F'
+          const sysColor = form?.prog_type === 'stars' ? '#E03E1B' : '#F0603A'
           const isStars  = form?.prog_type === 'stars'
           const norm     = s => (s||'').toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g,'')
           const q        = norm(memberSearch.trim())
@@ -17502,7 +17502,7 @@ function CommerceSettingsView({ user, profile, setView, onLogout, onOwnerProfile
                         <button onClick={() => setUpgradeModal('clients')} style={{ background:GV, border:'none', borderRadius:9, padding:'8px 18px', color:'#fff', fontFamily:FN, fontSize:12, fontWeight:700, cursor:'pointer', display:'flex', alignItems:'center', gap:5 }}>
                           <Zap size={12} strokeWidth={2} /> Pasar a STARTER
                         </button>
-                        <button onClick={() => setTab('configuracion')} style={{ background:'transparent', border:`1px solid rgba(189,75,248,0.30)`, borderRadius:9, padding:'8px 16px', color:C.mist, fontFamily:FN, fontSize:12, fontWeight:600, cursor:'pointer' }}>
+                        <button onClick={() => setTab('configuracion')} style={{ background:'transparent', border:`1px solid rgba(255,122,89,0.30)`, borderRadius:9, padding:'8px 16px', color:C.mist, fontFamily:FN, fontSize:12, fontWeight:600, cursor:'pointer' }}>
                           Ver planes
                         </button>
                       </div>
@@ -17635,7 +17635,7 @@ function CommerceSettingsView({ user, profile, setView, onLogout, onOwnerProfile
                         </div>
                         {/* Dropdown */}
                         {menuOpen && (
-                          <div style={{ position:'absolute', right:8, top:'calc(100% - 4px)', zIndex:50, background:'rgba(13,8,24,0.97)', backdropFilter:'blur(16px)', WebkitBackdropFilter:'blur(16px)', border:`1px solid ${C.rim}`, borderRadius:12, overflow:'hidden', boxShadow:'0 8px 24px rgba(0,0,0,0.5)', minWidth:168 }}>
+                          <div style={{ position:'absolute', right:8, top:'calc(100% - 4px)', zIndex:50, background:'rgba(20,16,13,0.97)', backdropFilter:'blur(16px)', WebkitBackdropFilter:'blur(16px)', border:`1px solid ${C.rim}`, borderRadius:12, overflow:'hidden', boxShadow:'0 8px 24px rgba(0,0,0,0.5)', minWidth:168 }}>
                             {[
                               { label:'Ver detalle', Icon:User,  action: () => viewMember(m) },
                               { label:'Enviar WhatsApp', Icon:Phone, action: () => {
@@ -17675,7 +17675,7 @@ function CommerceSettingsView({ user, profile, setView, onLogout, onOwnerProfile
               {/* FAB mobile */}
               {hasClients && isMobile && (
                 <button onClick={e => { e.stopPropagation(); setShowAddMemberModal(true) }}
-                  style={{ position:'fixed', bottom:24, right:20, width:52, height:52, borderRadius:'50%', background:GV, border:'none', color:'#fff', cursor:'pointer', zIndex:100, display:'flex', alignItems:'center', justifyContent:'center', boxShadow:'0 4px 20px rgba(168,85,247,0.5)' }}>
+                  style={{ position:'fixed', bottom:24, right:20, width:52, height:52, borderRadius:'50%', background:GV, border:'none', color:'#fff', cursor:'pointer', zIndex:100, display:'flex', alignItems:'center', justifyContent:'center', boxShadow:'0 4px 20px rgba(255,122,89,0.5)' }}>
                   <Plus size={22} strokeWidth={2.5} />
                 </button>
               )}
@@ -17792,7 +17792,7 @@ function CommerceSettingsView({ user, profile, setView, onLogout, onOwnerProfile
             try { localStorage.removeItem('clufix:cameFromPreview') } catch {}
             onOwnerProfile?.()
           }}
-            style={{ display:'inline-flex', alignItems:'center', gap:6, marginBottom:14, padding:'6px 12px 6px 8px', background:'rgba(189,75,248,0.10)', border:'1px solid rgba(189,75,248,0.30)', borderRadius:99, color:'#6F30DF', fontFamily:FN, fontSize:11.5, fontWeight:700, cursor:'pointer' }}>
+            style={{ display:'inline-flex', alignItems:'center', gap:6, marginBottom:14, padding:'6px 12px 6px 8px', background:'rgba(255,122,89,0.10)', border:'1px solid rgba(255,122,89,0.30)', borderRadius:99, color:'#E03E1B', fontFamily:FN, fontSize:11.5, fontWeight:700, cursor:'pointer' }}>
             <ArrowLeft size={13} strokeWidth={2.5} /> Volver a previsualización
           </button>
         )}
@@ -17831,10 +17831,10 @@ function CommerceSettingsView({ user, profile, setView, onLogout, onOwnerProfile
               // - INACTIVE: lavanda pálida (similar al #EDEEFF del reference)
               // Texto e ícono comparten el mismo violeta oscuro de marca para
               // contrastar con el fondo claro de la card.
-              const ACTIVE_BG     = '#7C3AED'   // violeta de marca SÓLIDO — el seleccionado domina
+              const ACTIVE_BG     = '#E03E1B'   // violeta de marca SÓLIDO — el seleccionado domina
               const INACTIVE_BG   = 'rgba(255,255,255,0.05)'  // glass oscuro — el inactivo queda atrás
               const FG_ACTIVE     = '#FFFFFF'   // texto/ícono blanco sobre violeta
-              const FG_INACTIVE   = 'rgba(216,196,255,0.72)'  // violeta claro apagado
+              const FG_INACTIVE   = 'rgba(252,209,199,0.72)'  // violeta claro apagado
               return SHORTCUTS.map(s => {
                 const active = recompensasSubTab === s.id
                 const Icon = s.Icon
@@ -17857,7 +17857,7 @@ function CommerceSettingsView({ user, profile, setView, onLogout, onOwnerProfile
                       fontFamily: 'inherit',
                       textAlign: 'center',
                       boxShadow: active
-                        ? '0 8px 24px -6px rgba(124,58,237,0.65)'
+                        ? '0 8px 24px -6px rgba(224,62,27,0.65)'
                         : 'none',
                       transition: 'background 200ms ease, box-shadow 200ms ease, transform 160ms ease',
                     }}>
@@ -17896,8 +17896,8 @@ function CommerceSettingsView({ user, profile, setView, onLogout, onOwnerProfile
             // pieza continua. Paleta subida en may 2026: bg 0.12 (antes
             // 0.07), border 0.50 (antes 0.32) para mejor contraste sobre
             // el fondo casi negro de la página.
-            background:'rgba(189,75,248,0.12)',
-            border:'1px solid rgba(189,75,248,0.50)',
+            background:'rgba(255,122,89,0.12)',
+            border:'1px solid rgba(255,122,89,0.50)',
             // top-left: 0 si la tab "how" está activa (la solapa se conecta).
             // top-right: 12 (la otra solapa NO está activa, así que hay borde).
             // bottom: 16 ambos.
@@ -17911,7 +17911,7 @@ function CommerceSettingsView({ user, profile, setView, onLogout, onOwnerProfile
           }}>
         {(() => {
           const headerType = pendingSystemType ?? commerce?.prog_type ?? 'stars'
-          const headerCol  = headerType === 'points' ? '#FF199F' : '#6F30DF'
+          const headerCol  = headerType === 'points' ? '#F0603A' : '#E03E1B'
           // headerUnit ya no se usa: el título dejó de ser
           // "¿Cómo suman {unit}?" y pasó a ser fijo "Sistema de
           // acumulación". headerCol sigue tinteando el ícono Gift.
@@ -17940,9 +17940,9 @@ function CommerceSettingsView({ user, profile, setView, onLogout, onOwnerProfile
 
         {(() => {
           const SYSTEMS = [
-            { id:'stars',  Icon:Star, label:'Estrellas', color:'#6F30DF', colorDark:'#6F30DF',
+            { id:'stars',  Icon:Star, label:'Estrellas', color:'#E03E1B', colorDark:'#E03E1B',
               desc:'1 estrella por compra. Simple y visual.' },
-            { id:'points', Icon:Gem,  label:'Puntos',    color:'#FF199F', colorDark:'#d4007f',
+            { id:'points', Icon:Gem,  label:'Puntos',    color:'#F0603A', colorDark:'#c2410c',
               // "Flexible para ticket variable." quitado a pedido del
               // dueño — la idea queda explicada con el ejemplo concreto
               // que se renderiza debajo del card activo.
@@ -18079,8 +18079,8 @@ function CommerceSettingsView({ user, profile, setView, onLogout, onOwnerProfile
                           gastados → 10.000 puntos → premio que cuesta 10.000)
                           para que el dueño entienda la mecánica de un vistazo. */}
                       {currentType === 'points' && (
-                        <div style={{ padding:'10px 12px', background:'rgba(236,72,153,0.08)', border:'1px solid rgba(236,72,153,0.18)', borderRadius:10, fontSize:11.5, color:'rgba(255,255,255,0.70)', lineHeight:1.5, display:'flex', alignItems:'flex-start', gap:9 }}>
-                          <Lightbulb size={13} color="#FF199F" strokeWidth={2.2} style={{ flexShrink:0, marginTop:2 }} />
+                        <div style={{ padding:'10px 12px', background:'rgba(20,184,166,0.08)', border:'1px solid rgba(20,184,166,0.18)', borderRadius:10, fontSize:11.5, color:'rgba(255,255,255,0.70)', lineHeight:1.5, display:'flex', alignItems:'flex-start', gap:9 }}>
+                          <Lightbulb size={13} color="#F0603A" strokeWidth={2.2} style={{ flexShrink:0, marginTop:2 }} />
                           <div>
                             Por ejemplo: si tenés un premio que vale <strong style={{ color:'#fff' }}>10.000 puntos</strong>, significa que tu cliente tiene que haber gastado <strong style={{ color:'#fff' }}>$10.000</strong> en tu negocio.
                           </div>
@@ -18238,8 +18238,8 @@ function CommerceSettingsView({ user, profile, setView, onLogout, onOwnerProfile
                 para estrellas, fucsia para puntos). */}
             {(() => {
               const sysType = pendingSystemType ?? commerce?.prog_type ?? 'stars'
-              const sysCol  = sysType === 'points' ? '#FF199F' : '#6F30DF'
-              const sysColD = sysType === 'points' ? '#d4007f' : '#6F30DF'
+              const sysCol  = sysType === 'points' ? '#F0603A' : '#E03E1B'
+              const sysColD = sysType === 'points' ? '#c2410c' : '#E03E1B'
               const sysUnit = sysType === 'points' ? 'puntos' : 'estrellas'
               const activeDouble = (Array.isArray(promos) ? promos : []).find(p =>
                 p.type === 'double_points' && p.active && (!p.expires_at || new Date(p.expires_at) > new Date())
@@ -18484,13 +18484,13 @@ function CommerceSettingsView({ user, profile, setView, onLogout, onOwnerProfile
                       ? GV
                       : 'rgba(255,255,255,0.04)',
                     border: canSave
-                      ? '1px solid rgba(189,75,248,0.55)'
+                      ? '1px solid rgba(255,122,89,0.55)'
                       : '1px solid rgba(255,255,255,0.08)',
                     color: canSave ? '#fff' : 'rgba(255,255,255,0.40)',
                     fontFamily: FN, fontSize: 13.5, fontWeight: 700,
                     cursor: canSave && !saving ? 'pointer' : 'not-allowed',
                     display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8,
-                    boxShadow: canSave ? '0 6px 20px rgba(189,75,248,0.25)' : 'none',
+                    boxShadow: canSave ? '0 6px 20px rgba(255,122,89,0.25)' : 'none',
                     transition: 'background 200ms ease, border-color 200ms ease, color 200ms ease',
                   }}
                 >
@@ -18662,8 +18662,8 @@ function CommerceSettingsView({ user, profile, setView, onLogout, onOwnerProfile
                 <div style={{ display: 'flex', alignItems: 'flex-start', gap: 14 }}>
                   {p.img_url
                     ? <img src={p.img_url} alt="" style={{ width: 60, height: 60, borderRadius: 14, objectFit: 'cover', flexShrink: 0 }} />
-                    : <div style={{ width: 60, height: 60, borderRadius: 14, background: 'rgba(113,49,225,0.10)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
-                        <Gift size={26} color="#6F30DF" strokeWidth={1.6} />
+                    : <div style={{ width: 60, height: 60, borderRadius: 14, background: 'rgba(224,62,27,0.10)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                        <Gift size={26} color="#E03E1B" strokeWidth={1.6} />
                       </div>
                   }
                   <div style={{ flex: 1, minWidth: 0 }}>
@@ -18682,9 +18682,9 @@ function CommerceSettingsView({ user, profile, setView, onLogout, onOwnerProfile
                       marginTop: 8,
                       padding: '4px 10px',
                       borderRadius: 99,
-                      background: 'rgba(113,49,225,0.15)',
+                      background: 'rgba(224,62,27,0.15)',
                       fontFamily: FN, fontSize: 11, fontWeight: 700,
-                      color: '#B59CFF',
+                      color: '#FFA98E',
                       letterSpacing: '.01em',
                     }}>
                       {p.cost} {unitShort}
@@ -18717,17 +18717,17 @@ function CommerceSettingsView({ user, profile, setView, onLogout, onOwnerProfile
                       <button onClick={() => startEditPrize(p)} title="Editar premio"
                         style={{
                           width: 30, height: 30, borderRadius: '50%',
-                          background: 'rgba(113,49,225,0.15)',
+                          background: 'rgba(224,62,27,0.15)',
                           border: 'none', cursor: 'pointer',
                           display: 'flex', alignItems: 'center', justifyContent: 'center',
                           padding: 0,
                           transition: 'background 160ms ease, transform 120ms ease',
                         }}
-                        onMouseEnter={e => { e.currentTarget.style.background = 'rgba(113,49,225,0.25)' }}
-                        onMouseLeave={e => { e.currentTarget.style.background = 'rgba(113,49,225,0.15)' }}
+                        onMouseEnter={e => { e.currentTarget.style.background = 'rgba(224,62,27,0.25)' }}
+                        onMouseLeave={e => { e.currentTarget.style.background = 'rgba(224,62,27,0.15)' }}
                         onMouseDown={e => { e.currentTarget.style.transform = 'scale(0.92)' }}
                         onMouseUp={e   => { e.currentTarget.style.transform = 'scale(1)' }}>
-                        <Pen size={13} strokeWidth={2.2} color="#B59CFF" />
+                        <Pen size={13} strokeWidth={2.2} color="#FFA98E" />
                       </button>
                       <button onClick={() => deletePrize(p.id)} title="Eliminar premio"
                         style={{
@@ -18785,8 +18785,8 @@ function CommerceSettingsView({ user, profile, setView, onLogout, onOwnerProfile
             {(() => {
               const sysCurrent  = commerce?.prog_type || 'stars'
               const sysUnit     = sysCurrent === 'points' ? 'puntos' : 'estrellas'
-              const sysColor    = sysCurrent === 'points' ? '#FF199F' : '#6F30DF'
-              const sysColorD   = sysCurrent === 'points' ? '#d4007f' : '#6F30DF'
+              const sysColor    = sysCurrent === 'points' ? '#F0603A' : '#E03E1B'
+              const sysColorD   = sysCurrent === 'points' ? '#c2410c' : '#E03E1B'
               const activeForCurrentSys = prizes.filter(p =>
                 p.active && (p.system_type || sysCurrent) === sysCurrent
               )
@@ -18851,7 +18851,7 @@ function CommerceSettingsView({ user, profile, setView, onLogout, onOwnerProfile
                         background: G, border: 'none', color: '#fff',
                         fontFamily: FN, fontSize: 13.5, fontWeight: 800,
                         cursor: 'pointer',
-                        boxShadow: '0 8px 22px -6px rgba(189,75,248,0.55)',
+                        boxShadow: '0 8px 22px -6px rgba(255,122,89,0.55)',
                         display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: 6,
                       }}>
                       <Plus size={14} strokeWidth={2.6} /> Crear mi primer premio
@@ -19014,8 +19014,8 @@ function CommerceSettingsView({ user, profile, setView, onLogout, onOwnerProfile
             // Mismos colores que la tab "how" — panel violeta tinteado,
             // border violeta más visible, sombra suave para elevarlo
             // sobre el fondo. Paleta subida en may 2026.
-            background:'rgba(189,75,248,0.12)',
-            border:'1px solid rgba(189,75,248,0.50)',
+            background:'rgba(255,122,89,0.12)',
+            border:'1px solid rgba(255,122,89,0.50)',
             // Cuando la tab "discount" está activa, la conexión visual va
             // por el TOP-RIGHT (no top-left). Border-radius asimétrico.
             borderRadius:'12px 0 16px 16px',
@@ -19227,7 +19227,7 @@ function CommerceSettingsView({ user, profile, setView, onLogout, onOwnerProfile
             {/* Modal edición de promo activa — descripción + vencimiento. */}
             {editingPromo && (() => {
               const ep = editingPromo
-              const epColor = ep.type === 'discount_next' ? C.v : '#FF199F'
+              const epColor = ep.type === 'discount_next' ? C.v : '#F0603A'
               // Date input value: si tiene expires_at, usamos su fecha (YYYY-MM-DD)
               const initialDate = ep.expires_at
                 ? new Date(ep.expires_at).toISOString().slice(0,10)
@@ -19383,8 +19383,8 @@ function CommerceSettingsView({ user, profile, setView, onLogout, onOwnerProfile
                   // viejo, es color semántico del tipo "suma doble").
                   const isDouble  = p.type === 'double_points'
                   const accentRgb = isDouble ? '236,72,153' : '113,49,225'
-                  const accentColor = isDouble ? '#FF199F' : '#6F30DF'
-                  const accentLight = isDouble ? '#F8A4C8' : '#B59CFF'
+                  const accentColor = isDouble ? '#F0603A' : '#E03E1B'
+                  const accentLight = isDouble ? '#F8A4C8' : '#FFA98E'
                   const typeSym   = isDouble ? '×2' : '−%'
                   const valueText = isDouble ? '×2' : `${p.value}% OFF`
                   const isMock = p.id.startsWith('mock')
@@ -19460,7 +19460,7 @@ function CommerceSettingsView({ user, profile, setView, onLogout, onOwnerProfile
                             <button onClick={() => isMock ? null : setEditingPromo(p)} title="Editar promo"
                               style={{
                                 width: 30, height: 30, borderRadius: '50%',
-                                background: 'rgba(113,49,225,0.15)',
+                                background: 'rgba(224,62,27,0.15)',
                                 border: 'none',
                                 cursor: isMock ? 'default' : 'pointer',
                                 display: 'flex', alignItems: 'center', justifyContent: 'center',
@@ -19468,11 +19468,11 @@ function CommerceSettingsView({ user, profile, setView, onLogout, onOwnerProfile
                                 opacity: isMock ? 0.5 : 1,
                                 transition: 'background 160ms ease, transform 120ms ease',
                               }}
-                              onMouseEnter={e => { if (!isMock) e.currentTarget.style.background = 'rgba(113,49,225,0.25)' }}
-                              onMouseLeave={e => { if (!isMock) e.currentTarget.style.background = 'rgba(113,49,225,0.15)' }}
+                              onMouseEnter={e => { if (!isMock) e.currentTarget.style.background = 'rgba(224,62,27,0.25)' }}
+                              onMouseLeave={e => { if (!isMock) e.currentTarget.style.background = 'rgba(224,62,27,0.15)' }}
                               onMouseDown={e => { if (!isMock) e.currentTarget.style.transform = 'scale(0.92)' }}
                               onMouseUp={e   => { if (!isMock) e.currentTarget.style.transform = 'scale(1)' }}>
-                              <Pen size={13} strokeWidth={2.2} color="#B59CFF" />
+                              <Pen size={13} strokeWidth={2.2} color="#FFA98E" />
                             </button>
                             <button onClick={() => isMock ? null : setConfirmDelete(p)} title="Eliminar promo"
                               style={{
@@ -19519,8 +19519,8 @@ function CommerceSettingsView({ user, profile, setView, onLogout, onOwnerProfile
                 {displayInactivePromos.map(p => {
                   const isDisc = p.type === 'discount_next'
                   const accentRgb  = isDisc ? '113,49,225' : '236,72,153'
-                  const accentColor = isDisc ? '#6F30DF' : '#FF199F'
-                  const accentLight = isDisc ? '#B59CFF' : '#F8A4C8'
+                  const accentColor = isDisc ? '#E03E1B' : '#F0603A'
+                  const accentLight = isDisc ? '#FFA98E' : '#F8A4C8'
                   const typeSym = isDisc ? '−%' : '×2'
                   const valueText = isDisc ? `${p.discount_pct || 0}% OFF` : '×2'
                   const expired = isExpired(p)
@@ -20327,7 +20327,7 @@ function CommerceSettingsView({ user, profile, setView, onLogout, onOwnerProfile
                             color: (saving || !isDirty || Object.values(configErrors || {}).some(Boolean)) ? 'rgba(255,255,255,0.45)' : '#fff',
                             fontFamily: FN, fontSize: 13, fontWeight: 700,
                             cursor: (saving || !isDirty || Object.values(configErrors || {}).some(Boolean)) ? 'default' : 'pointer',
-                            boxShadow: (saving || !isDirty || Object.values(configErrors || {}).some(Boolean)) ? 'none' : '0 6px 18px rgba(189,75,248,0.40)',
+                            boxShadow: (saving || !isDirty || Object.values(configErrors || {}).some(Boolean)) ? 'none' : '0 6px 18px rgba(255,122,89,0.40)',
                             transition: 'background 180ms ease, color 180ms ease, box-shadow 180ms ease',
                             whiteSpace: 'nowrap',
                           }}>
@@ -20347,13 +20347,13 @@ function CommerceSettingsView({ user, profile, setView, onLogout, onOwnerProfile
           // sin marear.
           const iStyle = (hasErr, isEmpty = false) => ({
             background:'rgba(0,0,0,0.30)', backdropFilter:'blur(12px)', WebkitBackdropFilter:'blur(12px)',
-            border:`1px solid ${hasErr ? '#f87171' : (isEmpty ? 'rgba(189,75,248,0.45)' : C.rim)}`,
+            border:`1px solid ${hasErr ? '#f87171' : (isEmpty ? 'rgba(255,122,89,0.45)' : C.rim)}`,
             borderRadius:10, padding:'10px 13px', fontSize:13, color:C.pearl,
             width:'100%', fontFamily:FI, boxSizing:'border-box',
             boxShadow: hasErr
               ? 'none'
               : (isEmpty
-                  ? '0 0 0 1px rgba(189,75,248,0.18), 0 0 18px rgba(189,75,248,0.22)'
+                  ? '0 0 0 1px rgba(255,122,89,0.18), 0 0 18px rgba(255,122,89,0.22)'
                   : 'none'),
             transition: 'border-color 180ms ease, box-shadow 220ms ease',
           })
@@ -20467,7 +20467,7 @@ function CommerceSettingsView({ user, profile, setView, onLogout, onOwnerProfile
                                   <img src={url} alt="" style={{ width:'100%', height:'100%', objectFit:'cover', display:'block' }} />
                                   {/* Badge "principal" en la primera */}
                                   {idx === 0 && (
-                                    <span style={{ position:'absolute', top:6, left:6, fontSize:9, fontWeight:800, color:'#fff', background:'rgba(189,75,248,0.85)', borderRadius:99, padding:'2px 7px', letterSpacing:'.04em', textTransform:'uppercase' }}>
+                                    <span style={{ position:'absolute', top:6, left:6, fontSize:9, fontWeight:800, color:'#fff', background:'rgba(255,122,89,0.85)', borderRadius:99, padding:'2px 7px', letterSpacing:'.04em', textTransform:'uppercase' }}>
                                       Principal
                                     </span>
                                   )}
@@ -20575,11 +20575,11 @@ function CommerceSettingsView({ user, profile, setView, onLogout, onOwnerProfile
                     style={{ ...iStyle(configErrors.category, !(form.category||'').trim()), appearance:'none', cursor:'pointer' }}>
                     <option value="">Seleccioná una categoría...</option>
                     {COMMERCE_FAMILIES.filter(f => f.subs.length > 0).map(fam => (
-                      <optgroup key={fam.id} label={fam.name} style={{ background:'#0D0818', color:C.dust }}>
-                        {fam.subs.map(s => <option key={s.name} value={s.name} style={{ background:'#0D0818', color:C.white }}>{s.name}</option>)}
+                      <optgroup key={fam.id} label={fam.name} style={{ background:'#14100D', color:C.dust }}>
+                        {fam.subs.map(s => <option key={s.name} value={s.name} style={{ background:'#14100D', color:C.white }}>{s.name}</option>)}
                       </optgroup>
                     ))}
-                    <option value="Otro" style={{ background:'#0D0818', color:C.white }}>Otro</option>
+                    <option value="Otro" style={{ background:'#14100D', color:C.white }}>Otro</option>
                   </select>
                   <FieldError field="category" />
                 </div>
@@ -20639,11 +20639,11 @@ function CommerceSettingsView({ user, profile, setView, onLogout, onOwnerProfile
                         display:'flex', alignItems:'center',
                         background:'rgba(0,0,0,0.30)',
                         backdropFilter:'blur(12px)', WebkitBackdropFilter:'blur(12px)',
-                        border:`1px solid ${isEmpty ? 'rgba(189,75,248,0.45)' : C.rim}`,
+                        border:`1px solid ${isEmpty ? 'rgba(255,122,89,0.45)' : C.rim}`,
                         borderRadius:10, padding:'0 13px',
                         fontFamily:FI, boxSizing:'border-box',
                         boxShadow: isEmpty
-                          ? '0 0 0 1px rgba(189,75,248,0.18), 0 0 18px rgba(189,75,248,0.22)'
+                          ? '0 0 0 1px rgba(255,122,89,0.18), 0 0 18px rgba(255,122,89,0.22)'
                           : 'none',
                         transition: 'border-color 180ms ease, box-shadow 220ms ease',
                       }}>
@@ -20678,11 +20678,11 @@ function CommerceSettingsView({ user, profile, setView, onLogout, onOwnerProfile
                         display:'flex', alignItems:'center',
                         background:'rgba(0,0,0,0.30)',
                         backdropFilter:'blur(12px)', WebkitBackdropFilter:'blur(12px)',
-                        border:`1px solid ${isEmpty ? 'rgba(189,75,248,0.45)' : C.rim}`,
+                        border:`1px solid ${isEmpty ? 'rgba(255,122,89,0.45)' : C.rim}`,
                         borderRadius:10, padding:'0 13px',
                         fontFamily:FI, boxSizing:'border-box',
                         boxShadow: isEmpty
-                          ? '0 0 0 1px rgba(189,75,248,0.18), 0 0 18px rgba(189,75,248,0.22)'
+                          ? '0 0 0 1px rgba(255,122,89,0.18), 0 0 18px rgba(255,122,89,0.22)'
                           : 'none',
                         transition: 'border-color 180ms ease, box-shadow 220ms ease',
                       }}>
@@ -20801,12 +20801,12 @@ function CommerceSettingsView({ user, profile, setView, onLogout, onOwnerProfile
                     pointerEvents: 'auto',
                     display: 'flex', alignItems: 'center', gap: 10,
                     padding: '10px 14px',
-                    background: 'rgba(8,4,18,0.92)',
+                    background: 'rgba(14,11,9,0.92)',
                     backdropFilter: 'blur(18px) saturate(180%)',
                     WebkitBackdropFilter: 'blur(18px) saturate(180%)',
                     border: '1px solid rgba(255,255,255,0.14)',
                     borderRadius: 99,
-                    boxShadow: '0 12px 36px rgba(0,0,0,0.55), 0 4px 16px rgba(189,75,248,0.30)',
+                    boxShadow: '0 12px 36px rgba(0,0,0,0.55), 0 4px 16px rgba(255,122,89,0.30)',
                     maxWidth: 460, width: '100%',
                   }}>
                     <div style={{
@@ -20817,7 +20817,7 @@ function CommerceSettingsView({ user, profile, setView, onLogout, onOwnerProfile
                     }}>
                       <span style={{
                         display: 'inline-block', width: 6, height: 6, borderRadius: '50%',
-                        background: isDirty ? '#FF199F' : '#22C55E', marginRight: 8, verticalAlign: 'middle',
+                        background: isDirty ? '#F0603A' : '#22C55E', marginRight: 8, verticalAlign: 'middle',
                         boxShadow: isDirty ? '0 0 6px rgba(245,166,35,0.85)' : '0 0 6px rgba(34,197,94,0.7)',
                       }} />
                       {isDirty ? 'Cambios sin guardar' : 'Todo guardado'}
@@ -21181,7 +21181,7 @@ function CommerceSettingsView({ user, profile, setView, onLogout, onOwnerProfile
                   localStorage con clave separada. */}
               {(() => {
                 const onColor  = '#22E698'
-                const offColor = '#FF199F'
+                const offColor = '#F0603A'
                 const c = messagesConfigured ? onColor : offColor
                 const handleToggle = () => {
                   const next = !messagesConfigured
@@ -21546,14 +21546,14 @@ function ClientQRView({ user, profile, setView, headerExtra }) {
       </button>
 
       {/* ── PASE VIP ── */}
-      <div style={{ width:'100%', maxWidth:340, borderRadius:28, overflow:'hidden', boxShadow:'0 24px 64px rgba(189,75,248,0.30), 0 8px 24px rgba(0,0,0,0.50)' }}>
+      <div style={{ width:'100%', maxWidth:340, borderRadius:28, overflow:'hidden', boxShadow:'0 24px 64px rgba(255,122,89,0.30), 0 8px 24px rgba(0,0,0,0.50)' }}>
 
         {/* Cuerpo del pase */}
-        <div style={{ background:'#6F30DF', padding:'24px 24px 28px', position:'relative', overflow:'hidden' }}>
+        <div style={{ background:'#E03E1B', padding:'24px 24px 28px', position:'relative', overflow:'hidden' }}>
 
           {/* Blobs decorativos */}
           <div style={{ position:'absolute', top:-32, right:-32, width:120, height:120, borderRadius:'50%', background:'rgba(255,255,255,0.10)', filter:'blur(24px)', pointerEvents:'none' }} />
-          <div style={{ position:'absolute', bottom:-24, left:-16, width:90, height:90, borderRadius:'50%', background:'rgba(236,72,153,0.25)', filter:'blur(20px)', pointerEvents:'none' }} />
+          <div style={{ position:'absolute', bottom:-24, left:-16, width:90, height:90, borderRadius:'50%', background:'rgba(20,184,166,0.25)', filter:'blur(20px)', pointerEvents:'none' }} />
           <div style={{ position:'absolute', top:'40%', left:'30%', width:160, height:160, borderRadius:'50%', background:'rgba(255,255,255,0.04)', filter:'blur(32px)', pointerEvents:'none' }} />
 
           {/* Header */}
@@ -21598,14 +21598,14 @@ function ClientQRView({ user, profile, setView, headerExtra }) {
         </div>
 
         {/* Separador tipo ticket */}
-        <div style={{ position:'relative', background:'#6F30DF' }}>
+        <div style={{ position:'relative', background:'#E03E1B' }}>
           <div style={{ position:'absolute', left:-1, top:'50%', transform:'translateY(-50%)', width:18, height:18, borderRadius:'50%', background:'#000', zIndex:2 }} />
           <div style={{ position:'absolute', right:-1, top:'50%', transform:'translateY(-50%)', width:18, height:18, borderRadius:'50%', background:'#000', zIndex:2 }} />
           <div style={{ borderTop:'1.5px dashed rgba(255,255,255,0.20)', margin:'0 22px' }} />
         </div>
 
         {/* Footer del pase */}
-        <div style={{ background:'linear-gradient(to bottom right, #4c1d95, #3b0764)', padding:'14px 24px 16px', textAlign:'center' }}>
+        <div style={{ background:'linear-gradient(to bottom right, #7a2410, #483323)', padding:'14px 24px 16px', textAlign:'center' }}>
           <div style={{ fontFamily:FI, fontSize:11, color:'rgba(255,255,255,0.50)', letterSpacing:'.04em' }}>
             Mostrá este código en caja para acumular beneficios
           </div>
@@ -22094,7 +22094,7 @@ function ScannerView({ user, profile, setView }) {
 
   const unitIcon = result?.prog_type === 'stars' ? '★' : '◆'
   const unitLabel = result?.prog_type === 'stars' ? 'estrellas' : 'puntos'
-  const unitColor = result?.prog_type === 'stars' ? '#6F30DF' : '#FF199F'
+  const unitColor = result?.prog_type === 'stars' ? '#E03E1B' : '#F0603A'
 
   // Pantalla inicial — opciones agrupadas en dos secciones según la acción
   // que requieren del usuario:
@@ -22111,22 +22111,22 @@ function ScannerView({ user, profile, setView }) {
         title: 'Registrar visita de cliente',
         desc: 'Escaneá el QR personal de un cliente para sumarle visita o canjear un premio.',
         Icon: ScanLine,
-        bg:         'linear-gradient(135deg, rgba(124,58,237,0.16), rgba(139,92,246,0.10))',
-        border:     'rgba(139,92,246,0.40)',
-        iconBg:     '#6F30DF',
-        shadow:     '0 4px 18px rgba(139,92,246,0.40)',
-        descColor:  'rgba(229,221,255,0.75)',
-        arrowColor: 'rgba(196,181,253,0.85)',
+        bg:         'linear-gradient(135deg, rgba(224,62,27,0.16), rgba(232,67,31,0.10))',
+        border:     'rgba(232,67,31,0.40)',
+        iconBg:     '#E03E1B',
+        shadow:     '0 4px 18px rgba(232,67,31,0.40)',
+        descColor:  'rgba(253,228,223,0.75)',
+        arrowColor: 'rgba(255,181,158,0.85)',
       },
       {
         id: 'join-club',
         title: 'Quiero sumarme a un club',
         desc: 'Sumate como cliente a otro comercio escaneando su QR.',
         Icon: ScanLine,
-        bg:         'linear-gradient(135deg, rgba(219,39,119,0.16), rgba(236,72,153,0.10))',
-        border:     'rgba(236,72,153,0.40)',
-        iconBg:     '#FF199F',
-        shadow:     '0 4px 18px rgba(236,72,153,0.40)',
+        bg:         'linear-gradient(135deg, rgba(14,147,132,0.16), rgba(20,184,166,0.10))',
+        border:     'rgba(20,184,166,0.40)',
+        iconBg:     '#F0603A',
+        shadow:     '0 4px 18px rgba(20,184,166,0.40)',
         descColor:  'rgba(255,221,236,0.75)',
         arrowColor: 'rgba(251,182,206,0.85)',
       },
@@ -22138,12 +22138,12 @@ function ScannerView({ user, profile, setView }) {
         desc: 'Mostralo a un cliente para que se una al club desde su celular.',
         Icon: Store,
         // Violeta — el QR del local lleva ese color en toda la app.
-        bg:         'linear-gradient(135deg, rgba(124,58,237,0.16), rgba(139,92,246,0.10))',
-        border:     'rgba(139,92,246,0.40)',
-        iconBg:     '#6F30DF',
-        shadow:     '0 4px 18px rgba(139,92,246,0.40)',
-        descColor:  'rgba(229,221,255,0.78)',
-        arrowColor: 'rgba(196,181,253,0.85)',
+        bg:         'linear-gradient(135deg, rgba(224,62,27,0.16), rgba(232,67,31,0.10))',
+        border:     'rgba(232,67,31,0.40)',
+        iconBg:     '#E03E1B',
+        shadow:     '0 4px 18px rgba(232,67,31,0.40)',
+        descColor:  'rgba(253,228,223,0.78)',
+        arrowColor: 'rgba(255,181,158,0.85)',
       },
       {
         id: 'show-my-qr',
@@ -22152,7 +22152,7 @@ function ScannerView({ user, profile, setView }) {
         Icon: User,
         bg:         'linear-gradient(135deg, rgba(254,80,0,0.16), rgba(251,113,133,0.10))',
         border:     'rgba(251,113,133,0.40)',
-        iconBg:     '#FF199F',
+        iconBg:     '#F0603A',
         shadow:     '0 4px 18px rgba(254,80,0,0.40)',
         descColor:  'rgba(255,228,222,0.78)',
         arrowColor: 'rgba(252,165,165,0.85)',
@@ -22168,7 +22168,7 @@ function ScannerView({ user, profile, setView }) {
         padding:'0 4px 10px',
         marginBottom:2,
       }}>
-        <div style={{ width:3, height:14, borderRadius:99, background:'#6F30DF' }} />
+        <div style={{ width:3, height:14, borderRadius:99, background:'#E03E1B' }} />
         <div style={{
           fontFamily:FN, fontSize:11.5, fontWeight:800,
           color:'rgba(255,255,255,0.85)',
@@ -22194,7 +22194,7 @@ function ScannerView({ user, profile, setView }) {
             width:'100%', textAlign:'left',
             padding:'16px 16px',
             background:'transparent',
-            border:'1px solid rgba(168,85,247,0.35)',
+            border:'1px solid rgba(255,122,89,0.35)',
             borderRadius:14,
             cursor:'pointer',
             display:'flex', alignItems:'center', gap:14,
@@ -22204,12 +22204,12 @@ function ScannerView({ user, profile, setView }) {
           onMouseDown={e => e.currentTarget.style.transform = 'scale(0.98)'}
           onMouseUp={e => e.currentTarget.style.transform = 'scale(1)'}
           onMouseLeave={e => e.currentTarget.style.transform = 'scale(1)'}
-          onMouseEnter={e => e.currentTarget.style.background = 'rgba(168,85,247,0.06)'}
+          onMouseEnter={e => e.currentTarget.style.background = 'rgba(255,122,89,0.06)'}
           onPointerLeave={e => e.currentTarget.style.background = 'transparent'}>
           <div style={{
             width:42, height:42, borderRadius:11,
             background:'transparent',
-            border: businessLogo ? '1px solid rgba(255,255,255,0.18)' : '1px solid rgba(168,85,247,0.45)',
+            border: businessLogo ? '1px solid rgba(255,255,255,0.18)' : '1px solid rgba(255,122,89,0.45)',
             display:'flex', alignItems:'center', justifyContent:'center',
             flexShrink:0,
             overflow: 'hidden',
@@ -22218,14 +22218,14 @@ function ScannerView({ user, profile, setView }) {
               <img src={businessLogo} alt="Logo del negocio"
                 style={{ width:'100%', height:'100%', objectFit:'cover', display:'block' }} />
             ) : (
-              <opt.Icon size={20} color="#D8B4FE" strokeWidth={2} />
+              <opt.Icon size={20} color="#FFB59E" strokeWidth={2} />
             )}
           </div>
           <div style={{ flex:1, minWidth:0 }}>
             <div style={{ fontFamily:FN, fontSize:14, fontWeight:700, color:'#fff', marginBottom:3 }}>{opt.title}</div>
-            <div style={{ fontSize:12, color:'rgba(216,180,254,0.65)', lineHeight:1.45 }}>{opt.desc}</div>
+            <div style={{ fontSize:12, color:'rgba(251,195,183,0.65)', lineHeight:1.45 }}>{opt.desc}</div>
           </div>
-          <ArrowRight size={18} color="rgba(216,180,254,0.85)" strokeWidth={2.2} style={{ flexShrink:0 }} />
+          <ArrowRight size={18} color="rgba(251,195,183,0.85)" strokeWidth={2.2} style={{ flexShrink:0 }} />
         </button>
       )
     }
@@ -22291,11 +22291,11 @@ function ScannerView({ user, profile, setView }) {
             </span>
           )
           const VIOLET = {
-            bg:         'linear-gradient(135deg, rgba(124,58,237,0.18), rgba(168,85,247,0.10), rgba(189,75,248,0.14))',
-            border:     'rgba(168,85,247,0.42)',
-            iconBg:     '#6F30DF',
-            shadow:     '0 6px 22px rgba(168,85,247,0.40)',
-            arrowColor: 'rgba(196,181,253,0.88)',
+            bg:         'linear-gradient(135deg, rgba(224,62,27,0.18), rgba(255,122,89,0.10), rgba(255,122,89,0.14))',
+            border:     'rgba(255,122,89,0.42)',
+            iconBg:     '#E03E1B',
+            shadow:     '0 6px 22px rgba(255,122,89,0.40)',
+            arrowColor: 'rgba(255,181,158,0.88)',
           }
           // Si no es owner, las opciones de "registrar visita" y "mostrar QR
           // del negocio" no aplican — solo dejamos las de cliente.
@@ -22332,7 +22332,7 @@ function ScannerView({ user, profile, setView }) {
                     display:'flex', alignItems:'center', justifyContent:'center',
                     flexShrink:0,
                   }}>
-                    <sec.Icon size={42} color="#C4B5FD" strokeWidth={2.2} />
+                    <sec.Icon size={42} color="#FFB59E" strokeWidth={2.2} />
                   </div>
                   <div style={{ flex:1, minWidth:0, fontFamily:FN, fontSize:15, fontWeight:800, color:'#fff' }}>
                     {sec.title}
@@ -22532,7 +22532,7 @@ function ScannerView({ user, profile, setView }) {
         return (
           <PCard style={{ padding:16, marginBottom:14 }}>
             <div style={{ fontSize:11, color:C.mist, marginBottom:6, fontFamily:FN, fontWeight:600, display:'flex', alignItems:'center', gap:5 }}>
-              <Gem size={11} color="#FF199F" strokeWidth={2} /> Monto de la compra (en pesos)
+              <Gem size={11} color="#F0603A" strokeWidth={2} /> Monto de la compra (en pesos)
             </div>
             <input type="number" min={1} value={amount} onChange={e => setAmount(e.target.value)}
               placeholder="Ej: 2500" inputMode="numeric"
@@ -22581,7 +22581,7 @@ function ScannerView({ user, profile, setView }) {
         <div onClick={() => { setScanGate(null); setSkipStar(false) }}
           style={{ position:'fixed', inset:0, zIndex:9999, background:'rgba(0,0,0,0.82)', backdropFilter:'blur(12px)', WebkitBackdropFilter:'blur(12px)', display:'flex', alignItems:'center', justifyContent:'center', padding:20 }}>
           <div onClick={e => e.stopPropagation()}
-            style={{ position:'relative', borderRadius:20, padding:'24px 22px', width:'100%', maxWidth:360, background:'linear-gradient(180deg, rgba(254,80,0,0.18) 0%, rgba(189,75,248,0.10) 60%, rgba(0,0,0,0.4) 100%)', border:'1px solid rgba(254,80,0,0.40)', boxShadow:'0 32px 80px rgba(254,80,0,0.20)' }}>
+            style={{ position:'relative', borderRadius:20, padding:'24px 22px', width:'100%', maxWidth:360, background:'linear-gradient(180deg, rgba(254,80,0,0.18) 0%, rgba(255,122,89,0.10) 60%, rgba(0,0,0,0.4) 100%)', border:'1px solid rgba(254,80,0,0.40)', boxShadow:'0 32px 80px rgba(254,80,0,0.20)' }}>
             <button onClick={() => { setScanGate(null); setSkipStar(false) }} aria-label="Cerrar"
               style={{ position:'absolute', top:14, right:14, width:30, height:30, borderRadius:'50%', background:'rgba(0,0,0,0.40)', border:'1px solid rgba(255,255,255,0.18)', color:'#fff', display:'flex', alignItems:'center', justifyContent:'center', cursor:'pointer', padding:0 }}>
               <X size={14} strokeWidth={2.5} />
@@ -22645,12 +22645,12 @@ function ScannerView({ user, profile, setView }) {
         <div onClick={() => submitDiscountDecision('decline')}
           style={{ position:'fixed', inset:0, zIndex:9999, background:'rgba(0,0,0,0.82)', backdropFilter:'blur(12px)', WebkitBackdropFilter:'blur(12px)', display:'flex', alignItems:'center', justifyContent:'center', padding:20 }}>
           <div onClick={e => e.stopPropagation()}
-            style={{ position:'relative', borderRadius:20, padding:'24px 22px', width:'100%', maxWidth:360, background:'linear-gradient(180deg, rgba(189,75,248,0.18) 0%, rgba(189,75,248,0.04) 60%, rgba(0,0,0,0.4) 100%)', border:'1px solid rgba(189,75,248,0.40)', boxShadow:'0 32px 80px rgba(189,75,248,0.25)' }}>
+            style={{ position:'relative', borderRadius:20, padding:'24px 22px', width:'100%', maxWidth:360, background:'linear-gradient(180deg, rgba(255,122,89,0.18) 0%, rgba(255,122,89,0.04) 60%, rgba(0,0,0,0.4) 100%)', border:'1px solid rgba(255,122,89,0.40)', boxShadow:'0 32px 80px rgba(255,122,89,0.25)' }}>
             <button onClick={() => submitDiscountDecision('decline')} aria-label="Cerrar"
               style={{ position:'absolute', top:14, right:14, width:30, height:30, borderRadius:'50%', background:'rgba(0,0,0,0.40)', border:'1px solid rgba(255,255,255,0.18)', color:'#fff', display:'flex', alignItems:'center', justifyContent:'center', cursor:'pointer', padding:0 }}>
               <X size={14} strokeWidth={2.5} />
             </button>
-            <div style={{ width:54, height:54, borderRadius:14, background:'rgba(189,75,248,0.22)', border:'1px solid rgba(189,75,248,0.50)', display:'flex', alignItems:'center', justifyContent:'center', marginBottom:14 }}>
+            <div style={{ width:54, height:54, borderRadius:14, background:'rgba(255,122,89,0.22)', border:'1px solid rgba(255,122,89,0.50)', display:'flex', alignItems:'center', justifyContent:'center', marginBottom:14 }}>
               <RefreshCw size={26} color={C.v} strokeWidth={2} />
             </div>
             <div style={{ fontFamily:FN, fontSize:11, fontWeight:800, color:C.v, letterSpacing:'.08em', textTransform:'uppercase', marginBottom:6 }}>Descuento canjeado</div>
@@ -22784,13 +22784,13 @@ function ScannerView({ user, profile, setView }) {
               if (isStars) {
                 narrativeLines.push({
                   icon: Star,
-                  color: '#6F30DF',
+                  color: '#E03E1B',
                   text: <><strong>{firstName}</strong> ganó <strong>{earned} estrella{earned !== 1 ? 's' : ''}</strong> por su compra.</>,
                 })
               } else {
                 narrativeLines.push({
                   icon: Gem,
-                  color: '#FF199F',
+                  color: '#F0603A',
                   text: <><strong>{firstName}</strong> ganó <strong>{earned} punto{earned !== 1 ? 's' : ''}</strong> por su compra{result.double_active ? <> <span style={{ color:C.v, fontWeight:700 }}>(×2 hoy)</span></> : null}.</>,
                 })
               }
@@ -22966,12 +22966,12 @@ function ScannerView({ user, profile, setView }) {
                   } else {
                     tone = 'amber'
                     label = 'Cupón próxima compra'
-                    body = <>No tenés cupón activo. <span style={{ color: '#FF199F', fontWeight: 700 }}>Activalo en Recompensas →</span></>
+                    body = <>No tenés cupón activo. <span style={{ color: '#F0603A', fontWeight: 700 }}>Activalo en Recompensas →</span></>
                   }
                   const palette = tone === 'green'
                     ? { bg:'rgba(34,230,152,0.08)', border:'rgba(34,230,152,0.30)', iconBg:'rgba(34,230,152,0.18)', iconBorder:'rgba(34,230,152,0.45)', icon:'#22E698', label:'#22E698' }
                     : tone === 'amber'
-                      ? { bg:'rgba(245,166,35,0.08)', border:'rgba(245,166,35,0.32)', iconBg:'rgba(245,166,35,0.18)', iconBorder:'rgba(245,166,35,0.45)', icon:'#FF199F', label:'#FF199F' }
+                      ? { bg:'rgba(245,166,35,0.08)', border:'rgba(245,166,35,0.32)', iconBg:'rgba(245,166,35,0.18)', iconBorder:'rgba(245,166,35,0.45)', icon:'#F0603A', label:'#F0603A' }
                       : { bg:'rgba(255,255,255,0.04)', border:'rgba(255,255,255,0.10)', iconBg:'rgba(255,255,255,0.06)', iconBorder:'rgba(255,255,255,0.16)', icon:'rgba(255,255,255,0.55)', label:'rgba(255,255,255,0.55)' }
                   return (
                 <div style={{
@@ -23017,7 +23017,7 @@ function ScannerView({ user, profile, setView }) {
                         padding: '7px 11px', borderRadius: 8,
                         background: 'rgba(245,166,35,0.18)',
                         border: '1px solid rgba(245,166,35,0.45)',
-                        color: '#FF199F',
+                        color: '#F0603A',
                         fontFamily: FN, fontSize: 10.5, fontWeight: 800,
                         cursor: 'pointer',
                         letterSpacing: '.04em',
@@ -23900,7 +23900,7 @@ function SwitchTooltip({ onDismiss }) {
           width: rect.width + 8,
           height: rect.height + 8,
           borderRadius: 999,
-          boxShadow: '0 0 0 4px rgba(113,49,225,0.6)',
+          boxShadow: '0 0 0 4px rgba(224,62,27,0.6)',
           background: 'transparent',
           pointerEvents: 'none',
           zIndex: 9001,
@@ -23912,8 +23912,8 @@ function SwitchTooltip({ onDismiss }) {
         top: cardTop,
         right: cardRight,
         width: 260,
-        background: '#150B26',
-        border: '1px solid rgba(113,49,225,0.45)',
+        background: '#211710',
+        border: '1px solid rgba(224,62,27,0.45)',
         borderRadius: 16,
         padding: '18px 16px 14px',
         zIndex: 9002,
@@ -23927,8 +23927,8 @@ function SwitchTooltip({ onDismiss }) {
           top: -7,
           right: arrowRightOffset,
           width: 13, height: 13,
-          background: '#150B26',
-          border: '1px solid rgba(113,49,225,0.45)',
+          background: '#211710',
+          border: '1px solid rgba(224,62,27,0.45)',
           borderRight: 'none', borderBottom: 'none',
           transform: 'rotate(45deg)',
         }} />
@@ -23942,7 +23942,7 @@ function SwitchTooltip({ onDismiss }) {
           onClick={onDismiss}
           style={{
             width: '100%', padding:'10px',
-            background: '#6F30DF', border:'none',
+            background: '#E03E1B', border:'none',
             borderRadius: 10,
             color: '#fff', fontFamily:FN, fontSize:13, fontWeight:700,
             cursor: 'pointer',
@@ -24542,7 +24542,7 @@ export default function App() {
   // callback, dejamos que el flujo siga sin interrumpir.
   return (
     <>
-      <style>{`input:focus { outline: none; border-color: #6F30DF !important; box-shadow: 0 0 0 3px #6F30DF18; }`}</style>
+      <style>{`input:focus { outline: none; border-color: #E03E1B !important; box-shadow: 0 0 0 3px #E03E1B18; }`}</style>
       <ToastContainer />
       <ConfirmModal />
       <SwRegister />

@@ -19,16 +19,16 @@ import {
 
 // ─── PALETTE (idéntica a app/page.js) ────────────────────────────────────────
 // Rebrand mayo 2026 fase 2: G y GV pasaron de gradient orange→fucsia y
-// violeta-deep→violeta a violeta brand sólido (#6F30DF). v y v1 también
-// migran al brand. o (#FF199F) queda solo como acento semántico naranja.
-const G  = '#6F30DF'
-const GV = '#6F30DF'
+// violeta-deep→violeta a violeta brand sólido (#E03E1B). v y v1 también
+// migran al brand. o (#F0603A) queda solo como acento semántico naranja.
+const G  = '#E03E1B'
+const GV = '#E03E1B'
 const C  = {
   bg:'#000', bg2:'rgba(255,255,255,0.05)', bg3:'rgba(255,255,255,0.04)',
   card:'rgba(255,255,255,0.06)', cardH:'rgba(255,255,255,0.10)',
   rim:'rgba(255,255,255,0.10)', rimH:'rgba(255,255,255,0.20)',
-  white:'#FFFFFF', pearl:'#F0EAFF', mist:'#9B85CC', dust:'#8370AD',
-  o:'#FF199F', v:'#6F30DF', v1:'#3D0A9E',
+  white:'#FFFFFF', pearl:'#FFEDE6', mist:'#B3A596', dust:'#9A8C7E',
+  o:'#F0603A', v:'#E03E1B', v1:'#8F2A12',
   ok:'#22E698', warn:'#F59E0B', info:'#40C8FF',
 }
 const FN = "'Space Grotesk', system-ui, sans-serif"
@@ -36,8 +36,8 @@ const FI = "'Inter', system-ui, sans-serif"
 
 const PLANS = {
   free:    { label:'FREE',    color:'#9CA3AF' },
-  starter: { label:'STARTER', color:'#6F30DF' },
-  pro:     { label:'PRO',     color:'#FF199F' },
+  starter: { label:'STARTER', color:'#E03E1B' },
+  pro:     { label:'PRO',     color:'#F0603A' },
 }
 
 // ─── DATOS MOCK ──────────────────────────────────────────────────────────────
@@ -119,7 +119,7 @@ const DEMO_CLIENT_MEMBERSHIPS = [
     nextPrize:{ name:'Café gratis', cost:15, missing:3 },
     activeCoupon:{ promo_id:'pr1', value:20, label:'20% OFF próxima visita', expires_at:daysFromNow(5) },
     Icon: Coffee,
-    color:'#6F30DF',
+    color:'#E03E1B',
   },
   {
     id:'cm2',
@@ -134,7 +134,7 @@ const DEMO_CLIENT_MEMBERSHIPS = [
     nextPrize:{ name:'Corte de pelo gratis', cost:8, missing:4 },
     activeCoupon:null,
     Icon: Scissors,
-    color:'#6F30DF',
+    color:'#E03E1B',
   },
   {
     id:'cm3',
@@ -149,16 +149,16 @@ const DEMO_CLIENT_MEMBERSHIPS = [
     nextPrize:{ name:'Pizza muzzarella', cost:25, missing:17 },
     activeCoupon:null,
     Icon: Pizza,
-    color:'#FF199F',
+    color:'#F0603A',
   },
 ]
 
 const DEMO_CLIENT_PRIZES = [
-  { id:'cp1', commerce:'Aurora · Café & Brunch', name:'Café gratis',          cost:15, isStars:false, balance:12, color:'#6F30DF', Icon: Gift },
-  { id:'cp2', commerce:'Aurora · Café & Brunch', name:'Medialunas x4',        cost:8,  isStars:false, balance:12, color:'#6F30DF', Icon: Gift },
-  { id:'cp3', commerce:'Aurora · Café & Brunch', name:'20% OFF en tu visita', cost:25, isStars:false, balance:12, color:'#6F30DF', Icon: Percent },
-  { id:'cp4', commerce:'Estética Ottavia',       name:'Corte de pelo gratis', cost:8,  isStars:true,  balance:4,  color:'#6F30DF', Icon: Gift },
-  { id:'cp5', commerce:'Pizzería Don Vito',      name:'Pizza muzzarella',     cost:25, isStars:false, balance:8,  color:'#FF199F', Icon: Gift },
+  { id:'cp1', commerce:'Aurora · Café & Brunch', name:'Café gratis',          cost:15, isStars:false, balance:12, color:'#E03E1B', Icon: Gift },
+  { id:'cp2', commerce:'Aurora · Café & Brunch', name:'Medialunas x4',        cost:8,  isStars:false, balance:12, color:'#E03E1B', Icon: Gift },
+  { id:'cp3', commerce:'Aurora · Café & Brunch', name:'20% OFF en tu visita', cost:25, isStars:false, balance:12, color:'#E03E1B', Icon: Percent },
+  { id:'cp4', commerce:'Estética Ottavia',       name:'Corte de pelo gratis', cost:8,  isStars:true,  balance:4,  color:'#E03E1B', Icon: Gift },
+  { id:'cp5', commerce:'Pizzería Don Vito',      name:'Pizza muzzarella',     cost:25, isStars:false, balance:8,  color:'#F0603A', Icon: Gift },
 ]
 
 const DEMO_CLIENT_HISTORY = [
@@ -237,7 +237,7 @@ function DemoBanner({ onCta }) {
   return (
     <div style={{
       position: 'sticky', top: 0, zIndex: 60,
-      background: 'rgba(15, 8, 28, 0.86)',
+      background: 'rgba(20, 15, 12, 0.86)',
       backdropFilter: 'blur(18px)', WebkitBackdropFilter: 'blur(18px)',
       borderBottom: `1px solid ${C.v}33`,
       padding: '10px 18px',
@@ -279,7 +279,7 @@ function DemoBanner({ onCta }) {
           padding: '8px 16px', color: '#fff',
           fontFamily: FN, fontSize: 12, fontWeight: 700,
           cursor: 'pointer', whiteSpace: 'nowrap',
-          boxShadow: '0 4px 18px rgba(113,49,225,.35)',
+          boxShadow: '0 4px 18px rgba(224,62,27,.35)',
           display: 'inline-flex', alignItems: 'center', gap: 6,
         }}
       >
@@ -301,7 +301,7 @@ function RolePickerModal({ onPick }) {
     }}>
       <div style={{
         width: '100%', maxWidth: 440,
-        background: 'linear-gradient(180deg, rgba(28,18,42,0.96), rgba(18,10,28,0.96))',
+        background: 'linear-gradient(180deg, rgba(41,28,19,0.96), rgba(26,18,12,0.96))',
         border: '1px solid rgba(255,255,255,0.10)',
         borderRadius: 22, padding: '28px 24px 24px',
         boxShadow: `0 32px 80px rgba(0,0,0,0.6), 0 0 60px -20px ${C.v}55`,
@@ -337,17 +337,17 @@ function RolePickerModal({ onPick }) {
             width: '100%', textAlign: 'left',
             display: 'flex', alignItems: 'center', gap: 12,
             padding: '14px 16px', borderRadius: 14,
-            background: 'rgba(113,49,225,0.10)',
-            border: '1.5px solid rgba(113,49,225,0.32)',
+            background: 'rgba(224,62,27,0.10)',
+            border: '1.5px solid rgba(224,62,27,0.32)',
             color: C.white, cursor: 'pointer', marginBottom: 10,
             transition: 'background 180ms ease, border 180ms ease',
           }}
-          onMouseEnter={e => { e.currentTarget.style.background = 'rgba(113,49,225,0.18)' }}
-          onMouseLeave={e => { e.currentTarget.style.background = 'rgba(113,49,225,0.10)' }}
+          onMouseEnter={e => { e.currentTarget.style.background = 'rgba(224,62,27,0.18)' }}
+          onMouseLeave={e => { e.currentTarget.style.background = 'rgba(224,62,27,0.10)' }}
         >
           <div style={{
             width: 42, height: 42, borderRadius: 12,
-            background: 'rgba(113,49,225,0.22)',
+            background: 'rgba(224,62,27,0.22)',
             display: 'flex', alignItems: 'center', justifyContent: 'center',
             flexShrink: 0,
           }}>
@@ -423,7 +423,7 @@ function RoleSwitcher({ mode, onSwitch }) {
         position: 'fixed', bottom: 22, right: 22, zIndex: 50,
         display: 'inline-flex', alignItems: 'center', gap: 10,
         padding: '12px 18px', borderRadius: 99,
-        background: 'rgba(15, 8, 28, 0.92)',
+        background: 'rgba(20, 15, 12, 0.92)',
         backdropFilter: 'blur(18px)', WebkitBackdropFilter: 'blur(18px)',
         border: `1px solid ${C.v}66`,
         boxShadow: `0 12px 32px rgba(0,0,0,0.5), 0 0 32px -10px ${C.v}80`,
@@ -461,7 +461,7 @@ function CtaModal({ onClose }) {
         onClick={e => e.stopPropagation()}
         style={{
           width: '100%', maxWidth: 420,
-          background: 'linear-gradient(180deg, rgba(28,18,42,0.96), rgba(18,10,28,0.96))',
+          background: 'linear-gradient(180deg, rgba(41,28,19,0.96), rgba(26,18,12,0.96))',
           border: '1px solid rgba(255,255,255,0.10)',
           borderRadius: 22, padding: '32px 26px 24px',
           boxShadow: `0 32px 80px rgba(0,0,0,0.6), 0 0 60px -20px ${C.v}80`,
@@ -488,7 +488,7 @@ function CtaModal({ onClose }) {
           width: 60, height: 60, borderRadius: 18,
           background: G, margin: '0 auto 18px',
           display: 'flex', alignItems: 'center', justifyContent: 'center',
-          boxShadow: '0 12px 32px rgba(113,49,225,.4)',
+          boxShadow: '0 12px 32px rgba(224,62,27,.4)',
         }}>
           <Sparkles size={28} color="#fff" strokeWidth={2} />
         </div>
@@ -535,7 +535,7 @@ function CtaModal({ onClose }) {
             background: G, color: '#fff',
             fontFamily: FN, fontSize: 14, fontWeight: 800,
             textDecoration: 'none', cursor: 'pointer',
-            boxShadow: '0 8px 28px rgba(113,49,225,.4), inset 0 1px 0 rgba(255,255,255,.18)',
+            boxShadow: '0 8px 28px rgba(224,62,27,.4), inset 0 1px 0 rgba(255,255,255,.18)',
           }}
         >
           Empezar ahora <ArrowRight size={16} strokeWidth={2.5} />
@@ -932,7 +932,7 @@ function CommerceDemo() {
                       display: 'inline-flex', alignItems: 'center', gap: 4,
                     }}>
                       {m.points}
-                      <span style={{ fontSize: 11, color: 'rgba(113,49,225,0.65)', fontWeight: 600 }}>pts</span>
+                      <span style={{ fontSize: 11, color: 'rgba(224,62,27,0.65)', fontWeight: 600 }}>pts</span>
                     </div>
                     {canRedeem && (
                       <div style={{
@@ -1016,7 +1016,7 @@ function CommerceDemo() {
                 color: '#fff', fontFamily: FN, fontSize: 13, fontWeight: 700,
                 cursor: 'pointer',
                 display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: 8,
-                boxShadow: '0 8px 24px rgba(113,49,225,.3)',
+                boxShadow: '0 8px 24px rgba(224,62,27,.3)',
               }}
             >
               <Plus size={15} strokeWidth={2.5} /> Crear premio
@@ -1329,7 +1329,7 @@ function CommerceDemo() {
                 background: G, border: 'none', borderRadius: 12,
                 color: '#fff', fontFamily: FN, fontSize: 13, fontWeight: 700,
                 cursor: 'pointer',
-                boxShadow: '0 8px 24px rgba(113,49,225,.3)',
+                boxShadow: '0 8px 24px rgba(224,62,27,.3)',
               }}
             >
               {savedFlash ? '✓ Cambios guardados (demo)' : 'Guardar cambios'}
@@ -1392,8 +1392,8 @@ function ClientDemo() {
                 background: 'transparent', border: 'none',
                 cursor: 'pointer',
                 color: active
-                  ? (isWallet ? '#FF199F' : C.white)
-                  : (isWallet ? 'rgba(236,72,153,0.65)' : C.mist),
+                  ? (isWallet ? '#F0603A' : C.white)
+                  : (isWallet ? 'rgba(20,184,166,0.65)' : C.mist),
                 fontFamily: FN, fontSize: 11.5,
                 fontWeight: active ? 800 : 600,
                 position: 'relative',
@@ -1406,7 +1406,7 @@ function ClientDemo() {
                 <div style={{
                   position: 'absolute', bottom: -1, left: '20%', right: '20%',
                   height: 2, borderRadius: 2,
-                  background: isWallet ? '#FF199F' : C.v,
+                  background: isWallet ? '#F0603A' : C.v,
                 }} />
               )}
             </button>
@@ -1440,7 +1440,7 @@ function ClientDemo() {
                     fontFamily: FN, fontSize: 10, fontWeight: 800,
                     padding: '4px 9px', borderRadius: 99,
                     letterSpacing: '.06em', textTransform: 'uppercase',
-                    boxShadow: `0 4px 14px rgba(113,49,225,.4)`,
+                    boxShadow: `0 4px 14px rgba(224,62,27,.4)`,
                   }}>
                     {m.activeCoupon.value}% OFF
                   </div>
@@ -1500,8 +1500,8 @@ function ClientDemo() {
                 {m.activeCoupon && (
                   <div style={{
                     marginTop: 12, padding: '9px 11px',
-                    background: 'rgba(113,49,225,0.12)',
-                    border: '1px solid rgba(113,49,225,0.32)',
+                    background: 'rgba(224,62,27,0.12)',
+                    border: '1px solid rgba(224,62,27,0.32)',
                     borderRadius: 10,
                     display: 'flex', alignItems: 'center', gap: 8,
                   }}>
@@ -1509,7 +1509,7 @@ function ClientDemo() {
                     <span style={{ fontFamily: FI, fontSize: 11, color: C.pearl, flex: 1 }}>
                       {m.activeCoupon.label}
                     </span>
-                    <span style={{ fontFamily: FN, fontSize: 10, color: 'rgba(113,49,225,0.85)', fontWeight: 700 }}>
+                    <span style={{ fontFamily: FN, fontSize: 10, color: 'rgba(224,62,27,0.85)', fontWeight: 700 }}>
                       vence {fmtDate(m.activeCoupon.expires_at)}
                     </span>
                   </div>

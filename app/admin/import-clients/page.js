@@ -9,15 +9,15 @@ export const dynamic = 'force-dynamic'
 
 const C = {
   bg:'#0a0a0f', card:'rgba(255,255,255,0.04)', cardH:'rgba(255,255,255,0.07)',
-  rim:'rgba(255,255,255,0.12)', white:'#fff', mist:'#9B85CC', dust:'#8370AD',
+  rim:'rgba(255,255,255,0.12)', white:'#fff', mist:'#B3A596', dust:'#9A8C7E',
   // Rebrand mayo 2026 fase 2: v migra a violeta brand sólido. o (naranja)
   // queda solo si se usa como acento semántico; G ahora es solid.
-  v:'#6F30DF', o:'#FF199F', ok:'#22E698', err:'#f87444', info:'#40C8FF',
+  v:'#E03E1B', o:'#F0603A', ok:'#22E698', err:'#f87444', info:'#40C8FF',
 }
 const FN = "'Space Grotesk', system-ui, sans-serif"
 // G — antes era gradient orange→fucsia. Rebrand mayo 2026 fase 2:
 // violeta brand sólido. Mantengo el nombre G por compat de call sites.
-const G  = '#6F30DF'
+const G  = '#E03E1B'
 
 export default function ImportClientsPage() {
   const supabase = getSupabase()
@@ -415,7 +415,7 @@ const btnPrimary = {
   display:'inline-flex', alignItems:'center', gap:8, padding:'12px 24px',
   background:G, color:'#fff', border:'none', borderRadius:12, cursor:'pointer',
   fontFamily:FN, fontSize:14, fontWeight:700,
-  boxShadow:'0 4px 18px rgba(113,49,225,0.42)',
+  boxShadow:'0 4px 18px rgba(224,62,27,0.42)',
 }
 const btnSecondary = {
   display:'inline-flex', alignItems:'center', gap:6, padding:'9px 16px',

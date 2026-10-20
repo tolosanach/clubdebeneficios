@@ -10,13 +10,13 @@ const C = {
   bg2:   'rgba(255,255,255,0.05)',
   bg3:   'rgba(255,255,255,0.04)',
   rim:   'rgba(255,255,255,0.10)',
-  mist:  '#9B85CC',
-  dust:  '#5C4A88',
-  white: '#F0EDFF',
-  accent:'#a855f7',
+  mist:  '#B3A596',
+  dust:  '#7F6653',
+  white: '#FEF1EE',
+  accent:'#ff7a59',
   ok:    '#22C55E',
   warn:  '#F59E0B',
-  stars: '#FF199F',
+  stars: '#F0603A',
 }
 
 function Spinner() {
@@ -41,7 +41,7 @@ function ProgressBar({ value, max, color }) {
         width:`${pct}%`,
         background: pct >= 100
           ? `linear-gradient(90deg, ${C.ok}, #16a34a)`
-          : `linear-gradient(90deg, ${color || C.accent}, ${color ? color + 'cc' : '#a78bfa'})`,
+          : `linear-gradient(90deg, ${color || C.accent}, ${color ? color + 'cc' : '#ff8a6b'})`,
         transition:'width 0.6s ease',
       }} />
     </div>
@@ -120,7 +120,7 @@ function ClienteContent() {
         ) : (
           <div style={{
             width:52, height:52, borderRadius:14,
-            background:`linear-gradient(135deg, ${C.accent}, #a78bfa)`,
+            background:`linear-gradient(135deg, ${C.accent}, #ff8a6b)`,
             display:'flex', alignItems:'center', justifyContent:'center',
             fontSize:22,
           }}>🏪</div>
@@ -370,7 +370,7 @@ export default function ClienteView() {
       <div style={{ minHeight:'100vh', display:'flex', alignItems:'center', justifyContent:'center' }}>
         <div style={{
           width:32, height:32, borderRadius:'50%',
-          border:'3px solid #2A2545', borderTopColor:'#7C5CFC',
+          border:'3px solid #40332A', borderTopColor:'#F77C61',
           animation:'spin 0.7s linear infinite',
         }} />
         <style>{`@keyframes spin{to{transform:rotate(360deg)}}`}</style>
