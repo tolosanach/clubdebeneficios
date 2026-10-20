@@ -1085,3 +1085,11 @@ html.clufix-nav-back::view-transition-new(root) {
   background: linear-gradient(90deg, rgba(224,62,27,0.35), rgba(224,62,27,0));
   opacity: 0; pointer-events: none;
 }
+
+
+/* Foco de teclado visible en toda la app (WCAG 2.4.7). !important para ganarle
+   a los outline:'none' inline que todavía quedan en algunos componentes. */
+:focus-visible {
+  outline: 2px solid #FF7A59 !important;
+  outline-offset: 2px;
+}
