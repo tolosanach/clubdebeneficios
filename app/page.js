@@ -14634,7 +14634,7 @@ function CommerceSettingsView({ user, profile, setView, onLogout, onOwnerProfile
       },
       {
         id: 'system',
-        title: 'Sistema de recompensas',
+        title: 'Cómo suman',
         description: 'Estrellas o puntos. Lo que mejor te funcione.',
         Icon: Sparkles,
         // El sistema queda "done" solo cuando el dueño eligió tipo Y, si es
@@ -17778,7 +17778,7 @@ function CommerceSettingsView({ user, profile, setView, onLogout, onOwnerProfile
         {tab === 'recompensas' && (
           <HelpBanner
             id="merchant-recompensas"
-            title="Cómo recompensás"
+            title="Cómo suman"
             body="Elegís el sistema (estrellas o puntos), cargás los premios y sumás promos."
             details={<>
               Todo lo que configures se ve reflejado en la <strong style={{ color:'#fff' }}>tarjeta digital</strong> de tus clientes al instante. El sistema base puede ser <strong style={{ color:'#fff' }}>estrellas</strong> (1 estrella por compra, simple) o <strong style={{ color:'#fff' }}>puntos</strong> (1 punto = 1 peso, flexible para tickets variables).<br/><br/>
@@ -17799,89 +17799,56 @@ function CommerceSettingsView({ user, profile, setView, onLogout, onOwnerProfile
           </button>
         )}
 
-        {/* ─── Tab switcher estilo "carpeta" de Recompensas ───
-            Las pestañas se ven como solapas que sobresalen del panel
-            de contenido — el activo comparte el background y el borde
-            con el panel, así se siente como UNA pieza visual continua
-            (igual a las orejitas de una carpeta de archivos). El
-            inactivo queda atrás, levemente más oscuro y con ambos bordes
-            visibles, para que se lea como "está atrás" del activo.
-            marginBottom -1 superpone el borde inferior del tab con el
-            superior del panel para que no se vea una línea doble. */}
+        {/* ─── Selector de modo (segmented control) ───
+            Dos opciones compactas: "Cómo suman" (sistema base) y
+            "Cupón de descuento" (promo próxima compra). Activo = coral
+            sólido con texto blanco; inactivo = neutro. */}
         {tab === 'recompensas' && (
-          // Accesos directos estilo Mercado Pago (pastel cards) pero en
-          // tonalidades de marca violeta. Card ACTIVA con violeta saturado
-          // (la que primero la usa el ojo, igual que el "Pagar servicio" de
-          // la referencia). Card INACTIVA con violeta MUY pálido. Icono y
-          // label tienen el mismo color violeta de marca para que la pieza
-          // se sienta monocromática y limpia, distinto del look "dark glass"
-          // del resto del panel.
-          <div style={{
-            display: 'grid',
-            gridTemplateColumns: '1fr 1fr',
-            gap: 10,
+          <div role="tablist" aria-label="Configuración de beneficios" style={{
+            display: 'flex',
+            gap: 4,
+            padding: 4,
             marginTop: 4,
             marginBottom: 16,
+            background: 'rgba(255,255,255,0.05)',
+            border: '1px solid rgba(255,255,255,0.10)',
+            borderRadius: 14,
           }}>
-            {(() => {
-              const SHORTCUTS = [
-                { id: 'how',      Icon: Sparkles, label: 'Sistema para sumar' },
-                { id: 'discount', Icon: Percent,  label: 'Descuento próx compra' },
-              ]
-              // Paleta MP-style adaptada a violeta de marca:
-              // - ACTIVE: lavanda saturada (similar al #D5D8FA del reference)
-              // - INACTIVE: lavanda pálida (similar al #EDEEFF del reference)
-              // Texto e ícono comparten el mismo violeta oscuro de marca para
-              // contrastar con el fondo claro de la card.
-              const ACTIVE_BG     = '#E03E1B'   // violeta de marca SÓLIDO — el seleccionado domina
-              const INACTIVE_BG   = 'rgba(255,255,255,0.05)'  // glass oscuro — el inactivo queda atrás
-              const FG_ACTIVE     = '#FFFFFF'   // texto/ícono blanco sobre violeta
-              const FG_INACTIVE   = 'rgba(252,209,199,0.72)'  // violeta claro apagado
-              return SHORTCUTS.map(s => {
-                const active = recompensasSubTab === s.id
-                const Icon = s.Icon
-                return (
-                  <button key={s.id}
-                    onClick={() => setRecompensasSubTab(s.id)}
-                    aria-pressed={active}
-                    style={{
-                      display: 'flex',
-                      flexDirection: 'column',
-                      alignItems: 'center',
-                      justifyContent: 'center',
-                      gap: 10,
-                      minHeight: 104,
-                      padding: '16px 12px',
-                      borderRadius: 18,
-                      background: active ? ACTIVE_BG : INACTIVE_BG,
-                      border: active ? 'none' : '1px solid rgba(255,255,255,0.10)',
-                      cursor: 'pointer',
-                      fontFamily: 'inherit',
-                      textAlign: 'center',
-                      boxShadow: active
-                        ? '0 8px 24px -6px rgba(224,62,27,0.65)'
-                        : 'none',
-                      transition: 'background 200ms ease, box-shadow 200ms ease, transform 160ms ease',
-                    }}>
-                    <Icon
-                      size={26}
-                      color={active ? FG_ACTIVE : FG_INACTIVE}
-                      strokeWidth={2.2}
-                    />
-                    <span style={{
-                      fontFamily: FN,
-                      fontSize: 13,
-                      fontWeight: 800,
-                      lineHeight: 1.2,
-                      color: active ? FG_ACTIVE : FG_INACTIVE,
-                      letterSpacing: '-0.01em',
-                    }}>
-                      {s.label}
-                    </span>
-                  </button>
-                )
-              })
-            })()}
+            {[
+              { id: 'how',      Icon: Sparkles, label: 'Cómo suman' },
+              { id: 'discount', Icon: Percent,  label: 'Cupón de descuento' },
+            ].map(s => {
+              const active = recompensasSubTab === s.id
+              const Icon = s.Icon
+              return (
+                <button key={s.id}
+                  role="tab"
+                  aria-selected={active}
+                  onClick={() => setRecompensasSubTab(s.id)}
+                  style={{
+                    flex: 1,
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    gap: 7,
+                    minHeight: 44,
+                    padding: '8px 10px',
+                    borderRadius: 10,
+                    background: active ? '#CC3516' : 'transparent',
+                    border: 'none',
+                    cursor: 'pointer',
+                    fontFamily: FN,
+                    fontSize: 13,
+                    fontWeight: 800,
+                    lineHeight: 1.2,
+                    color: active ? '#FFFFFF' : 'rgba(255,255,255,0.72)',
+                    transition: 'background 180ms ease, color 180ms ease',
+                  }}>
+                  <Icon size={16} strokeWidth={2.2} color={active ? '#FFFFFF' : 'rgba(255,255,255,0.72)'} />
+                  {s.label}
+                </button>
+              )
+            })}
           </div>
         )}
 
@@ -17903,7 +17870,7 @@ function CommerceSettingsView({ user, profile, setView, onLogout, onOwnerProfile
             // top-left: 0 si la tab "how" está activa (la solapa se conecta).
             // top-right: 12 (la otra solapa NO está activa, así que hay borde).
             // bottom: 16 ambos.
-            borderRadius:'0 12px 16px 16px',
+            borderRadius:16,
             padding:'18px 16px 16px',
             marginBottom:14,
             position:'relative',
@@ -17913,7 +17880,7 @@ function CommerceSettingsView({ user, profile, setView, onLogout, onOwnerProfile
           }}>
         {(() => {
           const headerType = pendingSystemType ?? commerce?.prog_type ?? 'stars'
-          const headerCol  = headerType === 'points' ? '#F0603A' : '#E03E1B'
+          const headerCol  = headerType === 'points' ? '#FF7A59' : '#E03E1B'
           // headerUnit ya no se usa: el título dejó de ser
           // "¿Cómo suman {unit}?" y pasó a ser fijo "Sistema de
           // acumulación". headerCol sigue tinteando el ícono Gift.
@@ -17923,7 +17890,6 @@ function CommerceSettingsView({ user, profile, setView, onLogout, onOwnerProfile
                   directos pastel violeta arriba ya cuentan la historia, y
                   el ícono extra en el header se sentía redundante. */}
               <div style={{ display:'flex', alignItems:'center', gap:8 }}>
-                <div style={{ fontFamily:TITLE, fontWeight:400, fontSize:18, color:C.white, letterSpacing:'.08em', textTransform:'uppercase' }}>Sistema para sumar</div>
                 <InfoHint align="left" text={
                   'Es el sistema base con el que tus clientes acumulan recompensas al escanear su QR.\n\n' +
                   '• Estrellas: 1 estrella por compra. Simple, ideal para tickets parecidos.\n\n' +
@@ -17944,7 +17910,7 @@ function CommerceSettingsView({ user, profile, setView, onLogout, onOwnerProfile
           const SYSTEMS = [
             { id:'stars',  Icon:Star, label:'Estrellas', color:'#E03E1B', colorDark:'#E03E1B',
               desc:'1 estrella por compra. Simple y visual.' },
-            { id:'points', Icon:Gem,  label:'Puntos',    color:'#F0603A', colorDark:'#c2410c',
+            { id:'points', Icon:Gem,  label:'Puntos',    color:'#FF7A59', colorDark:'#CC3516',
               // "Flexible para ticket variable." quitado a pedido del
               // dueño — la idea queda explicada con el ejemplo concreto
               // que se renderiza debajo del card activo.
@@ -17979,8 +17945,8 @@ function CommerceSettingsView({ user, profile, setView, onLogout, onOwnerProfile
                   para visualmente decir "esto es un solo sistema". ── */}
               {(() => {
                 const inactiveSys = SYSTEMS.find(s => s.id !== currentType)
-                // RGB para rgba() — Stars violeta brand / Points fucsia identidad
-                const sysRgb = (sys) => sys.id === 'stars' ? '113,49,225' : '236,72,153'
+                // RGB para rgba() — Stars coral / Points coral claro
+                const sysRgb = (sys) => sys.id === 'stars' ? '224,62,27' : '255,122,89'
                 const renderCard = (sys, isActive) => {
                   const rgb = sysRgb(sys)
                   return (
@@ -18082,7 +18048,7 @@ function CommerceSettingsView({ user, profile, setView, onLogout, onOwnerProfile
                           para que el dueño entienda la mecánica de un vistazo. */}
                       {currentType === 'points' && (
                         <div style={{ padding:'10px 12px', background:'rgba(20,184,166,0.08)', border:'1px solid rgba(20,184,166,0.18)', borderRadius:10, fontSize:11.5, color:'rgba(255,255,255,0.70)', lineHeight:1.5, display:'flex', alignItems:'flex-start', gap:9 }}>
-                          <Lightbulb size={13} color="#F0603A" strokeWidth={2.2} style={{ flexShrink:0, marginTop:2 }} />
+                          <Lightbulb size={13} color="#FF7A59" strokeWidth={2.2} style={{ flexShrink:0, marginTop:2 }} />
                           <div>
                             Por ejemplo: si tenés un premio que vale <strong style={{ color:'#fff' }}>10.000 puntos</strong>, significa que tu cliente tiene que haber gastado <strong style={{ color:'#fff' }}>$10.000</strong> en tu negocio.
                           </div>
@@ -18240,8 +18206,8 @@ function CommerceSettingsView({ user, profile, setView, onLogout, onOwnerProfile
                 para estrellas, fucsia para puntos). */}
             {(() => {
               const sysType = pendingSystemType ?? commerce?.prog_type ?? 'stars'
-              const sysCol  = sysType === 'points' ? '#F0603A' : '#E03E1B'
-              const sysColD = sysType === 'points' ? '#c2410c' : '#E03E1B'
+              const sysCol  = sysType === 'points' ? '#FF7A59' : '#E03E1B'
+              const sysColD = sysType === 'points' ? '#CC3516' : '#E03E1B'
               const sysUnit = sysType === 'points' ? 'puntos' : 'estrellas'
               const activeDouble = (Array.isArray(promos) ? promos : []).find(p =>
                 p.type === 'double_points' && p.active && (!p.expires_at || new Date(p.expires_at) > new Date())
@@ -19023,7 +18989,7 @@ function CommerceSettingsView({ user, profile, setView, onLogout, onOwnerProfile
             border:'1px solid rgba(255,122,89,0.50)',
             // Cuando la tab "discount" está activa, la conexión visual va
             // por el TOP-RIGHT (no top-left). Border-radius asimétrico.
-            borderRadius:'12px 0 16px 16px',
+            borderRadius:16,
             padding:'18px 16px 16px',
             marginBottom:14,
             position:'relative',
