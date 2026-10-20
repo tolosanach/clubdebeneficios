@@ -16292,6 +16292,7 @@ function CommerceSettingsView({ user, profile, setView, onLogout, onOwnerProfile
           uploadingCover={uploadingCover}
           updateSystem={updateSystem}
           updatingSystem={updatingSystem}
+          offerDiscount={!(Array.isArray(promos) && promos.some(p => p.active && p.type === 'discount_next'))}
         />
 
         {/* UpgradeModal montado también dentro del render del intent picker.
