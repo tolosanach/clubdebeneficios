@@ -7,7 +7,7 @@ export const dynamic = 'force-static'
 
 export default function TerminosPage() {
   return (
-    <div style={{ minHeight:'100vh', background:'#0a0a0f', color:'#F0EAFF', fontFamily:"'Inter', system-ui, sans-serif", padding:'24px 18px 80px' }}>
+    <div style={{ minHeight:'100vh', background:'#0a0a0f', color:'#FFEDE6', fontFamily:"'Inter', system-ui, sans-serif", padding:'24px 18px 80px' }}>
       <div style={{ maxWidth:720, margin:'0 auto' }}>
         <Link href="/" style={{ display:'inline-flex', alignItems:'center', gap:6, color:'rgba(255,255,255,0.55)', fontSize:13, marginBottom:24, textDecoration:'none' }}>
           <ChevronLeft size={16} strokeWidth={2} /> Volver
@@ -86,7 +86,7 @@ export default function TerminosPage() {
 
           <section style={{ marginBottom:28 }}>
             <h2 style={Section}>12. Contacto</h2>
-            <p>Para consultas, reclamos o solicitudes relacionadas con estos términos, podés escribirnos por <Link href="/ayuda" style={{ color:'#6F30DF', textDecoration:'underline' }}>nuestro canal de ayuda</Link>.</p>
+            <p>Para consultas, reclamos o solicitudes relacionadas con estos términos, podés escribirnos por <Link href="/ayuda" style={{ color:'#E03E1B', textDecoration:'underline' }}>nuestro canal de ayuda</Link>.</p>
           </section>
 
         </div>

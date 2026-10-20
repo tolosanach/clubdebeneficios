@@ -52,12 +52,16 @@ Cuando estés cargando plantillas, copy o features, hacete la pregunta: **"¿est
 ## Convenciones de UI vigentes
 
 ### Paleta y código de color
-- **Stars** → violeta `#8B5CF6` / oscuro `#7C3AED`
-- **Points** → fucsia `#EC4899` / oscuro `#DB2777`
-- **STARTER plan** → azul `#5B8DEF`
-- **PRO plan** → ámbar `#F5A623`
-- **Marca/CTAs primarios** → gradiente naranja→violeta `linear-gradient(135deg, #FE5000, #BD4BF8)` (constante `G` en page.js)
+**Oct 2026 — chau violeta (etapa 1 de 2).** Nacho eligió la paleta "crema + coral" para alejarse del violeta típico de apps hechas con IA. Etapa 1 (hecha): todos los violetas/fucsias pasaron a la familia coral/terracota manteniendo el fondo oscuro. Etapa 2 (pendiente): pasar la app a fondo crema `#FAF6F0`, sección por sección. No volver a introducir violetas ni fucsias.
+- **Marca / acción** → coral `#E03E1B` (antes `#6F30DF`); claro `#FF7A59` (antes `#BD4BF8`); suaves `#FFB59E` / `#FFE6DC`
+- **Acento** (antes magenta `#FF199F`) → terracota claro `#F0603A`
+- **Stars** → coral `#E8431F` / `#E03E1B` (antes violeta)
+- **Points** → verde azulado `#14B8A6` / oscuro `#0E9384` (antes fucsia)
+- **Fondos oscuros** → marrón cálido `#14100D` / `#110D0A` / `#2A140D` (antes negro violáceo)
+- **STARTER plan** → azul `#5B8DEF` · **PRO plan** → ámbar `#F5A623` (sin cambios)
+- **`G`** (page.js) → coral sólido `#E03E1B`; `brandGradient` (design-tokens) → naranja→coral `linear-gradient(135deg, #FE5000, #FF7A59)`
 - Stars/Points tienen color codificado en TODA la app: cards de sistema, contador de premios, badges, etc.
+- El logo `/clufix_logo.svg` todavía tiene la chispa magenta: pendiente de actualizar.
 
 ### Tipografía de títulos del panel comerciante
 H1 de cada pestaña (Recompensas por compra, Clientes, Premios, Análisis, Historial, Automatizaciones, Promociones cuando STARTER+, Reportes/Segmentación):

@@ -34,7 +34,7 @@ export const viewport = {
   initialScale: 1,
   maximumScale: 1,
   userScalable: false,
-  themeColor: '#6F30DF',
+  themeColor: '#E03E1B',
 }
 
 export default function RootLayout({ children }) {
@@ -59,16 +59,16 @@ export default function RootLayout({ children }) {
           mismatches reales del código nuestro — esos siguen apareciendo. */}
       <body suppressHydrationWarning style={{ margin: 0, padding: 0, background: '#000' }}>
         {/* Blobs ambientales — rebrand mayo 2026: los 3 ahora usan
-            el violeta marca #6F30DF (rgba 113,49,225). Antes eran
+            el violeta marca #E03E1B (rgba 113,49,225). Antes eran
             mezclados violeta-rosa (139,92,246 / 236,72,153 / 168,85,247).
             Mismas opacidades para preservar profundidad sin desviarse
             de la nueva identidad sólida. */}
         {/* Blob arriba izquierda */}
-        <div style={{ position:'fixed', top:'-20%', left:'-10%', width:'60vw', height:'60vw', borderRadius:'50%', background:'radial-gradient(circle, rgba(113,49,225,0.40) 0%, rgba(113,49,225,0) 70%)', filter:'blur(80px)', zIndex:-1, pointerEvents:'none' }} />
+        <div style={{ position:'fixed', top:'-20%', left:'-10%', width:'60vw', height:'60vw', borderRadius:'50%', background:'radial-gradient(circle, rgba(224,62,27,0.40) 0%, rgba(224,62,27,0) 70%)', filter:'blur(80px)', zIndex:-1, pointerEvents:'none' }} />
         {/* Blob abajo derecha */}
-        <div style={{ position:'fixed', bottom:'-20%', right:'-10%', width:'50vw', height:'50vw', borderRadius:'50%', background:'radial-gradient(circle, rgba(113,49,225,0.35) 0%, rgba(113,49,225,0) 70%)', filter:'blur(80px)', zIndex:-1, pointerEvents:'none' }} />
+        <div style={{ position:'fixed', bottom:'-20%', right:'-10%', width:'50vw', height:'50vw', borderRadius:'50%', background:'radial-gradient(circle, rgba(224,62,27,0.35) 0%, rgba(224,62,27,0) 70%)', filter:'blur(80px)', zIndex:-1, pointerEvents:'none' }} />
         {/* Blob secundario centro derecha */}
-        <div style={{ position:'fixed', top:'40%', right:'-5%', width:'40vw', height:'40vw', borderRadius:'50%', background:'radial-gradient(circle, rgba(113,49,225,0.22) 0%, rgba(113,49,225,0) 70%)', filter:'blur(60px)', zIndex:-1, pointerEvents:'none' }} />
+        <div style={{ position:'fixed', top:'40%', right:'-5%', width:'40vw', height:'40vw', borderRadius:'50%', background:'radial-gradient(circle, rgba(224,62,27,0.22) 0%, rgba(224,62,27,0) 70%)', filter:'blur(60px)', zIndex:-1, pointerEvents:'none' }} />
         {children}
       </body>
     </html>

@@ -17,7 +17,7 @@ export default function OgImage() {
           width: '100%', height: '100%',
           display: 'flex', flexDirection: 'column',
           alignItems: 'center', justifyContent: 'center',
-          background: '#6F30DF',
+          background: '#E03E1B',
           fontFamily: 'system-ui, sans-serif',
           position: 'relative',
           overflow: 'hidden',
@@ -26,7 +26,7 @@ export default function OgImage() {
             romper la identidad sólida — el deep en la esquina superior
             izquierda y un highlight casi blanco en la inferior derecha
             para evitar que se sienta plano en redes sociales. */}
-        <div style={{ position:'absolute', top:'-20%', left:'-10%', width:700, height:700, borderRadius:'50%', background:'radial-gradient(circle, rgba(105,53,189,0.85) 0%, transparent 70%)', filter:'blur(60px)', display:'flex' }} />
+        <div style={{ position:'absolute', top:'-20%', left:'-10%', width:700, height:700, borderRadius:'50%', background:'radial-gradient(circle, rgba(189,77,53,0.85) 0%, transparent 70%)', filter:'blur(60px)', display:'flex' }} />
         <div style={{ position:'absolute', bottom:'-20%', right:'-10%', width:600, height:600, borderRadius:'50%', background:'radial-gradient(circle, rgba(255,255,255,0.10) 0%, transparent 70%)', filter:'blur(60px)', display:'flex' }} />
 
         {/* Wordmark gigante. La "B" en bold reemplaza al cuadrado-icon

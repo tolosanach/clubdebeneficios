@@ -23,12 +23,12 @@ export async function GET(request) {
         width: '100%', height: '100%',
         display: 'flex', flexDirection: 'column',
         alignItems: 'center', justifyContent: 'center',
-        background: '#6F30DF',
+        background: '#E03E1B',
         fontFamily: 'system-ui, sans-serif',
         position: 'relative', overflow: 'hidden',
       }}>
         {/* Profundidad sutil sin romper identidad sólida. */}
-        <div style={{ position:'absolute', top:'-15%', left:'-8%', width:500, height:500, borderRadius:'50%', background:'radial-gradient(circle, rgba(105,53,189,0.85) 0%, transparent 70%)', filter:'blur(60px)', display:'flex' }} />
+        <div style={{ position:'absolute', top:'-15%', left:'-8%', width:500, height:500, borderRadius:'50%', background:'radial-gradient(circle, rgba(189,77,53,0.85) 0%, transparent 70%)', filter:'blur(60px)', display:'flex' }} />
         <div style={{ position:'absolute', bottom:'-15%', right:'-8%', width:420, height:420, borderRadius:'50%', background:'radial-gradient(circle, rgba(255,255,255,0.10) 0%, transparent 70%)', filter:'blur(60px)', display:'flex' }} />
 
         {/* Imagen del comercio (preferida) o fallback con la "B" violeta-blanca */}
@@ -43,7 +43,7 @@ export async function GET(request) {
             background:'#ffffff',
             marginBottom:28,
             boxShadow:'0 16px 48px rgba(0,0,0,0.40)',
-            fontSize: 64, fontWeight: 800, color: '#6F30DF',
+            fontSize: 64, fontWeight: 800, color: '#E03E1B',
             letterSpacing: '-0.04em',
           }}>
             B

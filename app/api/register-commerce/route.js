@@ -70,7 +70,7 @@ export async function POST(request) {
         prog_pts:     safeProgPts,
         prog_min_purchase: safeProgMin,
         reward_text:  'Próximamente...',
-        reward_color: '#6F30DF',
+        reward_color: '#E03E1B',
         plan:         'pro',
         // Lanzamiento: todo negocio nuevo arranca PRO como fundador, sin fecha
         // de corte (founder_expiry queda null → el cron check-founder-expiry
