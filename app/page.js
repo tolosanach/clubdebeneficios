@@ -133,7 +133,7 @@ const C = {
   white:  '#FFFFFF',
   pearl:  '#FFEDE6',
   mist:   'rgba(255,255,255,0.55)',
-  dust:   'rgba(255,255,255,0.35)',
+  dust:   'rgba(255,255,255,0.45)', // antes 0.35 (3,21:1); 0.45 = 4,55:1 sobre #14100D
 
   // Acento
   pink:   '#F0603A',
@@ -807,7 +807,7 @@ function OnboardingFlow({ user, onComplete }) {
               Atrás
             </button>
             {canSkip && (
-              <button onClick={step === 3 ? save : next} style={{ background:'none', border:'none', color:'rgba(255,255,255,0.40)', fontFamily:FN, fontSize:13, fontWeight:600, cursor:'pointer', padding:'4px 0' }}>
+              <button onClick={step === 3 ? save : next} style={{ background:'none', border:'none', color:'rgba(255,255,255,0.5)', fontFamily:FN, fontSize:13, fontWeight:600, cursor:'pointer', padding:'4px 0' }}>
                 Saltar
               </button>
             )}
@@ -911,7 +911,7 @@ function OnboardingFlow({ user, onComplete }) {
               </div>
 
               {form.province && locCities.length > 0 && (
-                <div style={{ fontSize:11, color:'rgba(255,255,255,0.28)', textAlign:'center', marginBottom:16, lineHeight:1.5 }}>
+                <div style={{ fontSize:11, color:'rgba(255,255,255,0.5)', textAlign:'center', marginBottom:16, lineHeight:1.5 }}>
                   ¿No encontrás tu localidad? Elegí la más cercana.
                 </div>
               )}
@@ -1047,7 +1047,7 @@ function CasiListoView({ user, onComplete }) {
 
           <div style={{ marginBottom:24 }}>
             <div style={{ fontSize:11, color:C.dust, fontWeight:600, textTransform:'uppercase', letterSpacing:'.07em', marginBottom:7 }}>
-              Teléfono <span style={{ color:'rgba(255,255,255,0.28)', fontWeight:400, textTransform:'none', fontSize:11 }}>(opcional)</span>
+              Teléfono <span style={{ color:'rgba(255,255,255,0.5)', fontWeight:400, textTransform:'none', fontSize:11 }}>(opcional)</span>
             </div>
             <PhoneInput value={phone} onChange={setPhone} />
           </div>
@@ -1092,7 +1092,7 @@ function CasiListoView({ user, onComplete }) {
           </button>
 
           <button onClick={() => supabase.auth.signOut()}
-            style={{ width:'100%', padding:'10px', marginTop:8, background:'none', border:'none', color:'rgba(255,255,255,0.35)', fontFamily:FI, fontSize:13, cursor:'pointer' }}>
+            style={{ width:'100%', padding:'10px', marginTop:8, background:'none', border:'none', color:'rgba(255,255,255,0.5)', fontFamily:FI, fontSize:13, cursor:'pointer' }}>
             Usar otra cuenta
           </button>
         </div>
@@ -2274,12 +2274,12 @@ function Btn({ variant = 'primary', size = 'md', onClick, children, style: xs, .
     display:'inline-flex', alignItems:'center', justifyContent:'center', gap:8,
     padding:pad[size], borderRadius:9999,
     fontFamily:FN, fontSize:fs[size], fontWeight:700,
-    cursor:'pointer', border:'none', outline:'none',
+    cursor:'pointer', border:'none',
     transition:'transform 160ms cubic-bezier(0.23,1,0.32,1), box-shadow 160ms ease, color 160ms ease',
   }
   const V = {
     primary: {
-      background: G, color:'#fff',
+      background: '#CC3516', color:'#fff', // 5,14:1 con blanco (el G #E03E1B daba 4,31:1)
       boxShadow: hov ? '0 8px 32px rgba(254,80,0,0.35)' : '0 4px 16px rgba(254,80,0,0.18)',
       transform: hov ? 'scale(1.04)' : 'scale(1)',
     },
@@ -2476,7 +2476,7 @@ function PlanCards({ currentPlan=null, clientCount=0, planLimit=null, onUpgrade,
           {def.label}
         </div>
         <div style={{
-          fontFamily: FI, fontSize: 11, color: 'rgba(255,255,255,0.45)',
+          fontFamily: FI, fontSize: 11, color: 'rgba(255,255,255,0.5)',
           marginBottom: 18,
         }}>
           Facturación mensual
@@ -3087,7 +3087,7 @@ function Navbar({ setView, cityName, user, profile, commerce, onLogin, onLogout,
           <div style={{ fontFamily:FN, fontSize:13, fontWeight:600, color:'rgba(255,255,255,0.88)', overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>
             {ddHeaderLabel}
           </div>
-          <div style={{ fontFamily:FI, fontSize:11, color:'rgba(255,255,255,0.35)', marginTop:2, overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>
+          <div style={{ fontFamily:FI, fontSize:11, color:'rgba(255,255,255,0.5)', marginTop:2, overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>
             {user?.email}
           </div>
         </button>
@@ -3181,7 +3181,7 @@ function ReviewCard({ review }) {
               <p style={{ fontSize:11, color:'rgba(255,255,255,0.50)', whiteSpace:'nowrap', overflow:'hidden', textOverflow:'ellipsis' }}>{review.business}</p>
             )}
             {review.location && (
-              <p style={{ fontSize:10, color:'rgba(255,255,255,0.35)', marginTop:1 }}>{review.location}</p>
+              <p style={{ fontSize:10, color:'rgba(255,255,255,0.5)', marginTop:1 }}>{review.location}</p>
             )}
           </div>
         </div>
@@ -3433,7 +3433,7 @@ function HeroSection({ setView, user, profile, onLogin }) {
           opacity: loaded ? 1 : 0,
           transition:'opacity 0.7s ease 1.5s',
         }}>
-          <p style={{ fontSize:12, color:'rgba(255,255,255,0.46)', fontFamily:FI, marginBottom:20, letterSpacing:'.04em' }}>
+          <p style={{ fontSize:12, color:'rgba(255,255,255,0.5)', fontFamily:FI, marginBottom:20, letterSpacing:'.04em' }}>
             Más de 500 comercios confían en nosotros
           </p>
           <div
@@ -3471,7 +3471,7 @@ function HeroSection({ setView, user, profile, onLogin }) {
         opacity: loaded ? 1 : 0,
         transition:'opacity 1s ease 2s',
       }}>
-        <span style={{ fontFamily:FN, fontSize:10, color:'rgba(255,255,255,0.35)', letterSpacing:'0.15em', textTransform:'uppercase' }}>Scroll</span>
+        <span style={{ fontFamily:FN, fontSize:10, color:'rgba(255,255,255,0.5)', letterSpacing:'0.15em', textTransform:'uppercase' }}>Scroll</span>
         <div style={{ width:1, height:48, background:'rgba(255,255,255,0.15)', position:'relative', overflow:'hidden', borderRadius:1 }}>
           <div className="scroll-light" style={{ position:'absolute', top:0, left:0, width:'100%', height:16, background:'#E03E1B', borderRadius:1 }} />
         </div>
@@ -4007,7 +4007,7 @@ function HowItWorksSection() {
             maxWidth: 720,
           }}>
             Cómo funciona, sin vueltas.
-            <span style={{ display: 'block', color: 'rgba(255,255,255,0.40)', marginTop: 8 }}>
+            <span style={{ display: 'block', color: 'rgba(255,255,255,0.5)', marginTop: 8 }}>
               Del QR al canje, en tres movimientos.
             </span>
           </h2>
@@ -4913,8 +4913,8 @@ function Footer({ setView }) {
 
         {/* Copyright */}
         <div style={{ borderTop:`1px solid ${C.rim}`, paddingTop:24, display:'flex', flexWrap:'wrap', alignItems:'center', justifyContent:'space-between', gap:12 }}>
-          <p style={{ fontFamily:FI, fontSize:12, color:'rgba(255,255,255,0.30)' }}>© 2026 Clufix. Todos los derechos reservados.</p>
-          <p style={{ fontFamily:FI, fontSize:12, color:'rgba(255,255,255,0.30)', display:'flex', alignItems:'center', gap:6 }}>
+          <p style={{ fontFamily:FI, fontSize:12, color:'rgba(255,255,255,0.5)' }}>© 2026 Clufix. Todos los derechos reservados.</p>
+          <p style={{ fontFamily:FI, fontSize:12, color:'rgba(255,255,255,0.5)', display:'flex', alignItems:'center', gap:6 }}>
             Hecho con <span style={{ color:'#f87171' }}>♥</span> en Argentina 🇦🇷
           </p>
         </div>
@@ -5510,7 +5510,7 @@ function BigBoldRowsSection({ setView }) {
             <h2 aria-hidden="true" style={{
               position:'absolute', top:0, left:0,
               fontFamily:FN, fontSize:'clamp(28px,4.5vw,52px)', fontWeight:900,
-              color:'rgba(255,255,255,0.20)', margin:0, letterSpacing:'-.02em',
+              color:'rgba(255,255,255,0.5)', margin:0, letterSpacing:'-.02em',
               filter:'blur(2px)',
               pointerEvents:'none', userSelect:'none',
               transform: headerRevealed ? 'translate(3px,3px)' : 'translate(20px, 20px)',
@@ -5553,7 +5553,7 @@ function BigBoldRowsSection({ setView }) {
           <Btn size="lg" onClick={() => setView('register-commerce')}>
             Crear mi negocio <ArrowRight size={18} strokeWidth={2.5} />
           </Btn>
-          <p style={{ fontSize:12, color:'rgba(255,255,255,0.40)', marginTop:14 }}>
+          <p style={{ fontSize:12, color:'rgba(255,255,255,0.5)', marginTop:14 }}>
             Setup en 2 min · Sin tarjeta · Cancelá cuando quieras
           </p>
         </div>
@@ -5645,7 +5645,7 @@ function HomeView({ setView, user, profile, onLogin }) {
       <div style={{ background:'#080808', padding:'32px 20px' }}>
         <div style={{ maxWidth:480, margin:'0 auto', display:'flex', alignItems:'center', gap:16 }}>
           <div style={{ flex:1, height:1, background:'rgba(255,255,255,0.10)' }} />
-          <span style={{ fontFamily:FI, fontSize:13, color:'rgba(255,255,255,0.35)', whiteSpace:'nowrap' }}>
+          <span style={{ fontFamily:FI, fontSize:13, color:'rgba(255,255,255,0.5)', whiteSpace:'nowrap' }}>
             ¿Tenés un negocio?
           </span>
           <div style={{ flex:1, height:1, background:'rgba(255,255,255,0.10)' }} />
@@ -5691,7 +5691,7 @@ function HomeView({ setView, user, profile, onLogin }) {
           {/* Pricing */}
           <div style={{ marginBottom:48 }}>
             <div style={{ textAlign:'center', marginBottom:32 }}>
-              <p style={{ fontFamily:FN, fontSize:13, fontWeight:600, color:'rgba(255,255,255,0.40)', letterSpacing:'.08em', textTransform:'uppercase', margin:'0 0 8px' }}>
+              <p style={{ fontFamily:FN, fontSize:13, fontWeight:600, color:'rgba(255,255,255,0.5)', letterSpacing:'.08em', textTransform:'uppercase', margin:'0 0 8px' }}>
                 Planes
               </p>
               <h3 style={{ fontFamily:FN, fontSize:'clamp(22px, 4vw, 36px)', fontWeight:600, letterSpacing:'-.02em', color:C.white, margin:'0 0 10px' }}>
@@ -5702,7 +5702,7 @@ function HomeView({ setView, user, profile, onLogin }) {
               </p>
             </div>
             <PlanCards onCTA={handleMerchantCTA} />
-            <div style={{ textAlign:'center', marginTop:28, fontSize:12, color:'rgba(255,255,255,0.35)', fontFamily:FI }}>
+            <div style={{ textAlign:'center', marginTop:28, fontSize:12, color:'rgba(255,255,255,0.5)', fontFamily:FI }}>
               Sin contrato · Sin permanencia · Cancelá cuando quieras
             </div>
           </div>
@@ -6295,7 +6295,7 @@ function CommerceView({ commerce:c, setView, user, onLoginRequired, onCommerceUp
             return (
               <div style={{ display:'flex', alignItems:'center', gap:10, marginBottom:14, padding:'11px 14px', background:C.bg3, borderRadius:10, border:`1px solid ${C.rim}` }}>
                 <Clock size={18} color="rgba(255,255,255,0.30)" strokeWidth={2} />
-                <div style={{ fontSize:12, color:'rgba(255,255,255,0.35)', fontStyle:'italic', flex:1 }}>Horarios no informados</div>
+                <div style={{ fontSize:12, color:'rgba(255,255,255,0.5)', fontStyle:'italic', flex:1 }}>Horarios no informados</div>
                 {editBtn}
               </div>
             )
@@ -6344,7 +6344,7 @@ function CommerceView({ commerce:c, setView, user, onLoginRequired, onCommerceUp
         })() : (
           <div style={{ display:'flex', alignItems:'center', gap:10, marginBottom:14, padding:'11px 14px', background:C.bg3, borderRadius:10, border:`1px solid ${C.rim}` }}>
             <MapPin size={18} color="rgba(255,255,255,0.30)" strokeWidth={2} />
-            <div style={{ fontSize:12, color:'rgba(255,255,255,0.35)', fontStyle:'italic', flex:1 }}>Dirección no informada</div>
+            <div style={{ fontSize:12, color:'rgba(255,255,255,0.5)', fontStyle:'italic', flex:1 }}>Dirección no informada</div>
             {isOwner && (
               <button onClick={() => openEdit({ key:'location', value:{ country:c.country||'', city_name:c.city_name||'', address:c.address||'' }, label:'Ubicación', type:'location' })}
                 aria-label="Agregar ubicación"
@@ -6419,7 +6419,7 @@ function CommerceView({ commerce:c, setView, user, onLoginRequired, onCommerceUp
               </div>
               {prizes.length === 0 ? (
                 <div style={{ padding:'18px 14px', textAlign:'center', border:'1px dashed rgba(255,255,255,0.12)', borderRadius:10, background:'rgba(255,255,255,0.02)' }}>
-                  <div style={{ fontSize:13, color:'rgba(255,255,255,0.35)', fontStyle:'italic' }}>Todavía no hay premios cargados</div>
+                  <div style={{ fontSize:13, color:'rgba(255,255,255,0.5)', fontStyle:'italic' }}>Todavía no hay premios cargados</div>
                 </div>
               ) : (
                 <div style={{ display:'flex', flexDirection:'column', gap:8 }}>
@@ -7834,7 +7834,7 @@ function WalletCard({ club, variant, isActive, onScrollTo, isMock, userId }) {
       </div>
 
       {isMock && (
-        <div style={{ fontSize:11, color:'rgba(255,255,255,0.30)', display:'flex', alignItems:'center', gap:6, marginTop:8 }}>
+        <div style={{ fontSize:11, color:'rgba(255,255,255,0.5)', display:'flex', alignItems:'center', gap:6, marginTop:8 }}>
           <Eye size={12} strokeWidth={2} />
           Vista previa — unite a un negocio para ver tus datos reales
         </div>
@@ -8586,11 +8586,11 @@ function ClientView({ setView, user, profile, onLogout, initialTab }) {
           }
           <div style={{ flex:1, minWidth:0 }}>
             <div style={{ fontFamily:FN, fontSize:15, fontWeight:700, color:'#fff', marginBottom:2, overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>{profile?.name || user.email}</div>
-            <div style={{ fontSize:10, color:'rgba(255,255,255,0.4)' }}>Socio desde {new Date(user.created_at).toLocaleDateString('es-AR', { month:'short', year:'numeric' })}</div>
+            <div style={{ fontSize:10, color:'rgba(255,255,255,0.5)' }}>Socio desde {new Date(user.created_at).toLocaleDateString('es-AR', { month:'short', year:'numeric' })}</div>
           </div>
           <div style={{ fontFamily:FN, fontSize:22, fontWeight:900, background:G, WebkitBackgroundClip:'text', WebkitTextFillColor:'transparent', backgroundClip:'text', flexShrink:0, textAlign:'right' }}>
             {memberships.length}
-            <div style={{ fontSize:9, color:'rgba(255,255,255,0.4)', textTransform:'uppercase', letterSpacing:'.06em', WebkitTextFillColor:'rgba(255,255,255,0.4)', background:'none' }}>clubs</div>
+            <div style={{ fontSize:9, color:'rgba(255,255,255,0.5)', textTransform:'uppercase', letterSpacing:'.06em', WebkitTextFillColor:'rgba(255,255,255,0.4)', background:'none' }}>clubs</div>
           </div>
         </div>
       </div>
@@ -8629,7 +8629,7 @@ function ClientView({ setView, user, profile, onLogout, initialTab }) {
                 <Wallet size={34} strokeWidth={1.5} color="rgba(232,67,31,0.70)" />
               </div>
               <div style={{ fontFamily:FN, fontSize:17, fontWeight:800, color:'rgba(255,255,255,0.80)', marginBottom:10 }}>Tu billetera está vacía</div>
-              <div style={{ fontSize:13, color:'rgba(255,255,255,0.38)', maxWidth:240, margin:'0 auto 24px', lineHeight:1.65 }}>Escaneá el QR de un comercio para sumar tu primer club.</div>
+              <div style={{ fontSize:13, color:'rgba(255,255,255,0.5)', maxWidth:240, margin:'0 auto 24px', lineHeight:1.65 }}>Escaneá el QR de un comercio para sumar tu primer club.</div>
               <button
                 onClick={() => {
                   try { sessionStorage.setItem('clufix:scanIntent', 'join-club') } catch {}
@@ -8685,7 +8685,7 @@ function ClientView({ setView, user, profile, onLogout, initialTab }) {
               {/* Wallet or empty-filter state */}
               {filteredMemberships.length === 0 ? (
                 <div style={{ textAlign:'center', padding:'40px 24px 24px' }}>
-                  <div style={{ fontSize:14, color:'rgba(255,255,255,0.45)', marginBottom:16, lineHeight:1.6 }}>
+                  <div style={{ fontSize:14, color:'rgba(255,255,255,0.5)', marginBottom:16, lineHeight:1.6 }}>
                     No tenés clubs que coincidan con los filtros.
                   </div>
                   <button
@@ -8952,15 +8952,15 @@ function ClientView({ setView, user, profile, onLogout, initialTab }) {
               <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr 1fr', gap:8, marginBottom:16 }}>
                 <div style={{ ...glass, padding:'14px 8px', textAlign:'center' }}>
                   <div style={{ fontFamily:FN, fontSize:24, fontWeight:900, background:G, WebkitBackgroundClip:'text', WebkitTextFillColor:'transparent', backgroundClip:'text' }}>{totalVisits}</div>
-                  <div style={{ fontSize:10, color:'rgba(255,255,255,0.4)', marginTop:2 }}>visitas</div>
+                  <div style={{ fontSize:10, color:'rgba(255,255,255,0.5)', marginTop:2 }}>visitas</div>
                 </div>
                 <div style={{ ...glass, padding:'14px 8px', textAlign:'center' }}>
                   <div style={{ fontFamily:FN, fontSize:24, fontWeight:900, color:'#E03E1B' }}>{totalRedeems}</div>
-                  <div style={{ fontSize:10, color:'rgba(255,255,255,0.4)', marginTop:2 }}>canjes</div>
+                  <div style={{ fontSize:10, color:'rgba(255,255,255,0.5)', marginTop:2 }}>canjes</div>
                 </div>
                 <div style={{ ...glass, padding:'14px 8px', textAlign:'center' }}>
                   <div style={{ fontFamily:FN, fontSize:24, fontWeight:900, color:'#fff' }}>{displayMemberships.length}</div>
-                  <div style={{ fontSize:10, color:'rgba(255,255,255,0.4)', marginTop:2 }}>clubs</div>
+                  <div style={{ fontSize:10, color:'rgba(255,255,255,0.5)', marginTop:2 }}>clubs</div>
                 </div>
               </div>
             )
@@ -9100,16 +9100,16 @@ function ClientView({ setView, user, profile, onLogout, initialTab }) {
                       <span style={{ fontSize:12, fontWeight:700, color:'#fff', fontFamily:FN, overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap', minWidth:0, flex:1 }}>
                         {title}
                       </span>
-                      {ev.amountSpent && <span style={{ fontSize:11, color:'rgba(255,255,255,0.4)', flexShrink:0 }}>${fmt(ev.amountSpent)}</span>}
+                      {ev.amountSpent && <span style={{ fontSize:11, color:'rgba(255,255,255,0.5)', flexShrink:0 }}>${fmt(ev.amountSpent)}</span>}
                     </div>
                     <div style={{ display:'flex', gap:8, alignItems:'center' }}>
-                      <span style={{ fontSize:10, color:'rgba(255,255,255,0.40)' }}>
+                      <span style={{ fontSize:10, color:'rgba(255,255,255,0.5)' }}>
                         {ev.date
                           ? new Date(ev.date).toLocaleDateString('es-AR', { day:'2-digit', month:'short', year:'numeric' })
                           : '—'}
                       </span>
                       {ev.commerce?.name && ev.kind !== 'visit' && ev.kind !== 'join' && (
-                        <span style={{ fontSize:10, color:'rgba(255,255,255,0.40)', overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>
+                        <span style={{ fontSize:10, color:'rgba(255,255,255,0.5)', overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>
                           · {ev.commerce.name}
                         </span>
                       )}
@@ -9168,7 +9168,7 @@ function ClientView({ setView, user, profile, onLogout, initialTab }) {
                 <div style={{ position:'absolute', inset:0, background:'radial-gradient(circle at center, rgba(255,255,255,0.18) 0%, transparent 68%)', pointerEvents:'none' }} />
                 {passQrUrl
                   ? <img src={passQrUrl} alt="QR" style={{ width:200, height:200, display:'block', position:'relative', filter:'drop-shadow(0 0 14px rgba(255,255,255,0.30))' }} />
-                  : <div style={{ width:200, height:200, display:'flex', alignItems:'center', justifyContent:'center', color:'rgba(255,255,255,0.4)', fontSize:11 }}>Generando...</div>
+                  : <div style={{ width:200, height:200, display:'flex', alignItems:'center', justifyContent:'center', color:'rgba(255,255,255,0.5)', fontSize:11 }}>Generando...</div>
                 }
               </div>
 
@@ -9206,7 +9206,7 @@ function ClientView({ setView, user, profile, onLogout, initialTab }) {
             ].map((s, i) => (
               <div key={i} className="fu" style={{ animationDelay:`${i*50}ms`, background:'rgba(255,255,255,0.05)', backdropFilter:'blur(20px)', WebkitBackdropFilter:'blur(20px)', border:'1px solid rgba(255,255,255,0.10)', borderRadius:18, padding:'14px 8px', textAlign:'center' }}>
                 <div style={{ fontFamily:FN, fontSize:26, fontWeight:900, color:'#fff', lineHeight:1 }}>{s.val}</div>
-                <div style={{ fontFamily:FI, fontSize:10, color:'rgba(255,255,255,0.40)', marginTop:5, textTransform:'uppercase', letterSpacing:'.08em' }}>{s.lbl}</div>
+                <div style={{ fontFamily:FI, fontSize:10, color:'rgba(255,255,255,0.5)', marginTop:5, textTransform:'uppercase', letterSpacing:'.08em' }}>{s.lbl}</div>
               </div>
             ))}
           </div>
@@ -9229,7 +9229,7 @@ function ClientView({ setView, user, profile, onLogout, initialTab }) {
             <div style={{ flex:1, minWidth:0 }}>
               <div style={{ fontFamily:FN, fontSize:15, fontWeight:700, color:'#fff', overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>{profile?.name || 'Sin nombre'}</div>
               <div style={{ fontSize:11, color:'rgba(255,255,255,0.50)', marginTop:2, overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>{user.email}</div>
-              <div style={{ fontSize:10, color:'rgba(255,255,255,0.30)', marginTop:4 }}>
+              <div style={{ fontSize:10, color:'rgba(255,255,255,0.5)', marginTop:4 }}>
                 Socio desde {new Date(user.created_at).toLocaleDateString('es-AR', { month:'short', year:'numeric' })}
               </div>
             </div>
@@ -9244,7 +9244,7 @@ function ClientView({ setView, user, profile, onLogout, initialTab }) {
             ].map((s,i) => (
               <div key={i} style={{ ...glass, padding:'12px 8px', textAlign:'center', borderRadius:14 }}>
                 <div style={{ fontFamily:FN, fontSize:22, fontWeight:900, color:'#fff', lineHeight:1 }}>{s.val}</div>
-                <div style={{ fontSize:10, color:'rgba(255,255,255,0.40)', marginTop:4, textTransform:'uppercase', letterSpacing:'.06em' }}>{s.lbl}</div>
+                <div style={{ fontSize:10, color:'rgba(255,255,255,0.5)', marginTop:4, textTransform:'uppercase', letterSpacing:'.06em' }}>{s.lbl}</div>
               </div>
             ))}
           </div>
@@ -9498,7 +9498,7 @@ function ClientView({ setView, user, profile, onLogout, initialTab }) {
 
                 {/* Body */}
                 <div style={{ padding:'20px 20px 12px' }}>
-                  <div style={{ fontFamily:FN, fontSize:10, fontWeight:700, color:'rgba(255,255,255,0.40)', letterSpacing:'.14em', textTransform:'uppercase', marginBottom:8 }}>
+                  <div style={{ fontFamily:FN, fontSize:10, fontWeight:700, color:'rgba(255,255,255,0.5)', letterSpacing:'.14em', textTransform:'uppercase', marginBottom:8 }}>
                     {kind === 'prize' ? 'Premio' : 'Promoción'} · {commerce.name}
                   </div>
                   <h2 style={{ fontFamily:FN, fontSize:22, fontWeight:900, color:'#fff', margin:'0 0 12px', lineHeight:1.2, letterSpacing:'-0.01em' }}>
@@ -9641,7 +9641,7 @@ function ClientView({ setView, user, profile, onLogout, initialTab }) {
                   {kind === 'prize' ? <Gift size={18} strokeWidth={2.4} /> : <ArrowRight size={18} strokeWidth={2.4} />}
                   {ctaText}
                 </button>
-                <div style={{ textAlign:'center', fontSize:11, color:'rgba(255,255,255,0.45)', marginTop:8 }}>
+                <div style={{ textAlign:'center', fontSize:11, color:'rgba(255,255,255,0.5)', marginTop:8 }}>
                   {ctaSub}
                 </div>
               </div>
@@ -10067,7 +10067,7 @@ function RegisterCommerceView({ setView, user, onProfileRefresh, onLoginRequired
               <ChevronLeft size={18} strokeWidth={2} />Atrás
             </button>
             {canSkip && (
-              <button onClick={next} style={{ background:'none', border:'none', color:'rgba(255,255,255,0.40)', fontFamily:FN, fontSize:13, fontWeight:600, cursor:'pointer', padding:'4px 0' }}>
+              <button onClick={next} style={{ background:'none', border:'none', color:'rgba(255,255,255,0.5)', fontFamily:FN, fontSize:13, fontWeight:600, cursor:'pointer', padding:'4px 0' }}>
                 Saltar
               </button>
             )}
@@ -10078,7 +10078,7 @@ function RegisterCommerceView({ setView, user, onProfileRefresh, onLoginRequired
         </div>
       ) : (
         <div style={{ padding:'16px 20px 0', flexShrink:0, display:'flex', justifyContent:'flex-end' }}>
-          <button onClick={() => setView('home')} style={{ background:'none', border:'none', color:'rgba(255,255,255,0.35)', cursor:'pointer', padding:4 }}>
+          <button onClick={() => setView('home')} style={{ background:'none', border:'none', color:'rgba(255,255,255,0.5)', cursor:'pointer', padding:4 }}>
             <X size={20} strokeWidth={2} />
           </button>
         </div>
@@ -10230,7 +10230,7 @@ function RegisterCommerceView({ setView, user, onProfileRefresh, onLoginRequired
                     </button>
                   )}
                 </div>
-                <div style={{ fontSize:11, color:'rgba(255,255,255,0.38)', marginBottom:14, lineHeight:1.5 }}>
+                <div style={{ fontSize:11, color:'rgba(255,255,255,0.5)', marginBottom:14, lineHeight:1.5 }}>
                   Si tu rubro no aparece en la lista, escribilo y dale Enter — está OK usar el tuyo.
                 </div>
 
@@ -10260,7 +10260,7 @@ function RegisterCommerceView({ setView, user, onProfileRefresh, onLoginRequired
                         </button>
                       )}
                       {searchResults.length === 0 && !exactMatch && (
-                        <div style={{ fontSize:11, color:'rgba(255,255,255,0.40)', textAlign:'center', padding:'4px 0' }}>
+                        <div style={{ fontSize:11, color:'rgba(255,255,255,0.5)', textAlign:'center', padding:'4px 0' }}>
                           Sin coincidencias en nuestra lista. Usá tu texto.
                         </div>
                       )}
@@ -10401,7 +10401,7 @@ function RegisterCommerceView({ setView, user, onProfileRefresh, onLoginRequired
               </div>
 
               {form.province && rcCities.length > 0 && (
-                <div style={{ fontSize:11, color:'rgba(255,255,255,0.28)', textAlign:'center', marginBottom:16 }}>
+                <div style={{ fontSize:11, color:'rgba(255,255,255,0.5)', textAlign:'center', marginBottom:16 }}>
                   ¿No encontrás tu localidad? Elegí la más cercana.
                 </div>
               )}
@@ -10504,7 +10504,7 @@ function RegisterCommerceView({ setView, user, onProfileRefresh, onLoginRequired
                 {sending ? 'Creando tu club...' : 'Crear mi negocio'}
               </button>
 
-              <div style={{ fontSize:11, color:'rgba(255,255,255,0.28)', textAlign:'center', marginTop:14, lineHeight:1.6 }}>
+              <div style={{ fontSize:11, color:'rgba(255,255,255,0.5)', textAlign:'center', marginTop:14, lineHeight:1.6 }}>
                 Foto de tapa, horarios, redes sociales y más se configuran después en tu panel.
               </div>
             </div>
@@ -10605,7 +10605,7 @@ function TermsAcceptance({ user, onAccept }) {
               <p style={{ fontFamily:FN, fontWeight:700, color:'#fff', marginBottom:6 }}>9. Contacto</p>
               <p style={{ marginBottom:16 }}>Para consultas sobre estos términos, escribinos a soporte@clufix.app</p>
 
-              <p style={{ fontSize:11, color:'rgba(255,255,255,0.35)', marginTop:8 }}>Última actualización: Abril 2026</p>
+              <p style={{ fontSize:11, color:'rgba(255,255,255,0.5)', marginTop:8 }}>Última actualización: Abril 2026</p>
             </div>
           </div>
         </div>
@@ -10658,7 +10658,7 @@ function TermsAcceptance({ user, onAccept }) {
 
         {/* Sign out link */}
         <button onClick={() => supabase.auth.signOut()}
-          style={{ width:'100%', padding:'10px', background:'none', border:'none', color:'rgba(255,255,255,0.35)', fontFamily:FI, fontSize:13, cursor:'pointer' }}>
+          style={{ width:'100%', padding:'10px', background:'none', border:'none', color:'rgba(255,255,255,0.5)', fontFamily:FI, fontSize:13, cursor:'pointer' }}>
           No acepto, cerrar sesión
         </button>
       </div>
@@ -11286,7 +11286,7 @@ function PromoWizard({ progType = 'points', onClose, onComplete, activePromos = 
               <div style={{ height:3, background:'rgba(255,255,255,0.10)', borderRadius:99, overflow:'hidden', marginBottom:6 }}>
                 <div style={{ height:'100%', borderRadius:99, background: promoType === 'discount_next' ? GV : promoType === 'double_points' ? '#F0603A' : G, width:`${progressPct}%`, transition:'width 150ms ease' }} />
               </div>
-              <div style={{ fontSize:10, color:'rgba(255,255,255,0.35)', fontFamily:FI }}>Paso {step} de {totalSteps}</div>
+              <div style={{ fontSize:10, color:'rgba(255,255,255,0.5)', fontFamily:FI }}>Paso {step} de {totalSteps}</div>
             </>
           )}
         </div>
@@ -20491,7 +20491,7 @@ function CommerceSettingsView({ user, profile, setView, onLogout, onOwnerProfile
                                   <span style={{ fontFamily:FN, fontWeight:700, lineHeight:1.2 }}>{uploadingCover ? 'Subiendo...' : 'Sumar foto'}</span>
                                 </label>
                               ) : (
-                                <div style={{ position:'absolute', inset:0, display:'flex', alignItems:'center', justifyContent:'center', color:'rgba(255,255,255,0.20)' }}>
+                                <div style={{ position:'absolute', inset:0, display:'flex', alignItems:'center', justifyContent:'center', color:'rgba(255,255,255,0.5)' }}>
                                   <span style={{ fontSize:24, fontWeight:300 }}>+</span>
                                 </div>
                               )}
@@ -21585,7 +21585,7 @@ function ClientQRView({ user, profile, setView, headerExtra }) {
             <div style={{ position:'absolute', inset:0, background:'radial-gradient(circle at center, rgba(255,255,255,0.18) 0%, transparent 68%)', pointerEvents:'none' }} />
             {passQrUrl
               ? <img src={passQrUrl} alt="QR" style={{ width:200, height:200, display:'block', position:'relative', filter:'drop-shadow(0 0 14px rgba(255,255,255,0.30))' }} />
-              : <div style={{ width:200, height:200, display:'flex', alignItems:'center', justifyContent:'center', color:'rgba(255,255,255,0.4)', fontSize:11 }}>Generando...</div>
+              : <div style={{ width:200, height:200, display:'flex', alignItems:'center', justifyContent:'center', color:'rgba(255,255,255,0.5)', fontSize:11 }}>Generando...</div>
             }
           </div>
 
@@ -21622,7 +21622,7 @@ function ClientQRView({ user, profile, setView, headerExtra }) {
         ].map((s, i) => (
           <div key={i} className="fu" style={{ animationDelay:`${i*50}ms`, background:'rgba(255,255,255,0.05)', backdropFilter:'blur(20px)', WebkitBackdropFilter:'blur(20px)', border:'1px solid rgba(255,255,255,0.10)', borderRadius:18, padding:'14px 8px', textAlign:'center' }}>
             <div style={{ fontFamily:FN, fontSize:26, fontWeight:900, color:'#fff', lineHeight:1 }}>{s.val}</div>
-            <div style={{ fontFamily:FI, fontSize:10, color:'rgba(255,255,255,0.40)', marginTop:5, textTransform:'uppercase', letterSpacing:'.08em' }}>{s.lbl}</div>
+            <div style={{ fontFamily:FI, fontSize:10, color:'rgba(255,255,255,0.5)', marginTop:5, textTransform:'uppercase', letterSpacing:'.08em' }}>{s.lbl}</div>
           </div>
         ))}
       </div>

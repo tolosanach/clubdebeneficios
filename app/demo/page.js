@@ -403,7 +403,7 @@ function RolePickerModal({ onPick }) {
           style={{
             display: 'block', textAlign: 'center',
             marginTop: 16, fontFamily: FI, fontSize: 12,
-            color: 'rgba(255,255,255,0.45)', textDecoration: 'none',
+            color: 'rgba(255,255,255,0.5)', textDecoration: 'none',
           }}
         >
           ← Volver al home
@@ -544,7 +544,7 @@ function CtaModal({ onClose }) {
           onClick={onClose}
           style={{
             marginTop: 12, background: 'transparent', border: 'none',
-            color: 'rgba(255,255,255,0.45)', cursor: 'pointer',
+            color: 'rgba(255,255,255,0.5)', cursor: 'pointer',
             fontFamily: FI, fontSize: 12,
           }}
         >

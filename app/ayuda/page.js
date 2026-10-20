@@ -120,7 +120,7 @@ export default function AyudaPage() {
           Atención lun-vie de 9 a 18hs (hora Argentina).
         </div>
 
-        <div style={{ marginTop:24, fontSize:12, color:'rgba(255,255,255,0.45)', textAlign:'center', display:'flex', justifyContent:'center', gap:14, flexWrap:'wrap' }}>
+        <div style={{ marginTop:24, fontSize:12, color:'rgba(255,255,255,0.5)', textAlign:'center', display:'flex', justifyContent:'center', gap:14, flexWrap:'wrap' }}>
           <Link href="/terminos" style={{ color:'inherit', textDecoration:'underline' }}>Términos y Condiciones</Link>
           <Link href="/privacidad" style={{ color:'inherit', textDecoration:'underline' }}>Privacidad</Link>
         </div>

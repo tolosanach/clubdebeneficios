@@ -647,7 +647,7 @@ function InlineEditModal({ title, field, initial, inputStyle, labelStyle, onClos
             <div>
               <label style={labelStyle}>Nombre</label>
               <input type="text" value={val} onChange={e => setVal(e.target.value)} placeholder="Nombre del negocio" style={inputStyle} autoFocus />
-              <p style={{ fontSize:11, color:'rgba(255,255,255,0.45)', marginTop:8 }}>
+              <p style={{ fontSize:11, color:'rgba(255,255,255,0.5)', marginTop:8 }}>
                 Solo podés cambiar el nombre cada 20 días.
               </p>
             </div>
@@ -725,7 +725,7 @@ function InlineEditModal({ title, field, initial, inputStyle, labelStyle, onClos
                 <div>
                   <label style={labelStyle}>Categorías seleccionadas (máx 3)</label>
                   {selected.length === 0 ? (
-                    <div style={{ fontSize:12, color:'rgba(255,255,255,0.45)', padding:'10px 12px', background:'rgba(255,255,255,0.04)', border:'1px dashed rgba(255,255,255,0.16)', borderRadius:10 }}>
+                    <div style={{ fontSize:12, color:'rgba(255,255,255,0.5)', padding:'10px 12px', background:'rgba(255,255,255,0.04)', border:'1px dashed rgba(255,255,255,0.16)', borderRadius:10 }}>
                       Todavía no elegiste ninguna.
                     </div>
                   ) : (
@@ -3122,7 +3122,7 @@ export default function ClubProfilePage() {
                           <Clock size={18} strokeWidth={2} color="rgba(255,255,255,0.6)" />
                           <div>
                             <p style={{ color:C.white, fontSize:14, fontWeight:500, margin:0 }}>Horarios</p>
-                            {!showHours && <p style={{ color:'rgba(255,255,255,0.45)', fontSize:12, margin:'2px 0 0' }}>Hoy: {todayShifts}</p>}
+                            {!showHours && <p style={{ color:'rgba(255,255,255,0.5)', fontSize:12, margin:'2px 0 0' }}>Hoy: {todayShifts}</p>}
                           </div>
                         </div>
                         <ChevronDown size={18} color="rgba(255,255,255,0.35)" style={{ transform: showHours ? 'rotate(180deg)' : 'none', transition:'transform .2s', flexShrink:0 }} />
@@ -3152,7 +3152,7 @@ export default function ClubProfilePage() {
                   <div style={{ borderTop:'1px solid rgba(255,255,255,0.08)' }} />
                   <div style={{ display:'flex', alignItems:'center', gap:8, padding:'14px 16px' }}>
                     <span style={{ width:8, height:8, borderRadius:'50%', background:'rgba(255,255,255,0.20)', flexShrink:0 }} />
-                    <span style={{ color:'rgba(255,255,255,0.35)', fontSize:12, fontFamily:FI, fontStyle:'italic' }}>Horarios no informados</span>
+                    <span style={{ color:'rgba(255,255,255,0.5)', fontSize:12, fontFamily:FI, fontStyle:'italic' }}>Horarios no informados</span>
                   </div>
                 </>
               )}
@@ -3167,7 +3167,7 @@ export default function ClubProfilePage() {
                       <MapPin size={18} strokeWidth={2} color="rgba(255,255,255,0.6)" />
                       <div>
                         <p style={{ color:C.white, fontSize:14, fontWeight:500, margin:0 }}>{commerce.address || 'Ver en el mapa'}</p>
-                        {commerce.city && <p style={{ color:'rgba(255,255,255,0.45)', fontSize:12, margin:'2px 0 0' }}>{commerce.city.name}</p>}
+                        {commerce.city && <p style={{ color:'rgba(255,255,255,0.5)', fontSize:12, margin:'2px 0 0' }}>{commerce.city.name}</p>}
                       </div>
                     </div>
                     <span style={{ background:'transparent', color:'#E03E1B', border:'1.5px solid #E03E1B', borderRadius:8, padding:'6px 12px', fontSize:12, fontWeight:700, fontFamily:FN, whiteSpace:'nowrap', flexShrink:0 }}>Cómo llegar →</span>
@@ -3178,8 +3178,8 @@ export default function ClubProfilePage() {
                 <div style={{ display:'flex', alignItems:'center', gap:12, padding:'14px 16px', fontFamily:FI }}>
                   <MapPin size={18} strokeWidth={2} color="rgba(255,255,255,0.25)" />
                   <div style={{ flex:1, minWidth:0 }}>
-                    <p style={{ color:'rgba(255,255,255,0.35)', fontSize:14, fontWeight:500, margin:0, fontStyle:'italic' }}>Dirección no informada</p>
-                    {commerce.city?.name && <p style={{ color:'rgba(255,255,255,0.30)', fontSize:12, margin:'2px 0 0' }}>{commerce.city.name}</p>}
+                    <p style={{ color:'rgba(255,255,255,0.5)', fontSize:14, fontWeight:500, margin:0, fontStyle:'italic' }}>Dirección no informada</p>
+                    {commerce.city?.name && <p style={{ color:'rgba(255,255,255,0.5)', fontSize:12, margin:'2px 0 0' }}>{commerce.city.name}</p>}
                   </div>
                   {editPencil('address', 'Agregar ubicación', false /* sin info, va amarillo */)}
                 </div>
@@ -3202,7 +3202,7 @@ export default function ClubProfilePage() {
               ) : (
                 <div style={{ display:'flex', alignItems:'center', gap:12, padding:'14px 16px', fontFamily:FI }}>
                   <Camera size={18} strokeWidth={2} color="rgba(255,255,255,0.25)" />
-                  <p style={{ flex:1, color:'rgba(255,255,255,0.35)', fontSize:14, fontWeight:500, margin:0, fontStyle:'italic' }}>Sin redes sociales</p>
+                  <p style={{ flex:1, color:'rgba(255,255,255,0.5)', fontSize:14, fontWeight:500, margin:0, fontStyle:'italic' }}>Sin redes sociales</p>
                   {editPencil('instagram', 'Agregar Instagram', false /* sin info, va amarillo */)}
                 </div>
               )}
@@ -3458,7 +3458,7 @@ export default function ClubProfilePage() {
                   <div style={{ fontFamily:FN, fontSize:14, fontWeight:700, color:'#fff', letterSpacing:'-0.01em' }}>
                     Ya sos parte de este club
                     {membership?.joined_at && (
-                      <span style={{ fontWeight:400, fontSize:11, color:'rgba(255,255,255,0.40)', marginLeft:6 }}>
+                      <span style={{ fontWeight:400, fontSize:11, color:'rgba(255,255,255,0.5)', marginLeft:6 }}>
                         desde {new Date(membership.joined_at).toLocaleDateString('es-AR', { month:'long', year:'numeric' })}
                       </span>
                     )}
@@ -3475,7 +3475,7 @@ export default function ClubProfilePage() {
                   </div>
                   <div style={{ textAlign:'right' }}>
                     <div style={{ fontFamily:FN, fontSize:22, fontWeight:800, color:'#fff', lineHeight:1 }}>{visits}</div>
-                    <div style={{ fontSize:11, color:'rgba(255,255,255,0.45)', marginTop:3 }}>visita{visits!==1?'s':''}</div>
+                    <div style={{ fontSize:11, color:'rgba(255,255,255,0.5)', marginTop:3 }}>visita{visits!==1?'s':''}</div>
                   </div>
                 </div>
 
@@ -3768,7 +3768,7 @@ export default function ClubProfilePage() {
                   </div>
                   <div>
                     <p style={{ color: C.white, fontSize: 14, fontWeight: 700, margin: 0, fontFamily: FN }}>Mi historial en este club</p>
-                    <p style={{ color: 'rgba(255,255,255,0.45)', fontSize: 11, margin: '2px 0 0' }}>Visitas y canjes</p>
+                    <p style={{ color: 'rgba(255,255,255,0.5)', fontSize: 11, margin: '2px 0 0' }}>Visitas y canjes</p>
                   </div>
                 </div>
                 <ChevronDown size={18} color="rgba(255,255,255,0.45)" style={{ transform: showHistory ? 'rotate(180deg)' : 'none', transition: 'transform .25s ease' }} />
@@ -3791,7 +3791,7 @@ export default function ClubProfilePage() {
             style={{
               background: 'transparent',
               border: 'none',
-              color: 'rgba(255,255,255,0.40)',
+              color: 'rgba(255,255,255,0.5)',
               fontFamily: 'inherit',
               fontSize: 12,
               textDecoration: 'underline',
@@ -4230,7 +4230,7 @@ export default function ClubProfilePage() {
                       {p.description}
                     </p>
                   ) : (
-                    <p style={{ fontSize:13, color:'rgba(255,255,255,0.40)', fontStyle:'italic', margin:'0 0 18px' }}>
+                    <p style={{ fontSize:13, color:'rgba(255,255,255,0.5)', fontStyle:'italic', margin:'0 0 18px' }}>
                       El comercio no agregó descripción para este premio.
                     </p>
                   )}

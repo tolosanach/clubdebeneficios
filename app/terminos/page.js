@@ -14,7 +14,7 @@ export default function TerminosPage() {
         </Link>
 
         <h1 style={{ fontFamily:"'Space Grotesk', system-ui, sans-serif", fontSize:32, fontWeight:900, letterSpacing:'-.02em', marginBottom:6, color:'#fff' }}>Términos y Condiciones</h1>
-        <p style={{ fontSize:12, color:'rgba(255,255,255,0.45)', marginBottom:32 }}>Última actualización: abril 2026</p>
+        <p style={{ fontSize:12, color:'rgba(255,255,255,0.5)', marginBottom:32 }}>Última actualización: abril 2026</p>
 
         <div style={{ fontSize:14, lineHeight:1.7, color:'rgba(255,255,255,0.80)' }}>
 
