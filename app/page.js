@@ -15,6 +15,7 @@ import EnablePushPrompt from '../lib/EnablePushPrompt'
 import MinimalSignupModal from '../lib/MinimalSignupModal'
 import PrizeWizardModal from '../lib/PrizeWizardModal'
 import ProfileItemWizard from '../lib/ProfileItemWizard'
+import MerchantSetupHome from '../lib/MerchantSetupHome'
 import BizPromptBanner from '../lib/BizPromptBanner'
 import CrossRoleNudges from '../lib/CrossRoleNudges'
 import LogoCropper, { validateImageFile, checkImageDimensions } from '../lib/LogoCropper'
@@ -145,6 +146,9 @@ const C = {
   okBg:   'rgba(0,31,16,0.8)',
   info:   '#40C8FF',
 }
+// Panel inicial del comerciante: true = MerchantSetupHome (vista previa /
+// resumen diario); false = bloque viejo "Configurá tu negocio".
+const USE_NEW_SETUP_HOME = true
 const FN = "'Space Grotesk', system-ui, sans-serif"
 const FI = "'Inter', system-ui, sans-serif"
 // TITLE: tipografía "vieja" de los H1 de pestaña del panel comerciante,
@@ -14883,6 +14887,27 @@ function CommerceSettingsView({ user, profile, setView, onLogout, onOwnerProfile
         {/* Padding lateral para el contenido principal — el slider rompe
             con margin negativo para llegar a los bordes. */}
         <div style={{ padding: isMobile ? '0 18px' : '0 28px', maxWidth:'100%', minWidth:0, overflowX:'hidden' }}>
+          {/* Panel inicial simplificado (oct 2026): reemplaza el bloque
+              "Configurá tu negocio" (banner + chips + LEDs + carpeta
+              Pendientes/Completos + nota premium). Abajo de 60% muestra la
+              vista previa "Así te ven tus clientes"; desde 60% el resumen
+              diario. Para volver al diseño anterior: USE_NEW_SETUP_HOME = false. */}
+          {USE_NEW_SETUP_HOME && (
+            <MerchantSetupHome
+              commerce={commerce}
+              form={form}
+              items={configItems}
+              prizes={prizes}
+              cfgPct={cfgPct}
+              doneCount={doneCount}
+              totalCount={totalCount}
+              pendingItems={pendingItems}
+              onItem={navigateConfigItem}
+              onEditPublic={commerce?.slug ? () => { if (typeof window !== 'undefined') window.location.href = `/club/${commerce.slug}?edit=1` } : null}
+              onScan={() => setView('scanner')}
+            />
+          )}
+          {!USE_NEW_SETUP_HOME && (<>
           <HelpBanner
             id="merchant-intent"
             title="Tu panel de negocio"
@@ -15309,8 +15334,10 @@ function CommerceSettingsView({ user, profile, setView, onLogout, onOwnerProfile
           </div>{/* fin del stepped progress (header + LEDs) */}
           </div>{/* fin del sub-container 2: Casi listo + barra de progreso */}
           </div>{/* fin del container EXTERNO Estado + Progreso */}
+          </>)}{/* fin !USE_NEW_SETUP_HOME (header viejo) */}
         </div>
 
+        {!USE_NEW_SETUP_HOME && (<>
         {/* ── Container "carpeta" que engloba pestañas + contenido ──
             Tipo file folder UI: las pestañas se sienten como las orejitas de
             la carpeta y todo el contenido vive adentro del mismo card.
@@ -16211,6 +16238,7 @@ function CommerceSettingsView({ user, profile, setView, onLogout, onOwnerProfile
         )}
 
         </div>{/* fin del container "carpeta" pestañas + contenido */}
+        </>)}{/* fin !USE_NEW_SETUP_HOME (carpeta) */}
 
         {/* MerchantTopTabs — render via variable reutilizable definida
             arriba del if(intentPickerActive). Misma instancia se usa
