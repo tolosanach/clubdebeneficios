@@ -19,7 +19,7 @@ export const metadata = {
   },
   icons: {
     icon: '/clufix-icon.svg',
-    apple: '/clufix-icon.svg',
+    apple: '/icons/apple-touch-icon.png',
   },
   manifest: '/manifest.json',
   appleWebApp: {
@@ -48,7 +48,7 @@ export default function RootLayout({ children }) {
         <meta name="apple-mobile-web-app-capable" content="yes" />
         <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
         <meta name="apple-mobile-web-app-title" content="Clufix" />
-        <link rel="apple-touch-icon" href="/clufix-icon.svg" />
+        <link rel="apple-touch-icon" href="/icons/apple-touch-icon.png" />
         <link rel="icon" type="image/svg+xml" href="/clufix-icon.svg" />
       </head>
       {/* suppressHydrationWarning silencia los mismatches que vienen de
