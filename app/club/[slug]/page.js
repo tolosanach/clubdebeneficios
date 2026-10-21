@@ -117,15 +117,13 @@ const GLOBAL_CSS = `
       overflow: visible !important;
     }
     .club-id-head { padding: 0 24px 18px !important; }
-    .club-id-row { align-items: flex-end !important; gap: 20px !important; }
-    .club-id-logo {
-      width: 168px !important; height: 168px !important;
-      border-radius: 50% !important;
-      margin-top: -84px;
-      border: 5px solid #1C1511;
-      background: #E03E1B !important;
-    }
-    .club-id-name { font-size: 32px !important; letter-spacing: -0.02em; line-height: 1.1 !important; }
+    .club-id-row { flex-direction: row !important; align-items: flex-end !important; gap: 20px !important; }
+    .club-id-info { text-align: left !important; padding-bottom: 6px; }
+    .club-id-info > div, .club-id-chips { justify-content: flex-start !important; }
+    .club-id-logo { width: 168px !important; height: 168px !important; margin-top: -84px !important; border-width: 5px !important; }
+    .club-id-name { font-size: 32px !important; }
+    .club-id-actions { padding: 0 24px 18px !important; }
+    .club-id-actions > * { flex: 0 0 auto !important; padding-left: 20px !important; padding-right: 20px !important; }
     .club-colA, .club-colB { margin: 16px 0 0 !important; }
     .club-colA { padding: 0 !important; }
     .club-colA:empty { display: none; }
@@ -1975,6 +1973,15 @@ export default function ClubProfilePage() {
   // (descripción, horarios, ubicación, redes) vive adentro y se
   // despliega cuando el cliente toca la flecha del fondo de la card.
   const [cardOpen, setCardOpen]       = useState(false)
+  // El botón "Unirme" flotante solo aparece después de scrollear: arriba ya
+  // está el botón "Sumarme al club" de la cabecera.
+  const [pastHeader, setPastHeader]   = useState(false)
+  useEffect(() => {
+    const onScroll = () => setPastHeader(window.scrollY > 360)
+    onScroll()
+    window.addEventListener('scroll', onScroll, { passive: true })
+    return () => window.removeEventListener('scroll', onScroll)
+  }, [])
   const [showSplash, setShowSplash]           = useState(false)
   // splashPhaseComplete: true cuando el usuario ya vio y cerró el splash,
   // O cuando ya lo había visto en una visita anterior de la misma sesión
@@ -2479,7 +2486,7 @@ export default function ClubProfilePage() {
 
       {/* Sticky CTA — aparece solo cuando el usuario cerró el Splash sin unirse
           y todavía no es miembro. Desaparece al completar el join. */}
-      {splashPhaseComplete && !isMember && (
+      {splashPhaseComplete && !isMember && pastHeader && (
         <div style={{ position:'fixed', bottom:'calc(80px + env(safe-area-inset-bottom, 0px))', left:0, right:0, zIndex:300, padding:'0 16px', pointerEvents:'none' }}>
           <button
             onClick={handleSplashJoin}
@@ -3037,12 +3044,11 @@ export default function ClubProfilePage() {
       <div className="club-main" style={{ maxWidth:600, margin:'0 auto', paddingBottom:140 }}>
 
         {/* ── CARD DEL NEGOCIO (collapsible, sobre la portada) ── */}
-        <div className="club-id" style={{ margin:'-80px 16px 0', position:'relative', zIndex:10 }}>
+        <div className="club-id" style={{ margin:'-40px 16px 0', position:'relative', zIndex:10 }}>
           <div style={{
-            background:'rgba(255,255,255,0.05)',
-            backdropFilter:'blur(20px)', WebkitBackdropFilter:'blur(20px)',
+            background:'#1C1511',
             border:'1px solid rgba(255,255,255,0.10)',
-            borderRadius:20, overflow:'hidden',
+            borderRadius:20, overflow:'visible',
           }}>
             {/* Header siempre visible. Era un <button> pero se rompe la
                 hidratación si tiene pencils anidados (no se permite button
@@ -3055,70 +3061,90 @@ export default function ClubProfilePage() {
               onKeyDown={e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); setCardOpen(v => !v) } }}
               className="club-id-head" style={{ width:'100%', background:'transparent', border:'none', cursor:'pointer', padding:'14px 16px', display:'block' }}
             >
-              <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between' }}>
-                <div className="club-id-row" style={{ display:'flex', alignItems:'center', gap:12 }}>
-                  <div className="club-id-logo" style={{ width:48, height:48, borderRadius:14, overflow:'hidden', background:'rgba(255,255,255,0.10)', flexShrink:0, display:'flex', alignItems:'center', justifyContent:'center' }}>
-                    {commerce.img_url
-                      ? <img src={commerce.img_url} alt="" style={{ width:'100%', height:'100%', objectFit:'cover' }} />
-                      : <CatIcon category={commerce.category} size={22} color="rgba(255,255,255,0.5)" />
-                    }
-                  </div>
-                  <div style={{ textAlign:'left' }}>
-                    <div style={{ display:'flex', alignItems:'center' }}>
-                      <div className="club-id-name" style={{ fontFamily:FN, fontSize:16, fontWeight:700, color:C.white, lineHeight:1.2 }}>{commerce.name}</div>
-                      <span onClick={e => e.stopPropagation()} style={{ display:'inline-flex' }}>
-                        {editPencil('name', 'Editar nombre', !!commerce.name)}
-                      </span>
-                    </div>
-                    <div style={{ display:'flex', alignItems:'center', gap:6, marginTop:4 }}>
-                      <span style={{ fontSize:11, color:'rgba(255,255,255,0.55)', background:'rgba(255,255,255,0.08)', borderRadius:99, padding:'2px 8px' }}>{commerce.category}</span>
-                      {REVIEWS_ENABLED && (reviewsAvg !== null || commerce.rating) && (
-                        <span style={{ display:'flex', alignItems:'center', gap:3, fontSize:11, color:'#F0603A' }}>
-                          <Star size={11} strokeWidth={0} fill="currentColor" /> {reviewsAvg ?? commerce.rating}
-                        </span>
-                      )}
-                      <span onClick={e => e.stopPropagation()} style={{ display:'inline-flex' }}>
-                        {editPencil('category', 'Editar categoría', !!commerce.category || (Array.isArray(commerce.categories) && commerce.categories.length > 0))}
-                      </span>
-                    </div>
-                  </div>
-                </div>
-                {/* Indicador "Abierto ahora · 09–22" en el header — antes
-                    vivía adentro del desplegable, pero el cliente quiere
-                    ese dato sin tener que abrir nada. Se calcula inline a
-                    partir de hours_structured + hora actual. Si no hay
-                    horarios cargados, no se renderiza nada. */}
-                {(() => {
-                  const hs = commerce.hours_structured
-                  if (!hs) return null
-                  const dayKeys = ['sunday','monday','tuesday','wednesday','thursday','friday','saturday']
-                  const today = hs[dayKeys[new Date().getDay()]]
-                  if (!today) return null
-                  let openNow = false, summary = 'Cerrado'
-                  if (today.open && today.shifts?.length) {
-                    const nowMin = new Date().getHours()*60 + new Date().getMinutes()
-                    openNow = today.shifts.some(s => {
-                      const [fh, fm] = (s.from || '0:0').split(':').map(Number)
-                      const [th, tm] = (s.to   || '0:0').split(':').map(Number)
-                      return nowMin >= (fh*60+fm) && nowMin <= (th*60+tm)
-                    })
-                    summary = today.shifts.map(s => `${s.from}–${s.to}`).join(' · ')
+              <div className="club-id-row" style={{ display:'flex', flexDirection:'column', alignItems:'center', gap:10 }}>
+                <div className="club-id-logo" style={{ width:96, height:96, borderRadius:'50%', overflow:'hidden', background:'#E03E1B', border:'4px solid #1C1511', marginTop:-58, flexShrink:0, display:'flex', alignItems:'center', justifyContent:'center' }}>
+                  {commerce.img_url
+                    ? <img src={commerce.img_url} alt="" style={{ width:'100%', height:'100%', objectFit:'cover' }} />
+                    : <CatIcon category={commerce.category} size={40} color="rgba(255,255,255,0.9)" />
                   }
-                  return (
-                    <div style={{ display:'flex', flexDirection:'column', alignItems:'flex-end', gap:2, marginRight:8, flexShrink:1, minWidth:0 }}>
-                      <div style={{ display:'flex', alignItems:'center', gap:5 }}>
-                        <span style={{ width:7, height:7, borderRadius:'50%', background: openNow ? '#22c55e' : '#888', flexShrink:0, animation: openNow ? 'pulse 2s ease-in-out infinite' : 'none' }} />
-                        <span style={{ color: openNow ? '#4ade80' : '#888', fontSize:11, fontFamily:FI, fontWeight:600 }}>{openNow ? 'Abierto ahora' : 'Cerrado'}</span>
+                </div>
+                <div className="club-id-info" style={{ textAlign:'center', minWidth:0 }}>
+                  <div style={{ display:'flex', alignItems:'center', justifyContent:'center' }}>
+                    <div className="club-id-name" style={{ fontFamily:FN, fontSize:24, fontWeight:800, color:C.white, lineHeight:1.15, letterSpacing:'-0.02em' }}>{commerce.name}</div>
+                    <span onClick={e => e.stopPropagation()} style={{ display:'inline-flex' }}>
+                      {editPencil('name', 'Editar nombre', !!commerce.name)}
+                    </span>
+                  </div>
+                  <div className="club-id-chips" style={{ display:'flex', alignItems:'center', justifyContent:'center', flexWrap:'wrap', gap:6, marginTop:8 }}>
+                    {commerce.category && <span style={{ fontSize:12, color:'rgba(255,255,255,0.65)', background:'rgba(255,255,255,0.08)', borderRadius:99, padding:'3px 10px' }}>{commerce.category}</span>}
+                    {commerce.city?.name && <span style={{ fontSize:12, color:'rgba(255,255,255,0.65)', background:'rgba(255,255,255,0.08)', borderRadius:99, padding:'3px 10px' }}>{commerce.city.name}</span>}
+                    {REVIEWS_ENABLED && (reviewsAvg !== null || commerce.rating) && (
+                      <span style={{ display:'flex', alignItems:'center', gap:3, fontSize:12, color:'#F0603A' }}>
+                        <Star size={12} strokeWidth={0} fill="currentColor" /> {reviewsAvg ?? commerce.rating}
+                      </span>
+                    )}
+                    <span onClick={e => e.stopPropagation()} style={{ display:'inline-flex' }}>
+                      {editPencil('category', 'Editar categoría', !!commerce.category || (Array.isArray(commerce.categories) && commerce.categories.length > 0))}
+                    </span>
+                  </div>
+                  {/* "Abierto ahora · 09–22" bajo el nombre (hours_structured + hora actual). */}
+                  {(() => {
+                    const hs = commerce.hours_structured
+                    if (!hs) return null
+                    const dayKeys = ['sunday','monday','tuesday','wednesday','thursday','friday','saturday']
+                    const today = hs[dayKeys[new Date().getDay()]]
+                    if (!today) return null
+                    let openNow = false, summary = 'Cerrado'
+                    if (today.open && today.shifts?.length) {
+                      const nowMin = new Date().getHours()*60 + new Date().getMinutes()
+                      openNow = today.shifts.some(s => {
+                        const [fh, fm] = (s.from || '0:0').split(':').map(Number)
+                        const [th, tm] = (s.to   || '0:0').split(':').map(Number)
+                        return nowMin >= (fh*60+fm) && nowMin <= (th*60+tm)
+                      })
+                      summary = today.shifts.map(s => `${s.from}–${s.to}`).join(' · ')
+                    }
+                    return (
+                      <div style={{ display:'flex', alignItems:'center', justifyContent:'center', flexWrap:'wrap', gap:'2px 8px', marginTop:10 }}>
+                        <span style={{ display:'flex', alignItems:'center', gap:5 }}>
+                          <span style={{ width:7, height:7, borderRadius:'50%', background: openNow ? '#22c55e' : '#888', flexShrink:0, animation: openNow ? 'pulse 2s ease-in-out infinite' : 'none' }} />
+                          <span style={{ color: openNow ? '#4ade80' : '#9a9a9a', fontSize:13, fontFamily:FI, fontWeight:600 }}>{openNow ? 'Abierto ahora' : 'Cerrado'}</span>
+                        </span>
+                        <span style={{ color:'rgba(255,255,255,0.55)', fontSize:13, fontFamily:FI }}>{summary}</span>
                       </div>
-                      <span style={{ color:'rgba(255,255,255,0.50)', fontSize:11, fontFamily:FI, whiteSpace:'nowrap', overflow:'hidden', textOverflow:'ellipsis', maxWidth:140 }}>{summary}</span>
-                    </div>
-                  )
-                })()}
-                {/* Chevron viejo del top-right removido — ahora hay una
-                    flecha grande al pie de la card (centrada) que indica
-                    "tocá para desplegar info". */}
+                    )
+                  })()}
+                </div>
               </div>
             </div>
+
+            {/* Acciones rápidas: unirse (si todavía no es socio), cómo llegar y WhatsApp. */}
+            {(() => {
+              const waUrl = buildWhatsappUrl(commerce.phone, `Hola ${commerce.name}! Te escribo desde Clufix.`)
+              const hasMap = !!(commerce.address || (commerce.lat && commerce.lng))
+              const showJoin = !isMember && !editMode
+              if (!showJoin && !hasMap && !waUrl) return null
+              const btn = { flex:'1 1 0', minWidth:0, display:'flex', alignItems:'center', justifyContent:'center', gap:7, padding:'12px 10px', borderRadius:12, fontFamily:FN, fontSize:14, fontWeight:700, textDecoration:'none', cursor:'pointer', border:'none', whiteSpace:'nowrap' }
+              return (
+                <div className="club-id-actions" style={{ display:'flex', flexWrap:'wrap', gap:8, padding:'0 16px 16px' }}>
+                  {showJoin && (
+                    <button onClick={handleSplashJoin} style={{ ...btn, flexBasis:'100%', background:'#E03E1B', color:'#fff' }}>
+                      Sumarme al club
+                    </button>
+                  )}
+                  {hasMap && (
+                    <a href={mapsUrl} target="_blank" rel="noopener noreferrer" style={{ ...btn, background:'rgba(255,255,255,0.10)', color:'#fff' }}>
+                      <MapPin size={16} strokeWidth={2.2} /> Cómo llegar
+                    </a>
+                  )}
+                  {waUrl && (
+                    <a href={waUrl} target="_blank" rel="noopener noreferrer" style={{ ...btn, background:'rgba(255,255,255,0.10)', color:'#fff' }}>
+                      <MessageCircle size={16} strokeWidth={2.2} /> WhatsApp
+                    </a>
+                  )}
+                </div>
+              )
+            })()}
 
             {/* Contenido expandible — TODA la info "Sobre el negocio" vive
                 acá adentro: descripción, horarios completos, ubicación y
