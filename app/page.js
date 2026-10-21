@@ -1533,8 +1533,28 @@ function InstagramStoryQR({ commerce, qrDataUrl }) {
 //     dentro de un set por audiencia para que se sienta vivo.
 //   - QR negro sobre fondo blanco, en una card grande centrada.
 //   - X cerrar arriba a la derecha, glass discreto.
-function QrFullscreen({ open, onClose, qrValue, audience = 'client', shareUrl = '', shareTitle = 'Clufix', displayName = '' }) {
+function QrFullscreen({ open, onClose, qrValue, audience = 'client', shareUrl = '', shareTitle = 'Clufix', displayName = '', commerceId = '' }) {
   const [copied, setCopied] = useState(false)
+  const [ptBusy, setPtBusy] = useState('')
+
+  // Descarga el portarretrato imprimible (13×18 cm) generado en el server.
+  const downloadPortaretrato = async (format) => {
+    if (!commerceId || ptBusy) return
+    setPtBusy(format)
+    try {
+      const res = await fetch(`/api/portaretrato?commerce_id=${encodeURIComponent(commerceId)}&format=${format}`)
+      if (!res.ok) throw new Error('fail')
+      const blob = await res.blob()
+      const a = document.createElement('a')
+      a.href = URL.createObjectURL(blob)
+      a.download = `portarretrato.${format}`
+      document.body.appendChild(a); a.click(); a.remove()
+      setTimeout(() => URL.revokeObjectURL(a.href), 4000)
+    } catch {
+      alert('No pudimos generar el portarretrato. Probá de nuevo en unos segundos.')
+    }
+    setPtBusy('')
+  }
 
   const topLabel = audience === 'merchant'
     ? `QR DE ${(shareTitle && shareTitle !== 'Clufix' ? shareTitle : 'MI NEGOCIO').toUpperCase()}`
@@ -1883,6 +1903,26 @@ function QrFullscreen({ open, onClose, qrValue, audience = 'client', shareUrl = 
           </button>
         )}
       </div>
+      {audience === 'merchant' && commerceId && (
+        <div style={{ marginTop: 14, textAlign: 'center' }}>
+          <div style={{ fontFamily: FN, fontSize: 12, color: 'rgba(255,255,255,0.6)', marginBottom: 8 }}>
+            Portarretrato para imprimir (13 × 18 cm)
+          </div>
+          <div style={{ display: 'flex', gap: 10, justifyContent: 'center' }}>
+            {[['png', 'PNG'], ['pdf', 'PDF']].map(([f, l]) => (
+              <button key={f} onClick={() => downloadPortaretrato(f)} disabled={!!ptBusy} style={{
+                display: 'flex', alignItems: 'center', gap: 7, padding: '10px 18px',
+                background: 'rgba(255,255,255,0.14)', border: '1px solid rgba(255,255,255,0.22)',
+                borderRadius: 99, color: '#fff', fontFamily: FN, fontSize: 13, fontWeight: 600,
+                cursor: ptBusy ? 'wait' : 'pointer', lineHeight: 1, opacity: ptBusy && ptBusy !== f ? 0.5 : 1,
+              }}>
+                <Download size={14} strokeWidth={2.2} />
+                {ptBusy === f ? 'Generando…' : `Descargar ${l}`}
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
     </div>
   )
 }
@@ -17795,6 +17835,7 @@ function CommerceSettingsView({ user, profile, setView, onLogout, onOwnerProfile
                     audience="merchant"
                     shareUrl={joinUrl}
                     shareTitle={commerce?.name || 'Mi club'}
+                    commerceId={commerce?.id}
                   />
                 )
               })()}
@@ -21331,6 +21372,7 @@ function CommerceSettingsView({ user, profile, setView, onLogout, onOwnerProfile
             audience="merchant"
             shareUrl={joinUrl}
             shareTitle={commerce?.name || 'Mi club'}
+            commerceId={commerce?.id}
           />
         )
       })()}
@@ -22427,6 +22469,7 @@ function ScannerView({ user, profile, setView }) {
         audience="merchant"
         shareUrl={joinUrl}
         shareTitle={selectedCommerce.name || 'Mi club'}
+        commerceId={selectedCommerce.id}
       />
     )
   }
