@@ -1131,3 +1131,32 @@ html.clufix-nav-back::view-transition-new(root) {
   .cx-acc.on .cx-acc-photo { animation: cx-acc-rise .55s cubic-bezier(.22,.8,.3,1) both; }
   @keyframes cx-acc-rise { from { transform: translateY(14px) scale(.96); opacity: 0; } to { transform: none; opacity: 1; } }
 }
+
+
+/* ── Pantallas muy anchas (ultra wide) ─────────────────────────────────────
+   Hasta 1440px la app se adapta al ancho. Más allá, queda un marco de 1440px
+   centrado con márgenes a los costados: el menú lateral, la barra de arriba y
+   el panel del comercio se apoyan en ese marco en vez de estirarse a toda la
+   pantalla. --frame-gutter = margen lateral (0 por debajo de 1440px). */
+:root { --frame-w: 1440px; --frame-gutter: 0px; }
+@media (min-width: 1500px) {
+  :root { --frame-gutter: calc((100vw - var(--frame-w)) / 2); }
+  .bnav-desktop { left: var(--frame-gutter) !important; }
+  .app-navbar {
+    left: var(--frame-gutter) !important;
+    right: var(--frame-gutter) !important;
+  }
+  .with-bottom-nav-v2.merchant-frame {
+    padding-left: calc(220px + var(--frame-gutter)) !important;
+    padding-right: var(--frame-gutter) !important;
+  }
+}
+
+/* Banner "Instalá la app": en escritorio queda a la derecha del menú lateral
+   (que mide 220px y está por encima) y no detrás. */
+@media (min-width: 768px) {
+  .install-prompt-banner { left: 236px !important; }
+}
+@media (min-width: 1500px) {
+  .install-prompt-banner { left: calc(var(--frame-gutter) + 236px) !important; }
+}

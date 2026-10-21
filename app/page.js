@@ -643,7 +643,7 @@ function InstallPrompt({ currentView }) {
           topeada a 380px (right:auto) para no estirarse a toda la pantalla.
           Anclada a la izquierda para no chocar con los botones flotantes
           (chat + campana) que viven abajo-derecha. Se cierra con la X. */}
-      <div className="modal-in" style={{ position:'fixed', bottom:88, left:16, right:'auto', width:'calc(100% - 32px)', maxWidth:380, zIndex:190, background:'rgba(28,20,14,0.97)', backdropFilter:'blur(24px)', WebkitBackdropFilter:'blur(24px)', border:'1px solid rgba(255,122,89,0.35)', borderRadius:18, padding:'14px 16px', boxShadow:'0 8px 40px rgba(0,0,0,0.5)', display:'flex', alignItems:'center', gap:12 }}>
+      <div className="modal-in install-prompt-banner" style={{ position:'fixed', bottom:88, left:16, right:'auto', width:'calc(100% - 32px)', maxWidth:380, zIndex:1700, background:'rgba(28,20,14,0.97)', backdropFilter:'blur(24px)', WebkitBackdropFilter:'blur(24px)', border:'1px solid rgba(255,122,89,0.35)', borderRadius:18, padding:'14px 16px', boxShadow:'0 8px 40px rgba(0,0,0,0.5)', display:'flex', alignItems:'center', gap:12 }}>
         {/* X de cerrar — esquina superior izquierda, lejos de los botones
             flotantes que están a la derecha. */}
         <button onClick={dismiss} aria-label="Cerrar"
@@ -2898,7 +2898,7 @@ function Navbar({ setView, cityName, user, profile, commerce, onLogin, onLogout,
   // ── No logged-in user ─────────────────────────────────────────────────────
   if (!user) return (
     <>
-      <nav className="navbar-glass" style={{ ...NAV, ...NAV_TRANSITION, ...NAV_OPAQUE, padding:'0 20px' }}>
+      <nav className="navbar-glass app-navbar" style={{ ...NAV, ...NAV_TRANSITION, ...NAV_OPAQUE, padding:'0 20px' }}>
         <div style={{ cursor:'pointer' }} onClick={() => setView('home')}><Logo height={44} /></div>
         <div style={{ display:'flex', gap:8, alignItems:'center' }}>
           {cityName && <span style={{ fontSize:11, color:C.mist, padding:'4px 10px', borderRadius:99, background:C.bg3, border:`1px solid ${C.rim}`, display:'inline-flex', alignItems:'center', gap:4 }}><MapPin size={10} color={C.mist} strokeWidth={2} />{cityName}</span>}
@@ -2950,7 +2950,7 @@ function Navbar({ setView, cityName, user, profile, commerce, onLogin, onLogout,
 
   return (
     <>
-    <nav className="navbar-glass" style={{ ...NAV, ...NAV_TRANSITION, ...NAV_SCROLL_STATE, ...(NAV_CTX_TINT || {}), padding:'0 16px' }}>
+    <nav className="navbar-glass app-navbar" style={{ ...NAV, ...NAV_TRANSITION, ...NAV_SCROLL_STATE, ...(NAV_CTX_TINT || {}), padding:'0 16px' }}>
       <div style={{ cursor:'pointer' }} onClick={() => setView('home')}><Logo height={44} /></div>
       {/* LEGACY NAVBAR — reemplazado por BottomNavV2 el 2026-05-03.
           Borrar despues de validar 1 sprint. Bloque original con kit
@@ -14881,7 +14881,7 @@ function CommerceSettingsView({ user, profile, setView, onLogout, onOwnerProfile
     // etc. desde el menú sin tener que pasar por las tarjetas. En mobile
     // sigue el flujo viejo (cards full-width + radial menu).
     return (
-      <div className="with-bottom-nav-v2" style={{ display:'flex', minHeight:'100vh', maxWidth:'100vw', overflowX:'hidden', paddingBottom:'calc(80px + env(safe-area-inset-bottom, 0px))' }}>
+      <div className="with-bottom-nav-v2 merchant-frame" style={{ display:'flex', minHeight:'100vh', maxWidth:'100vw', overflowX:'hidden', paddingBottom:'calc(80px + env(safe-area-inset-bottom, 0px))' }}>
         {/* Sidebar desktop — DESHABILITADO. Antes acá iba la lista vertical
             de pestañas en una columna fija a la izquierda. Ahora la
             navegación entre tabs vive arriba, en el MerchantTopTabs
