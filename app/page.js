@@ -2128,11 +2128,15 @@ function CommerceQRCard({ commerce }) {
 // realmente (POST /api/webhooks/mercadopago) — este modal es solo el feedback
 // visual al usuario para que sepa que el flujo terminó (o no).
 function UpgradeResultModal({ result, onClose }) {
-  const isSuccess = result === 'success' || result === 'pending'
-  const title = isSuccess
+  const isSuccess = result === 'success' || result === 'pending' || result === 'activated'
+  const title = result === 'activated'
+    ? '¡Tu plan ya está activo!'
+    : isSuccess
     ? '¡Pago en proceso!'
     : 'No se completó el pago'
-  const body  = isSuccess
+  const body  = result === 'activated'
+    ? 'Ya podés usar todas las funciones de tu plan. Gracias por sumarte.'
+    : isSuccess
     ? 'Recibimos tu suscripción. En unos minutos vamos a activar tu nuevo plan automáticamente. Si pasaron más de 10 minutos y no se activó, escribinos por soporte.'
     : 'El pago no se completó o fue cancelado. Tu plan actual no cambió. Podés volver a intentarlo desde la pantalla de planes cuando quieras.'
   const accentColor = isSuccess ? '#22E698' : '#F87171'
@@ -23913,6 +23917,23 @@ export default function App() {
   // ?upgrade=... que MP setea al redirigir post-checkout. Mostramos un modal
   // de confirmación encima de cualquier vista.
   const [upgradeResult, setUpgradeResult] = useState(null)
+  // Al volver del checkout de MP, activamos el plan al instante: pedimos al
+  // servidor que sincronice con MP (reintenta unos segundos, MP puede demorar).
+  useEffect(() => {
+    if (upgradeResult !== 'success' && upgradeResult !== 'pending') return
+    let cancelled = false
+    ;(async () => {
+      for (let i = 0; i < 6 && !cancelled; i++) {
+        try {
+          const r = await fetch('/api/billing/sync', { method: 'POST' })
+          const d = await r.json().catch(() => ({}))
+          if (d?.activated) { if (!cancelled) setUpgradeResult('activated'); return }
+        } catch (_) {}
+        await new Promise(res => setTimeout(res, 5000))
+      }
+    })()
+    return () => { cancelled = true }
+  }, [upgradeResult])
 
   // Aplicar deep-link post-hidratación. Corre en el primer mount del App
   // del lado cliente, lee window.location + el _DEEP_LINK módulo (que ya
@@ -24496,7 +24517,7 @@ export default function App() {
       {upgradeResult && (
         <UpgradeResultModal
           result={upgradeResult}
-          onClose={() => setUpgradeResult(null)}
+          onClose={() => { const was = upgradeResult; setUpgradeResult(null); if (was === 'activated') window.location.reload() }}
         />
       )}
       {showCasiListo && user && (
