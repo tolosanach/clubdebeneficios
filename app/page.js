@@ -16393,6 +16393,13 @@ function CommerceSettingsView({ user, profile, setView, onLogout, onOwnerProfile
           offerDiscount={!(Array.isArray(promos) && promos.some(p => p.active && p.type === 'discount_next'))}
         />
 
+        {/* Ventana "Difundir": este render es una pantalla aparte del layout
+            principal, así que el modal tiene que montarse acá también. */}
+        {kitModal && commerce?.id && (
+          <ShareKitModal open onClose={() => setKitModal(null)} commerceId={commerce.id}
+            kind={kitModal.kind} promoId={kitModal.promoId || ''} prizeId={kitModal.prizeId || ''} fontFamily={FN} />
+        )}
+
         {/* UpgradeModal montado también dentro del render del intent picker.
             Sin esto, al hacer click en una card lockedByPlan el handler
             setea upgradeModal pero el modal solo está montado en el render
