@@ -32,7 +32,7 @@ export async function GET(request) {
     return NextResponse.json({ error: 'No autorizado' }, { status: 401 })
   }
   const dry = new URL(request.url).searchParams.get('dry') === '1'
-  const out = { dry, plans: [], subscriptions: [], payments: [], errors: [] }
+  const out = { dry, plans: [], subscriptions: [], payments: [], busqueda_cuotas: [], errors: [] }
 
   try {
     // Diagnóstico: a qué app pertenece cada plan (debería ser la de Benefix).
@@ -60,6 +60,11 @@ export async function GET(request) {
       try {
         await handlePreapproval(s.id)
         const pays = await mpGet(`/authorized_payments/search?preapproval_id=${s.id}&limit=50`)
+        out.busqueda_cuotas.push({
+          preapproval: s.id, respondio: !!pays,
+          claves: pays ? Object.keys(pays) : [], cantidad: (pays?.results || []).length,
+          paging: pays?.paging ?? null,
+        })
         for (const ap of pays?.results || []) {
           try {
             await handleAuthorizedPayment(ap.id)
