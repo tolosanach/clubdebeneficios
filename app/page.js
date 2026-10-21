@@ -11786,7 +11786,6 @@ function CommerceSettingsView({ user, profile, setView, onLogout, onOwnerProfile
   // Promos
   const [promos, setPromos]               = useState([])
   const [kitModal, setKitModal]           = useState(null)   // { kind:'promo'|'prize', promoId?, prizeId? }
-  const [kitOffer, setKitOffer]           = useState(null)   // aviso "¿Lo difundimos?" tras crear
   const [newPromo, setNewPromo]           = useState({ type:'discount_next', value:10, duration:'today', custom_date:'', days:[], expiration_type:'fixed', expiration_date:'', expiration_days:7 })
   const [addingPromo, setAddingPromo]     = useState(false)
   const [promoError, setPromoError]       = useState('')
@@ -13085,7 +13084,6 @@ function CommerceSettingsView({ user, profile, setView, onLogout, onOwnerProfile
       if (data) {
         setPrizes(p => [...p, data])
         logActivity('prize_added', `Premio agregado: "${data.name}" (${data.cost} ${unitLabel})`)
-        if (data.active !== false) setKitOffer({ kind: 'prize', prizeId: data.id, label: 'premio' })
         // Fire-and-forget: notificar a los suscriptos del club. El endpoint
         // valida ownership server-side y dispara push + notif in-app a
         // todos los clients que tienen activada la campanita para premios.
@@ -13309,7 +13307,6 @@ function CommerceSettingsView({ user, profile, setView, onLogout, onOwnerProfile
       setNewPromo({ type:'discount_next', value:10, duration:'today', custom_date:'', days:[], expiration_type:'fixed', expiration_date:'', expiration_days:7 })
       logActivity('promo_added', `Promo activada: "${description}"`)
       showToast('success', '¡Promoción activada!')
-      setKitOffer({ kind: 'promo', promoId: data.id, label: 'promo' })
       // Fire-and-forget: notificar a los suscriptos del club que tienen la
       // campanita activada para promos.
       fetch('/api/notify-club-update', {
@@ -15015,6 +15012,8 @@ function CommerceSettingsView({ user, profile, setView, onLogout, onOwnerProfile
               form={form}
               items={configItems}
               prizes={prizes}
+              promos={promos}
+              onShare={setKitModal}
               cfgPct={cfgPct}
               doneCount={doneCount}
               totalCount={totalCount}
@@ -21426,26 +21425,6 @@ function CommerceSettingsView({ user, profile, setView, onLogout, onOwnerProfile
         )
       })()}
 
-      {/* Aviso "¿Lo difundimos?" justo después de crear una promo o un premio */}
-      {kitOffer && !kitModal && (
-        <div style={{
-          position: 'fixed', left: 16, right: 16, bottom: 96, zIndex: 9000, maxWidth: 420, margin: '0 auto',
-          background: '#2A140D', border: '1px solid rgba(224,62,27,0.55)', borderRadius: 16, padding: '12px 14px',
-          display: 'flex', alignItems: 'center', gap: 10, boxShadow: '0 12px 32px rgba(0,0,0,0.45)',
-        }}>
-          <div style={{ flex: 1, minWidth: 0 }}>
-            <div style={{ fontFamily: FN, fontSize: 14, fontWeight: 800, color: '#fff' }}>¿Lo difundimos?</div>
-            <div style={{ fontFamily: FN, fontSize: 12, color: 'rgba(255,255,255,0.65)', marginTop: 2 }}>Ya armamos la historia de tu {kitOffer.label} para Instagram.</div>
-          </div>
-          <button onClick={() => { setKitModal(kitOffer); setKitOffer(null) }} style={{
-            background: '#E03E1B', border: 'none', borderRadius: 99, padding: '9px 16px', color: '#fff',
-            fontFamily: FN, fontSize: 13, fontWeight: 800, cursor: 'pointer', whiteSpace: 'nowrap',
-          }}>Ver historia</button>
-          <button onClick={() => setKitOffer(null)} aria-label="Cerrar" style={{
-            background: 'transparent', border: 'none', color: 'rgba(255,255,255,0.6)', cursor: 'pointer', padding: 4, display: 'flex',
-          }}><X size={16} /></button>
-        </div>
-      )}
       {kitModal && commerce?.id && (
         <ShareKitModal open onClose={() => setKitModal(null)} commerceId={commerce.id}
           kind={kitModal.kind} promoId={kitModal.promoId || ''} prizeId={kitModal.prizeId || ''} fontFamily={FN} />
