@@ -1098,3 +1098,36 @@ html.clufix-nav-back::view-transition-new(root) {
   outline: 2px solid #FF7A59 !important;
   outline-offset: 2px;
 }
+
+/* ── Tarjetas acordeón del Inicio del comercio (lib/HomeCards.js) ── */
+.cx-acc-group { display: flex; flex-direction: column; gap: 10px; }
+.cx-acc, .cx-acc * { box-sizing: border-box; }
+.cx-acc { position: relative; overflow: hidden; border-radius: 22px; height: 72px;
+  background: #2A1710; box-shadow: inset 0 0 0 1px rgba(255,122,89,0.22); color: #FFF7F2; }
+.cx-acc.on { height: 248px; background: #FAF6F0; box-shadow: none; color: #2A140D; }
+.cx-acc-bar { position: absolute; inset: 0; height: 72px; width: 100%; display: flex; align-items: center; gap: 12px;
+  padding: 0 14px; border: 0; background: transparent; color: inherit; font: inherit; text-align: left; cursor: pointer; }
+.cx-acc.on .cx-acc-bar { opacity: 0; pointer-events: none; }
+.cx-acc-th { flex: none; width: 44px; height: 44px; border-radius: 12px; background-size: cover; background-color: #3a2218; }
+.cx-acc-t { flex: 1; min-width: 0; font-family: 'Space Grotesk', system-ui, sans-serif; font-size: 17px; font-weight: 700; letter-spacing: -0.01em; line-height: 1.15; }
+.cx-acc-go { flex: none; width: 34px; height: 34px; border-radius: 50%; display: flex; align-items: center; justify-content: center; background: rgba(255,255,255,0.08); }
+.cx-acc-open { position: absolute; left: 0; right: 0; top: 0; height: 248px; padding: 18px; display: grid;
+  grid-template-columns: 1fr clamp(92px, 30%, 112px); gap: 14px; opacity: 0; pointer-events: none; }
+.cx-acc.on .cx-acc-open { opacity: 1; pointer-events: auto; }
+.cx-acc-col { display: flex; flex-direction: column; min-width: 0; }
+.cx-acc-chip { align-self: flex-start; font-family: 'Space Grotesk', system-ui, sans-serif; font-size: 11px; font-weight: 700; letter-spacing: .08em; border-radius: 99px; padding: 3px 9px; margin-bottom: 8px; }
+.cx-acc-h { margin: 0 0 8px; font-family: 'Space Grotesk', system-ui, sans-serif; font-size: 21px; line-height: 1.1; letter-spacing: -0.02em; font-weight: 700; text-wrap: balance; }
+.cx-acc-p { margin: 0; font-family: 'Inter', system-ui, sans-serif; font-size: 13px; line-height: 1.45; color: #6B4A3C;
+  display: -webkit-box; -webkit-line-clamp: 4; -webkit-box-orient: vertical; overflow: hidden; }
+.cx-acc-cta { margin-top: auto; align-self: flex-start; display: inline-flex; align-items: center; gap: 8px; min-height: 44px; padding: 0; border: 0; background: transparent;
+  font-family: 'Space Grotesk', system-ui, sans-serif; font-size: 14px; font-weight: 700; color: #2A140D; cursor: pointer; }
+.cx-acc-cta i { width: 32px; height: 32px; border-radius: 50%; background: #CC3516; color: #fff; display: inline-flex; align-items: center; justify-content: center; }
+.cx-acc-photo { border-radius: 16px; height: 100%; background-size: cover; background-repeat: no-repeat; background-color: #3a2218; }
+@media (prefers-reduced-motion: no-preference) {
+  .cx-acc { transition: height .55s cubic-bezier(.22,.8,.3,1), background-color .45s ease, box-shadow .45s ease; }
+  .cx-acc-bar { transition: opacity .2s ease; }
+  .cx-acc-open { transition: opacity .15s ease; }
+  .cx-acc.on .cx-acc-open { transition: opacity .35s ease .12s; }
+  .cx-acc.on .cx-acc-photo { animation: cx-acc-rise .55s cubic-bezier(.22,.8,.3,1) both; }
+  @keyframes cx-acc-rise { from { transform: translateY(14px) scale(.96); opacity: 0; } to { transform: none; opacity: 1; } }
+}
