@@ -1771,12 +1771,18 @@ function QrFullscreen({ open, onClose, qrValue, audience = 'client', shareUrl = 
 
       {/* Badge de modo — color + ícono para saber de un vistazo si es
           pantalla de cliente o de negocio */}
+      <div aria-hidden="true" style={{
+        width: 64, height: 64, borderRadius: '50%', marginBottom: 12,
+        background: 'rgba(0,0,0,0.20)',
+        display: 'flex', alignItems: 'center', justifyContent: 'center',
+      }}>
+        <ModeIcon size={34} strokeWidth={2} color="#fff" />
+      </div>
       <div style={{
         display: 'inline-flex', alignItems: 'center', gap: 8,
-        padding: '7px 16px 7px 13px', marginBottom: 16,
+        padding: '7px 16px', marginBottom: 16,
         background: 'rgba(0,0,0,0.20)', borderRadius: 99,
       }}>
-        <ModeIcon size={16} strokeWidth={2.4} color="#fff" />
         <span style={{
           fontFamily: FN, fontSize: 11, fontWeight: 800,
           letterSpacing: '.12em', textTransform: 'uppercase', color: '#fff',
