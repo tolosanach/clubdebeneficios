@@ -1,4 +1,5 @@
 'use client'
+import '../../globals.css'
 import { useEffect, useState, useRef } from 'react'
 import { useParams, useSearchParams } from 'next/navigation'
 import { getSupabase as getSharedSupabase } from '../../../lib/supabase'
@@ -87,15 +88,47 @@ const GLOBAL_CSS = `
   /* Escritorio: portada enmarcada (no full-bleed estirada), columna más ancha
      y premios en 3 columnas. En mobile no cambia nada. */
   @media (min-width: 900px) {
+    /* Perfil estilo Facebook: portada panorámica, avatar circular que la pisa,
+       nombre grande y el contenido apilado a ancho de portada. */
     .club-hero {
-      width: min(760px, calc(100% - 48px)) !important;
-      height: 300px !important;
+      width: min(1100px, calc(100% - 48px)) !important;
+      height: auto !important;
+      aspect-ratio: 820 / 312;
       min-height: 0 !important;
       margin: 20px auto 0 !important;
-      border-radius: 28px !important;
-      box-shadow: 0 20px 60px rgba(0,0,0,0.45);
+      border-radius: 12px 12px 0 0 !important;
     }
-    .club-main { max-width: 760px !important; }
+    .club-hero-fade { display: none !important; }
+    .club-main {
+      max-width: 1100px !important;
+      width: calc(100% - 48px);
+      display: grid !important;
+      grid-template-columns: minmax(0, 1fr);
+      align-items: start;
+    }
+    .club-main > * { grid-column: 1 / -1; }
+    .club-main > .club-colA, .club-main > .club-colB { min-width: 0; }
+    .club-id { margin: 0 !important; z-index: 10; }
+    .club-id > div {
+      background: #1C1511 !important;
+      backdrop-filter: none !important; -webkit-backdrop-filter: none !important;
+      border: 0 !important;
+      border-radius: 0 0 12px 12px !important;
+      overflow: visible !important;
+    }
+    .club-id-head { padding: 0 24px 18px !important; }
+    .club-id-row { align-items: flex-end !important; gap: 20px !important; }
+    .club-id-logo {
+      width: 168px !important; height: 168px !important;
+      border-radius: 50% !important;
+      margin-top: -84px;
+      border: 5px solid #1C1511;
+      background: #E03E1B !important;
+    }
+    .club-id-name { font-size: 32px !important; letter-spacing: -0.02em; line-height: 1.1 !important; }
+    .club-colA, .club-colB { margin: 16px 0 0 !important; }
+    .club-colA { padding: 0 !important; }
+    .club-colA:empty { display: none; }
     .club-prize-grid { grid-template-columns: repeat(3, 1fr) !important; }
   }
   @keyframes fadeUp      { from { opacity:0; transform:translateY(20px) } to { opacity:1; transform:translateY(0) } }
@@ -2879,8 +2912,8 @@ export default function ClubProfilePage() {
               {covers.length === 0 && (
                 <div
                   className="animate-gradient-slow"
-                  style={{ position:'absolute', inset:0, background:'linear-gradient(135deg, #1a1a2e, #2d1f3d, #1a1a2e)' }}>
-                  <div style={{ position:'absolute', top:'20%', left:'10%', width:240, height:240, borderRadius:'50%', background:'rgba(20,184,166,0.18)', filter:'blur(70px)' }} />
+                  style={{ position:'absolute', inset:0, background:'linear-gradient(135deg, #2A140D, #7A2410 55%, #E03E1B)' }}>
+                  <div style={{ position:'absolute', top:'20%', left:'10%', width:240, height:240, borderRadius:'50%', background:'rgba(255,122,89,0.30)', filter:'blur(70px)' }} />
                   <div style={{ position:'absolute', bottom:'10%', right:'8%', width:200, height:200, borderRadius:'50%', background:'rgba(224,62,27,0.22)', filter:'blur(60px)' }} />
                 </div>
               )}
@@ -2900,7 +2933,7 @@ export default function ClubProfilePage() {
                   }}
                 />
               ))}
-              <div style={{ position:'absolute', inset:0, background:'linear-gradient(to top, #0a0a0f 0%, rgba(10,10,15,0.55) 50%, transparent 100%)', pointerEvents:'none' }} />
+              <div className="club-hero-fade" style={{ position:'absolute', inset:0, background:'linear-gradient(to top, #0a0a0f 0%, rgba(10,10,15,0.55) 50%, transparent 100%)', pointerEvents:'none' }} />
               {/* Indicador de cuántas portadas hay — pequeños dots al pie */}
               {covers.length > 1 && (
                 <div style={{ position:'absolute', bottom:14, left:'50%', transform:'translateX(-50%)', display:'flex', gap:5, zIndex:15 }}>
@@ -3004,7 +3037,7 @@ export default function ClubProfilePage() {
       <div className="club-main" style={{ maxWidth:600, margin:'0 auto', paddingBottom:140 }}>
 
         {/* ── CARD DEL NEGOCIO (collapsible, sobre la portada) ── */}
-        <div style={{ margin:'-80px 16px 0', position:'relative', zIndex:10 }}>
+        <div className="club-id" style={{ margin:'-80px 16px 0', position:'relative', zIndex:10 }}>
           <div style={{
             background:'rgba(255,255,255,0.05)',
             backdropFilter:'blur(20px)', WebkitBackdropFilter:'blur(20px)',
@@ -3020,11 +3053,11 @@ export default function ClubProfilePage() {
               role="button" tabIndex={0}
               onClick={() => setCardOpen(v => !v)}
               onKeyDown={e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); setCardOpen(v => !v) } }}
-              style={{ width:'100%', background:'transparent', border:'none', cursor:'pointer', padding:'14px 16px', display:'block' }}
+              className="club-id-head" style={{ width:'100%', background:'transparent', border:'none', cursor:'pointer', padding:'14px 16px', display:'block' }}
             >
               <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between' }}>
-                <div style={{ display:'flex', alignItems:'center', gap:12 }}>
-                  <div style={{ width:48, height:48, borderRadius:14, overflow:'hidden', background:'rgba(255,255,255,0.10)', flexShrink:0, display:'flex', alignItems:'center', justifyContent:'center' }}>
+                <div className="club-id-row" style={{ display:'flex', alignItems:'center', gap:12 }}>
+                  <div className="club-id-logo" style={{ width:48, height:48, borderRadius:14, overflow:'hidden', background:'rgba(255,255,255,0.10)', flexShrink:0, display:'flex', alignItems:'center', justifyContent:'center' }}>
                     {commerce.img_url
                       ? <img src={commerce.img_url} alt="" style={{ width:'100%', height:'100%', objectFit:'cover' }} />
                       : <CatIcon category={commerce.category} size={22} color="rgba(255,255,255,0.5)" />
@@ -3032,7 +3065,7 @@ export default function ClubProfilePage() {
                   </div>
                   <div style={{ textAlign:'left' }}>
                     <div style={{ display:'flex', alignItems:'center' }}>
-                      <div style={{ fontFamily:FN, fontSize:16, fontWeight:700, color:C.white, lineHeight:1.2 }}>{commerce.name}</div>
+                      <div className="club-id-name" style={{ fontFamily:FN, fontSize:16, fontWeight:700, color:C.white, lineHeight:1.2 }}>{commerce.name}</div>
                       <span onClick={e => e.stopPropagation()} style={{ display:'inline-flex' }}>
                         {editPencil('name', 'Editar nombre', !!commerce.name)}
                       </span>
@@ -3278,7 +3311,7 @@ export default function ClubProfilePage() {
 
         {/* ━━━ TAB: INICIO ━━━ */}
         {tab === 'inicio' && (
-          <div style={{ animation:'fadeUp .35s ease', padding:'16px 16px 0', display:'flex', flexDirection:'column', gap:16 }}>
+          <div className="club-colA" style={{ animation:'fadeUp .35s ease', padding:'16px 16px 0', display:'flex', flexDirection:'column', gap:16 }}>
 
             {/* HelpBanner — solo se muestra al cliente común. En modo
                 edición del ojo (editMode) no aparece — el dueño está
@@ -3454,7 +3487,7 @@ export default function ClubProfilePage() {
             Mismo `gap:16` flex que el bloque de arriba para spacing
             consistente entre todos los containers de la página. */}
         {tab === 'inicio' && (
-          <div style={{ margin:'16px 16px 0', animation:'fadeUp .3s ease', display:'flex', flexDirection:'column', gap:16 }}>
+          <div className="club-colB" style={{ margin:'16px 16px 0', animation:'fadeUp .3s ease', display:'flex', flexDirection:'column', gap:16 }}>
 
             {/* ── MEMBERSHIP CARD ── (solo miembros) */}
             {isMember && (
