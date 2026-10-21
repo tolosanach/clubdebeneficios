@@ -126,6 +126,7 @@ const GLOBAL_CSS = `
     .club-id-actions > * { flex: 0 0 auto !important; padding-left: 20px !important; padding-right: 20px !important; }
     .club-colA, .club-colB { margin: 16px 0 0 !important; }
     .club-colA { padding: 0 !important; }
+    .club-sec-tabs { margin-left: 0 !important; margin-right: 0 !important; }
     .club-colA:empty { display: none; }
     .club-prize-grid { grid-template-columns: repeat(3, 1fr) !important; }
   }
@@ -1976,8 +1977,22 @@ export default function ClubProfilePage() {
   // El botón "Unirme" flotante solo aparece después de scrollear: arriba ya
   // está el botón "Sumarme al club" de la cabecera.
   const [pastHeader, setPastHeader]   = useState(false)
+  const [activeSec, setActiveSec]     = useState('todo')
   useEffect(() => {
-    const onScroll = () => setPastHeader(window.scrollY > 360)
+    const onScroll = () => {
+      setPastHeader(window.scrollY > 360)
+      // Sección activa de las pestañas fijas: la última cuyo tope ya pasó
+      // la línea de las pestañas.
+      const line = 150
+      let cur = 'todo'
+      for (const id of ['info', 'beneficios', 'premios']) {
+        const el = document.getElementById('club-sec-' + id)
+        if (el && el.getBoundingClientRect().top <= line) cur = id
+      }
+      // Al fondo de la página la última sección existente queda activa.
+      if (window.innerHeight + window.scrollY >= document.documentElement.scrollHeight - 6 && document.getElementById('club-sec-premios')) cur = 'premios'
+      setActiveSec(prev => prev === cur ? prev : cur)
+    }
     onScroll()
     window.addEventListener('scroll', onScroll, { passive: true })
     return () => window.removeEventListener('scroll', onScroll)
@@ -2451,7 +2466,7 @@ export default function ClubProfilePage() {
   const mapsUrl = `https://www.google.com/maps/dir/?api=1&destination=${mapsDestination}`
 
   return (
-    <div className="with-bottom-nav-v2 merchant-frame" style={{ position:'relative', minHeight:'100vh', width:'100%', boxSizing:'border-box', background:C.bg, overflowX:'hidden', fontFamily:FI, WebkitFontSmoothing:'antialiased' }}>
+    <div className="with-bottom-nav-v2 merchant-frame" style={{ position:'relative', minHeight:'100vh', width:'100%', boxSizing:'border-box', background:C.bg, overflowX:'clip', fontFamily:FI, WebkitFontSmoothing:'antialiased' }}>
       <style>{GLOBAL_CSS}</style>
 
       {/* Banner de modo edición — flotante en el tope cuando el dueño
@@ -3044,7 +3059,7 @@ export default function ClubProfilePage() {
       <div className="club-main" style={{ maxWidth:600, margin:'0 auto', paddingBottom:140 }}>
 
         {/* ── CARD DEL NEGOCIO (collapsible, sobre la portada) ── */}
-        <div className="club-id" style={{ margin:'-40px 16px 0', position:'relative', zIndex:10 }}>
+        <div id="club-sec-info" className="club-id" style={{ margin:'-40px 16px 0', position:'relative', zIndex:10 }}>
           <div style={{
             background:'#1C1511',
             border:'1px solid rgba(255,255,255,0.10)',
@@ -3317,6 +3332,42 @@ export default function ClubProfilePage() {
             </div>
           </div>
         </div>
+
+        {/* ── PESTAÑAS FIJAS ── chips que saltan a cada sección y quedan
+            pegadas debajo de la barra superior al scrollear. */}
+        {tab === 'inicio' && (() => {
+          const goTo = (id) => {
+            if (typeof window === 'undefined') return
+            if (id === 'todo') { window.scrollTo({ top:0, behavior:'smooth' }); return }
+            setActiveSec(id)
+            if (id === 'info') setCardOpen(true)
+            const el = document.getElementById('club-sec-' + id)
+            if (!el) return
+            const top = el.getBoundingClientRect().top + window.scrollY - 124
+            window.scrollTo({ top: Math.max(0, top), behavior:'smooth' })
+          }
+          const chips = [
+            { id:'todo', label:'Todo' },
+            ...(activePrizes.length > 0 ? [{ id:'premios', label:'Premios' }] : []),
+            ...((promos || []).length > 0 ? [{ id:'beneficios', label:'Beneficios' }] : []),
+            { id:'info', label:'Información' },
+          ]
+          // El orden de arriba hacia abajo en la página es info, beneficios, premios.
+          return (
+            <div className="club-sec-tabs" style={{ position:'sticky', top:'calc(60px + env(safe-area-inset-top, 0px))', zIndex:40, margin:'12px 16px 0', padding:'8px 0', background:'#0a0a0f', display:'flex', gap:6, overflowX:'auto', scrollbarWidth:'none' }}>
+              {chips.map(c => {
+                const on = activeSec === c.id
+                return (
+                  <button key={c.id} type="button" onClick={() => goTo(c.id)} aria-current={on ? 'true' : undefined}
+                    style={{ flexShrink:0, padding:'9px 12px', borderRadius:99, border:'none', cursor:'pointer', fontFamily:FN, fontSize:13.5, fontWeight:700,
+                      background: on ? '#E03E1B' : 'rgba(255,255,255,0.08)', color: on ? '#fff' : 'rgba(255,255,255,0.75)' }}>
+                    {c.label}
+                  </button>
+                )
+              })}
+            </div>
+          )
+        })()}
 
         {/* El ClubTopNav (Inicio / Catálogo / Historial) ahora vive como
             pill flotante al fondo de la pantalla (ver render más abajo,
@@ -3596,7 +3647,9 @@ export default function ClubProfilePage() {
                 que el primer impacto del cliente sean los beneficios
                 urgentes con vencimiento, y después navegue tranquilo el
                 catálogo de premios canjeables. */}
-            <LimitedTimeBenefitsSlider promos={promos} unitLabel={unitLabel} editMode={editMode} onEdit={() => navigateEditField('promo')} />
+            <div id="club-sec-beneficios" style={{ scrollMarginTop:130 }}>
+              <LimitedTimeBenefitsSlider promos={promos} unitLabel={unitLabel} editMode={editMode} onEdit={() => navigateEditField('promo')} />
+            </div>
 
             {/* Header "Premios" + subtítulo agrupados en un solo bloque
                 (sin marginBottom propio) para que el gap:16 del padre se
@@ -3604,7 +3657,7 @@ export default function ClubProfilePage() {
                 En editMode mostramos un lápiz al lado del título que
                 navega a la pestaña Premios del panel del comercio para
                 que el dueño pueda agregar/editar/desactivar. */}
-            <div>
+            <div id="club-sec-premios" style={{ scrollMarginTop:130 }}>
               <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 10 }}>
                 <h2 style={{ fontFamily:FN, fontSize:20, fontWeight:700, color:C.white, margin:0, letterSpacing:'-0.02em' }}>Premios</h2>
                 {editMode && editPencil('prize', 'Editar premios', activePrizes.length > 0)}
