@@ -1426,6 +1426,26 @@ function LimitedTimeBenefitsSlider({ promos, unitLabel, editMode = false, onEdit
   const list  = promos || []
   const count = list.length
   const [idx, setIdx] = useState(0)
+  // Swipe lateral con el dedo en celular: dir = 1 (siguiente) o -1 (anterior)
+  // para animar la entrada de la card desde el lado correcto.
+  const [dir, setDir] = useState(0)
+  const touchRef = useRef({ x: 0, y: 0, active: false })
+  const goTo = (next, d) => { setDir(d); setIdx(next) }
+  const onTouchStart = (e) => {
+    const t = e.touches[0]
+    touchRef.current = { x: t.clientX, y: t.clientY, active: true }
+  }
+  const onTouchEnd = (e) => {
+    const st = touchRef.current
+    if (!st.active || count < 2) return
+    st.active = false
+    const t = e.changedTouches[0]
+    const dx = t.clientX - st.x
+    const dy = t.clientY - st.y
+    if (Math.abs(dx) < 40 || Math.abs(dx) < Math.abs(dy) * 1.2) return
+    if (dx < 0) goTo((idx + 1) % count, 1)
+    else        goTo((idx - 1 + count) % count, -1)
+  }
 
   // Sin promos activas: en modo público no se muestra nada. En editMode
   // sí mostramos un container placeholder con header + lápiz para que el
@@ -1547,6 +1567,8 @@ function LimitedTimeBenefitsSlider({ promos, unitLabel, editMode = false, onEdit
   return (
     <div>
       <style>{`
+        @keyframes benefit-slide-next { from { opacity: .0; transform: translateX(36px); } to { opacity: 1; transform: none; } }
+        @keyframes benefit-slide-prev { from { opacity: .0; transform: translateX(-36px); } to { opacity: 1; transform: none; } }
         @keyframes urgency-shimmer {
           0%   { background-position: -120% 0; }
           100% { background-position: 220% 0; }
@@ -1585,7 +1607,7 @@ function LimitedTimeBenefitsSlider({ promos, unitLabel, editMode = false, onEdit
       <div style={{ display: 'flex', alignItems: 'center', gap: count > 1 ? 10 : 0 }}>
         {count > 1 && (
           <button
-            onClick={() => setIdx((idx - 1 + count) % count)}
+            onClick={() => goTo((idx - 1 + count) % count, -1)}
             style={ARROW}
             onMouseEnter={e => { e.currentTarget.style.background = 'rgba(255,255,255,0.16)' }}
             onMouseLeave={e => { e.currentTarget.style.background = 'rgba(255,255,255,0.08)' }}
@@ -1593,7 +1615,8 @@ function LimitedTimeBenefitsSlider({ promos, unitLabel, editMode = false, onEdit
             <ChevronLeft size={18} strokeWidth={2.4} />
           </button>
         )}
-        <div style={{ flex: 1 }}>
+        <div key={idx} onTouchStart={onTouchStart} onTouchEnd={onTouchEnd}
+          style={{ flex: 1, minWidth: 0, touchAction: 'pan-y', animation: dir ? `benefit-slide-${dir > 0 ? 'next' : 'prev'} .28s ease-out` : 'none' }}>
                 <div style={{
                   // Base muy oscura — el inner glow violeta hace todo el
                   // trabajo visual. Sin animaciones de gradiente: el glow
@@ -1779,7 +1802,7 @@ function LimitedTimeBenefitsSlider({ promos, unitLabel, editMode = false, onEdit
         </div>{/* flex:1 wrapper */}
         {count > 1 && (
           <button
-            onClick={() => setIdx((idx + 1) % count)}
+            onClick={() => goTo((idx + 1) % count, 1)}
             style={ARROW}
             onMouseEnter={e => { e.currentTarget.style.background = 'rgba(255,255,255,0.16)' }}
             onMouseLeave={e => { e.currentTarget.style.background = 'rgba(255,255,255,0.08)' }}
@@ -1793,7 +1816,7 @@ function LimitedTimeBenefitsSlider({ promos, unitLabel, editMode = false, onEdit
       {count > 1 && (
         <div style={{ display:'flex', justifyContent:'center', gap:6, marginTop:10 }}>
           {list.map((_, d) => (
-            <div key={d} onClick={() => setIdx(d)} style={{ width:6, height:6, borderRadius:'50%', background: d === idx ? '#fff' : 'rgba(255,255,255,0.25)', transition:'background 200ms', cursor:'pointer' }} />
+            <div key={d} onClick={() => goTo(d, d > idx ? 1 : -1)} style={{ width:6, height:6, borderRadius:'50%', background: d === idx ? '#fff' : 'rgba(255,255,255,0.25)', transition:'background 200ms', cursor:'pointer' }} />
           ))}
         </div>
       )}
@@ -1983,7 +2006,7 @@ export default function ClubProfilePage() {
       setPastHeader(window.scrollY > 360)
       // Sección activa de las pestañas fijas: la última cuyo tope ya pasó
       // la línea de las pestañas.
-      const line = 150
+      const line = Math.round(window.innerHeight * 0.4)
       let cur = 'todo'
       for (const id of ['info', 'beneficios', 'premios']) {
         const el = document.getElementById('club-sec-' + id)
