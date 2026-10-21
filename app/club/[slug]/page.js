@@ -84,6 +84,20 @@ const CAT_ICON = { cafe:Coffee, barber:Scissors, restaurant:Utensils, health:Bui
 const GLOBAL_CSS = `
   @import url('https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700;900&family=Inter:wght@400;500;600;700&display=swap');
   @keyframes spin        { to { transform: rotate(360deg) } }
+  /* Escritorio: portada enmarcada (no full-bleed estirada), columna más ancha
+     y premios en 3 columnas. En mobile no cambia nada. */
+  @media (min-width: 900px) {
+    .club-hero {
+      width: min(760px, calc(100% - 48px)) !important;
+      height: 300px !important;
+      min-height: 0 !important;
+      margin: 20px auto 0 !important;
+      border-radius: 28px !important;
+      box-shadow: 0 20px 60px rgba(0,0,0,0.45);
+    }
+    .club-main { max-width: 760px !important; }
+    .club-prize-grid { grid-template-columns: repeat(3, 1fr) !important; }
+  }
   @keyframes fadeUp      { from { opacity:0; transform:translateY(20px) } to { opacity:1; transform:translateY(0) } }
   @keyframes fadeIn      { from { opacity:0 } to { opacity:1 } }
   @keyframes slideDown   { from { opacity:0; transform:translateY(-16px) } to { opacity:1; transform:translateY(0) } }
@@ -2857,6 +2871,7 @@ export default function ClubProfilePage() {
               />
             )}
             <section
+              className="club-hero"
               onTouchStart={onHeroTouchStart}
               onTouchMove={onHeroTouchMove}
               onTouchEnd={onHeroTouchEnd}
@@ -2986,7 +3001,7 @@ export default function ClubProfilePage() {
           (~50px alto + 16px gap + safe-area iOS). Reservamos espacio extra
           para que con scroll máximo el último contenido no quede tapado
           por la pill ni se sienta apretado contra ella. */}
-      <div style={{ maxWidth:600, margin:'0 auto', paddingBottom:140 }}>
+      <div className="club-main" style={{ maxWidth:600, margin:'0 auto', paddingBottom:140 }}>
 
         {/* ── CARD DEL NEGOCIO (collapsible, sobre la portada) ── */}
         <div style={{ margin:'-80px 16px 0', position:'relative', zIndex:10 }}>
@@ -3548,7 +3563,7 @@ export default function ClubProfilePage() {
                 display: 'grid',
                 gridTemplateColumns: 'repeat(2, 1fr)',
                 gap: 12,
-              }}>
+              }} className="club-prize-grid">
                 {activePrizes.map((prize, idx) => {
                   const canRedeem      = isMember && bal >= prize.cost
                   const progressPct    = isMember ? Math.min(100, Math.round((bal / prize.cost) * 100)) : 0
