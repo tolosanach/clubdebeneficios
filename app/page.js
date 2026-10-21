@@ -11789,6 +11789,13 @@ function CommerceSettingsView({ user, profile, setView, onLogout, onOwnerProfile
   const [kitOffer, setKitOffer]           = useState(null)   // aviso "¿Lo difundimos?" tras crear
   const [newPromo, setNewPromo]           = useState({ type:'discount_next', value:10, duration:'today', custom_date:'', days:[], expiration_type:'fixed', expiration_date:'', expiration_days:7 })
   const [addingPromo, setAddingPromo]     = useState(false)
+  // Guards contra doble toque: el chequeo de duplicados de addPromo usa el
+  // state `promos`, que no se actualiza hasta que vuelve el insert. Dos
+  // toques en <1s pasaban los dos y creaban dos filas. Los refs se leen
+  // sincrónicos, así que el segundo toque se ignora mientras hay uno en curso.
+  const addPromoInFlightRef = useRef(false)
+  const doubleToggleInFlightRef = useRef(false)
+  const [isTogglingDouble, setIsTogglingDouble] = useState(false)
   const [promoError, setPromoError]       = useState('')
   const [confirmDelete, setConfirmDelete] = useState(null)
   // editingPromo: promo activa que el usuario está editando con el lápiz.
@@ -13258,72 +13265,77 @@ function CommerceSettingsView({ user, profile, setView, onLogout, onOwnerProfile
 
   async function addPromo(overrideData = null) {
     const d = overrideData || newPromo
+    if (addPromoInFlightRef.current) return
     // Block if same type already active
     const duplicate = promos.find(p => p.active && !isExpired(p) && p.type === d.type)
     if (duplicate) {
       showToast('error', `Ya tenés una promo de ${d.type === 'discount_next' ? 'descuento' : 'suma doble'} activa`)
       return
     }
+    addPromoInFlightRef.current = true
     setAddingPromo(true)
     setPromoError('')
+    try {
+      let expires_at = null
+      let expiration_type = null
+      let expiration_days = null
+      let expiration_date = null
 
-    let expires_at = null
-    let expiration_type = null
-    let expiration_days = null
-    let expiration_date = null
-
-    if (d.type === 'double_points') {
-      expires_at = d.custom_date ? new Date(d.custom_date + 'T23:59:59').toISOString() : null
-    } else {
-      expiration_type = d.expiration_type
-      if (d.expiration_type === 'fixed') {
-        expires_at = d.expiration_date ? new Date(d.expiration_date + 'T23:59:59').toISOString() : null
-        expiration_date = expires_at
+      if (d.type === 'double_points') {
+        expires_at = d.custom_date ? new Date(d.custom_date + 'T23:59:59').toISOString() : null
       } else {
-        expiration_days = parseInt(d.expiration_days) || 7
+        expiration_type = d.expiration_type
+        if (d.expiration_type === 'fixed') {
+          expires_at = d.expiration_date ? new Date(d.expiration_date + 'T23:59:59').toISOString() : null
+          expiration_date = expires_at
+        } else {
+          expiration_days = parseInt(d.expiration_days) || 7
+        }
       }
-    }
 
-    const description = promoLabel(d.type, d.value)
-    const { data, error } = await supabase.from('promotions').insert({
-      commerce_id: commerce.id,
-      type:        d.type,
-      value:       parseInt(d.value) || 0,
-      description,
-      // days: solo aplica a double_points. Array vacío = todos los días
-      // (default). Para discount_next, days queda como NULL en la DB
-      // (la columna acepta null).
-      days:        d.type === 'double_points' ? (Array.isArray(d.days) ? d.days : []) : null,
-      expires_at,
-      expiration_type,
-      expiration_date,
-      expiration_days,
-      applies_to_existing: true,  // Nueva promo aplica a clientes futuros (y existentes si lo editan)
-      active: true,
-    }).select().single()
-    if (error) {
-      console.error('addPromo error:', error)
-      setPromoError(error.message || 'Error al activar la promoción')
-    } else if (data) {
-      setPromos(p => [data, ...p])
-      setNewPromo({ type:'discount_next', value:10, duration:'today', custom_date:'', days:[], expiration_type:'fixed', expiration_date:'', expiration_days:7 })
-      logActivity('promo_added', `Promo activada: "${description}"`)
-      showToast('success', '¡Promoción activada!')
-      setKitOffer({ kind: 'promo', promoId: data.id, label: 'promo' })
-      // Fire-and-forget: notificar a los suscriptos del club que tienen la
-      // campanita activada para promos.
-      fetch('/api/notify-club-update', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          commerce_id: commerce.id,
-          kind: 'promo',
-          name: description,
-          value: data.value,
-        }),
-      }).catch(() => {})
+      const description = promoLabel(d.type, d.value)
+      const { data, error } = await supabase.from('promotions').insert({
+        commerce_id: commerce.id,
+        type:        d.type,
+        value:       parseInt(d.value) || 0,
+        description,
+        // days: solo aplica a double_points. Array vacío = todos los días
+        // (default). Para discount_next, days queda como NULL en la DB
+        // (la columna acepta null).
+        days:        d.type === 'double_points' ? (Array.isArray(d.days) ? d.days : []) : null,
+        expires_at,
+        expiration_type,
+        expiration_date,
+        expiration_days,
+        applies_to_existing: true,  // Nueva promo aplica a clientes futuros (y existentes si lo editan)
+        active: true,
+      }).select().single()
+      if (error) {
+        console.error('addPromo error:', error)
+        setPromoError(error.message || 'Error al activar la promoción')
+      } else if (data) {
+        setPromos(p => [data, ...p])
+        setNewPromo({ type:'discount_next', value:10, duration:'today', custom_date:'', days:[], expiration_type:'fixed', expiration_date:'', expiration_days:7 })
+        logActivity('promo_added', `Promo activada: "${description}"`)
+        showToast('success', '¡Promoción activada!')
+        setKitOffer({ kind: 'promo', promoId: data.id, label: 'promo' })
+        // Fire-and-forget: notificar a los suscriptos del club que tienen la
+        // campanita activada para promos.
+        fetch('/api/notify-club-update', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            commerce_id: commerce.id,
+            kind: 'promo',
+            name: description,
+            value: data.value,
+          }),
+        }).catch(() => {})
+      }
+    } finally {
+      addPromoInFlightRef.current = false
+      setAddingPromo(false)
     }
-    setAddingPromo(false)
   }
 
   async function togglePromo(promo) {
@@ -18269,32 +18281,41 @@ function CommerceSettingsView({ user, profile, setView, onLogout, onOwnerProfile
               const selectedDays = pendingDoubleDays != null ? pendingDoubleDays : dbDays
               const allDays = !isOn || selectedDays.length === 0 || selectedDays.length === 7
               const handleToggle = async () => {
-                if (isOn) {
-                  await togglePromo(activeDouble)
-                } else {
-                  const existing = (Array.isArray(promos) ? promos : []).find(p => p.type === 'double_points')
-                  if (existing) {
-                    // Reactivar: double_points NO vence. Si quedó un expires_at
-                    // viejo (en el pasado), isOn nunca volvía a true y el switch
-                    // "no funcionaba". Limpiamos expires_at y normalizamos days.
-                    await supabase.from('promotions').update({ active: true, expires_at: null, days: [] }).eq('id', existing.id)
-                    setPromos(pp => pp.map(x => x.id === existing.id ? { ...x, active: true, expires_at: null, days: [] } : x))
+                if (doubleToggleInFlightRef.current) return
+                doubleToggleInFlightRef.current = true
+                setIsTogglingDouble(true)
+                try {
+                  if (isOn) {
+                    await togglePromo(activeDouble)
                   } else {
-                    await addPromo({
-                      type: 'double_points',
-                      value: 2,
-                      duration: 'today',
-                      custom_date: '',
-                      // days vacío = todos los días por default. El user
-                      // puede tildar/destildar después en el picker.
-                      days: [],
-                      // SIN fecha de vencimiento — la promo dura mientras
-                      // esté activa. expires_at queda NULL en la DB.
-                      expiration_type: 'fixed',
-                      expiration_date: '',
-                      expiration_days: 0,
-                    })
+                    const existing = (Array.isArray(promos) ? promos : []).find(p => p.type === 'double_points')
+                    if (existing) {
+                      // Reactivar: double_points NO vence. Si quedó un expires_at
+                      // viejo (en el pasado), isOn nunca volvía a true y el switch
+                      // "no funcionaba". Limpiamos expires_at. NO tocamos days:
+                      // si el dueño apaga y prende, conserva los días que eligió.
+                      await supabase.from('promotions').update({ active: true, expires_at: null }).eq('id', existing.id)
+                      setPromos(pp => pp.map(x => x.id === existing.id ? { ...x, active: true, expires_at: null } : x))
+                    } else {
+                      await addPromo({
+                        type: 'double_points',
+                        value: 2,
+                        duration: 'today',
+                        custom_date: '',
+                        // days vacío = todos los días por default. El user
+                        // puede tildar/destildar después en el picker.
+                        days: [],
+                        // SIN fecha de vencimiento — la promo dura mientras
+                        // esté activa. expires_at queda NULL en la DB.
+                        expiration_type: 'fixed',
+                        expiration_date: '',
+                        expiration_days: 0,
+                      })
+                    }
                   }
+                } finally {
+                  doubleToggleInFlightRef.current = false
+                  setIsTogglingDouble(false)
                 }
               }
               // Toggle de un día específico — actualiza `days` en la promo
@@ -18376,6 +18397,8 @@ function CommerceSettingsView({ user, profile, setView, onLogout, onOwnerProfile
                     </div>
                     <button
                       onClick={handleToggle}
+                      disabled={isTogglingDouble}
+                      aria-busy={isTogglingDouble}
                       aria-pressed={isOn}
                       aria-label={`${isOn ? 'Desactivar' : 'Activar'} suma doble`}
                       style={{
@@ -18386,10 +18409,11 @@ function CommerceSettingsView({ user, profile, setView, onLogout, onOwnerProfile
                           ? `linear-gradient(135deg, ${sysCol}, ${sysColD})`
                           : 'rgba(255,255,255,0.12)',
                         border: `1px solid ${isOn ? sysCol : 'rgba(255,255,255,0.18)'}`,
-                        cursor: 'pointer',
+                        cursor: isTogglingDouble ? 'wait' : 'pointer',
+                        opacity: isTogglingDouble ? 0.6 : 1,
                         flexShrink: 0,
                         padding: 0,
-                        transition: 'background 200ms ease, border-color 200ms ease',
+                        transition: 'background 200ms ease, border-color 200ms ease, opacity 150ms ease',
                       }}
                     >
                       <span style={{
