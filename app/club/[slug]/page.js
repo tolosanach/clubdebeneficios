@@ -3,6 +3,7 @@ import '../../globals.css'
 import { useEffect, useState, useRef } from 'react'
 import { useParams, useSearchParams } from 'next/navigation'
 import { getSupabase as getSharedSupabase } from '../../../lib/supabase'
+import { optimg } from '../../../lib/img'
 import {
   Home, Gift, QrCode, User, Users,
   ChevronLeft, ChevronDown, ChevronRight,
@@ -288,7 +289,7 @@ function Splash({ commerce, UnitIcon, unitIconProps, unitLabel, onClose, onJoin 
 
         <div style={{ width:84, height:84, borderRadius:24, background:GA, display:'flex', alignItems:'center', justifyContent:'center', fontSize:38, margin:'0 auto 20px', boxShadow:'0 16px 48px rgba(224,62,27,0.5)', position:'relative', zIndex:1 }}>
           {commerce.img_url
-            ? <img src={commerce.img_url} alt="" style={{ width:'100%', height:'100%', objectFit:'cover', borderRadius:24 }} />
+            ? <img src={optimg(commerce.img_url, 256)} alt="" decoding="async" style={{ width:'100%', height:'100%', objectFit:'cover', borderRadius:24 }} />
             : <CatIcon category={commerce.category} size={38} color="#fff" />
           }
         </div>
@@ -843,7 +844,7 @@ function InlineEditModal({ title, field, initial, inputStyle, labelStyle, onClos
                 <label style={labelStyle}>Foto del premio</label>
                 {val.img_url ? (
                   <div style={{ position:'relative', display:'inline-block' }}>
-                    <img src={val.img_url} alt="" style={{ width:96, height:96, borderRadius:12, objectFit:'cover', display:'block' }} />
+                    <img src={optimg(val.img_url, 256)} alt="" style={{ width:96, height:96, borderRadius:12, objectFit:'cover', display:'block' }} />
                     <button onClick={() => setVal(v => ({ ...v, img_url:'' }))}
                       style={{ position:'absolute', top:-6, right:-6, background:'#000', border:'1px solid rgba(255,255,255,0.20)', borderRadius:'50%', width:24, height:24, cursor:'pointer', color:'#fff', display:'flex', alignItems:'center', justifyContent:'center', padding:0 }}>
                       <X size={11} strokeWidth={2.5} />
@@ -1366,8 +1367,9 @@ function CoverLightboxGallery({ covers, startIdx, onClose, scrollRef }) {
             padding: 20, boxSizing: 'border-box',
           }}>
             <img
-              src={url}
+              src={optimg(url, 1920)}
               alt=""
+              decoding="async"
               style={{
                 maxWidth: '100%', maxHeight: '100%',
                 objectFit: 'contain',
@@ -2964,8 +2966,11 @@ export default function ClubProfilePage() {
               {covers.map((url, i) => (
                 <img
                   key={url + i}
-                  src={url}
+                  src={optimg(url, 1200)}
                   alt=""
+                  loading={i === 0 ? 'eager' : 'lazy'}
+                  fetchPriority={i === 0 ? 'high' : 'auto'}
+                  decoding="async"
                   onClick={() => setCoverLightbox(i)}
                   style={{
                     position:'absolute', inset:0,
@@ -3101,7 +3106,7 @@ export default function ClubProfilePage() {
               <div className="club-id-row" style={{ display:'flex', flexDirection:'column', alignItems:'center', gap:10 }}>
                 <div className="club-id-logo" style={{ width:96, height:96, borderRadius:'50%', overflow:'hidden', background:'#E03E1B', border:'4px solid #1C1511', marginTop:-58, flexShrink:0, display:'flex', alignItems:'center', justifyContent:'center' }}>
                   {commerce.img_url
-                    ? <img src={commerce.img_url} alt="" style={{ width:'100%', height:'100%', objectFit:'cover' }} />
+                    ? <img src={optimg(commerce.img_url, 384)} alt="" decoding="async" style={{ width:'100%', height:'100%', objectFit:'cover' }} />
                     : <CatIcon category={commerce.category} size={40} color="rgba(255,255,255,0.9)" />
                   }
                 </div>
@@ -3798,7 +3803,7 @@ export default function ClubProfilePage() {
                             cuando hay muchos premios. */}
                         <div style={{ width:'100%', aspectRatio:'4 / 3', position:'relative', overflow:'hidden', background:'linear-gradient(135deg, rgba(224,62,27,0.15), rgba(20,184,166,0.15))', display:'flex', alignItems:'center', justifyContent:'center' }}>
                           {prize.img_url
-                            ? <img src={prize.img_url} alt={prize.name} style={{ width:'100%', height:'100%', objectFit:'cover' }} />
+                            ? <img src={optimg(prize.img_url, 640)} alt={prize.name} loading="lazy" decoding="async" style={{ width:'100%', height:'100%', objectFit:'cover' }} />
                             : <Gift size={36} strokeWidth={1.5} color="rgba(255,255,255,0.4)" />
                           }
                           {/* Banner "NUEVO" diagonal sobre la esquina sup-izq.
@@ -4313,7 +4318,7 @@ export default function ClubProfilePage() {
                             scrollSnapStop:'always',
                           }}>
                             <img
-                              src={src}
+                              src={optimg(src, 828)}
                               alt={`${p.name} — imagen ${i + 1} de ${gallery.length}`}
                               loading={i === 0 ? 'eager' : 'lazy'}
                               style={{ width:'100%', height:'100%', objectFit:'cover', display:'block' }}

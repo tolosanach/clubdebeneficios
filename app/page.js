@@ -8,6 +8,7 @@ import { exportToCSV, exportToExcel } from '../lib/export'
 import { hashToCardColor, cardColors, hueToSafeColor, hexToHue } from '../lib/cardColors'
 import { FAMILIES_DATA } from '../lib/commerce-families-data'
 import PhoneInput from '../lib/PhoneInput'
+import ClubNavOverlay from '../lib/ClubNavOverlay'
 import SupportChat from '../lib/SupportChat'
 import NotificationsBell from '../lib/NotificationsBell'
 import FloatingActionsTab from '../lib/FloatingActionsTab'
@@ -24566,6 +24567,7 @@ export default function App() {
       <SwRegister />
       <SwipeBack />
       <InstallPrompt currentView={view} />
+      <ClubNavOverlay />
       {/* Modal de resultado del checkout de Mercado Pago — se muestra cuando
           la URL trae ?upgrade=success|pending|failure. MP redirige acá tras
           el flujo de suscripción. La activación real del plan la hace el
