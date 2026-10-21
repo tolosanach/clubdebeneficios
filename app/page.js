@@ -1616,7 +1616,16 @@ function QrFullscreen({ open, onClose, qrValue, audience = 'client', shareUrl = 
       await new Promise(r => { logoImg.onload = r; logoImg.onerror = r })
       if (logoImg.naturalWidth > 0) {
         const logoW = logoImg.naturalWidth * (LOGO_H / logoImg.naturalHeight)
-        ctx.drawImage(logoImg, (W - logoW) / 2, LOGO_Y, logoW, LOGO_H)
+        // Logo todo blanco (el SVG trae la chispa en magenta): lo tiño en un
+        // canvas aparte con source-in, compatible con Safari.
+        const lc = document.createElement('canvas')
+        lc.width = Math.ceil(logoW); lc.height = LOGO_H
+        const lx = lc.getContext('2d')
+        lx.drawImage(logoImg, 0, 0, lc.width, lc.height)
+        lx.globalCompositeOperation = 'source-in'
+        lx.fillStyle = '#fff'
+        lx.fillRect(0, 0, lc.width, lc.height)
+        ctx.drawImage(lc, (W - logoW) / 2, LOGO_Y)
       }
     } catch {}
 
@@ -1786,7 +1795,7 @@ function QrFullscreen({ open, onClose, qrValue, audience = 'client', shareUrl = 
         position: 'absolute', top: 22, left: 0, right: 0,
         display: 'flex', justifyContent: 'center', pointerEvents: 'none',
       }}>
-        <Logo size="sm" style={{ height: 60 }} />
+        <Logo size="sm" style={{ height: 60, filter: 'brightness(0) invert(1)' }} />
       </div>
 
       {/* Badge de modo — color + ícono para saber de un vistazo si es
@@ -1820,7 +1829,7 @@ function QrFullscreen({ open, onClose, qrValue, audience = 'client', shareUrl = 
       </div>
 
       {/* Ticket */}
-      <div style={{ width: '100%', maxWidth: 300, boxShadow: '0 8px 40px rgba(0,0,0,0.30)' }}>
+      <div style={{ width: '100%', maxWidth: 300, filter: 'drop-shadow(0 10px 22px rgba(0,0,0,0.32))' }}>
         {/* Cuerpo blanco del ticket */}
         <div style={{
           background: '#fff',
@@ -1848,7 +1857,7 @@ function QrFullscreen({ open, onClose, qrValue, audience = 'client', shareUrl = 
         {/* Borde dentado inferior — semicírculos violeta que muerden el blanco */}
         <div style={{
           width: '100%', height: 10,
-          backgroundImage: `radial-gradient(circle at 50% 100%, ${qrBg} 6px, #fff 7px)`,
+          backgroundImage: 'radial-gradient(circle at 50% 100%, transparent 6px, #fff 7px)',
           backgroundSize: '16px 10px',
           backgroundRepeat: 'repeat-x',
         }} />
