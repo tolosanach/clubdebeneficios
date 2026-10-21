@@ -8,7 +8,7 @@
 // Seguridad: requiere sesión y que el usuario sea dueño de al menos un comercio.
 // Solo procesa suscripciones AÚN no vinculadas a un comercio (las demás las
 // mantiene el cron de conciliación). El matching es el de siempre: referencia,
-// intención de checkout reciente o email del pagador. Rate limit 10/hora.
+// intención de checkout reciente o email del pagador. Rate limit 30/hora.
 
 import { NextResponse } from 'next/server'
 import { createSupabaseServer } from '../../../../lib/supabase-server'
@@ -24,7 +24,7 @@ export async function POST() {
 
     const now = Date.now()
     const recent = (hits.get(user.id) || []).filter(t => now - t < 3600_000)
-    if (recent.length >= 10) return NextResponse.json({ error: 'Demasiados intentos' }, { status: 429 })
+    if (recent.length >= 30) return NextResponse.json({ error: 'Demasiados intentos' }, { status: 429 })
     hits.set(user.id, [...recent, now])
 
     const { data: mine } = await supabaseAdmin.from('commerces').select('id, plan').eq('owner_id', user.id)
