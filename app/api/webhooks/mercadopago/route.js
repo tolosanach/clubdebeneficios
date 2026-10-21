@@ -53,6 +53,10 @@ const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/
 
 // ─── Helpers ────────────────────────────────────────────────────────────────
 
+class MpFatalError extends Error {
+  constructor(code) { super('mp_api_' + code); this.code = code }
+}
+
 async function mpGet(path) {
   if (!MP_TOKEN) {
     console.error('[mp-webhook] MP_ACCESS_TOKEN no configurado')
@@ -65,12 +69,16 @@ async function mpGet(path) {
     })
     if (!res.ok) {
       console.error('[mp-webhook] mp api failed', path, res.status)
+      // 401/403 = el token no es de la cuenta/app dueña del objeto; 5xx = MP caído.
+      // Se propaga para responder 500 y que MP reintente (y quede visible en logs).
+      if (res.status === 401 || res.status === 403 || res.status >= 500) throw new MpFatalError(res.status)
       return null
     }
     return await res.json()
   } catch (e) {
+    if (e instanceof MpFatalError) throw e
     console.error('[mp-webhook] mp api error', path, e?.message)
-    return null
+    throw new MpFatalError('network')
   }
 }
 
@@ -338,7 +346,9 @@ export async function POST(request) {
     const bodyType = body?.type || body?.topic || body?.action
     const bodyId   = body?.data?.id || body?.id
 
-    const type = (queryType || bodyType || '').toLowerCase()
+    // El cuerpo es lo que describe el evento; el ?type= de la URL puede venir
+    // distinto (el simulador de MP los mezcla). Si hay cuerpo, manda el cuerpo.
+    const type = (body?.type || body?.topic || queryType || bodyType || '').toLowerCase()
     const id   = queryId || bodyId
 
     if (!isValidSignature(request, url.searchParams.get('data.id') || bodyId)) {
@@ -360,6 +370,11 @@ export async function POST(request) {
     }
     return NextResponse.json({ ok: true })
   } catch (err) {
+    if (err instanceof MpFatalError) {
+      // No se pudo leer el detalle en MP (credenciales o caída): 500 para que reintente.
+      console.error('[mp-webhook] mp fatal', err.message)
+      return NextResponse.json({ ok: false, reason: err.message }, { status: 500 })
+    }
     console.error('[mp-webhook] error global', err)
     return NextResponse.json({ ok: true })
   }
