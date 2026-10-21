@@ -1101,6 +1101,10 @@ html.clufix-nav-back::view-transition-new(root) {
 
 /* ── Tarjetas acordeón del Inicio del comercio (lib/HomeCards.js) ── */
 .cx-acc-group { display: flex; flex-direction: column; gap: 10px; }
+/* En escritorio las tarjetas no se justifican tan anchas: tope y centradas. */
+@media (min-width: 900px) {
+  .cx-acc-group { max-width: 680px; margin-inline: auto; }
+}
 .cx-acc, .cx-acc * { box-sizing: border-box; }
 .cx-acc { position: relative; overflow: hidden; border-radius: 22px; height: 72px;
   background: #2A1710; box-shadow: inset 0 0 0 1px rgba(255,122,89,0.22); color: #FFF7F2; }
