@@ -1179,4 +1179,9 @@ html.clufix-nav-back::view-transition-new(root) {
     border: 1px solid rgba(255, 255, 255, 0.10);
     box-shadow: 0 0 0 100vmax rgba(0, 0, 0, 0.72), 0 30px 80px rgba(0, 0, 0, 0.6);
   }
+  .pw-panel.pw-wide {
+    width: min(760px, calc(100vw - 48px));
+    height: auto;
+    max-height: calc(100vh - 64px);
+  }
 }
