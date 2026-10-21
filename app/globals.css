@@ -1164,3 +1164,19 @@ html.clufix-nav-back::view-transition-new(root) {
 @media (min-width: 1500px) {
   .install-prompt-banner { left: calc(var(--frame-gutter) + 236px) !important; }
 }
+
+/* Asistente de premios: en celular ocupa toda la pantalla; en escritorio es
+   una ventana centrada (el resto de la pantalla se oscurece con la sombra). */
+@media (min-width: 768px) {
+  .pw-panel {
+    inset: auto !important;
+    top: 50% !important; left: 50% !important;
+    transform: translate(-50%, -50%);
+    width: min(560px, calc(100vw - 48px));
+    height: min(740px, calc(100vh - 64px));
+    border-radius: 24px;
+    overflow: hidden;
+    border: 1px solid rgba(255, 255, 255, 0.10);
+    box-shadow: 0 0 0 100vmax rgba(0, 0, 0, 0.72), 0 30px 80px rgba(0, 0, 0, 0.6);
+  }
+}
