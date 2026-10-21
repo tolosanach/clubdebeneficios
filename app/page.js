@@ -11745,6 +11745,9 @@ function CommerceSettingsView({ user, profile, setView, onLogout, onOwnerProfile
   const [addingSuggested, setAddingSuggested] = useState(false)
   // Clientes y stats
   const [members, setMembers]             = useState([])
+  // Para que las tarjetas del Inicio no aparezcan antes de tener los datos reales.
+  const [homeDataLoaded, setHomeDataLoaded]       = useState(false)
+  const [homeMembersLoaded, setHomeMembersLoaded] = useState(false)
   const [newMember, setNewMember]         = useState({ email:'', full_name:'', phone:'', province:'', locality:'' })
   const [addingMember, setAddingMember]   = useState(false)
   const [memberError, setMemberError]     = useState('')
@@ -12409,7 +12412,7 @@ function CommerceSettingsView({ user, profile, setView, onLogout, onOwnerProfile
                 localStorage.setItem(flagKey, '1')
               }
             } catch (_) { /* localStorage puede fallar en SSR */ }
-          })
+          }).catch(() => {}).finally(() => setHomeDataLoaded(true))
         }
       })
   }, [user])
@@ -12431,6 +12434,7 @@ function CommerceSettingsView({ user, profile, setView, onLogout, onOwnerProfile
       .then(r => r.json())
       .then(d => setMembers(d.items || []))
       .catch(() => setMembers([]))
+      .finally(() => setHomeMembersLoaded(true))
     // Cargar configs de automatizaciones desde localStorage
     try {
       const saved = localStorage.getItem(`cb_auto_${commerce.id}`)
@@ -14939,6 +14943,9 @@ function CommerceSettingsView({ user, profile, setView, onLogout, onOwnerProfile
               onItem={navigateConfigItem}
               onEditPublic={commerce?.slug ? () => { if (typeof window !== 'undefined') window.location.href = `/club/${commerce.slug}?edit=1` } : null}
               onScan={() => setView('scanner')}
+              onGo={handleWizardDeepLink}
+              ready={homeDataLoaded && homeMembersLoaded}
+              members={members}
             />
           )}
           {!USE_NEW_SETUP_HOME && (<>
