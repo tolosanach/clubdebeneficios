@@ -14,7 +14,7 @@ import { NextResponse } from 'next/server'
 import { createSupabaseServer } from '../../../../lib/supabase-server'
 import {
   supabaseAdmin, mpGet, MpFatalError, PREAPPROVAL_PLAN_MAP,
-  handlePreapproval, handleAuthorizedPayment,
+  handlePreapproval,
 } from '../../../../lib/mp-sync'
 
 async function authorized(request) {
@@ -32,7 +32,7 @@ export async function GET(request) {
     return NextResponse.json({ error: 'No autorizado' }, { status: 401 })
   }
   const dry = new URL(request.url).searchParams.get('dry') === '1'
-  const out = { dry, plans: [], subscriptions: [], payments: [], busqueda_cuotas: [], errors: [] }
+  const out = { dry, plans: [], subscriptions: [], payments: [], errors: [] }
 
   try {
     // Diagnóstico: a qué app pertenece cada plan (debería ser la de Benefix).
@@ -55,25 +55,11 @@ export async function GET(request) {
         monto: s.auto_recurring?.transaction_amount ?? null,
         external_reference: s.external_reference || null,
         ya_en_base: !!known, comercio: known?.commerce_id ?? null,
+        ultimo_cobro: s.summarized ? { fecha: s.summarized.last_charged_date ?? null, monto: s.summarized.last_charged_amount ?? null, cobros: s.summarized.charged_quantity ?? null } : null,
       })
       if (dry) continue
       try {
         await handlePreapproval(s.id)
-        const pays = await mpGet(`/authorized_payments/search?preapproval_id=${s.id}&limit=50`)
-        out.busqueda_cuotas.push({
-          preapproval: s.id, respondio: !!pays,
-          claves: pays ? Object.keys(pays) : [], cantidad: (pays?.results || []).length,
-          paging: pays?.paging ?? null,
-        })
-        for (const ap of pays?.results || []) {
-          try {
-            await handleAuthorizedPayment(ap.id)
-            out.payments.push({ id: String(ap.id), preapproval: s.id, status: ap.payment?.status || ap.status })
-          } catch (e) {
-            if (e instanceof MpFatalError) throw e
-            out.errors.push({ authorized_payment: String(ap.id), error: e?.message })
-          }
-        }
       } catch (e) {
         if (e instanceof MpFatalError) throw e
         out.errors.push({ preapproval: s.id, error: e?.message })
