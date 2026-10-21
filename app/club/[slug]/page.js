@@ -2174,11 +2174,10 @@ export default function ClubProfilePage() {
 
   useEffect(() => {
     if (pageState !== 'ok') return
-    const key = `splash_${slug}`
-    if (!sessionStorage.getItem(key)) {
-      sessionStorage.setItem(key, '1')
-      setTimeout(() => setShowSplash(true), 220)
-    }
+    // Ya no se muestra el pop-up de bienvenida: el botón "Sumarme al club" vive
+    // en la cabecera y el flotante aparece al scrollear. Marcamos la fase como
+    // completa para que ese botón flotante pueda mostrarse.
+    setSplashPhaseComplete(true)
   }, [pageState, slug])
 
   // Si el dueño visita su propio club, ocultar el splash de "Unirme".
