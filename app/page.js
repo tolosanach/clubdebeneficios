@@ -1775,9 +1775,12 @@ function QrFullscreen({ open, onClose, qrValue, audience = 'client', shareUrl = 
       position: 'fixed', inset: 0, zIndex: 99999,
       background: qrBg,
       display: 'flex', flexDirection: 'column',
-      alignItems: 'center', justifyContent: 'center',
-      padding: `64px 24px calc(32px + env(safe-area-inset-bottom, 0px))`,
-      overflow: 'hidden',
+      alignItems: 'center',
+      // Arriba queda lugar para el logo (absoluto, 22→82px); si el contenido no
+      // entra en pantallas bajas, scrollea en vez de pisar el logo.
+      padding: `100px 24px calc(32px + env(safe-area-inset-bottom, 0px))`,
+      justifyContent: 'safe center',
+      overflowY: 'auto',
     }}>
       {/* X — sin fondo, esquina superior derecha */}
       <button onClick={onClose} aria-label="Cerrar" style={{
