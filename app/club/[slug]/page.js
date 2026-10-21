@@ -2411,7 +2411,7 @@ export default function ClubProfilePage() {
   const mapsUrl = `https://www.google.com/maps/dir/?api=1&destination=${mapsDestination}`
 
   return (
-    <div style={{ position:'relative', minHeight:'100vh', width:'100%', background:C.bg, overflowX:'hidden', fontFamily:FI, WebkitFontSmoothing:'antialiased' }}>
+    <div className="with-bottom-nav-v2 merchant-frame" style={{ position:'relative', minHeight:'100vh', width:'100%', boxSizing:'border-box', background:C.bg, overflowX:'hidden', fontFamily:FI, WebkitFontSmoothing:'antialiased' }}>
       <style>{GLOBAL_CSS}</style>
 
       {/* Banner de modo edición — flotante en el tope cuando el dueño
@@ -2467,7 +2467,7 @@ export default function ClubProfilePage() {
             montamos al final + el "Volver al panel" del banner de
             Modo edicion. */}
       {editMode && (
-        <div style={{ position:'fixed', top:0, left:0, right:0, zIndex:200 }}>
+        <div className="app-navbar" style={{ position:'fixed', top:0, left:0, right:0, zIndex:200 }}>
           <nav style={{
             background:'rgba(0,0,0,0.75)',
             backdropFilter:'blur(24px)', WebkitBackdropFilter:'blur(24px)',
@@ -2522,7 +2522,7 @@ export default function ClubProfilePage() {
             /api/club-profile (profile.role).
             En editMode (dueño previsualizando con el ojo) este navbar
             queda oculto — lo reemplazamos por el navbar minimo de arriba. */}
-      <div style={{ position:'fixed', top:0, left:0, right:0, zIndex:200, display: editMode ? 'none' : 'block' }}>
+      <div className="app-navbar" style={{ position:'fixed', top:0, left:0, right:0, zIndex:200, display: editMode ? 'none' : 'block' }}>
         <nav style={{ background:'rgba(0,0,0,0.75)', backdropFilter:'blur(24px)', WebkitBackdropFilter:'blur(24px)', borderBottom:`1px solid ${C.rim}`, padding:'0 16px', display:'flex', alignItems:'center', justifyContent:'space-between', height:58 }}>
           {/* Izquierda: siempre el logo */}
           <a href="/" style={{ display:'inline-flex', alignItems:'center', textDecoration:'none' }} aria-label="Inicio"
