@@ -14824,6 +14824,12 @@ function CommerceSettingsView({ user, profile, setView, onLogout, onOwnerProfile
         }
         return
       }
+      // "Cómo suman" ya configurado: lleva a Beneficios (donde se edita).
+      // Si todavía no está configurado se mantiene el wizard de alta.
+      if (item.id === 'system' && item.done) {
+        handleWizardDeepLink({ tab: 'recompensas' })
+        return
+      }
       // discountNext / doubleDays / messages NO tienen wizard inline propio.
       // Los lleva directo a su tab destino donde existe la UI completa
       // (modal de edición de promos / configurador de mensajes). Sin esto
