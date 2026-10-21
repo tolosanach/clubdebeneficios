@@ -3343,7 +3343,7 @@ export default function ClubProfilePage() {
                 edición del ojo (editMode) no aparece — el dueño está
                 previsualizando su propio club, no necesita el copy
                 introductorio orientado a clientes nuevos. */}
-            {!editMode && (
+            {!editMode && !isMember && (
               <HelpBanner
                 id="club-inicio"
                 title="Conociste un club nuevo"
@@ -3552,6 +3552,33 @@ export default function ClubProfilePage() {
                     <div style={{ fontSize:11, color:'rgba(255,255,255,0.5)', marginTop:3 }}>visita{visits!==1?'s':''}</div>
                   </div>
                 </div>
+
+                {/* Progreso al próximo premio: qué podés canjear ya y cuánto falta
+                    para el siguiente, con barra. */}
+                {(() => {
+                  const sorted = [...activePrizes].filter(pz => pz.cost > 0).sort((x, y) => x.cost - y.cost)
+                  if (sorted.length === 0) return null
+                  const affordable = sorted.filter(pz => pz.cost <= bal)
+                  const target = sorted.find(pz => pz.cost > bal)
+                  const best = affordable[affordable.length - 1]
+                  return (
+                    <div style={{ marginTop:16, paddingTop:14, borderTop:'1px solid rgba(255,255,255,0.08)', position:'relative', zIndex:1 }}>
+                      {best && (
+                        <div style={{ fontSize:13, fontWeight:700, color:'#4ade80', marginBottom: target ? 10 : 0 }}>
+                          Ya podés canjear: {best.name}
+                        </div>
+                      )}
+                      {target && (
+                        <>
+                          <div style={{ fontSize:13, color:'rgba(255,255,255,0.85)', marginBottom:8 }}>
+                            Te faltan <strong style={{ color:'#fff' }}>{target.cost - bal}</strong> {unitLabel} para <strong style={{ color:'#fff' }}>{target.name}</strong>
+                          </div>
+                          <ProgressBar pct={Math.min(100, Math.round((bal / target.cost) * 100))} color={isStars ? '#F0603A' : '#14B8A6'} height={8} glow={false} />
+                        </>
+                      )}
+                    </div>
+                  )
+                })()}
 
                 {/* Compra mínima (solo stars) */}
                 {isStars && commerce.prog_min_purchase > 0 && (
