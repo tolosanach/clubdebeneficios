@@ -4,13 +4,39 @@
   "description": "Tus beneficios. Un solo QR.",
   "start_url": "/",
   "display": "standalone",
-  "background_color": "#0A0A0F",
-  "theme_color": "#7131E1",
+  "background_color": "#E03E1B",
+  "theme_color": "#E03E1B",
   "orientation": "portrait",
   "lang": "es-AR",
-  "categories": ["lifestyle", "shopping"],
+  "categories": [
+    "lifestyle",
+    "shopping"
+  ],
   "icons": [
-    { "src": "/clufix-icon.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "any maskable" }
+    {
+      "src": "/icons/icon-192x192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "/icons/icon-512x512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "/icons/icon-maskable-512x512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "maskable"
+    },
+    {
+      "src": "/clufix-icon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any"
+    }
   ],
   "shortcuts": [
     {
@@ -18,14 +44,26 @@
       "short_name": "Clubs",
       "description": "Ver tus clubs y puntos",
       "url": "/?view=client",
-      "icons": [{ "src": "/clufix-icon.svg", "sizes": "any", "type": "image/svg+xml" }]
+      "icons": [
+        {
+          "src": "/icons/icon-192x192.png",
+          "sizes": "192x192",
+          "type": "image/png"
+        }
+      ]
     },
     {
       "name": "Mi QR",
       "short_name": "Mi QR",
       "description": "Mostrar mi código QR",
       "url": "/?view=client&tab=qr",
-      "icons": [{ "src": "/clufix-icon.svg", "sizes": "any", "type": "image/svg+xml" }]
+      "icons": [
+        {
+          "src": "/icons/icon-192x192.png",
+          "sizes": "192x192",
+          "type": "image/png"
+        }
+      ]
     }
   ],
   "screenshots": [],
