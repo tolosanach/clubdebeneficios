@@ -17039,8 +17039,8 @@ function CommerceSettingsView({ user, profile, setView, onLogout, onOwnerProfile
         </div>
       )}
 
-      {/* ── SIDEBAR (desktop) ── */}
-      {!isMobile && (
+      {/* ── SIDEBAR (desktop) — desactivado: el menú lateral único es BottomNavV2 (.bnav-desktop) ── */}
+      {false && !isMobile && (
         <div style={{ width:210, flexShrink:0, background:'rgba(0,0,0,0.60)', backdropFilter:'blur(32px)', WebkitBackdropFilter:'blur(32px)', borderRight:`1px solid ${C.rim}`, display:'flex', flexDirection:'column', paddingTop:28 }}>
           <div style={{ padding:'0 18px 18px', borderBottom:`1px solid ${C.rim}`, marginBottom:8, display:'flex', alignItems:'center', gap:10 }}>
             <input type="file" accept="image/jpeg,image/jpg,image/png,image/webp" id="logo-input-sidebar" style={{ display:'none' }}
