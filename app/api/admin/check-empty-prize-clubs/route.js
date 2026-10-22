@@ -111,7 +111,7 @@ async function handle(request) {
       type:     'no_prizes_warning',
       title:    'Tus clientes están acumulando sin nada para canjear',
       body:     `${clientsWithBalance} cliente${clientsWithBalance === 1 ? '' : 's'} ya tien${clientsWithBalance === 1 ? 'e' : 'en'} ${unitWord} en tu club, pero todavía no cargaste premios. Cargá uno antes de que se desanimen.`,
-      link:     '/comercio/recompensas',
+      link:     '/?view=commerce-settings&tab=recompensas',
       metadata: {
         clients_with_balance: clientsWithBalance,
         system:               sys,
