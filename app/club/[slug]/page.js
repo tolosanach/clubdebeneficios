@@ -10,7 +10,7 @@ import {
   Flame, Star, Gem, Sparkles,
   Coffee, Scissors, Utensils, ShoppingBag, Wrench, Building2,
   Shield, MessageCircle, ArrowLeft, ArrowRight, Check, Smartphone,
-  ScanLine, LogOut, Percent,
+  ScanLine, LogOut, Percent, UserPlus,
   Eye, Store, LayoutDashboard, DoorOpen,
   Bell, BellOff, Pen, X, Calendar, Menu,
 } from 'lucide-react'
@@ -4494,8 +4494,42 @@ export default function ClubProfilePage() {
                   boxShadow:'0 16px 48px rgba(0,0,0,0.65)',
                 }}>
                   {!isMember ? (
-                    <div style={{ textAlign:'center', fontSize:13, color:C.mist, padding:'10px 0' }}>
-                      Sumate al club para poder canjear
+                    <div>
+                      <div style={{ display:'flex', alignItems:'center', gap:12, marginBottom:12 }}>
+                        <div style={{
+                          width:40, height:40, borderRadius:'50%', flexShrink:0,
+                          display:'flex', alignItems:'center', justifyContent:'center',
+                          background:'rgba(224,62,27,0.14)',
+                          border:'1px solid rgba(224,62,27,0.40)',
+                        }}>
+                          <UserPlus size={18} strokeWidth={2.2} color="#ff8a6b" />
+                        </div>
+                        <div style={{ minWidth:0 }}>
+                          <div style={{ fontFamily:FN, fontSize:14, fontWeight:800, color:C.white, lineHeight:1.25 }}>
+                            Sumate al club para canjear
+                          </div>
+                          <div style={{ fontSize:12, color:C.mist, lineHeight:1.4, marginTop:2 }}>
+                            Acumulá {unitLabel} con cada visita y canjeá este premio.
+                          </div>
+                        </div>
+                      </div>
+                      <button
+                        disabled={joining}
+                        onClick={() => handleSplashJoin()}
+                        style={{
+                          width:'100%', padding:'13px 0',
+                          background:'linear-gradient(135deg, #E03E1B, #E03E1B)',
+                          border:'none', borderRadius:14,
+                          color:'#fff', fontFamily:FN, fontSize:15, fontWeight:800,
+                          letterSpacing:'.02em',
+                          cursor: joining ? 'not-allowed' : 'pointer',
+                          opacity: joining ? 0.6 : 1,
+                          boxShadow:'0 8px 24px rgba(224,62,27,0.50)',
+                          display:'flex', alignItems:'center', justifyContent:'center', gap:8,
+                        }}>
+                        <UserPlus size={18} strokeWidth={2.4} />
+                        {joining ? 'Sumándote…' : 'Sumarme al club'}
+                      </button>
                     </div>
                   ) : isOos ? (
                     <div style={{ textAlign:'center', fontSize:13, color:'#fb7185', padding:'10px 0', fontWeight:600 }}>
