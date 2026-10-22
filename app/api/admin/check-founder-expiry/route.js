@@ -64,7 +64,7 @@ async function handle(request) {
       type:     'founder_expired',
       title:    'Tu período fundador terminó',
       body:     `"${c.name}" volvió al plan Free. Podés seguir usándolo sin cargo o upgradear a Starter o Pro para mantener todas las funciones ${planLabel} que venías usando.`,
-      link:     '/comercio/configuracion',
+      link:     '/?view=commerce-settings&tab=planes',
       metadata: { commerce_id: c.id, commerce_name: c.name, previous_plan: c.plan },
     })
 
