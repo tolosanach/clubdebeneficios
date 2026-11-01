@@ -7,8 +7,14 @@
 
 import { createClient } from '@supabase/supabase-js'
 
-const SUPABASE_URL     = 'https://wcqhapsgwjivtzdseqjz.supabase.co'
-const SERVICE_ROLE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6IndjcWhhcHNnd2ppdnR6ZHNlcWp6Iiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc3NjI2NTY2NiwiZXhwIjoyMDkxODQxNjY2fQ.L27fJvfzL5pbCXow1Sx0Isz6URbw6IpOp-PJNa8-OEQ'
+// Las claves se leen del entorno (nunca escritas en el repo):
+//   NEXT_PUBLIC_SUPABASE_URL=... SUPABASE_SERVICE_ROLE_KEY=... node scripts/create_demo_commerces.mjs
+const SUPABASE_URL     = process.env.NEXT_PUBLIC_SUPABASE_URL
+const SERVICE_ROLE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY
+if (!SUPABASE_URL || !SERVICE_ROLE_KEY) {
+  console.error('Faltan NEXT_PUBLIC_SUPABASE_URL y/o SUPABASE_SERVICE_ROLE_KEY en el entorno.')
+  process.exit(1)
+}
 
 const supabase = createClient(SUPABASE_URL, SERVICE_ROLE_KEY)
 
