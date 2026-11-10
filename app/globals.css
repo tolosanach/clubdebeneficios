@@ -1185,3 +1185,13 @@ html.clufix-nav-back::view-transition-new(root) {
     max-height: calc(100vh - 64px);
   }
 }
+
+/* Halftone (estilo Caldera): puntos tono sobre tono que se desvanecen desde la
+   esquina inferior izquierda. Solo coral/terracota de la marca. */
+.cx-halftone {
+  position: absolute; inset: 0; pointer-events: none; z-index: 0;
+  background-image: radial-gradient(circle, rgba(169,49,0,0.55) 1.8px, transparent 2.4px);
+  background-size: 15px 15px;
+  -webkit-mask-image: radial-gradient(ellipse 70% 60% at 0% 100%, #000 0%, transparent 72%);
+  mask-image: radial-gradient(ellipse 70% 60% at 0% 100%, #000 0%, transparent 72%);
+}
